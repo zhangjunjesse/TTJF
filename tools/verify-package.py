@@ -28,7 +28,9 @@ PRESERVED = {
     'export/little-steps-v8.1.zip': 'f424b119e42bef5d954e516a3eb0f2536c4dcb68f8215c99aaa94085ef15afca',
     'export/little-steps-v8.1.html': '903566acff6da0051f74bd80935125048ba8d4277e8b0bfe6c04efa274c91d06',
     'export/little-steps-v9.html': '73fbbfdcb1770209f57644d2754a8f26404842a730750f3d11463aa957ab26e5',
-    'export/little-steps-v9.zip': '3f25ec30c03af2f7629a62c7050aebe450d00f74460675887d90ea371a253e73'
+    'export/little-steps-v9.zip': '3f25ec30c03af2f7629a62c7050aebe450d00f74460675887d90ea371a253e73',
+    'export/little-steps-v9.1.html': 'e38737cf720385286fcda72b2c6c9c879ac1a9b6469aa23acb823348db9f710c',
+    'export/little-steps-v9.1.zip': '3d9c4b755ebd7a4834ca00ea0148215e10584e4e7429a1d2fa2759eec2e9db38'
 }
 
 

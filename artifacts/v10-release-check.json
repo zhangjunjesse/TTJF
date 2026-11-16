@@ -1,0 +1,23 @@
+{
+  "preview": "http://127.0.0.1:4178",
+  "staticFiles": {
+    "app.js": "1531ce56cf0c5bd6f790821990f609dbac4a360c39e4048deb7f460a66021adf",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479"
+  },
+  "offline": {
+    "local": true,
+    "form": "points",
+    "text": "加分",
+    "width": 72,
+    "height": 48,
+    "background": "rgb(50, 108, 81)",
+    "foreground": "rgb(255, 255, 255)",
+    "inViewport": true
+  },
+  "errors": [],
+  "passed": true
+}

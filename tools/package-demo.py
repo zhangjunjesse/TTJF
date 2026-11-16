@@ -48,7 +48,7 @@ with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
         elif rel.parts[0] == 'tools':
             include = file.name in allowed_tools or (len(rel.parts) == 3 and rel.parts[1] == 'pet-v6' and file.suffix in {'.html', '.js', '.css'})
         elif rel.parts[0] == 'artifacts':
-            include = (rel.parts[1].startswith(('v4-', 'v5-', 'v6-', 'v7-', 'v8-', 'v9-')) or (file.name.startswith('v3-') and 'failure' not in file.name)) and not any(private in file.name for private in ('live', 'migration'))
+            include = (rel.parts[1].startswith(('v4-', 'v5-', 'v6-', 'v7-', 'v8-', 'v9-', 'v10-')) or (file.name.startswith('v3-') and 'failure' not in file.name)) and not any(private in file.name for private in ('live', 'migration'))
         if include:
             z.write(file, 'little-steps/' + rel.as_posix())
     z.write(standalone, 'little-steps/offline-demo.html')

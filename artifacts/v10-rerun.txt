@@ -1,0 +1,4 @@
+PASS catalog-phone
+PASS catalog-ipad
+PASS empty-and-disabled
+3 groups passed; 0 failed; 102 page states; 0 screenshots

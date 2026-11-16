@@ -1,8 +1,10 @@
-# 小小向前 · 家庭积分与伙伴探险 v0.9.1
+# 小小向前 · 家庭积分与伙伴探险 v0.10.0
 
 > 每一步，都算数。
 
-v0.9.1 将各处＋改为实心深绿色圆角按钮，使用白色加粗加号（30px），保留48px点击范围。745×648、390×844、320×568的显示与点击已检查，零业务POST；见[按钮效果](artifacts/v9-add-button.png)与[检查记录](artifacts/v9-add-button-check.json)。本次仅调整视觉样式，下述18项是v0.9交付时的回归记录。
+v0.10 统一全产品操作层级：加分、保存、申请、兑换和购买采用固定的实心主按钮；工具、选择和危险操作分别呈现。处理中、不可用和错误都有明确状态，错误固定在导航下方；权限、草稿与业务规则保留。决定与逐页证据由[全产品操作层级](docs/action-hierarchy.md)拥有。
+
+v0.9.1历史：将各处＋改为实心深绿色圆角按钮，使用白色加粗加号（30px），保留48px点击范围。745×648、390×844、320×568的显示与点击检查见[按钮效果](artifacts/v9-add-button.png)与[检查记录](artifacts/v9-add-button-check.json)。
 
 v0.9 改为App式操作：加分直接展示项目，右上角＋新增，搜索与编辑收进导航；返回保留草稿，保存放在顶部。提醒正文可点编辑、圆形勾选完成，兑换与常用管理使用相同的＋入口；指令填写按需展开。设计与验收见[App式操作](docs/app-interactions.md)。
 
@@ -111,16 +113,19 @@ node server.cjs
 ```powershell
 python tools/package-demo.py
 npm run test:browser
-node --test test/v9-client.test.cjs
+node --test test/v10-client.test.cjs
+node test/v10-release.cjs
 python tools/package-demo.py
 python tools/verify-package.py
 ```
 
-先打包供离线浏览器检查，验收结束后再把本轮证据封入源码包。`npm run test:browser`执行10项App入口与真实家长授权保存检查；`node --test test/v9-client.test.cjs`执行8项客户端断线、冲突与幂等回归。通用测试定位已同步到＋和顶部保存；旧版浏览器套件与报告保留为历史，不作为当前交互入口。`npm test`还可运行规则/接口测试，本轮未重复执行未变更后端的整套检查。包审计核对源码镜像、两份内嵌HTML、相对链接和隐私文件排除；明确记录历史文档引用但不分发的本机证据。旧版ZIP不嵌套分发；审计核对本机保留的v0.8/v0.8.1等历史散列。发布工作区可用`python tools/verify-package.py --require-history`要求所有历史基准存在且一致。
+先打包供离线浏览器检查，验收结束后再把本轮证据封入源码包。`npm run test:browser`执行整套页面目录、操作层级与实际授权保存检查；`node --test test/v10-client.test.cjs`执行8项客户端断线、冲突与幂等回归。通用测试定位已同步到＋和顶部保存；旧版浏览器套件与报告保留为历史，不作为当前交互入口。`npm test`还可运行规则/接口测试，本轮未重复执行未变更后端的整套检查。包审计核对源码镜像、两份内嵌HTML、相对链接和隐私文件排除；明确记录历史文档引用但不分发的本机证据。旧版ZIP不嵌套分发；审计核对本机保留的v0.8/v0.8.1等历史散列。发布工作区可用`python tools/verify-package.py --require-history`要求所有历史基准存在且一致。
 
 单元与接口测试使用 Node 原生测试框架；真实浏览器测试还需已有 Edge/Chrome 和开发依赖 `puppeteer-core`。开发环境可执行 `npm install --include=dev`，或使用现有工具目录的回退依赖。通过 `BROWSER_PATH` 指定浏览器；Windows 默认检测 Edge。
 
-v0.9 本轮**10项App操作检查与8项客户端回归通过，0脚本错误**。覆盖735×754、390×844、320×568、80项搜索/中文组合输入/末页、草稿返回与焦点，以及6次真实PIN核验后的服务端保存。自定义加分同时存常用只增加一条账本和一个模板，刷新保持；提醒、礼品与常用项新增/编辑继续核验。见[App结果](artifacts/v9-results.json)、[客户端结果](artifacts/v9-client-results.json)、[新版加分面板](artifacts/v9-picker-735.png)、[手机表单](artifacts/v9-new-points-390.png)与[设计决定](docs/app-interactions.md)。
+v0.10本轮**14组页面检查与8项客户端回归通过，0脚本错误**。覆盖22类面板与132个去重页面/状态，包含手机、iPad横竖屏、320px窄屏和缩短视口；6个真实PIN核验保存场景通过。14组由首次11组通过和测试定位/空家庭夹具修正后3组定向补测组成，两次产品源码一致；没有把初跑失败隐藏或重复统计。见[最终审查结果](artifacts/v10-final-results.json)、[客户端结果](artifacts/v10-client-results.json)、[离线及预览检查](artifacts/v10-release-check.json)、[新版加分](artifacts/v10-landscape-points.png)与[危险确认](artifacts/v10-phone-danger.png)。发布检查使用现有4178预览的静态资源，不访问或修改实际家庭数据；可用`FAMILY_PREVIEW_URL`指定现有预览地址。
+
+v0.9 历史交付**10项App操作检查与8项客户端回归通过，0脚本错误**。覆盖735×754、390×844、320×568、80项搜索/中文组合输入/末页、草稿返回与焦点，以及6次真实PIN核验后的服务端保存。自定义加分同时存常用只增加一条账本和一个模板，刷新保持；提醒、礼品与常用项新增/编辑继续核验。见[App结果](artifacts/v9-results.json)、[客户端结果](artifacts/v9-client-results.json)、[新版加分面板](artifacts/v9-picker-735.png)、[手机表单](artifacts/v9-new-points-390.png)与[设计决定](docs/app-interactions.md)。
 
 v0.8.1 历史选择器检查**11/11通过，0脚本错误、0业务POST**。同7项数据在735×754从6项/2页变7项/1页，卡片136.33px变88px；见[验收记录](artifacts/v8-density-verification.md)与[密度决定](docs/compact-picker.md)。其模式切换、常驻搜索与管理区由v0.9替换。历史数字不计入本轮，家长验证规则保持v0.8。
 
@@ -132,4 +137,4 @@ v0.6 历史结果为规则/接口/渲染135/135、客户端8/8、消费者回归
 
 [v0.5 验收记录](artifacts/v5-verification.md) 和 [v0.4 验收记录](artifacts/v4-verification.md) 同样仅为历史。物理 iPad/Safari、系统软键盘/麦克风/声音、8小时常亮及外部真实模型仍未验证。
 
-导航、＋新增、顶部保存与按需搜索由 [v0.9 App式操作](docs/app-interactions.md) 拥有。首次设置、已有密码修改与初始化持久化由 [v0.8家长验证首次设置](docs/parent-onboarding.md) 拥有。全界面名称、数值、控件和短状态表达由 [v0.7 自解释界面](docs/self-explanatory-ui.md) 拥有。统一加分、照料资源、道具购买、探索收藏和新版形象由 [v0.6 伙伴探险设计](docs/pet-play-design.md) 拥有；[v0.5 满屏与直接交互](docs/interaction-design.md) 继续约束占屏、排序、输入稳定、触控目标和连续待处理；[成长设计](docs/growth-design.md) 继续拥有累计成长门槛、情境 AI 和资料规则；逐笔核验、兑换、提醒和语音边界见 [核心设计](docs/core-redesign.md)；原业务口径见 [家庭看板需求文档](docs/家庭看板需求文档.md)。
+主次按钮、危险操作及错误/禁用/处理中反馈由[v0.10操作层级](docs/action-hierarchy.md)拥有。导航、＋新增、顶部保存与按需搜索由 [v0.9 App式操作](docs/app-interactions.md) 拥有。首次设置、已有密码修改与初始化持久化由 [v0.8家长验证首次设置](docs/parent-onboarding.md) 拥有。全界面名称、数值、控件和短状态表达由 [v0.7 自解释界面](docs/self-explanatory-ui.md) 拥有。统一加分、照料资源、道具购买、探索收藏和新版形象由 [v0.6 伙伴探险设计](docs/pet-play-design.md) 拥有；[v0.5 满屏与直接交互](docs/interaction-design.md) 继续约束占屏、排序、输入稳定、触控目标和连续待处理；[成长设计](docs/growth-design.md) 继续拥有累计成长门槛、情境 AI 和资料规则；逐笔核验、兑换、提醒和语音边界见 [核心设计](docs/core-redesign.md)；原业务口径见 [家庭看板需求文档](docs/家庭看板需求文档.md)。

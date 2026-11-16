@@ -1,0 +1,2549 @@
+{
+  "scope": "Whole-product action hierarchy: actual entry routes, mobile/iPad inventory, narrow/short high-risk forms, protected persistence and representative states.",
+  "fixture": "Isolated synthetic families only. Task-action previews use explicitly controlled connected assistant responses; other assistant requests use local interpretation. No live family access.",
+  "boundaries": [
+    "Desktop Edge viewport emulation, not physical iPad/Safari or native OS keyboard.",
+    "Action buttons use hit-tested mouse input and text uses keyboard input; native selects use the existing change-event helper.",
+    "No remote AI quality, speech permission, photo-picker OS UI, or screen-awake device validation."
+  ],
+  "requested": "catalog-phone,catalog-ipad,empty-and-disabled",
+  "startedAt": "2026-11-16T03:32:37.903Z",
+  "sources": {
+    "app.js": "1531ce56cf0c5bd6f790821990f609dbac4a360c39e4048deb7f460a66021adf",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+    "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235",
+    "test/v10-browser.cjs": "e0248a137cc096df4f7dd9a64026ce51d647679be1e359c0305b52ffda97eec9"
+  },
+  "groups": [
+    {
+      "name": "catalog-phone",
+      "result": "passed"
+    },
+    {
+      "name": "catalog-ipad",
+      "result": "passed"
+    },
+    {
+      "name": "empty-and-disabled",
+      "result": "passed"
+    }
+  ],
+  "pages": [
+    {
+      "label": "phone-home",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            96,
+            48
+          ]
+        }
+      ],
+      "controls": 18,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-homeInbox",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "homeInbox",
+      "auth": false,
+      "primary": [
+        {
+          "label": "完成",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            105.34375,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            156,
+            49
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-approve",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "approve",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认兑换",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-profile",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "profile",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-behaviorPicker",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "behaviorPicker",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 8,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-picker-search",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "behaviorPicker",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-points",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "points",
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-points-AI",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "points",
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-point-list",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "point-list",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增常用加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-point-list-AI",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "point-list",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增常用加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-pointItem-new",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "pointItem",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-pointItem-edit",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "pointItem",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-records-points",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "records",
+      "auth": false,
+      "primary": [],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-records-redemptions",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "records",
+      "auth": false,
+      "primary": [],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-records-purchases",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "records",
+      "auth": false,
+      "primary": [],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-rewards",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            156,
+            49
+          ]
+        }
+      ],
+      "controls": 13,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-rewards-daily",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            156,
+            49
+          ]
+        }
+      ],
+      "controls": 11,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-rewards-weekend",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            156,
+            49
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-rewards-outing",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            156,
+            49
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-rewards-all",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            156,
+            49
+          ]
+        }
+      ],
+      "controls": 13,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-request",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "request",
+      "auth": false,
+      "primary": [
+        {
+          "label": "申请兑换",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-reward-list",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "reward-list",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-reward-new",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "reward",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-reward-edit",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "reward",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-preferences",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "preferences",
+      "auth": false,
+      "primary": [],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-familySettings",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "familySettings",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-parentConfig",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "parentConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 5,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-parentConfig-math",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "parentConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-reminders",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "完成",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            105.328125,
+            48
+          ]
+        },
+        {
+          "label": "新增提醒",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 20,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-task-new",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "task",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 11,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-task-event",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "task",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 9,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-task-edit",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "task",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 14,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-reminders-events",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "完成",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            105.328125,
+            48
+          ]
+        },
+        {
+          "label": "新增提醒",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 11,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petHub-bag",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petHub",
+      "auth": false,
+      "primary": [
+        {
+          "label": "照料伙伴",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            358,
+            50
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petHub-supply",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petHub",
+      "auth": false,
+      "primary": [],
+      "controls": 9,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petBuy",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petBuy",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认购买",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petBuy-disabled",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petBuy",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认购买",
+          "disabled": true,
+          "busy": "false",
+          "contrast": 3.16,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petHub-explore",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petHub",
+      "auth": false,
+      "primary": [],
+      "controls": 13,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petGrowth",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petGrowth",
+      "auth": false,
+      "primary": [],
+      "controls": 1,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petConfig",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 5,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-petConfig-capybara",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "petConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 5,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-voice",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "voice",
+      "auth": false,
+      "primary": [
+        {
+          "label": "发送",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-taskAction-toggle",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "taskAction",
+      "auth": false,
+      "primary": [
+        {
+          "label": "标记完成",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-taskAction-ack",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "taskAction",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认收到",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-taskAction-snooze",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "taskAction",
+      "auth": false,
+      "primary": [
+        {
+          "label": "稍后提醒",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "phone-PIN",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "points",
+      "auth": true,
+      "primary": [
+        {
+          "label": "验证并完成",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            252,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-home",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            96,
+            48
+          ]
+        }
+      ],
+      "controls": 18,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-homeInbox",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "homeInbox",
+      "auth": false,
+      "primary": [
+        {
+          "label": "完成",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            186,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            277,
+            49
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-approve",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "approve",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认兑换",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-profile",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "profile",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-behaviorPicker",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "behaviorPicker",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 8,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-picker-search",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "behaviorPicker",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-points",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "points",
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-points-AI",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "points",
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-point-list",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "point-list",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增常用加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-point-list-AI",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "point-list",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增常用加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-pointItem-new",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "pointItem",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-pointItem-edit",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "pointItem",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-records-points",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "records",
+      "auth": false,
+      "primary": [],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-records-redemptions",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "records",
+      "auth": false,
+      "primary": [],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-records-purchases",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "records",
+      "auth": false,
+      "primary": [],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-rewards",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            277,
+            49
+          ]
+        }
+      ],
+      "controls": 13,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-rewards-daily",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            277,
+            49
+          ]
+        }
+      ],
+      "controls": 11,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-rewards-weekend",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            277,
+            49
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-rewards-outing",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            277,
+            49
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-rewards-all",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "家长确认",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            277,
+            49
+          ]
+        }
+      ],
+      "controls": 13,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-request",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "request",
+      "auth": false,
+      "primary": [
+        {
+          "label": "申请兑换",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-reward-list",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "reward-list",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-reward-new",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "reward",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-reward-edit",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "reward",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-preferences",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "preferences",
+      "auth": false,
+      "primary": [],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-familySettings",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "familySettings",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-parentConfig",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "parentConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 5,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-parentConfig-math",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "parentConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-reminders",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "完成",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "新增提醒",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 20,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-task-new",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "task",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 11,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-task-event",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "task",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 9,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-task-edit",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "task",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 14,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-reminders-events",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "完成",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            58,
+            48
+          ]
+        },
+        {
+          "label": "新增提醒",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 11,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petHub-bag",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petHub",
+      "auth": false,
+      "primary": [
+        {
+          "label": "照料伙伴",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            600,
+            50
+          ]
+        }
+      ],
+      "controls": 10,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petHub-supply",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petHub",
+      "auth": false,
+      "primary": [],
+      "controls": 9,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petBuy",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petBuy",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认购买",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petBuy-disabled",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petBuy",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认购买",
+          "disabled": true,
+          "busy": "false",
+          "contrast": 3.16,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petHub-explore",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petHub",
+      "auth": false,
+      "primary": [],
+      "controls": 13,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petGrowth",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petGrowth",
+      "auth": false,
+      "primary": [],
+      "controls": 1,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petConfig",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 5,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-petConfig-capybara",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "petConfig",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 5,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-voice",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "voice",
+      "auth": false,
+      "primary": [
+        {
+          "label": "发送",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-taskAction-toggle",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "taskAction",
+      "auth": false,
+      "primary": [
+        {
+          "label": "标记完成",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-taskAction-ack",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "taskAction",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认收到",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-taskAction-snooze",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "taskAction",
+      "auth": false,
+      "primary": [
+        {
+          "label": "稍后提醒",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "ipad-PIN",
+      "viewport": [
+        768,
+        1024
+      ],
+      "form": "points",
+      "auth": true,
+      "primary": [
+        {
+          "label": "验证并完成",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            486,
+            48
+          ]
+        }
+      ],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-home",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            96,
+            48
+          ]
+        }
+      ],
+      "controls": 16,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-picker",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "behaviorPicker",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        },
+        {
+          "label": "新增加分",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 5,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-create-points",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "points",
+      "auth": false,
+      "primary": [
+        {
+          "label": "加分",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-records",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "records",
+      "auth": false,
+      "primary": [],
+      "controls": 4,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-rewards",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "rewards",
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增礼品",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 7,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-create-reward",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "reward",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 6,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-reminders",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": null,
+      "auth": false,
+      "primary": [
+        {
+          "label": "新增提醒",
+          "disabled": false,
+          "busy": null,
+          "contrast": 6.18,
+          "size": [
+            48,
+            48
+          ]
+        }
+      ],
+      "controls": 9,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "empty-create-task",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "task",
+      "auth": false,
+      "primary": [
+        {
+          "label": "保存",
+          "disabled": false,
+          "busy": "false",
+          "contrast": 6.18,
+          "size": [
+            72,
+            48
+          ]
+        }
+      ],
+      "controls": 11,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "blocked-request",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "request",
+      "auth": false,
+      "primary": [
+        {
+          "label": "申请兑换",
+          "disabled": true,
+          "busy": "false",
+          "contrast": 4.69,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 2,
+      "minTarget": 48,
+      "problems": []
+    },
+    {
+      "label": "blocked-approve",
+      "viewport": [
+        390,
+        844
+      ],
+      "form": "approve",
+      "auth": false,
+      "primary": [
+        {
+          "label": "确认兑换",
+          "disabled": true,
+          "busy": "false",
+          "contrast": 4.69,
+          "size": [
+            92,
+            48
+          ]
+        }
+      ],
+      "controls": 3,
+      "minTarget": 48,
+      "problems": []
+    }
+  ],
+  "screens": [],
+  "saves": [],
+  "errors": [],
+  "issues": [],
+  "disabledClicksWithoutPost": 4,
+  "sourceStable": true,
+  "finishedAt": "2026-11-16T03:33:25.927Z",
+  "passed": 3,
+  "failed": 0,
+  "expectedFormKinds": [
+    "behaviorPicker",
+    "homeInbox",
+    "records",
+    "preferences",
+    "rewards",
+    "petGrowth",
+    "petHub",
+    "petBuy",
+    "profile",
+    "petConfig",
+    "point-list",
+    "reward-list",
+    "points",
+    "request",
+    "approve",
+    "taskAction",
+    "task",
+    "reward",
+    "pointItem",
+    "familySettings",
+    "parentConfig",
+    "voice"
+  ],
+  "visitedFormKinds": [
+    "homeInbox",
+    "approve",
+    "profile",
+    "behaviorPicker",
+    "points",
+    "point-list",
+    "pointItem",
+    "records",
+    "rewards",
+    "request",
+    "reward-list",
+    "reward",
+    "preferences",
+    "familySettings",
+    "parentConfig",
+    "task",
+    "petHub",
+    "petBuy",
+    "petGrowth",
+    "petConfig",
+    "voice",
+    "taskAction"
+  ]
+}

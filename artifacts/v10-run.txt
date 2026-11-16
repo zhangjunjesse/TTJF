@@ -1,0 +1,15 @@
+FAIL catalog-phone: button[data-action="pet-growth"] obscured: {"x":150,"y":161,"width":390,"height":844,"disabled":false,"reachable":false,"hit":"DIV.sheet-body"}
+FAIL catalog-ipad: button[data-action="pet-growth"] obscured: {"x":339,"y":161,"width":768,"height":1024,"disabled":false,"reachable":false,"hit":"BUTTON.mode-tab "}
+PASS landscape-ipad
+PASS narrow-320
+PASS short-390
+PASS save-custom
+PASS save-pointItem
+PASS save-task-new
+PASS save-task-edit
+PASS save-reward-new
+PASS save-reward-edit
+PASS error-busy-PIN-math-danger
+FAIL empty-and-disabled: 心愿奖励不存在
+PASS genuine-first-setup
+11 groups passed; 3 failed; 107 page states; 10 screenshots
