@@ -1,6 +1,6 @@
 {
   "name": "little-steps-family-dashboard",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "private": true,
   "description": "小小向前 · App式积分与提醒，伙伴探险和逐笔家长核验",
   "scripts": {

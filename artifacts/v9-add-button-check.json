@@ -1,0 +1,99 @@
+{
+  "scope": "Visual-only add-button emphasis; isolated sample data",
+  "styleSha256": "43baa868c05291f316177a20353eb2cffd699d9556deb5429590d0b41bca8dd6",
+  "results": [
+    {
+      "viewport": [
+        745,
+        648
+      ],
+      "button": {
+        "width": 48,
+        "height": 48,
+        "right": 737,
+        "top": 287.5,
+        "background": "rgb(47, 107, 82)",
+        "color": "rgb(255, 255, 255)",
+        "iconWidth": "30px",
+        "stroke": "2.5px",
+        "hit": true
+      },
+      "reminder": {
+        "width": 48,
+        "height": 48,
+        "right": 715,
+        "top": 178,
+        "background": "rgb(47, 107, 82)",
+        "color": "rgb(255, 255, 255)",
+        "iconWidth": "30px",
+        "stroke": "2.5px",
+        "hit": true
+      },
+      "opensPoints": true,
+      "posts": 0,
+      "errors": []
+    },
+    {
+      "viewport": [
+        390,
+        844
+      ],
+      "button": {
+        "width": 48,
+        "height": 48,
+        "right": 382,
+        "top": 387.5,
+        "background": "rgb(47, 107, 82)",
+        "color": "rgb(255, 255, 255)",
+        "iconWidth": "30px",
+        "stroke": "2.5px",
+        "hit": true
+      },
+      "reminder": {
+        "width": 48,
+        "height": 48,
+        "right": 373,
+        "top": 213,
+        "background": "rgb(47, 107, 82)",
+        "color": "rgb(255, 255, 255)",
+        "iconWidth": "30px",
+        "stroke": "2.5px",
+        "hit": true
+      },
+      "opensPoints": true,
+      "posts": 0,
+      "errors": []
+    },
+    {
+      "viewport": [
+        320,
+        568
+      ],
+      "button": {
+        "width": 48,
+        "height": 48,
+        "right": 312,
+        "top": 111.5,
+        "background": "rgb(47, 107, 82)",
+        "color": "rgb(255, 255, 255)",
+        "iconWidth": "30px",
+        "stroke": "2.5px",
+        "hit": true
+      },
+      "reminder": {
+        "width": 48,
+        "height": 48,
+        "right": 308,
+        "top": 213,
+        "background": "rgb(47, 107, 82)",
+        "color": "rgb(255, 255, 255)",
+        "iconWidth": "30px",
+        "stroke": "2.5px",
+        "hit": true
+      },
+      "opensPoints": true,
+      "posts": 0,
+      "errors": []
+    }
+  ]
+}
