@@ -1,0 +1,86 @@
+{
+  "scope": "App-style entry, back/draft, header save and real shared PIN-authorized persistence; no historical suite replay.",
+  "fixture": "Synthetic seed family on isolated temporary servers, explicitly configured with a test PIN; not first-use onboarding or the live family.",
+  "requested": "Existing,Rewards,Search",
+  "startedAt": "2026-11-16T02:26:25.335Z",
+  "sources": {
+    "app.js": "771e9ff9ab0608a19cb853d803a5ad1570bc9b8420e7405562fb926f71da1ed6",
+    "styles.css": "3eeae686bea47e42bac0427f4657177f30bd3855520fc91a594dca0e8776ca24",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "test/v9-browser.cjs": "30315588391c63326cf7a7b8c036bb77e1087047c072f53b36f92da88f8e85a2"
+  },
+  "cases": [
+    {
+      "name": "Existing reminder full-row entry saves through header and PIN",
+      "result": "passed",
+      "detail": {
+        "editedId": "task-reading"
+      }
+    },
+    {
+      "name": "Rewards header plus creates an authorized gift",
+      "result": "passed",
+      "detail": {
+        "created": 1
+      }
+    },
+    {
+      "name": "Existing gift full-row management entry saves through header and PIN",
+      "result": "passed",
+      "detail": {
+        "editedId": "reward-pencil"
+      }
+    },
+    {
+      "name": "Search expansion, Chinese composition, clear and numeric last-page jump",
+      "result": "passed",
+      "detail": {
+        "lastPage": 5,
+        "lastItem": "point-v9-80"
+      }
+    }
+  ],
+  "screens": [],
+  "saves": [
+    {
+      "actionType": "task.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "reward.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "reward.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    }
+  ],
+  "errors": [],
+  "sourceStable": true,
+  "finishedAt": "2026-11-16T02:26:34.708Z",
+  "passed": 4,
+  "failed": 0
+}

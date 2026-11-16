@@ -1,0 +1,17 @@
+PASS 735 App entry, back/draft, row navigation and touch sizing
+PASS 390 App entry, back/draft, row navigation and touch sizing
+PASS 320 App entry, back/draft, row navigation and touch sizing
+PASS Custom points plus saved common item uses the actual PIN-authorized ledger
+PASS Common-management header plus creates and authorizes a saved item
+PASS Reminder header plus creates an authorized reminder
+AssertionError [ERR_ASSERTION]: null == true
+    at C:\Users\Administrator\Desktop\dsh-workspace\space-1\family-dashboard\test\v9-browser.cjs:82:81
+    at async test (C:\Users\Administrator\Desktop\dsh-workspace\space-1\family-dashboard\test\v9-browser.cjs:14:114)
+    at async main (C:\Users\Administrator\Desktop\dsh-workspace\space-1\family-dashboard\test\v9-browser.cjs:81:3)
+    at async C:\Users\Administrator\Desktop\dsh-workspace\space-1\family-dashboard\test\v9-browser.cjs:98:53 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: null,
+  expected: true,
+  operator: '=='
+}

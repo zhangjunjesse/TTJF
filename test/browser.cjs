@@ -22,7 +22,7 @@ const VIEWPORTS = [
 ];
 const SELECTORS = {
   nav: '.bottom-nav [data-action="nav"]',
-  submit: '#editor-form button[type="submit"]',
+  submit: '.sheet-save[type="submit"][form="editor-form"]',
   verify: '#parent-form button[type="submit"]',
   close: '.sheet-header button[data-action="form-close"]',
   answer: '#parent-form [name="answer"]'

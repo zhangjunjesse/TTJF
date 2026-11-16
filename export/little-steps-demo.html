@@ -110,7 +110,7 @@ em { font-style: normal; }
 .filter-tab { flex: 1; min-width: 0; min-height: 48px; padding: 9px 10px; border-radius: 12px; color: #516454; font-size: 14px; }
 .filter-tab.active { color: #304d37; background: #fffefa; box-shadow: 0 1px 4px rgba(37, 63, 37, .08); font-weight: 650; }
 .rewards-grid { display: flex; flex-direction: column; }
-.reward-card { display: flex; align-items: center; width: 100%; min-height: 106px; padding: 17px 17px; margin-bottom: 12px; border: 1px solid #dfe4d8; border-radius: 21px; background: #fffefa; text-align: left; }
+.reward-card { display: flex; align-items: center; width: 100%; min-height: 94px; padding: 15px 16px; margin-bottom: 8px; border: 0; border-radius: 17px; background: #fff; text-align: left; }
 .reward-symbol { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 62px; height: 62px; border-radius: 18px; background: #e7eee0; color: #5d7550; }
 .reward-symbol.weekend { background: #f7e9d5; color: #946632; }
 .reward-symbol.outing { background: #e7eaf6; color: #6574a0; }
@@ -138,7 +138,7 @@ em { font-style: normal; }
 .reminder-heading { display: flex; align-items: center; justify-content: space-between; margin: 7px 0 23px; }
 .reminder-heading h2 { font-size: 29px; }
 .reminder-heading p { margin-top: 5px; color: #5a6877; font-size: 14px; }
-.reminder-heading .btn { margin-left: 12px; min-height: 54px; }
+.reminder-heading > .icon-button { margin-left: 12px; border-radius: 50%; color: #35628c; background: #e5edf4; }
 .reminder-toolbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
 .day-tabs { display: flex; align-items: center; min-width: 0; padding: 4px; border-radius: 15px; background: #e7ecf1; }
 .day-tab { display: inline-flex; align-items: center; justify-content: center; flex: 1; min-width: 64px; min-height: 48px; padding: 10px 19px; border-radius: 11px; font-size: 16px; color: #536375; white-space: nowrap; }
@@ -148,18 +148,22 @@ em { font-style: normal; }
 .day-tab.active { color: #2f5d92; background: #fff; box-shadow: 0 1px 4px rgba(33, 51, 75, .08); font-weight: 650; }
 .events-label { padding: 13px 18px; color: #355d8a; font-weight: 600; }
 .reminder-toolbar > .text-button { margin-left: 8px; color: #466181; }
-.task-row { display: flex; align-items: center; min-height: 96px; margin-bottom: 12px; padding: 16px 14px 16px 20px; border: 1px solid #dce4ec; border-radius: 21px; background: #fff; }
-.task-time { flex: 0 0 75px; align-self: center; color: #365d8b; }
-.task-time b { font-size: 21px; font-variant-numeric: tabular-nums; }
-.task-time small { display: block; margin-top: 3px; color: #5d7187; font-size: 12px; }
-.task-copy { flex: 1; min-width: 0; margin-right: 16px; padding-left: 17px; border-left: 1px solid #dce5ed; }
-.task-copy strong { display: block; font-size: 19px; line-height: 1.5; overflow-wrap: break-word; }
-.task-copy p { margin-top: 3px; color: #5d6e80; font-size: 14px; overflow-wrap: break-word; }
-.task-copy small { display: block; color: #61758a; font-size: 12px; }
-.task-complete { display: inline-flex; align-items: center; justify-content: center; min-width: 86px; min-height: 48px; padding: 10px 13px; border-radius: 14px; color: #365e8a; background: #eaf1f8; font-size: 15px; font-weight: 650; }
-.task-complete .icon { width: 19px; height: 19px; margin-right: 5px; }
-.task-row > .icon-button { margin-left: 5px; color: #64788b; }
-.task-row.is-done { background: #eef2f4; }
+.task-row { display: flex; align-items: center; min-height: 78px; margin-bottom: 8px; padding: 6px 10px; border: 0; border-radius: 17px; background: #fff; }
+.task-time { display: block; color: #4b6b8a; }
+.task-time b { font-size: 14px; font-variant-numeric: tabular-nums; }
+.task-time small { margin-left: 5px; color: #7a8997; font-size: 12px; }
+.task-open { display: flex; align-items: center; flex: 1; min-width: 0; min-height: 64px; padding: 8px 4px 8px 10px; border-radius: 12px; text-align: left; }
+.task-open:active { background: #f0f4f7; }
+.task-open > .icon { flex-shrink: 0; width: 18px; height: 18px; margin-left: 10px; color: #9aabb8; }
+.task-copy { flex: 1; min-width: 0; margin: 0; padding: 0; }
+.task-copy strong { display: block; font-size: 17px; line-height: 1.45; overflow-wrap: anywhere; }
+.task-copy p, .task-copy .task-note { display: block; margin-top: 4px; color: #7a8997; font-size: 13px; overflow-wrap: anywhere; }
+.task-copy small { display: block; color: #7a8997; font-size: 12px; }
+.task-complete { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 48px; width: 48px; height: 48px; min-width: 48px; min-height: 48px; padding: 0; border: 1px solid #dbe4eb; border-radius: 50%; color: #96a7b5; background: #f5f8fa; }
+.task-complete .icon { width: 24px; height: 24px; margin: 0; }
+.task-complete:active { background: #e6eef4; }
+.task-row.is-done .task-complete { color: #437354; }
+.task-row.is-done { background: #edf2ed; }
 .task-row.is-done .task-copy strong { text-decoration: line-through; color: #677583; }
 .task-complete.done { background: #e4eaf0; color: #5c6f83; }
 .advance-events { margin-top: 23px; padding-top: 12px; border-top: 1px solid #dbe3ed; }
@@ -180,32 +184,48 @@ em { font-style: normal; }
 .reminder-banner-actions .btn { min-height: 48px; padding: 10px 15px; border-radius: 12px; font-size: 14px; background: #fffdf7; color: #705528; }
 .reminder-banner-actions .btn + .btn { margin-left: 7px; }
 .reminder-banner-actions .reminder-primary { color: #fff; background: #3b679a; }
-/* Bottom sheets keep the actual form footer above the keyboard. */
+/* Panel navigation stays fixed while the content scrolls. */
 .sheet-overlay { position: fixed; z-index: 100; inset: 0; display: flex; align-items: flex-end; justify-content: center; width: 100%; height: 100vh; height: var(--app-height, 100vh); }
-.sheet-backdrop { position: absolute; inset: 0; background: rgba(32, 45, 39, .33); }
-.sheet { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 600px; max-height: 91%; min-height: 0; overflow: hidden; border-radius: 28px 28px 0 0; background: #fffefa; box-shadow: 0 -12px 55px rgba(29, 41, 33, .12); }
-.sheet-grip { flex-shrink: 0; width: 34px; height: 4px; margin: 11px auto 0; border-radius: 4px; background: #c9d2c5; }
-.sheet-header { display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; min-height: 76px; padding: 15px 24px 17px; border-bottom: 1px solid #e2e7dd; }
-.sheet-header > div { min-width: 0; }
-.sheet-header h2 { font-size: 22px; }
-.sheet-header p { margin-top: 4px; color: #5f6e61; font-size: 12px; }
-.sheet-header > .icon-button { margin-left: 13px; margin-right: -8px; background: #eff2e9; }
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(24, 40, 31, .3); }
+.sheet { position: relative; display: flex; flex-direction: column; width: 100%; max-width: 640px; max-height: 94%; min-height: 0; overflow: hidden; border-radius: 24px 24px 0 0; background: #f3f5ef; box-shadow: 0 -8px 40px rgba(29, 41, 33, .12); }
+.sheet-grip { flex-shrink: 0; width: 32px; height: 4px; margin: 9px auto 3px; border-radius: 4px; background: #c9d2c5; }
+.sheet-header { display: flex; align-items: center; flex-shrink: 0; min-height: 64px; padding: 4px 12px 8px; border-bottom: 1px solid #e1e7dc; }
+.sheet-nav-start, .sheet-nav-actions { display: flex; align-items: center; flex-shrink: 0; min-height: 48px; }
+.sheet-nav-start { width: 48px; }
+.sheet-heading { flex: 1; min-width: 0; padding: 0 8px; }
+.sheet-header h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; line-height: 26px; letter-spacing: 0; }
+.sheet-header p { margin-top: 1px; color: #6f7b6d; font-size: 11px; line-height: 16px; }
+.sheet-nav-actions { gap: 2px; }
+.sheet-header .icon-button { width: 48px; min-width: 48px; height: 48px; margin: 0; border-radius: 50%; color: #38674e; background: transparent; }
+.sheet-header .icon-button .icon { width: 22px; height: 22px; }
+.sheet-header .icon-button:active { background: #e3ebdd; }
+.sheet-nav-actions .sheet-save { min-width: 56px; min-height: 48px; margin: 0; padding: 10px; border-radius: 12px; background: transparent; color: #2d684b; font-size: 16px; font-weight: 700; white-space: nowrap; }
+.sheet-nav-actions .sheet-save:active { background: #e3ebdd; }
 .sheet-form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; overflow: hidden; margin: 0; }
-.sheet-body { flex: 1 1 auto; min-height: 0; padding: 23px 25px 25px; overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
-.sheet-footer { display: flex; align-items: center; flex-shrink: 0; padding: 14px 24px 17px; padding-bottom: calc(17px + constant(safe-area-inset-bottom)); padding-bottom: calc(17px + env(safe-area-inset-bottom)); border-top: 1px solid #e2e7dd; background: #fffefa; }
-.sheet-footer > .btn { flex: 1; min-height: 54px; }
-.sheet-footer > .btn + .btn { margin-left: 11px; }
-.sheet-footer > .outline { flex: 0 0 auto; min-width: 110px; }
-.field { display: block; min-width: 0; margin-bottom: 19px; }
-.field > span { display: block; margin-bottom: 7px; font-size: 14px; font-weight: 600; color: #46594a; }
-.field input, .field select, .field textarea { display: block; width: 100%; min-height: 50px; border: 1px solid #cdd8c8; border-radius: 12px; padding: 12px 13px; background: #fff; color: #263b32; font-size: 16px; line-height: 1.45; -webkit-appearance: none; appearance: none; }
-.field select { padding-right: 28px; -webkit-appearance: menulist; appearance: auto; }
-.field input[type="date"], .field input[type="time"] { min-width: 0; width: 100%; min-height: 50px; text-align: left; }
+.sheet-body { flex: 1 1 auto; min-height: 0; padding: 16px 20px 24px; padding-bottom: calc(24px + env(safe-area-inset-bottom)); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; }
+.sheet-footer { display: flex; align-items: center; flex-shrink: 0; padding: 12px 20px 16px; padding-bottom: calc(16px + constant(safe-area-inset-bottom)); padding-bottom: calc(16px + env(safe-area-inset-bottom)); background: #f3f5ef; }
+.sheet-footer > .btn { flex: 1; min-height: 48px; border-radius: 14px; }
+.sheet-footer > .btn + .btn { margin-left: 10px; }
+.sheet-footer > .outline { flex: 0 0 auto; min-width: 100px; border: 0; }
+.field { display: block; min-width: 0; margin: 0 0 10px; padding: 11px 14px 3px; border-radius: 14px; background: #fff; }
+.field > span { display: block; margin-bottom: 0; font-size: 12px; line-height: 18px; font-weight: 550; color: #71806e; }
+.field input, .field select, .field textarea { display: block; width: 100%; min-height: 48px; border: 0; border-radius: 7px; padding: 10px 0; background: transparent; color: #263b32; font-size: 16px; line-height: 1.5; -webkit-appearance: none; appearance: none; }
+.field input:focus, .field select:focus, .field textarea:focus { outline: 2px solid #83a489; outline-offset: 1px; }
+.field select { padding-right: 22px; -webkit-appearance: menulist; appearance: auto; }
+.field input[type="date"], .field input[type="time"] { min-width: 0; width: 100%; min-height: 48px; text-align: left; }
 .field input::-webkit-date-and-time-value { text-align: left; }
-.field textarea { resize: vertical; min-height: 94px; }
-.field input::placeholder, .field textarea::placeholder { color: #748171; }
-.field-pair { display: flex; align-items: flex-start; margin: 0 -7px; }
-.field-pair > .field { flex: 1; min-width: 0; width: 50%; padding: 0 7px; }
+.field textarea { resize: vertical; min-height: 88px; }
+.field input::placeholder, .field textarea::placeholder { color: #8a9586; }
+.field-pair { display: flex; align-items: stretch; gap: 1px; margin: 0 0 10px; border-radius: 14px; background: #e9ede4; }
+.field-pair > .field { flex: 1; min-width: 0; width: 50%; margin: 0; padding: 11px 12px 3px; border-radius: 0; }
+.field-pair > .field:first-child { border-radius: 14px 0 0 14px; }
+.field-pair > .field:last-child { border-radius: 0 14px 14px 0; }
+.field-group { margin-bottom: 16px; border-radius: 16px; background: #fff; }
+.field-group > .field, .field-group > .field-pair { margin: 0; border-radius: 0; }
+.field-group > .field + .field, .field-group > .field + .field-pair, .field-group > .field-pair + .field { border-top: 1px solid #edf0e8; }
+.field-group > :first-child { border-radius: 16px 16px 0 0; }
+.field-group > :last-child { border-radius: 0 0 16px 16px; }
+.field-group > :only-child { border-radius: 16px; }
 .form-error { margin-top: 15px; padding: 12px 14px; border-radius: 12px; background: #fff0e9; color: #943f2f; font-size: 14px; line-height: 1.6; }
 .form-type-toggle, .date-shortcuts { display: flex; align-items: center; margin-bottom: 20px; padding: 4px; border-radius: 14px; background: #edf1f3; }
 .date-shortcuts .day-tab { min-height: 48px; }
@@ -235,15 +255,16 @@ em { font-style: normal; }
 .record-row small { font-size: 12px; color: #62715f; }
 .record-number { margin-left: 15px; color: #38664a; font-size: 24px; white-space: nowrap; }
 .record-number small { display: inline; color: inherit; font-size: 12px; }
-.manage-list { margin-top: -10px; }
-.manage-row { display: flex; align-items: center; width: 100%; min-height: 79px; padding: 15px 0; border-bottom: 1px solid #e0e6d9; text-align: left; }
+.manage-list, .menu-group { overflow: hidden; margin: 0; border-radius: 17px; background: #fff; }
+.manage-row { display: flex; align-items: center; width: 100%; min-height: 72px; padding: 13px 16px; border-bottom: 1px solid #eef1e9; text-align: left; }
+.manage-row:last-child, .menu-row:last-child { border-bottom: 0; }
+.manage-row:active, .menu-row:active { background: #edf3e6; }
 .manage-row > span { flex: 1; min-width: 0; }
-.manage-row b { display: block; font-size: 16px; }
-.manage-row small { display: block; margin-top: 4px; color: #607059; font-size: 13px; }
-.manage-row > .icon { margin-left: 15px; color: #6b7e62; }
-.menu-group { overflow: hidden; margin-top: -8px; }
-.menu-row { display: flex; align-items: center; width: 100%; min-height: 79px; padding: 12px 0; border-bottom: 1px solid #e0e6da; text-align: left; }
-.menu-symbol { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; margin-right: 13px; border-radius: 13px; color: #58714a; background: #eaf0e2; }
+.manage-row b { display: block; font-size: 16px; line-height: 23px; overflow-wrap: anywhere; }
+.manage-row small { display: block; margin-top: 3px; color: #7b8774; font-size: 12px; }
+.manage-row > .icon { width: 18px; height: 18px; margin-left: 12px; color: #9aa692; }
+.menu-row { display: flex; align-items: center; width: 100%; min-height: 72px; padding: 12px 14px; border-bottom: 1px solid #eef1e9; text-align: left; }
+.menu-symbol { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 36px; height: 36px; margin-right: 12px; border-radius: 11px; color: #58714a; background: #edf3e5; }
 .menu-row > span:nth-child(2) { flex: 1; min-width: 0; }
 .menu-row b, .menu-row small { display: block; }
 .menu-row b { font-size: 16px; }
@@ -347,25 +368,15 @@ em { font-style: normal; }
   .reminder-heading { margin: 5px 0 20px; }
   .reminder-heading h2 { font-size: 27px; }
   .reminder-heading p { margin-top: 4px; font-size: 12px; }
-  .reminder-heading .btn { min-height: 50px; padding: 12px 14px; font-size: 14px; border-radius: 15px; }
-  .reminder-heading .btn .icon { width: 19px; height: 19px; margin-right: 5px; }
   .reminder-toolbar { margin-bottom: 14px; }
   .day-tabs { padding: 3px; border-radius: 13px; }
   .day-tab { min-width: 53px; min-height: 48px; padding: 10px 12px; border-radius: 10px; font-size: 14px; }
   .day-tab small { display: none; }
   .reminder-toolbar > .text-button { margin-right: -6px; margin-left: 5px; padding-left: 7px; padding-right: 7px; font-size: 13px; }
-  .task-row { min-height: 99px; padding: 14px 8px 14px 13px; border-radius: 18px; margin-bottom: 10px; }
-  .task-time { flex: 0 0 52px; }
-  .task-time b { font-size: 17px; }
-  .task-time small { font-size: 10px; }
-  .task-copy { padding-left: 10px; margin-right: 7px; }
+  .task-row { min-height: 76px; padding: 5px 8px; border-radius: 16px; margin-bottom: 8px; }
   .task-copy strong { font-size: 16px; line-height: 1.45; }
-  .task-copy p { margin-top: 5px; font-size: 12px; }
+  .task-copy p { margin-top: 4px; font-size: 12px; }
   .task-copy small { margin-top: 3px; font-size: 11px; }
-  .task-complete { flex-direction: column; min-width: 48px; min-height: 55px; padding: 7px 5px; border-radius: 12px; font-size: 12px; line-height: 1.3; }
-  .task-complete .icon { width: 19px; height: 19px; margin: 0 0 4px; }
-  .task-row > .icon-button { width: 48px; min-width: 48px; margin-left: 0; }
-  .task-row > .icon-button .icon { width: 19px; height: 19px; }
   .list-footnote { padding-top: 12px; font-size: 11px; }
   .reminder-banner { display: block; margin: 0 17px 11px; padding: 12px; border-radius: 17px; }
   .reminder-banner-copy { margin-right: 0; }
@@ -374,17 +385,13 @@ em { font-style: normal; }
   .reminder-banner-copy > .icon { width: 20px; height: 20px; margin-right: 9px; }
   .reminder-banner-actions { margin-top: 9px; }
   .reminder-banner-actions .btn { flex: 1; padding: 10px 7px; font-size: 13px; }
-  .sheet { max-height: 94%; border-radius: 26px 26px 0 0; }
-  .sheet-header { min-height: 72px; padding: 12px 20px 15px; }
-  .sheet-header h2 { font-size: 21px; }
-  .sheet-header p { font-size: 11px; }
-  .sheet-body { padding: 21px 21px 24px; }
-  .sheet-footer { padding: 12px 20px 14px; padding-bottom: calc(14px + constant(safe-area-inset-bottom)); padding-bottom: calc(14px + env(safe-area-inset-bottom)); }
-  .sheet-footer > .btn { min-height: 54px; padding: 12px 15px; }
+  .sheet { max-height: calc(100% - 12px - env(safe-area-inset-top)); border-radius: 22px 22px 0 0; }
+  .sheet-header { min-height: 60px; padding: 2px 8px 6px; }
+  .sheet-header h2 { font-size: 18px; }
+  .sheet-body { padding: 14px 16px 20px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); }
+  .sheet-footer { padding: 10px 16px 12px; padding-bottom: calc(12px + constant(safe-area-inset-bottom)); padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .sheet-footer > .btn { min-height: 48px; padding: 10px 14px; }
   .sheet-footer > .outline { min-width: 96px; }
-  .field > span { font-size: 13px; }
-  .field { margin-bottom: 17px; }
-  .field input, .field textarea, .field select { font-size: 16px; }
   .entry-summary { padding: 13px 17px; margin-bottom: 20px; }
   .entry-summary > strong { font-size: 30px; }
   .entry-summary > span { font-size: 18px; }
@@ -404,18 +411,15 @@ em { font-style: normal; }
   .reward-cost { margin-left: 0; font-size: 20px; }
   .voice-entry { min-width: 99px; margin-left: 10px; padding-right: 9px; padding-left: 9px; }
   .reminders-screen { padding-right: 12px; padding-left: 12px; }
-  .reminder-heading .btn { padding: 12px 10px; font-size: 13px; margin-left: 5px; }
-  .reminder-heading .btn .icon { display: none; }
   .reminder-heading p { font-size: 11px; }
   .day-tab { min-width: 49px; padding: 10px 9px; }
   .reminder-toolbar > .text-button { font-size: 12px; }
-  .task-time { flex-basis: 45px; }
-  .task-time b { font-size: 15px; }
-  .task-copy { padding-left: 8px; margin-right: 6px; }
   .task-copy strong { font-size: 15px; }
   .task-copy p { font-size: 11px; }
-  .task-row { padding-left: 10px; padding-right: 4px; }
-  .sheet-body { padding-right: 17px; padding-left: 17px; }
+  .task-open { padding-left: 7px; }
+  .sheet-heading { padding: 0 4px; }
+  .sheet-nav-actions { gap: 0; }
+  .sheet-body { padding-right: 12px; padding-left: 12px; }
   .sheet-footer { padding-right: 17px; padding-left: 17px; }
   .sheet-footer > .btn { padding-right: 11px; padding-left: 11px; font-size: 14px; }
   .sheet-footer > .outline { min-width: 86px; }
@@ -428,7 +432,7 @@ em { font-style: normal; }
   .date-label { font-size: 10px; }
   .sheet { max-height: 98%; }
   .sheet-grip { margin-top: 7px; }
-  .sheet-header { padding-top: 7px; padding-bottom: 8px; min-height: 61px; }
+  .sheet-header { padding-top: 2px; padding-bottom: 4px; min-height: 54px; }
   .sheet-body { padding-top: 16px; padding-bottom: 16px; }
   .sheet-footer { padding-top: 9px; padding-bottom: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
   .sheet-footer > .btn { min-height: 48px; }
@@ -495,12 +499,12 @@ em { font-style: normal; }
 .home-behavior-heading small { margin-left: 5px; font-size: 12px; }
 .home-behavior-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; gap: 8px; }
 .home-behavior-buttons.count-1 > *, .home-behavior-buttons.count-0 > * { grid-column: 1 / -1; }
-.interaction-home .behavior-card, .picker-grid .behavior-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; position: relative; width: 100%; height: 100%; min-height: 48px; min-width: 0; margin: 0; padding: 6px 10px; border: 1px solid #dfe5d8; border-radius: 14px; background: #fffefa; text-align: left; }
-.interaction-home .behavior-symbol, .picker-grid .behavior-symbol { display: none; }
-.interaction-home .behavior-copy, .picker-grid .behavior-copy { display: block; min-width: 0; padding: 0; }
-.interaction-home .behavior-copy b, .picker-grid .behavior-copy b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 19px; overflow-wrap: anywhere; }
+.interaction-home .behavior-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; position: relative; width: 100%; height: 100%; min-height: 48px; min-width: 0; margin: 0; padding: 6px 10px; border: 1px solid #dfe5d8; border-radius: 14px; background: #fffefa; text-align: left; }
+.interaction-home .behavior-symbol { display: none; }
+.interaction-home .behavior-copy { display: block; min-width: 0; padding: 0; }
+.interaction-home .behavior-copy b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 19px; overflow-wrap: anywhere; }
 .interaction-home .behavior-copy small { display: none; }
-.interaction-home .behavior-card > strong, .picker-grid .behavior-card > strong { position: static; align-self: center; margin: 0 0 0 6px; color: #386c4c; font-size: 18px; line-height: 24px; white-space: nowrap; }
+.interaction-home .behavior-card > strong { position: static; align-self: center; margin: 0 0 0 6px; color: #386c4c; font-size: 18px; line-height: 24px; white-space: nowrap; }
 .empty-behaviors { display: flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; border: 1px dashed #cfd8c6; border-radius: 15px; color: #748164; font-size: 13px; }
 .empty-behaviors .icon { width: 18px; height: 18px; margin-right: 6px; }
 .home-wide { grid-template-columns: minmax(0, .36fr) minmax(0, .64fr); grid-template-rows: minmax(142px, .4fr) minmax(176px, .6fr); grid-template-areas: "wallet companion" "behaviors companion"; padding: 10px 20px 14px; gap: 14px 20px; }
@@ -541,34 +545,30 @@ em { font-style: normal; }
 .inbox-task .reminder-banner-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .inbox-task .reminder-banner-actions .btn { min-width: 48px; min-height: 48px; padding: 9px 4px; margin: 0; font-size: 12px; }
 .behavior-picker-sheet { width: 100%; max-width: 800px; height: auto; max-height: min(740px, calc(var(--app-height, 100vh) - 12px)); padding-bottom: env(safe-area-inset-bottom); }
-.behavior-picker-sheet .sheet-header { min-height: 56px; padding: 4px 16px; }
-.behavior-picker-sheet .sheet-header h2 { font-size: 21px; }
-.behavior-picker-sheet .sheet-header p { font-size: 11px; }
-.behavior-picker-sheet .sheet-header > .icon-button { margin-right: 0; }
-.behavior-picker-body { display: flex; flex-direction: column; flex: 0 1 auto; min-width: 0; min-height: 0; padding: 10px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
-.behavior-picker-body .points-mode-tabs { margin-bottom: 8px; }
-.picker-tools { display: flex; align-items: center; flex-shrink: 0; min-width: 0; height: 48px; margin-bottom: 6px; }
+.behavior-picker-sheet .sheet-header { min-height: 60px; padding: 2px 8px 6px; }
+.behavior-picker-body { display: flex; flex-direction: column; flex: 0 1 auto; min-width: 0; min-height: 0; padding: 12px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+.picker-tools { display: flex; align-items: center; flex-shrink: 0; min-width: 0; height: 48px; margin-bottom: 12px; }
 .picker-search { position: relative; flex: 1; min-width: 0; }
-.picker-search input { display: block; width: 100%; height: 48px; padding: 10px 48px 10px 12px; border: 1px solid #d5decd; border-radius: 13px; background: #fff; font-size: 16px; -webkit-appearance: none; }
+.picker-search input { display: block; width: 100%; height: 48px; padding: 10px 48px 10px 14px; border: 0; border-radius: 13px; background: #e7ece1; font-size: 16px; -webkit-appearance: none; }
 .picker-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
 .picker-search .icon-button { position: absolute; right: 0; top: 0; background: transparent; }
 .picker-search .icon { width: 17px; height: 17px; }
-.picker-tools > .text-button { min-height: 48px; min-width: 48px; margin-left: 4px; padding: 4px 6px; font-size: 14px; }
 .behavior-picker-results { display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; }
-.picker-summary { flex-shrink: 0; min-height: 22px; color: #758368; font-size: 12px; line-height: 22px; }
 .picker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 88px; align-content: start; flex: 0 0 auto; min-height: 0; min-width: 0; gap: 8px; }
 @media (min-width: 700px) { .picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.picker-grid .behavior-card { padding: 10px 12px; }
-.picker-grid .behavior-copy b { font-size: 15px; line-height: 21px; }
-.picker-grid .behavior-copy small { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7c876f; font-size: 12px; line-height: 17px; }
-.picker-grid .behavior-card > strong { align-self: center; font-size: 20px; }
+.picker-grid .behavior-card { display: grid; grid-template-columns: 28px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 22px; align-items: center; gap: 3px 8px; width: 100%; height: 100%; min-height: 48px; min-width: 0; margin: 0; padding: 10px 12px; border: 0; border-radius: 15px; background: #fff; text-align: left; }
+.picker-grid .behavior-card:active { background: #e5eedc; }
+.picker-grid .behavior-symbol { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; grid-column: 1; grid-row: 1; border-radius: 9px; background: #edf3e5; color: #60814d; }
+.picker-grid .behavior-symbol .icon { width: 18px; height: 18px; }
+.picker-grid .behavior-copy { display: block; min-width: 0; grid-column: 2; grid-row: 1; }
+.picker-grid .behavior-copy b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; font-size: 15px; line-height: 20px; }
+.picker-grid .behavior-card > strong { position: static; grid-column: 2; grid-row: 2; align-self: end; margin: 0; color: #386c4c; font-size: 18px; line-height: 22px; white-space: nowrap; }
 .picker-empty { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; }
 .picker-empty p { margin: 0; color: #7b876e; font-size: 14px; }
-.picker-footer { display: flex; align-items: center; justify-content: space-between; min-height: 66px; padding: 8px 16px; }
-.picker-footer[hidden] { display: none; }
-.picker-footer > .icon-button { background: #edf2e6; }
-.picker-page-label { display: flex; align-items: center; color: #62735a; font-size: 12px; white-space: nowrap; }
-.picker-page-label input { width: 60px; height: 48px; padding: 7px 4px; margin: 0 6px; border: 1px solid #d2ddc7; border-radius: 11px; text-align: center; font-size: 16px; }
+.picker-footer { display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 8px 16px; }
+.picker-footer > .icon-button { background: transparent; color: #456d42; }
+.picker-page-label { display: flex; align-items: center; color: #73816a; font-size: 12px; white-space: nowrap; }
+.picker-page-label input { width: 54px; height: 48px; padding: 7px 4px; margin: 0 6px; border: 0; border-radius: 11px; background: #fff; text-align: center; font-size: 16px; }
 @media (min-width: 900px) and (orientation: landscape) {
   .view-points .app-header { height: 64px; height: calc(64px + env(safe-area-inset-top)); padding: 8px 20px; padding-top: calc(8px + env(safe-area-inset-top)); }
   .child-profile-copy strong { font-size: 19px; }
@@ -600,13 +600,13 @@ em { font-style: normal; }
 .rewards-sheet-heading p { font-size: 14px; color: #67725e; }
 .rewards-sheet-heading strong { margin: 0 4px; color: #345c42; font-size: 24px; }
 .rewards-sheet-heading > div { display: flex; margin-right: -8px; }
-.context-ai { margin-bottom: 18px; padding: 12px 14px; border: 1px solid #dedbe9; border-radius: 17px; background: #f6f4fa; }
+.context-ai { margin-bottom: 14px; padding: 12px; border: 0; border-radius: 16px; background: #ece9f3; }
 .context-ai-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
 .context-ai-heading > strong { display: flex; align-items: center; color: #655986; font-size: 15px; }
 .context-ai-heading .icon { width: 19px; height: 19px; margin-right: 7px; }
 .context-ai-heading > span { padding: 3px 7px; border-radius: 7px; background: #eae6f1; color: #84769b; font-size: 11px; overflow-wrap: anywhere; }
 .context-ai-input { display: flex; align-items: flex-end; gap: 6px; }
-.context-ai .field { flex: 1; min-width: 0; margin: 0; }
+.context-ai .field { flex: 1; min-width: 0; margin: 0; padding: 0; background: transparent; }
 .context-ai .field > span { margin-bottom: 5px; font-size: 12px; color: #746987; }
 .context-ai textarea { min-height: 50px; height: 50px; padding: 12px; border-color: #ddd7e8; border-radius: 12px; background: #fff; font-size: 16px; }
 .context-ai-actions { display: flex; align-items: center; flex-shrink: 0; gap: 4px; }
@@ -672,13 +672,11 @@ em { font-style: normal; }
   .behavior-picker-body { padding-right: 12px; padding-left: 12px; }
   .picker-grid .behavior-card { padding: 8px; }
   .picker-grid .behavior-copy b { font-size: 14px; line-height: 20px; }
-  .picker-grid .behavior-copy small { font-size: 11px; line-height: 16px; }
 }
 /* v0.6 keeps the homepage row budget; resource controls replace the old free actions. */
-.points-mode-tabs, .pet-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); flex-shrink: 0; gap: 8px; margin-bottom: 12px; }
-.pet-tabs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.mode-tab { min-width: 48px; min-height: 48px; padding: 8px 10px; border: 1px solid #d7dfcf; border-radius: 13px; background: #f7f9f2; color: #657354; font-size: 14px; font-weight: 600; }
-.mode-tab.active { border-color: #8ba16f; background: #e8f1dd; color: #36562e; }
+.pet-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); flex-shrink: 0; gap: 4px; margin-bottom: 14px; padding: 4px; border-radius: 14px; background: #e7ece1; }
+.mode-tab { min-width: 48px; min-height: 48px; padding: 8px 10px; border: 0; border-radius: 11px; background: transparent; color: #718067; font-size: 14px; font-weight: 600; }
+.mode-tab.active { background: #fff; color: #36562e; box-shadow: 0 1px 3px rgba(45, 67, 36, .06); }
 .template-toggle { display: flex; align-items: center; min-height: 48px; gap: 12px; margin: 8px 0; cursor: pointer; font-size: 16px; }
 .template-toggle input { width: 24px; height: 24px; margin: 0 2px; accent-color: #5c7843; }
 .template-save-preview { font-size: 13px; line-height: 1.7; }
@@ -708,7 +706,7 @@ em { font-style: normal; }
 .pet-bonus-note, .pet-next-goal { margin: 10px 0 16px; font-size: 13px; line-height: 1.7; }
 .pet-next-goal { font-weight: 600; }
 .pet-supplies, .pet-scene-list { display: grid; gap: 10px; margin-bottom: 15px; }
-.pet-supply-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px 10px; border: 1px solid #dfe4d8; border-radius: 16px; background: #fafbf7; }
+.pet-supply-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 12px; border: 0; border-radius: 16px; background: #fff; }
 .pet-item-art { display: block; flex-shrink: 0; width: 44px; height: 44px; }
 .pet-item-art > svg { display: block; width: 100%; height: 100%; }
 .pet-supply-card h3, .pet-buy-item h3 { font-size: 16px; line-height: 23px; }
@@ -721,7 +719,7 @@ em { font-style: normal; }
 .pet-buy-item .pet-item-art { width: 56px; height: 56px; }
 .pet-purchase-price { margin: 8px 0 16px; font-size: 16px; line-height: 1.7; }
 .pet-purchase-price strong { font-size: 22px; }
-.pet-scene-card { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 80px; padding: 12px; border: 1px solid #dfe5d6; border-radius: 16px; }
+.pet-scene-card { display: grid; grid-template-columns: 38px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 80px; padding: 12px; border: 0; border-radius: 16px; background: #fff; }
 .scene-badge { display: flex; align-items: center; justify-content: center; width: 38px; height: 42px; border: 1px solid #dbca9e; border-radius: 13px 13px 18px 18px; color: #917639; background: #fff6d7; }
 .scene-badge .icon { width: 23px; height: 23px; }
 .pet-scene-card.locked .scene-badge { color: #8b9484; background: #f1f3ec; border-color: #dce1d4; }
@@ -733,7 +731,7 @@ em { font-style: normal; }
 .ledger-summary b { display: block; margin-top: 6px; font-size: 23px; overflow-wrap: anywhere; }
 .history-tabs .day-tab { flex: 1; min-width: 48px; padding: 8px 5px; font-size: 13px; }
 @media (max-width: 359px) { .home-portrait .pet-name[data-feedback="true"] { font-size: 17px; } .pet-supply-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 7px; padding: 10px 8px; } .pet-supply-card .pet-item-art { width: 38px; height: 38px; } }
-@media (max-height: 440px) { .behavior-picker-sheet .sheet-header { min-height: 48px; padding: 0 12px; } .behavior-picker-body { padding: 4px 12px; } .behavior-picker-body .points-mode-tabs { margin-bottom: 4px; } .picker-tools { margin-bottom: 4px; } .picker-summary { min-height: 20px; line-height: 20px; } .picker-footer { min-height: 56px; padding: 4px 12px; } .picker-grid { grid-auto-rows: 64px; } .picker-grid .behavior-copy small, .picker-grid .behavior-symbol { display: none; } }
+@media (max-height: 440px) { .behavior-picker-sheet .sheet-header { min-height: 48px; padding: 0 8px; } .behavior-picker-body { padding: 4px 12px; } .picker-tools { margin-bottom: 6px; } .picker-footer { min-height: 56px; padding: 4px 12px; } .picker-grid { grid-auto-rows: 64px; } .picker-grid .behavior-card { padding: 6px 10px; grid-template-rows: minmax(0, 1fr) 22px; } .picker-grid .behavior-copy b { display: block; white-space: nowrap; text-overflow: ellipsis; } .picker-grid .behavior-symbol { width: 25px; height: 25px; } }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
 </style>
   <style>/* FamilyPet v0.6 motion. Namespaced SVG groups, no filters or WebGL; UI resets after 2700ms. */
@@ -2236,7 +2234,7 @@ em { font-style: normal; }
   return { render: render, renderItem: renderItem };
 }));
 </script>
-  <script>/* v0.8: parent setup and per-action authorization. */
+  <script>/* v0.9: app navigation with per-action parent authorization. */
 (function () {
   'use strict';
   var M = window.FamilyModel, KEY = 'little-steps-demo-v1', PREF = 'little-steps-preferences';
@@ -2254,8 +2252,9 @@ em { font-style: normal; }
     calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-14 4h3m4 0h3"/>',
     gift: '<path d="M3 9h18v4H3zM5 13v8h14v-8M12 9v12M12 9C4 10 4 2 8 3c3 0 4 6 4 6Zm0 0c8 1 8-7 4-6-3 0-4 6-4 6Z"/>',
     edit: '<path d="m14 5 5 5M3 21l5-1L21 7a3.5 3.5 0 0 0-5-5L3 15z"/>',
-    close: '<path d="m6 6 12 12M6 18 18 6"/>', back: '<path d="M20 12H5m6-6-6 6 6 6"/>',
+    close: '<path d="m6 6 12 12M6 18 18 6"/>',
     arrow: '<path d="M4 12h15m-6-6 6 6-6 6"/>', chevron: '<path d="m9 5 7 7-7 7"/>',
+    back: '<path d="m15 5-7 7 7 7"/>', search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
     settings: '<path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3" fill="currentColor"/><circle cx="16" cy="17" r="3" fill="currentColor"/>',
     mic: '<rect x="8" y="2" width="8" height="13" rx="4"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/>',
     lock: '<rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/>',
@@ -2620,8 +2619,10 @@ em { font-style: normal; }
   function restorePlayFocus(key) {
     var sheetEl = document.querySelector('.sheet') || document.querySelector('.app-shell'); if (!sheetEl) return;
     var nodes = sheetEl.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled])'), target = null;
+    nodes = Array.prototype.filter.call(nodes, function (node) { return node.getClientRects().length > 0; });
     if (key) for (var i = 0; i < nodes.length; i++) { var candidate = focusKey(nodes[i]); if (candidate && candidate.tag === key.tag && candidate.type === key.type && candidate.id === key.id && candidate.name === key.name && candidate.action === key.action && candidate.dataId === key.dataId) { target = nodes[i]; break; } }
-    if (!target) target = sheetEl.querySelector('input:not([disabled]):not([type="hidden"]),textarea:not([disabled])') || sheetEl.querySelector('.pet-tabs .active') || nodes[0];
+    if (!target) { for (var j = 0; j < nodes.length; j++) if (/^(INPUT|TEXTAREA|SELECT)$/.test(nodes[j].tagName)) { target = nodes[j]; break; } }
+    if (!target) target = nodes[0];
     if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
   }
   function openForm(kind, data, restore, replace) {
@@ -2645,9 +2646,6 @@ em { font-style: normal; }
     if (closed && parent && closed.kind === 'points' && parent.kind === 'behaviorPicker' && closed.pickerState) { parent.data.query = closed.pickerState.query || ''; parent.data.page = closed.pickerState.page || 0; }
     ui.form = parent; render(false);
   }
-  function pointsModeTabs(custom) {
-    return '<div class="points-mode-tabs" aria-label="加分方式">' + button('points-mode', '常用加分', 'mode-tab ' + (!custom ? 'active' : ''), 'common') + button('points-mode', '自己定一项', 'mode-tab ' + (custom ? 'active' : ''), 'custom') + '</div>';
-  }
   function pointsData(item) {
     var d = item ? { itemId: item.id, name: item.name, points: item.points, reason: item.reason || '' } : { itemId: '', points: 5, saveAsTemplate: false }, saved = drafts['points:' + (d.itemId || 'new')];
     if (saved && (saved.itemId || '') === (d.itemId || '')) d = clone(saved);
@@ -2659,7 +2657,6 @@ em { font-style: normal; }
     rememberDraft(); var previous = ui.form, picker = previous && previous.kind === 'behaviorPicker' ? { query: previous.data.query || '', page: previous.data.page || 0 } : null, f;
     stopRecognition(); invalidateAssistant(previous);
     if (previous && previous.kind === 'points') f = previous;
-    else if (previous && previous.kind === 'behaviorPicker' && previous.data.returnToPoints && ui.stack.length && ui.stack[ui.stack.length - 1].kind === 'points') f = ui.stack.pop();
     if (f) { f.data = pointsData(item); f.openedRevision = revision; f.aiStatus = ''; f.editVersion = (f.editVersion || 0) + 1; ui.form = f; if (picker) f.pickerState = picker; render(false); }
     else { openForm('points', pointsData(item)); if (picker) ui.form.pickerState = picker; }
     var input = document.querySelector('#editor-form [name="name"]'); if (input) input.focus();
@@ -2674,7 +2671,7 @@ em { font-style: normal; }
     var f = ui.form; if (!f || f.kind !== 'points') return;
     var amount = document.querySelector('.entry-summary strong'); if (amount) amount.innerHTML = pointsAmount(f.data.points);
     var el = document.getElementById('template-save-preview'); if (el) el.innerHTML = templateSavePreview();
-    var submit = document.querySelector('#editor-form button[type="submit"]'); if (submit) { var label = !f.data.itemId && f.data.saveAsTemplate ? '加分并新增常用' : '确认加分'; submit.textContent = label; submit.setAttribute('data-label', label); }
+    var submit = document.querySelector('.sheet-save'); if (submit) { var label = !f.data.itemId && f.data.saveAsTemplate ? '加分并新增常用' : '确认加分'; submit.textContent = pending ? '保存中' : '加分'; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); }
   }
   function field(label, name, value, extra, type) { return '<label class="field"><span>' + label + '</span><input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value) + '" ' + (extra || '') + '></label>'; }
   function area(label, name, value, extra) { return '<label class="field"><span>' + label + '</span><textarea name="' + name + '" rows="3" ' + (extra || '') + '>' + esc(value) + '</textarea></label>'; }
@@ -2731,7 +2728,7 @@ em { font-style: normal; }
   }
   function rankedItems() { return M.frequentPointItems(state, new Date()); }
   function behaviorTile(p, i, extra) {
-    return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b>' + (p.reason ? '<small>' + esc(p.reason) + '</small>' : '') + '</span><strong>+' + p.points + '</strong>', 'behavior-card ' + (extra || ''), p.id, p.name + '，加' + p.points + '分');
+    return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b>' + (p.reason && extra !== 'picker-behavior' ? '<small>' + esc(p.reason) + '</small>' : '') + '</span><strong>+' + p.points + '</strong>', 'behavior-card ' + (extra || ''), p.id, p.name + '，加' + p.points + '分');
   }
   function pointsPage() {
     var t = M.totals(state), wide = homeWide(), all = rankedItems(), items = all.slice(0, wide ? 4 : 2); ui.homeWide = wide;
@@ -2740,29 +2737,30 @@ em { font-style: normal; }
   function pickerData() {
     var f = ui.form, query = (f.data.query || '').trim().toLowerCase(), all = rankedItems(), items = all.filter(function (p) { return !query || (p.name + ' ' + (p.reason || '')).toLowerCase().indexOf(query) >= 0; });
     var viewportHeight = (window.visualViewport && window.visualViewport.height) || window.innerHeight, shortScreen = window.innerHeight <= 440;
-    var columns = window.innerWidth >= 700 ? 3 : 2, rowHeight = shortScreen ? 64 : 88, chrome = shortScreen ? 195 : 223, footerHeight = shortScreen ? 57 : 66;
+    var columns = window.innerWidth >= 700 ? 3 : 2, rowHeight = shortScreen ? 64 : 88, chrome = (shortScreen ? 80 : 106) + (f.data.searchOpen || query ? 56 : 0), footerHeight = shortScreen ? 57 : 66, gap = 8;
     var sheetEl = document.querySelector('.behavior-picker-sheet'), grid = sheetEl && sheetEl.querySelector('.picker-grid'), body = sheetEl && sheetEl.querySelector('.behavior-picker-body'), footer = sheetEl && sheetEl.querySelector('.picker-footer');
     if (grid && body && footer) {
       var gridStyle = window.getComputedStyle(grid), bodyStyle = window.getComputedStyle(body), sheetStyle = window.getComputedStyle(sheetEl), footerStyle = window.getComputedStyle(footer);
       columns = gridStyle.gridTemplateColumns.split(' ').length;
-      rowHeight = parseFloat(gridStyle.gridAutoRows) || rowHeight;
+      rowHeight = parseFloat(gridStyle.gridAutoRows) || rowHeight; gap = parseFloat(gridStyle.rowGap) || 8;
       chrome = grid.getBoundingClientRect().top - sheetEl.getBoundingClientRect().top + body.scrollTop + (parseFloat(bodyStyle.paddingBottom) || 0) + (parseFloat(sheetStyle.paddingBottom) || 0);
       footerHeight = Math.max(parseFloat(footerStyle.minHeight) || 0, 48 + (parseFloat(footerStyle.paddingTop) || 0) + (parseFloat(footerStyle.paddingBottom) || 0) + 1);
     }
     var available = Math.min(740, viewportHeight - 12) - chrome;
-    var rows = Math.max(1, Math.floor((available + 8) / (rowHeight + 8)));
-    if (items.length > rows * columns) rows = Math.max(1, Math.floor((available - footerHeight + 8) / (rowHeight + 8)));
+    var rows = Math.max(1, Math.floor((available + gap) / (rowHeight + gap)));
+    if (items.length > rows * columns) rows = Math.max(1, Math.floor((available - footerHeight + gap) / (rowHeight + gap)));
     var pageSize = rows * columns, pages = Math.max(1, Math.ceil(items.length / pageSize));
     f.data.page = Math.max(0, Math.min(pages - 1, Math.floor(Number(f.data.page) || 0)));
     return { all: all.length, total: items.length, query: query, page: f.data.page, pages: pages, pageSize: pageSize, items: items.slice(f.data.page * pageSize, (f.data.page + 1) * pageSize) };
   }
-  function pickerResults(data) { return '<div class="picker-summary">' + (data.query ? '搜索结果 ' : '全部 ') + data.total + ' 项</div><div class="picker-grid count-' + data.items.length + '">' + (data.items.length ? data.items.map(function (p, i) { return behaviorTile(p, i, 'picker-behavior'); }).join('') : '<div class="picker-empty"><p>' + (data.query ? '搜索结果 0' : '常用行为 0') + '</p>' + button(data.query ? 'picker-clear' : 'point-list', data.query ? '清除搜索' : '添加行为', 'btn outline') + '</div>') + '</div>'; }
+  function pickerResults(data) { return '<div class="picker-grid count-' + data.items.length + '">' + (data.items.length ? data.items.map(function (p, i) { return behaviorTile(p, i, 'picker-behavior'); }).join('') : '<div class="picker-empty"><p>' + (data.query ? '没有匹配项' : '暂无常用项') + '</p>' + button(data.query ? 'picker-clear' : 'points-new', data.query ? '清除' : icon('plus'), data.query ? 'btn outline' : 'icon-button nav-add', '', data.query ? '清除搜索' : '新增加分') + '</div>') + '</div>'; }
   function pickerFooter(data) {
     return '<button type="button" data-action="picker-prev" class="icon-button" aria-label="上一页"' + (data.page === 0 ? ' disabled' : '') + '>' + icon('back') + '</button><label class="picker-page-label">第 <input id="behavior-page" type="number" min="1" max="' + data.pages + '" inputmode="numeric" value="' + (data.page + 1) + '" aria-label="跳转到指定页"><span id="behavior-page-total"> / ' + data.pages + ' 页</span></label><button type="button" data-action="picker-next" class="icon-button" aria-label="下一页"' + (data.page + 1 >= data.pages ? ' disabled' : '') + '>' + icon('arrow') + '</button>';
   }
   function behaviorPickerContent() {
-    var data = pickerData();
-    return sheet('加分', '', '<div class="behavior-picker-body">' + pointsModeTabs(false) + '<div class="picker-tools"><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div>' + button('point-list', '管理', 'text-button') + '</div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer"' + (data.pages === 1 ? ' hidden' : '') + '>' + pickerFooter(data) + '</div>', false).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
+    var data = pickerData(), searchOpen = !!(ui.form.data.searchOpen || data.query);
+    var actions = button('picker-search', icon('search'), 'icon-button' + (searchOpen ? ' active' : ''), '', searchOpen ? '收起搜索' : '搜索加分项').replace('<button ', '<button aria-expanded="' + searchOpen + '" ') + button('point-list', icon('edit'), 'icon-button', '', '管理常用加分') + button('points-new', icon('plus'), 'icon-button nav-add', '', '新增加分');
+    return sheet('加分', '', '<div class="behavior-picker-body"><div class="picker-tools"' + (searchOpen ? '' : ' hidden') + '><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div></div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer"' + (data.pages === 1 ? ' hidden' : '') + '>' + pickerFooter(data) + '</div>', false, actions).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
   }
   function updatePicker(commitPage) {
     if (!ui.form || ui.form.kind !== 'behaviorPicker' || ui.auth) return;
@@ -2782,7 +2780,7 @@ em { font-style: normal; }
   }
   function rewardsBody() {
     var req = activeRequest(), t = M.totals(state), rewards = state.rewards.filter(function (r) { return r.enabled && (ui.filter === 'all' || ui.filter === r.category); });
-    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p><div>' + button('reward-list', '管理', 'text-button') + button('reward-new', icon('plus') + '添加', 'text-button') + '</div></div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, new Date()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
+    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p></div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, new Date()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
   }
   function growthBody() {
     var pet = currentPet(), g = growthInfo(), stages = M.growthStages(pet.kind);
@@ -2809,7 +2807,7 @@ em { font-style: normal; }
   function taskRow(t) {
     var status = t.done ? '已完成' : t.snoozeUntil && new Date(t.snoozeUntil).getTime() > Date.now() ? '稍后至 ' + niceTime(t.snoozeUntil).split(' ')[1] : t.ackAt ? '已知道' : '';
     if (t.type === 'task' && t.date < today()) status = '原定' + niceDate(t.date) + (status ? ' · ' + status : ' · 尚未完成');
-    return '<div class="task-row ' + (t.done ? 'is-done' : '') + (t.date < today() && !t.done ? ' is-overdue' : '') + '" data-task-id="' + esc(t.id) + '"><div class="task-time"><b>' + esc(t.time || '当天') + '</b>' + (t.type === 'event' ? '<small>' + niceDate(t.date) + '</small>' : '') + '</div><div class="task-copy"><strong>' + esc(t.title) + '</strong>' + (t.note ? '<p>' + esc(t.note) + '</p>' : '') + (status ? '<small>' + esc(status) + '</small>' : '') + '</div>' + button('task-toggle', icon('check') + '<span>' + (t.done ? '撤销' : '完成') + '</span>', 'task-complete ' + (t.done ? 'done' : ''), t.id, (t.done ? '撤销完成：' : '完成：') + t.title) + button('task-edit', icon('edit'), 'icon-button', t.id, '编辑提醒：' + t.title) + '</div>';
+    return '<div class="task-row ' + (t.done ? 'is-done' : '') + (t.date < today() && !t.done ? ' is-overdue' : '') + '" data-task-id="' + esc(t.id) + '">' + button('task-toggle', icon('check'), 'task-complete ' + (t.done ? 'done' : ''), t.id, (t.done ? '撤销完成：' : '完成：') + t.title).replace('<button ', '<button aria-pressed="' + !!t.done + '" ') + button('task-edit', '<span class="task-copy"><strong>' + esc(t.title) + '</strong><span class="task-time"><b>' + esc(t.time || '当天') + '</b>' + (t.type === 'event' ? '<small>' + niceDate(t.date) + '</small>' : '') + (status ? '<small>' + esc(status) + '</small>' : '') + '</span>' + (t.note ? '<span class="task-note">' + esc(t.note) + '</span>' : '') + '</span>' + icon('chevron'), 'task-open', t.id, '编辑提醒：' + t.title) + '</div>';
   }
   function reminderPage() {
     var all = state.tasks.filter(function (t) {
@@ -2821,7 +2819,7 @@ em { font-style: normal; }
     var preparation = ui.reminderMode === 'near' && ui.day === 0 ? state.tasks.filter(function (t) {
       return t.type === 'event' && !t.deleted && !t.done && t.date >= today() && t.date <= M.addDays(today(), Number(t.remindDays || 0));
     }).sort(function (a, b) { return (a.date + (a.time || '99')).localeCompare(b.date + (b.time || '99')); }) : [];
-    return '<section class="reminders-screen"><div class="reminder-heading"><div><h2>提醒</h2></div>' + button('task-new', icon('plus') + '新增提醒', 'btn reminder-primary') + '</div><div class="reminder-toolbar"><div class="day-tabs">' + (ui.reminderMode === 'near' ? ['今天', '明天', '后天'].map(function (s, i) { return button('day', s + '<small>' + Number(day(i).slice(-2)) + '</small>', 'day-tab ' + (ui.day === i ? 'active' : ''), String(i)); }).join('') : '<span class="events-label">重要事件</span>') + '</div>' + button('reminder-mode', ui.reminderMode === 'near' ? '重要事件' : '回到近期', 'text-button', ui.reminderMode === 'near' ? 'events' : 'near') + '</div><div class="reminder-list">' + active.map(taskRow).join('') + (active.length ? '' : empty(ui.reminderMode === 'events' ? '待处理 0' : '待办 0')) + '</div>' + (preparation.length ? '<section class="advance-events" data-region="advance-events"><div class="section-heading"><h3>提前准备</h3><small>重要事件</small></div>' + preparation.map(taskRow).join('') + '</section>' : '') + (done.length ? '<details class="completed-list"><summary>已完成 ' + done.length + ' 项</summary>' + done.map(taskRow).join('') + '</details>' : '') + '</section>';
+    return '<section class="reminders-screen"><div class="reminder-heading"><div><h2>提醒</h2></div>' + button('task-new', icon('plus'), 'icon-button nav-add', '', '新增提醒') + '</div><div class="reminder-toolbar"><div class="day-tabs">' + (ui.reminderMode === 'near' ? ['今天', '明天', '后天'].map(function (s, i) { return button('day', s + '<small>' + Number(day(i).slice(-2)) + '</small>', 'day-tab ' + (ui.day === i ? 'active' : ''), String(i)); }).join('') : '<span class="events-label">重要事件</span>') + '</div>' + button('reminder-mode', ui.reminderMode === 'near' ? '重要事件' : '回到近期', 'text-button', ui.reminderMode === 'near' ? 'events' : 'near') + '</div><div class="reminder-list">' + active.map(taskRow).join('') + (active.length ? '' : empty(ui.reminderMode === 'events' ? '待处理 0' : '待办 0')) + '</div>' + (preparation.length ? '<section class="advance-events" data-region="advance-events"><div class="section-heading"><h3>提前准备</h3><small>重要事件</small></div>' + preparation.map(taskRow).join('') + '</section>' : '') + (done.length ? '<details class="completed-list"><summary>已完成 ' + done.length + ' 项</summary>' + done.map(taskRow).join('') + '</details>' : '') + '</section>';
   }
   function dueTasks() {
     return state.tasks.filter(function (t) { if (t.deleted || t.done || !t.time || t.ackAt) return false; var at = t.snoozeUntil ? new Date(t.snoozeUntil).getTime() : new Date(t.date + 'T' + t.time + ':00').getTime(); return isFinite(at) && at <= Date.now(); }).sort(function (a, b) { return (a.snoozeUntil || a.date + 'T' + a.time).localeCompare(b.snoozeUntil || b.date + 'T' + b.time); });
@@ -2846,14 +2844,15 @@ em { font-style: normal; }
   function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row', id); }
   function preferencesBody() {
     var speech = !!(window.SpeechRecognition || window.webkitSpeechRecognition), wake = navigator.wakeLock && navigator.wakeLock.request;
-    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + button('export', icon('archive') + '导出家庭记录', 'btn outline full') + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
+    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + '<div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'archive') + '</div>' + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
   }
   function listManagement(kind) {
     var isReward = kind === 'reward-list', rows = isReward ? state.rewards : state.pointItems;
-    return '<div class="manage-list">' + rows.map(function (r) { return button(isReward ? 'reward-edit' : 'point-item-edit', '<span><b>' + esc(r.name) + '</b><small>' + r.points + ' 分 · ' + (isReward ? category(r.category) + ' · ' : '') + (r.enabled ? '启用中' : '已停用') + '</small></span>' + icon('edit'), 'manage-row', r.id); }).join('') + '</div>';
+    return '<div class="manage-list">' + rows.map(function (r) { return button(isReward ? 'reward-edit' : 'point-item-edit', '<span><b>' + esc(r.name) + '</b><small>' + r.points + ' 分 · ' + (isReward ? category(r.category) + ' · ' : '') + (r.enabled ? '启用中' : '已停用') + '</small></span>' + icon('chevron'), 'manage-row', r.id); }).join('') + '</div>';
   }
   function contextAI(f, context) {
-    return '<section class="context-ai" data-context="' + context + '"><div class="context-ai-heading"><strong>' + icon('spark') + 'AI 填写</strong><span>' + esc(meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示') + '</span></div><div class="context-ai-input"><label class="field"><span>指令</span><textarea name="aiText" rows="1" maxlength="1000">' + esc(f.data.aiText || '') + '</textarea></label><div class="context-ai-actions">' + button('listen-context', icon('mic'), 'icon-button', '', recognition ? '停止听写' : '听写') + '<button type="button" data-action="ai-fill" data-id="' + context + '" class="btn ai-fill-button"' + (f.aiBusy ? ' disabled' : '') + '>' + (f.aiBusy ? '整理中' : '填写') + '</button></div></div><p id="context-ai-status" class="context-ai-status" role="status">' + esc(f.aiStatus || '') + '</p><p id="voice-status" class="context-voice-status" aria-live="polite"></p></section>';
+    if (!f.aiOpen) return '';
+    return '<section class="context-ai" data-context="' + context + '"><div class="context-ai-heading"><strong>' + icon('spark') + '指令填写</strong><span>' + esc(meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示') + '</span></div><div class="context-ai-input"><label class="field"><span>指令</span><textarea name="aiText" rows="1" maxlength="1000">' + esc(f.data.aiText || '') + '</textarea></label><div class="context-ai-actions">' + button('listen-context', icon('mic'), 'icon-button', '', recognition ? '停止听写' : '听写') + '<button type="button" data-action="ai-fill" data-id="' + context + '" class="btn ai-fill-button"' + (f.aiBusy ? ' disabled' : '') + '>' + (f.aiBusy ? '整理中' : '填写') + '</button></div></div><p id="context-ai-status" class="context-ai-status" role="status">' + esc(f.aiStatus || '') + '</p><p id="voice-status" class="context-voice-status" aria-live="polite"></p></section>';
   }
   function invalidateAssistant(f) { if (!f) return; if (f.aiBusy) f.aiStatus = '已暂停'; f.aiRequest = null; f.voiceRequest = null; f.aiBusy = false; if (f.kind === 'voice') ui.assistantBusy = false; }
   function assistantMessage(result) {
@@ -2988,7 +2987,7 @@ em { font-style: normal; }
   }
   function refreshPetPurchase() {
     if (!ui.form || ui.form.kind !== 'petBuy' || ui.auth) return;
-    var f = ui.form, el = document.getElementById('pet-buy-summary'), status = playStatus(), item = status && find(status.catalog, f.data.itemId), quantity = Number(f.data.quantity), submit = document.querySelector('#editor-form button[type="submit"]');
+    var f = ui.form, el = document.getElementById('pet-buy-summary'), status = playStatus(), item = status && find(status.catalog, f.data.itemId), quantity = Number(f.data.quantity), submit = document.querySelector('.sheet-save');
     if (el) el.innerHTML = petPurchaseMath(f);
     if (submit) submit.disabled = pending || !item || !isFinite(quantity) || quantity < 1 || quantity > 10 || Math.floor(quantity) !== quantity || M.totals(state).available < quantity * item.points || (!local && !connected);
   }
@@ -3002,14 +3001,14 @@ em { font-style: normal; }
     return '<div class="pet-choices">' + [['plant', '芽芽', '晶叶龙伙伴'], ['capybara', '团团', '太空水豚']].map(function (o) { return '<button type="button" class="pet-choice ' + (d.kind === o[0] ? 'selected' : '') + '" data-action="pet-kind" data-id="' + o[0] + '" aria-pressed="' + (d.kind === o[0] ? 'true' : 'false') + '"><div>' + petDrawing(o[0], g.stage, o[1], 'idle', true) + '</div><strong>' + o[2] + '</strong><small>' + (d.kind === o[0] ? '已选' : '选择') + '</small></button>'; }).join('') + '</div>' + field('伙伴昵称', 'petName', d.petName !== undefined ? d.petName : d.name || '', 'required maxlength="40"');
   }
   function editorContent() {
-    var f = ui.form, d = f.data, body = '', title = '', sub = '', submit = '', footer = '', r, permission, total = M.totals(state);
+    var f = ui.form, d = f.data, body = '', title = '', sub = '', submit = '', footer = '', actions = '', r, permission, total = M.totals(state);
     if (f.kind === 'behaviorPicker') return behaviorPickerContent();
     if (f.kind === 'homeInbox') { title = homeInboxTitle(); f.openedRevision = revision; ui.inboxKey = homeInboxKey(); body = '<div id="home-inbox-body">' + homeInboxBody() + '</div>'; }
     else if (f.kind === 'records') { title = '积分记录'; body = recordsBody(); }
     else if (f.kind === 'preferences') { title = '设置'; body = preferencesBody(); }
-    else if (f.kind === 'rewards') { title = '礼品兑换'; body = rewardsBody(); }
+    else if (f.kind === 'rewards') { title = '礼品兑换'; body = rewardsBody(); actions = button('reward-list', icon('edit'), 'icon-button', '', '管理礼品') + button('reward-new', icon('plus'), 'icon-button nav-add', '', '新增礼品'); }
     else if (f.kind === 'petGrowth') { title = '成长足迹'; body = growthBody(); }
-    else if (f.kind === 'petHub') { title = '伙伴'; body = petHubBody(f); footer = button('pet-config', '伙伴设置', 'btn outline') + button('pet-growth', '成长足迹', 'btn outline'); }
+    else if (f.kind === 'petHub') { title = '伙伴'; body = petHubBody(f); actions = button('pet-growth', icon('spark'), 'icon-button', '', '成长足迹') + button('pet-config', icon('settings'), 'icon-button', '', '伙伴设置'); }
     else if (f.kind === 'petBuy') {
       var supplyStatus = playStatus(), supplyItem = supplyStatus && find(supplyStatus.catalog, d.itemId);
       title = '购买补给'; submit = supplyItem ? '确认购买' : '';
@@ -3017,10 +3016,10 @@ em { font-style: normal; }
     }
     else if (f.kind === 'profile') { title = '孩子资料'; submit = '保存资料'; body = profileBody(f); }
     else if (f.kind === 'petConfig') { title = '伙伴设置'; submit = '保存伙伴'; body = petConfigBody(f); }
-    else if (f.kind === 'point-list' || f.kind === 'reward-list') { title = f.kind === 'point-list' ? '常用加分项' : '管理礼品'; body = (f.kind === 'point-list' ? contextAI(f, 'pointItems') : '') + listManagement(f.kind); footer = button(f.kind === 'point-list' ? 'point-item-new' : 'reward-new', icon('plus') + '添加' + (f.kind === 'point-list' ? '加分项' : '礼品'), 'btn primary full'); }
+    else if (f.kind === 'point-list' || f.kind === 'reward-list') { title = f.kind === 'point-list' ? '常用加分' : '礼品'; body = (f.kind === 'point-list' ? contextAI(f, 'pointItems') : '') + listManagement(f.kind); actions = button(f.kind === 'point-list' ? 'point-item-new' : 'reward-new', icon('plus'), 'icon-button nav-add', '', f.kind === 'point-list' ? '新增常用加分' : '新增礼品'); }
     else if (f.kind === 'points') {
       title = '加分'; submit = !d.itemId && d.saveAsTemplate ? '加分并新增常用' : '确认加分';
-      body = pointsModeTabs(!d.itemId) + contextAI(f, 'points') + '<div class="entry-summary"><span>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因', 'reason', d.reason || '', 'required maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
+      body = contextAI(f, 'points') + '<div class="entry-summary"><span>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因', 'reason', d.reason || '', 'required maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
     } else if (f.kind === 'request' || f.kind === 'approve') {
       var req = f.kind === 'approve' ? find(state.requests, d.requestId) : null;
       r = find(state.rewards, req ? req.rewardId : d.rewardId);
@@ -3062,8 +3061,10 @@ em { font-style: normal; }
       body = '<div class="voice-box">' + button('listen', icon('mic') + (recognition ? '停止听写' : '听写'), 'btn voice-start') + '<p id="voice-status">' + (recognition ? '听写中' : '') + '</p></div>' + area('指令内容', 'speech', d.speech || '', 'required maxlength="1000"') + (d.answer ? '<div class="assistant-answer" role="status">' + esc(d.answer) + '</div>' : '');
     }
     var isEditor = ['points', 'petBuy', 'request', 'approve', 'task', 'taskAction', 'reward', 'pointItem', 'point-list', 'profile', 'petConfig', 'familySettings', 'parentConfig', 'voice'].indexOf(f.kind) >= 0;
-    var inside = '<div class="sheet-body">' + body + '<p id="form-error" class="form-error" role="alert" hidden></p></div>' + (submit || footer ? '<div class="sheet-footer">' + (footer || '<button type="submit" class="btn primary full" data-label="' + esc(submit) + '"' + (pending || (f.kind === 'voice' && ui.assistantBusy) ? ' disabled' : '') + '>' + (pending ? '保存中' : submit) + '</button>') + '</div>' : '');
-    return sheet(title, sub, isEditor ? '<form id="editor-form" class="sheet-form" novalidate>' + inside + '</form>' : inside, false);
+    if (['points', 'pointItem', 'point-list'].indexOf(f.kind) >= 0) actions = button('ai-toggle', icon('spark'), 'icon-button' + (f.aiOpen ? ' active' : ''), '', '指令填写').replace('<button ', '<button aria-expanded="' + !!f.aiOpen + '" ') + actions;
+    if (submit) actions += '<button type="submit" form="editor-form" class="text-button sheet-save" aria-label="' + esc(submit) + '" data-label="' + esc(submit) + '"' + (pending || (f.kind === 'voice' && ui.assistantBusy) ? ' disabled' : '') + '>' + (pending ? '保存中' : f.kind === 'points' ? '加分' : /^保存|^设置/.test(submit) ? '保存' : f.kind === 'voice' ? submit : '确认') + '</button>';
+    var inside = '<div class="sheet-body">' + body + '<p id="form-error" class="form-error" role="alert" hidden></p></div>' + (footer ? '<div class="sheet-footer">' + footer + '</div>' : '');
+    return sheet(title, sub, isEditor ? '<form id="editor-form" class="sheet-form" novalidate>' + inside + '</form>' : inside, false, actions);
   }
   function actionSummary(action) {
     var rows = [], req, r, target, t = M.totals(state);
@@ -3092,8 +3093,9 @@ em { font-style: normal; }
     body += '<p id="parent-error" class="form-error" role="alert" hidden></p>';
     return sheet(setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证', local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit" class="btn primary"' + (a.busy || pending ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
   }
-  function sheet(title, sub, content, auth) {
-    return '<div class="sheet-overlay"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + button(auth ? 'parent-cancel' : 'form-close', icon('close'), 'icon-button', '', auth ? '取消验证' : '关闭面板') + '</header>' + content + '</section></div>';
+  function sheet(title, sub, content, auth, actions) {
+    var nested = auth || ui.stack.length > 0;
+    return '<div class="sheet-overlay"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div class="sheet-nav-start">' + button(auth ? 'parent-cancel' : 'form-close', icon(nested ? 'back' : 'close'), 'icon-button', '', auth ? '返回修改' : nested ? '返回上一级' : '关闭面板') + '</div><div class="sheet-heading"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div><div class="sheet-nav-actions">' + (actions || '') + '</div></header>' + content + '</section></div>';
   }
   function render(reset) {
     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
@@ -3190,6 +3192,7 @@ em { font-style: normal; }
     if (action === 'nav') { rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
     else if (action === 'home-inbox') openForm('homeInbox', {});
     else if (action === 'all-behaviors') openForm('behaviorPicker', { query: '', page: 0 });
+    else if (action === 'picker-search' && ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.searchOpen = !(ui.form.data.searchOpen || ui.form.data.query); if (!ui.form.data.searchOpen) { ui.form.data.query = ''; ui.form.data.page = 0; } render(false); var pickerSearch = document.getElementById('behavior-search'); if (ui.form.data.searchOpen && pickerSearch) pickerSearch.focus(); }
     else if (action === 'picker-clear') { if (ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.query = ''; ui.form.data.page = 0; var search = document.getElementById('behavior-search'); if (search) search.value = ''; updatePicker(); if (search) search.focus(); } }
     else if (action === 'picker-prev' || action === 'picker-next') { if (ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.page = (Number(ui.form.data.page) || 0) + (action === 'picker-next' ? 1 : -1); updatePicker(); } }
     else if (action === 'jump-rewards') openForm('rewards', {});
@@ -3213,10 +3216,11 @@ em { font-style: normal; }
     else if (action === 'pet-growth') openForm('petGrowth', {});
     else if (action === 'pet-config') openForm('petConfig', currentPet());
     else if (action === 'pet-kind') { rememberDraft(); var petName = ui.form.data.petName !== undefined ? ui.form.data.petName : ui.form.data.name; ui.form.data.kind = id; if (!petName || petName === '芽芽' || petName === '团团') petName = id === 'plant' ? '芽芽' : '团团'; ui.form.data.petName = petName; render(false); }
+    else if (action === 'ai-toggle' && ui.form) { rememberDraft(); ui.form.aiOpen = !ui.form.aiOpen; if (!ui.form.aiOpen) { stopRecognition(); invalidateAssistant(ui.form); } render(false); if (ui.form.aiOpen) { var aiInput = document.querySelector('[name="aiText"]'); if (aiInput) aiInput.focus(); } }
     else if (action === 'ai-fill') contextualInterpret(id);
     else if (action === 'listen-context') listen('aiText');
     else if (action === 'add-points') openForm('behaviorPicker', { query: '', page: 0 });
-    else if (action === 'points-mode') { if (id === 'custom') { if (!ui.form || ui.form.kind !== 'points' || ui.form.data.itemId) choosePoints(null); } else if (ui.form && ui.form.kind === 'points') { var pickerState = clone(ui.form.pickerState || { query: '', page: 0 }); pickerState.returnToPoints = true; openForm('behaviorPicker', pickerState); } }
+    else if (action === 'points-new') choosePoints(null);
     else if (action === 'choose-point') { item = find(state.pointItems, id); if (item && item.enabled) choosePoints(item); }
     else if (action === 'records' || action === 'preferences' || action === 'point-list' || action === 'reward-list') openForm(action, {});
     else if (action === 'reward-filter') { ui.filter = id; render(false); }

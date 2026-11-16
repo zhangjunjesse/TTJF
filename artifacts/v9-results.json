@@ -1,0 +1,278 @@
+{
+  "scope": "App-style entry, back/draft, header save and real shared PIN-authorized persistence; no historical suite replay.",
+  "fixture": "Synthetic seed family on isolated temporary servers, explicitly configured with a test PIN; not first-use onboarding or the live family.",
+  "requested": "all",
+  "startedAt": "2026-11-16T02:39:34.735Z",
+  "sources": {
+    "app.js": "771e9ff9ab0608a19cb853d803a5ad1570bc9b8420e7405562fb926f71da1ed6",
+    "styles.css": "7a41033ce5247c252627a3f5a30a74caed06509d639839a3c62942b8c1ce1807",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "test/v9-browser.cjs": "a859779c21bac2936d55e2f5df04f621db92422d4b889d8dd925aa54168e3ba9"
+  },
+  "cases": [
+    {
+      "name": "735 App entry, back/draft, row navigation and touch sizing",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        },
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        }
+      ]
+    },
+    {
+      "name": "390 App entry, back/draft, row navigation and touch sizing",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        }
+      ]
+    },
+    {
+      "name": "320 App entry, back/draft, row navigation and touch sizing",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        }
+      ]
+    },
+    {
+      "name": "Custom points plus saved common item uses the actual PIN-authorized ledger",
+      "result": "passed",
+      "detail": {
+        "availableDelta": 13,
+        "newLedgerRecords": 1,
+        "newCommonItems": 1,
+        "reloadVerified": true
+      }
+    },
+    {
+      "name": "Common-management header plus creates and authorizes a saved item",
+      "result": "passed",
+      "detail": {
+        "created": 1
+      }
+    },
+    {
+      "name": "Reminder header plus creates an authorized reminder",
+      "result": "passed",
+      "detail": {
+        "created": 1
+      }
+    },
+    {
+      "name": "Existing reminder full-row entry saves through header and PIN",
+      "result": "passed",
+      "detail": {
+        "editedId": "task-reading",
+        "taskNoteLayout": {
+          "timeDisplay": "block",
+          "noteDisplay": "block",
+          "timeBottom": 409.1875,
+          "noteTop": 413.1875,
+          "noteText": "翻开书，先读一页就好"
+        }
+      }
+    },
+    {
+      "name": "Rewards header plus creates an authorized gift",
+      "result": "passed",
+      "detail": {
+        "created": 1
+      }
+    },
+    {
+      "name": "Existing gift full-row management entry saves through header and PIN",
+      "result": "passed",
+      "detail": {
+        "editedId": "reward-pencil"
+      }
+    },
+    {
+      "name": "Search expansion, Chinese composition, clear and numeric last-page jump",
+      "result": "passed",
+      "detail": {
+        "lastPage": 5,
+        "lastItem": "point-v9-80"
+      }
+    }
+  ],
+  "screens": [
+    {
+      "file": "artifacts/v9-picker-735.png",
+      "sha256": "b6c7c8177b0f12a9e683de8d073ba6fd86252c0f458a4f8d15c3848014f70237"
+    },
+    {
+      "file": "artifacts/v9-new-points-390.png",
+      "sha256": "dfbc07866d16c74bb2b137660c8c90211057a56c0868bc1a44e594a8ef2e2d18"
+    },
+    {
+      "file": "artifacts/v9-management-320.png",
+      "sha256": "cfc38f9cc6e553385ee0672a846f46aafa61649d7d082cd09d72e0263386256a"
+    },
+    {
+      "file": "artifacts/v9-parent-authorization.png",
+      "sha256": "4e8e2d8b091a72d37bd143962c5cd1737bcb799740bc5f2bde597f9d18221752"
+    }
+  ],
+  "saves": [
+    {
+      "actionType": "points.add",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "pointItem.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "task.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "task.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "reward.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "reward.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    }
+  ],
+  "errors": [],
+  "sourceStable": true,
+  "finishedAt": "2026-11-16T02:39:57.975Z",
+  "passed": 10,
+  "failed": 0,
+  "coverageMode": "Single complete ten-case run after the reminder-note CSS fix; earlier six-plus-four runs are historical only.",
+  "historyReport": "artifacts/v9-before-note-results.json",
+  "offlineCheck": {
+    "file": "artifacts/v9-offline-check.json",
+    "sha256": "cc6d3d1276d08cfb7c9f651846ecfc6987db3a50203536ca96fa7f9282c90213",
+    "passed": true,
+    "caseCountAddition": 0,
+    "exportHash": "73fbbfdcb1770209f57644d2754a8f26404842a730750f3d11463aa957ab26e5"
+  },
+  "visualReview": {
+    "method": "Each of the four refreshed screenshots opened using read_image.",
+    "filesOpened": 4,
+    "blockingIssues": [],
+    "observations": [
+      "735 picker has compact cards and icon header actions.",
+      "390 points form has a short header submit and grouped fields.",
+      "320 management retains a fixed header and full-row entries in a scrolling list.",
+      "390 parent verification shows the exact points and saved-common-item action before PIN entry."
+    ],
+    "boundary": "Desktop Edge viewports and CDP composition; not physical iPad/Safari or OS keyboard testing."
+  }
+}

@@ -1,0 +1,16 @@
+✔ C1 HTTP startup and failed sync block writes while retaining a usable draft (4111.5331ms)
+✔ C2 file mode still permits local public actions without any network request (775.0211ms)
+✔ C3 polling remains single-flight and releases the lock on success and timeout (864.2777ms)
+✔ C4 a delayed older GET cannot roll back a successful public POST in memory/storage (969.2034ms)
+✔ C5 a synced gift-price change requires visible reconfirmation before a protected approval (1621.4922ms)
+✔ C6 a committed response lost in transit is reconciled once and the next award is a new operation (2828.2952ms)
+✔ C8 a previously connected page visibly disconnects on failed/invalid polls and preserves drafts until recovery (2153.3758ms)
+✔ C7 an uncommitted conflict preserves the draft/id but renews revision-bound verification (1735.8868ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19036.8765

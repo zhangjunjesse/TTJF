@@ -1,0 +1,193 @@
+{
+  "scope": "App-style entry, back/draft, header save and real shared PIN-authorized persistence; no historical suite replay.",
+  "fixture": "Synthetic seed family on isolated temporary servers, explicitly configured with a test PIN; not first-use onboarding or the live family.",
+  "requested": "all",
+  "startedAt": "2026-11-16T02:22:52.214Z",
+  "sources": {
+    "app.js": "771e9ff9ab0608a19cb853d803a5ad1570bc9b8420e7405562fb926f71da1ed6",
+    "styles.css": "3eeae686bea47e42bac0427f4657177f30bd3855520fc91a594dca0e8776ca24",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "test/v9-browser.cjs": "57f26c98701b0271f3f87220526cf1323325c84678efd0e191d99aedee600440"
+  },
+  "cases": [
+    {
+      "name": "735 App entry, back/draft, row navigation and touch sizing",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        },
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 735,
+          "height": 754,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        }
+      ]
+    },
+    {
+      "name": "390 App entry, back/draft, row navigation and touch sizing",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 390,
+          "height": 844,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        }
+      ]
+    },
+    {
+      "name": "320 App entry, back/draft, row navigation and touch sizing",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": null
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "minimumTarget": 48,
+          "minimumInputFont": 16
+        }
+      ]
+    },
+    {
+      "name": "Custom points plus saved common item uses the actual PIN-authorized ledger",
+      "result": "passed",
+      "detail": {
+        "availableDelta": 13,
+        "newLedgerRecords": 1,
+        "newCommonItems": 1,
+        "reloadVerified": true
+      }
+    },
+    {
+      "name": "Common-management header plus creates and authorizes a saved item",
+      "result": "passed",
+      "detail": {
+        "created": 1
+      }
+    },
+    {
+      "name": "Reminder header plus creates an authorized reminder",
+      "result": "passed",
+      "detail": {
+        "created": 1
+      }
+    },
+    {
+      "name": "Existing reminder full-row entry saves through header and PIN",
+      "result": "failed",
+      "error": "AssertionError [ERR_ASSERTION]: null == true\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:82:81\n    at async test (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:14:114)\n    at async main (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:81:3)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:98:53"
+    }
+  ],
+  "screens": [
+    {
+      "file": "artifacts/v9-picker-735.png",
+      "sha256": "b6c7c8177b0f12a9e683de8d073ba6fd86252c0f458a4f8d15c3848014f70237"
+    },
+    {
+      "file": "artifacts/v9-new-points-390.png",
+      "sha256": "dfbc07866d16c74bb2b137660c8c90211057a56c0868bc1a44e594a8ef2e2d18"
+    },
+    {
+      "file": "artifacts/v9-management-320.png",
+      "sha256": "cfc38f9cc6e553385ee0672a846f46aafa61649d7d082cd09d72e0263386256a"
+    },
+    {
+      "file": "artifacts/v9-parent-authorization.png",
+      "sha256": "e2bcfff22aea9b79bd9b4d9a57d5378524d923d0352d88014a5220cc371a5d92"
+    }
+  ],
+  "saves": [
+    {
+      "actionType": "points.add",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "pointItem.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    },
+    {
+      "actionType": "task.save",
+      "revisionBefore": 1,
+      "revisionAfter": 2,
+      "requestPaths": [
+        "/api/parent/challenge",
+        "/api/parent/verify",
+        "/api/action"
+      ],
+      "persisted": true
+    }
+  ],
+  "errors": [],
+  "failure": "AssertionError [ERR_ASSERTION]: null == true\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:82:81\n    at async test (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:14:114)\n    at async main (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:81:3)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v9-browser.cjs:98:53",
+  "finishedAt": "2026-11-16T02:23:24.467Z",
+  "passed": 6,
+  "failed": 1
+}

@@ -24,7 +24,9 @@ PRESERVED = {
     'export/little-steps-v7.zip': 'af9f245f29362bd6a3fdc4c238949845dec480c5b8c6572c873022bb0689fdc8',
     'export/little-steps-v7.html': '8d5eb485ba7521b2e72cfba67f0999f9204832390a7c74696c7c33c4345a320d',
     'export/little-steps-v8.zip': '28956de5b977e372889a1c9d0751109d5929cca860c1ad682cbd31a28198f370',
-    'export/little-steps-v8.html': '4053fbb2d189a973876edaf3dc68a509d177c316b4eb66e007e2ef9b2056b137'
+    'export/little-steps-v8.html': '4053fbb2d189a973876edaf3dc68a509d177c316b4eb66e007e2ef9b2056b137',
+    'export/little-steps-v8.1.zip': 'f424b119e42bef5d954e516a3eb0f2536c4dcb68f8215c99aaa94085ef15afca',
+    'export/little-steps-v8.1.html': '903566acff6da0051f74bd80935125048ba8d4277e8b0bfe6c04efa274c91d06'
 }
 
 
@@ -37,7 +39,7 @@ def audit(require_history=False):
               'archiveSha256': digest(ARCHIVE.read_bytes()),
               'htmlSha256': digest(HTML.read_bytes()),
               'entries': 0, 'sourceMirrors': 0, 'htmlCopies': 0,
-              'relativeMarkdownLinks': 0, 'selfArchiveLinks': [],
+              'relativeMarkdownLinks': 0, 'selfArchiveLinks': [], 'omittedPrivateLinks': [],
               'preserved': {}, 'errors': []}
     errors = result['errors']
     for name, expected in PRESERVED.items():
@@ -63,7 +65,7 @@ def audit(require_history=False):
             if not name.startswith(PREFIX) or '..' in parts or any(
                 part.startswith('.') or part in {'data', 'node_modules', 'runtime', '__pycache__'}
                 for part in parts
-            ) or PurePosixPath(name).suffix.lower() in {'.key', '.pem', '.pfx', '.p12', '.pyc'}:
+            ) or PurePosixPath(name).suffix.lower() in {'.key', '.pem', '.pfx', '.p12', '.pyc'} or (name.startswith(PREFIX + 'artifacts/') and any(private in PurePosixPath(name).name for private in ('live', 'migration'))):
                 errors.append('Unexpected or private archive path: ' + name)
                 continue
             rel = name[len(PREFIX):]
@@ -90,6 +92,8 @@ def audit(require_history=False):
                     target = posixpath.normpath(posixpath.join(posixpath.dirname(name), unquote(parsed.path)))
                     if target == PREFIX + 'export/little-steps-source.zip':
                         result['selfArchiveLinks'].append({'from': name, 'target': link})
+                    elif target.startswith(PREFIX + 'artifacts/') and any(private in PurePosixPath(target).name for private in ('live', 'migration')):
+                        result['omittedPrivateLinks'].append({'from': name, 'target': link})
                     elif target not in names:
                         errors.append('Broken packaged Markdown link: ' + name + ' -> ' + link)
     if result['htmlCopies'] != 2:

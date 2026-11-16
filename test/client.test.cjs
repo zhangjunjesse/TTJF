@@ -12,7 +12,7 @@ const { Model, PIN, FIXTURE_TIME, SELECTORS, action, click, fillForm, state, ui,
 async function openCredit(page,values={}) {
   await click(page,action('add-points'));
   await page.waitForFunction(()=>window.FamilyDemo.getUI().form==='behaviorPicker');
-  await click(page,action('points-mode','custom'));
+  await click(page,action('points-new'));
   await page.waitForFunction(()=>window.FamilyDemo.getUI().form==='points');
   await fillForm(page,{name:'认真阅读',points:5,reason:'主动分享今天读到的故事',...values});
 }

@@ -1,4 +1,4 @@
-/* v0.8: parent setup and per-action authorization. */
+/* v0.9: app navigation with per-action parent authorization. */
 (function () {
   'use strict';
   var M = window.FamilyModel, KEY = 'little-steps-demo-v1', PREF = 'little-steps-preferences';
@@ -16,8 +16,9 @@
     calendar: '<rect x="3" y="5" width="18" height="16" rx="3"/><path d="M7 3v4m10-4v4M3 11h18m-14 4h3m4 0h3"/>',
     gift: '<path d="M3 9h18v4H3zM5 13v8h14v-8M12 9v12M12 9C4 10 4 2 8 3c3 0 4 6 4 6Zm0 0c8 1 8-7 4-6-3 0-4 6-4 6Z"/>',
     edit: '<path d="m14 5 5 5M3 21l5-1L21 7a3.5 3.5 0 0 0-5-5L3 15z"/>',
-    close: '<path d="m6 6 12 12M6 18 18 6"/>', back: '<path d="M20 12H5m6-6-6 6 6 6"/>',
+    close: '<path d="m6 6 12 12M6 18 18 6"/>',
     arrow: '<path d="M4 12h15m-6-6 6 6-6 6"/>', chevron: '<path d="m9 5 7 7-7 7"/>',
+    back: '<path d="m15 5-7 7 7 7"/>', search: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/>',
     settings: '<path d="M4 7h16M4 17h16"/><circle cx="8" cy="7" r="3" fill="currentColor"/><circle cx="16" cy="17" r="3" fill="currentColor"/>',
     mic: '<rect x="8" y="2" width="8" height="13" rx="4"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3m-4 0h8"/>',
     lock: '<rect x="5" y="10" width="14" height="11" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3m-4 5v2"/>',
@@ -382,8 +383,10 @@
   function restorePlayFocus(key) {
     var sheetEl = document.querySelector('.sheet') || document.querySelector('.app-shell'); if (!sheetEl) return;
     var nodes = sheetEl.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled])'), target = null;
+    nodes = Array.prototype.filter.call(nodes, function (node) { return node.getClientRects().length > 0; });
     if (key) for (var i = 0; i < nodes.length; i++) { var candidate = focusKey(nodes[i]); if (candidate && candidate.tag === key.tag && candidate.type === key.type && candidate.id === key.id && candidate.name === key.name && candidate.action === key.action && candidate.dataId === key.dataId) { target = nodes[i]; break; } }
-    if (!target) target = sheetEl.querySelector('input:not([disabled]):not([type="hidden"]),textarea:not([disabled])') || sheetEl.querySelector('.pet-tabs .active') || nodes[0];
+    if (!target) { for (var j = 0; j < nodes.length; j++) if (/^(INPUT|TEXTAREA|SELECT)$/.test(nodes[j].tagName)) { target = nodes[j]; break; } }
+    if (!target) target = nodes[0];
     if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
   }
   function openForm(kind, data, restore, replace) {
@@ -407,9 +410,6 @@
     if (closed && parent && closed.kind === 'points' && parent.kind === 'behaviorPicker' && closed.pickerState) { parent.data.query = closed.pickerState.query || ''; parent.data.page = closed.pickerState.page || 0; }
     ui.form = parent; render(false);
   }
-  function pointsModeTabs(custom) {
-    return '<div class="points-mode-tabs" aria-label="加分方式">' + button('points-mode', '常用加分', 'mode-tab ' + (!custom ? 'active' : ''), 'common') + button('points-mode', '自己定一项', 'mode-tab ' + (custom ? 'active' : ''), 'custom') + '</div>';
-  }
   function pointsData(item) {
     var d = item ? { itemId: item.id, name: item.name, points: item.points, reason: item.reason || '' } : { itemId: '', points: 5, saveAsTemplate: false }, saved = drafts['points:' + (d.itemId || 'new')];
     if (saved && (saved.itemId || '') === (d.itemId || '')) d = clone(saved);
@@ -421,7 +421,6 @@
     rememberDraft(); var previous = ui.form, picker = previous && previous.kind === 'behaviorPicker' ? { query: previous.data.query || '', page: previous.data.page || 0 } : null, f;
     stopRecognition(); invalidateAssistant(previous);
     if (previous && previous.kind === 'points') f = previous;
-    else if (previous && previous.kind === 'behaviorPicker' && previous.data.returnToPoints && ui.stack.length && ui.stack[ui.stack.length - 1].kind === 'points') f = ui.stack.pop();
     if (f) { f.data = pointsData(item); f.openedRevision = revision; f.aiStatus = ''; f.editVersion = (f.editVersion || 0) + 1; ui.form = f; if (picker) f.pickerState = picker; render(false); }
     else { openForm('points', pointsData(item)); if (picker) ui.form.pickerState = picker; }
     var input = document.querySelector('#editor-form [name="name"]'); if (input) input.focus();
@@ -436,7 +435,7 @@
     var f = ui.form; if (!f || f.kind !== 'points') return;
     var amount = document.querySelector('.entry-summary strong'); if (amount) amount.innerHTML = pointsAmount(f.data.points);
     var el = document.getElementById('template-save-preview'); if (el) el.innerHTML = templateSavePreview();
-    var submit = document.querySelector('#editor-form button[type="submit"]'); if (submit) { var label = !f.data.itemId && f.data.saveAsTemplate ? '加分并新增常用' : '确认加分'; submit.textContent = label; submit.setAttribute('data-label', label); }
+    var submit = document.querySelector('.sheet-save'); if (submit) { var label = !f.data.itemId && f.data.saveAsTemplate ? '加分并新增常用' : '确认加分'; submit.textContent = pending ? '保存中' : '加分'; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); }
   }
   function field(label, name, value, extra, type) { return '<label class="field"><span>' + label + '</span><input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value) + '" ' + (extra || '') + '></label>'; }
   function area(label, name, value, extra) { return '<label class="field"><span>' + label + '</span><textarea name="' + name + '" rows="3" ' + (extra || '') + '>' + esc(value) + '</textarea></label>'; }
@@ -493,7 +492,7 @@
   }
   function rankedItems() { return M.frequentPointItems(state, new Date()); }
   function behaviorTile(p, i, extra) {
-    return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b>' + (p.reason ? '<small>' + esc(p.reason) + '</small>' : '') + '</span><strong>+' + p.points + '</strong>', 'behavior-card ' + (extra || ''), p.id, p.name + '，加' + p.points + '分');
+    return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b>' + (p.reason && extra !== 'picker-behavior' ? '<small>' + esc(p.reason) + '</small>' : '') + '</span><strong>+' + p.points + '</strong>', 'behavior-card ' + (extra || ''), p.id, p.name + '，加' + p.points + '分');
   }
   function pointsPage() {
     var t = M.totals(state), wide = homeWide(), all = rankedItems(), items = all.slice(0, wide ? 4 : 2); ui.homeWide = wide;
@@ -502,29 +501,30 @@
   function pickerData() {
     var f = ui.form, query = (f.data.query || '').trim().toLowerCase(), all = rankedItems(), items = all.filter(function (p) { return !query || (p.name + ' ' + (p.reason || '')).toLowerCase().indexOf(query) >= 0; });
     var viewportHeight = (window.visualViewport && window.visualViewport.height) || window.innerHeight, shortScreen = window.innerHeight <= 440;
-    var columns = window.innerWidth >= 700 ? 3 : 2, rowHeight = shortScreen ? 64 : 88, chrome = shortScreen ? 195 : 223, footerHeight = shortScreen ? 57 : 66;
+    var columns = window.innerWidth >= 700 ? 3 : 2, rowHeight = shortScreen ? 64 : 88, chrome = (shortScreen ? 80 : 106) + (f.data.searchOpen || query ? 56 : 0), footerHeight = shortScreen ? 57 : 66, gap = 8;
     var sheetEl = document.querySelector('.behavior-picker-sheet'), grid = sheetEl && sheetEl.querySelector('.picker-grid'), body = sheetEl && sheetEl.querySelector('.behavior-picker-body'), footer = sheetEl && sheetEl.querySelector('.picker-footer');
     if (grid && body && footer) {
       var gridStyle = window.getComputedStyle(grid), bodyStyle = window.getComputedStyle(body), sheetStyle = window.getComputedStyle(sheetEl), footerStyle = window.getComputedStyle(footer);
       columns = gridStyle.gridTemplateColumns.split(' ').length;
-      rowHeight = parseFloat(gridStyle.gridAutoRows) || rowHeight;
+      rowHeight = parseFloat(gridStyle.gridAutoRows) || rowHeight; gap = parseFloat(gridStyle.rowGap) || 8;
       chrome = grid.getBoundingClientRect().top - sheetEl.getBoundingClientRect().top + body.scrollTop + (parseFloat(bodyStyle.paddingBottom) || 0) + (parseFloat(sheetStyle.paddingBottom) || 0);
       footerHeight = Math.max(parseFloat(footerStyle.minHeight) || 0, 48 + (parseFloat(footerStyle.paddingTop) || 0) + (parseFloat(footerStyle.paddingBottom) || 0) + 1);
     }
     var available = Math.min(740, viewportHeight - 12) - chrome;
-    var rows = Math.max(1, Math.floor((available + 8) / (rowHeight + 8)));
-    if (items.length > rows * columns) rows = Math.max(1, Math.floor((available - footerHeight + 8) / (rowHeight + 8)));
+    var rows = Math.max(1, Math.floor((available + gap) / (rowHeight + gap)));
+    if (items.length > rows * columns) rows = Math.max(1, Math.floor((available - footerHeight + gap) / (rowHeight + gap)));
     var pageSize = rows * columns, pages = Math.max(1, Math.ceil(items.length / pageSize));
     f.data.page = Math.max(0, Math.min(pages - 1, Math.floor(Number(f.data.page) || 0)));
     return { all: all.length, total: items.length, query: query, page: f.data.page, pages: pages, pageSize: pageSize, items: items.slice(f.data.page * pageSize, (f.data.page + 1) * pageSize) };
   }
-  function pickerResults(data) { return '<div class="picker-summary">' + (data.query ? '搜索结果 ' : '全部 ') + data.total + ' 项</div><div class="picker-grid count-' + data.items.length + '">' + (data.items.length ? data.items.map(function (p, i) { return behaviorTile(p, i, 'picker-behavior'); }).join('') : '<div class="picker-empty"><p>' + (data.query ? '搜索结果 0' : '常用行为 0') + '</p>' + button(data.query ? 'picker-clear' : 'point-list', data.query ? '清除搜索' : '添加行为', 'btn outline') + '</div>') + '</div>'; }
+  function pickerResults(data) { return '<div class="picker-grid count-' + data.items.length + '">' + (data.items.length ? data.items.map(function (p, i) { return behaviorTile(p, i, 'picker-behavior'); }).join('') : '<div class="picker-empty"><p>' + (data.query ? '没有匹配项' : '暂无常用项') + '</p>' + button(data.query ? 'picker-clear' : 'points-new', data.query ? '清除' : icon('plus'), data.query ? 'btn outline' : 'icon-button nav-add', '', data.query ? '清除搜索' : '新增加分') + '</div>') + '</div>'; }
   function pickerFooter(data) {
     return '<button type="button" data-action="picker-prev" class="icon-button" aria-label="上一页"' + (data.page === 0 ? ' disabled' : '') + '>' + icon('back') + '</button><label class="picker-page-label">第 <input id="behavior-page" type="number" min="1" max="' + data.pages + '" inputmode="numeric" value="' + (data.page + 1) + '" aria-label="跳转到指定页"><span id="behavior-page-total"> / ' + data.pages + ' 页</span></label><button type="button" data-action="picker-next" class="icon-button" aria-label="下一页"' + (data.page + 1 >= data.pages ? ' disabled' : '') + '>' + icon('arrow') + '</button>';
   }
   function behaviorPickerContent() {
-    var data = pickerData();
-    return sheet('加分', '', '<div class="behavior-picker-body">' + pointsModeTabs(false) + '<div class="picker-tools"><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div>' + button('point-list', '管理', 'text-button') + '</div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer"' + (data.pages === 1 ? ' hidden' : '') + '>' + pickerFooter(data) + '</div>', false).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
+    var data = pickerData(), searchOpen = !!(ui.form.data.searchOpen || data.query);
+    var actions = button('picker-search', icon('search'), 'icon-button' + (searchOpen ? ' active' : ''), '', searchOpen ? '收起搜索' : '搜索加分项').replace('<button ', '<button aria-expanded="' + searchOpen + '" ') + button('point-list', icon('edit'), 'icon-button', '', '管理常用加分') + button('points-new', icon('plus'), 'icon-button nav-add', '', '新增加分');
+    return sheet('加分', '', '<div class="behavior-picker-body"><div class="picker-tools"' + (searchOpen ? '' : ' hidden') + '><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div></div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer"' + (data.pages === 1 ? ' hidden' : '') + '>' + pickerFooter(data) + '</div>', false, actions).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
   }
   function updatePicker(commitPage) {
     if (!ui.form || ui.form.kind !== 'behaviorPicker' || ui.auth) return;
@@ -544,7 +544,7 @@
   }
   function rewardsBody() {
     var req = activeRequest(), t = M.totals(state), rewards = state.rewards.filter(function (r) { return r.enabled && (ui.filter === 'all' || ui.filter === r.category); });
-    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p><div>' + button('reward-list', '管理', 'text-button') + button('reward-new', icon('plus') + '添加', 'text-button') + '</div></div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, new Date()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
+    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p></div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, new Date()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
   }
   function growthBody() {
     var pet = currentPet(), g = growthInfo(), stages = M.growthStages(pet.kind);
@@ -571,7 +571,7 @@
   function taskRow(t) {
     var status = t.done ? '已完成' : t.snoozeUntil && new Date(t.snoozeUntil).getTime() > Date.now() ? '稍后至 ' + niceTime(t.snoozeUntil).split(' ')[1] : t.ackAt ? '已知道' : '';
     if (t.type === 'task' && t.date < today()) status = '原定' + niceDate(t.date) + (status ? ' · ' + status : ' · 尚未完成');
-    return '<div class="task-row ' + (t.done ? 'is-done' : '') + (t.date < today() && !t.done ? ' is-overdue' : '') + '" data-task-id="' + esc(t.id) + '"><div class="task-time"><b>' + esc(t.time || '当天') + '</b>' + (t.type === 'event' ? '<small>' + niceDate(t.date) + '</small>' : '') + '</div><div class="task-copy"><strong>' + esc(t.title) + '</strong>' + (t.note ? '<p>' + esc(t.note) + '</p>' : '') + (status ? '<small>' + esc(status) + '</small>' : '') + '</div>' + button('task-toggle', icon('check') + '<span>' + (t.done ? '撤销' : '完成') + '</span>', 'task-complete ' + (t.done ? 'done' : ''), t.id, (t.done ? '撤销完成：' : '完成：') + t.title) + button('task-edit', icon('edit'), 'icon-button', t.id, '编辑提醒：' + t.title) + '</div>';
+    return '<div class="task-row ' + (t.done ? 'is-done' : '') + (t.date < today() && !t.done ? ' is-overdue' : '') + '" data-task-id="' + esc(t.id) + '">' + button('task-toggle', icon('check'), 'task-complete ' + (t.done ? 'done' : ''), t.id, (t.done ? '撤销完成：' : '完成：') + t.title).replace('<button ', '<button aria-pressed="' + !!t.done + '" ') + button('task-edit', '<span class="task-copy"><strong>' + esc(t.title) + '</strong><span class="task-time"><b>' + esc(t.time || '当天') + '</b>' + (t.type === 'event' ? '<small>' + niceDate(t.date) + '</small>' : '') + (status ? '<small>' + esc(status) + '</small>' : '') + '</span>' + (t.note ? '<span class="task-note">' + esc(t.note) + '</span>' : '') + '</span>' + icon('chevron'), 'task-open', t.id, '编辑提醒：' + t.title) + '</div>';
   }
   function reminderPage() {
     var all = state.tasks.filter(function (t) {
@@ -583,7 +583,7 @@
     var preparation = ui.reminderMode === 'near' && ui.day === 0 ? state.tasks.filter(function (t) {
       return t.type === 'event' && !t.deleted && !t.done && t.date >= today() && t.date <= M.addDays(today(), Number(t.remindDays || 0));
     }).sort(function (a, b) { return (a.date + (a.time || '99')).localeCompare(b.date + (b.time || '99')); }) : [];
-    return '<section class="reminders-screen"><div class="reminder-heading"><div><h2>提醒</h2></div>' + button('task-new', icon('plus') + '新增提醒', 'btn reminder-primary') + '</div><div class="reminder-toolbar"><div class="day-tabs">' + (ui.reminderMode === 'near' ? ['今天', '明天', '后天'].map(function (s, i) { return button('day', s + '<small>' + Number(day(i).slice(-2)) + '</small>', 'day-tab ' + (ui.day === i ? 'active' : ''), String(i)); }).join('') : '<span class="events-label">重要事件</span>') + '</div>' + button('reminder-mode', ui.reminderMode === 'near' ? '重要事件' : '回到近期', 'text-button', ui.reminderMode === 'near' ? 'events' : 'near') + '</div><div class="reminder-list">' + active.map(taskRow).join('') + (active.length ? '' : empty(ui.reminderMode === 'events' ? '待处理 0' : '待办 0')) + '</div>' + (preparation.length ? '<section class="advance-events" data-region="advance-events"><div class="section-heading"><h3>提前准备</h3><small>重要事件</small></div>' + preparation.map(taskRow).join('') + '</section>' : '') + (done.length ? '<details class="completed-list"><summary>已完成 ' + done.length + ' 项</summary>' + done.map(taskRow).join('') + '</details>' : '') + '</section>';
+    return '<section class="reminders-screen"><div class="reminder-heading"><div><h2>提醒</h2></div>' + button('task-new', icon('plus'), 'icon-button nav-add', '', '新增提醒') + '</div><div class="reminder-toolbar"><div class="day-tabs">' + (ui.reminderMode === 'near' ? ['今天', '明天', '后天'].map(function (s, i) { return button('day', s + '<small>' + Number(day(i).slice(-2)) + '</small>', 'day-tab ' + (ui.day === i ? 'active' : ''), String(i)); }).join('') : '<span class="events-label">重要事件</span>') + '</div>' + button('reminder-mode', ui.reminderMode === 'near' ? '重要事件' : '回到近期', 'text-button', ui.reminderMode === 'near' ? 'events' : 'near') + '</div><div class="reminder-list">' + active.map(taskRow).join('') + (active.length ? '' : empty(ui.reminderMode === 'events' ? '待处理 0' : '待办 0')) + '</div>' + (preparation.length ? '<section class="advance-events" data-region="advance-events"><div class="section-heading"><h3>提前准备</h3><small>重要事件</small></div>' + preparation.map(taskRow).join('') + '</section>' : '') + (done.length ? '<details class="completed-list"><summary>已完成 ' + done.length + ' 项</summary>' + done.map(taskRow).join('') + '</details>' : '') + '</section>';
   }
   function dueTasks() {
     return state.tasks.filter(function (t) { if (t.deleted || t.done || !t.time || t.ackAt) return false; var at = t.snoozeUntil ? new Date(t.snoozeUntil).getTime() : new Date(t.date + 'T' + t.time + ':00').getTime(); return isFinite(at) && at <= Date.now(); }).sort(function (a, b) { return (a.snoozeUntil || a.date + 'T' + a.time).localeCompare(b.snoozeUntil || b.date + 'T' + b.time); });
@@ -608,14 +608,15 @@
   function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row', id); }
   function preferencesBody() {
     var speech = !!(window.SpeechRecognition || window.webkitSpeechRecognition), wake = navigator.wakeLock && navigator.wakeLock.request;
-    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + button('export', icon('archive') + '导出家庭记录', 'btn outline full') + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
+    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + '<div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'archive') + '</div>' + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
   }
   function listManagement(kind) {
     var isReward = kind === 'reward-list', rows = isReward ? state.rewards : state.pointItems;
-    return '<div class="manage-list">' + rows.map(function (r) { return button(isReward ? 'reward-edit' : 'point-item-edit', '<span><b>' + esc(r.name) + '</b><small>' + r.points + ' 分 · ' + (isReward ? category(r.category) + ' · ' : '') + (r.enabled ? '启用中' : '已停用') + '</small></span>' + icon('edit'), 'manage-row', r.id); }).join('') + '</div>';
+    return '<div class="manage-list">' + rows.map(function (r) { return button(isReward ? 'reward-edit' : 'point-item-edit', '<span><b>' + esc(r.name) + '</b><small>' + r.points + ' 分 · ' + (isReward ? category(r.category) + ' · ' : '') + (r.enabled ? '启用中' : '已停用') + '</small></span>' + icon('chevron'), 'manage-row', r.id); }).join('') + '</div>';
   }
   function contextAI(f, context) {
-    return '<section class="context-ai" data-context="' + context + '"><div class="context-ai-heading"><strong>' + icon('spark') + 'AI 填写</strong><span>' + esc(meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示') + '</span></div><div class="context-ai-input"><label class="field"><span>指令</span><textarea name="aiText" rows="1" maxlength="1000">' + esc(f.data.aiText || '') + '</textarea></label><div class="context-ai-actions">' + button('listen-context', icon('mic'), 'icon-button', '', recognition ? '停止听写' : '听写') + '<button type="button" data-action="ai-fill" data-id="' + context + '" class="btn ai-fill-button"' + (f.aiBusy ? ' disabled' : '') + '>' + (f.aiBusy ? '整理中' : '填写') + '</button></div></div><p id="context-ai-status" class="context-ai-status" role="status">' + esc(f.aiStatus || '') + '</p><p id="voice-status" class="context-voice-status" aria-live="polite"></p></section>';
+    if (!f.aiOpen) return '';
+    return '<section class="context-ai" data-context="' + context + '"><div class="context-ai-heading"><strong>' + icon('spark') + '指令填写</strong><span>' + esc(meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示') + '</span></div><div class="context-ai-input"><label class="field"><span>指令</span><textarea name="aiText" rows="1" maxlength="1000">' + esc(f.data.aiText || '') + '</textarea></label><div class="context-ai-actions">' + button('listen-context', icon('mic'), 'icon-button', '', recognition ? '停止听写' : '听写') + '<button type="button" data-action="ai-fill" data-id="' + context + '" class="btn ai-fill-button"' + (f.aiBusy ? ' disabled' : '') + '>' + (f.aiBusy ? '整理中' : '填写') + '</button></div></div><p id="context-ai-status" class="context-ai-status" role="status">' + esc(f.aiStatus || '') + '</p><p id="voice-status" class="context-voice-status" aria-live="polite"></p></section>';
   }
   function invalidateAssistant(f) { if (!f) return; if (f.aiBusy) f.aiStatus = '已暂停'; f.aiRequest = null; f.voiceRequest = null; f.aiBusy = false; if (f.kind === 'voice') ui.assistantBusy = false; }
   function assistantMessage(result) {
@@ -750,7 +751,7 @@
   }
   function refreshPetPurchase() {
     if (!ui.form || ui.form.kind !== 'petBuy' || ui.auth) return;
-    var f = ui.form, el = document.getElementById('pet-buy-summary'), status = playStatus(), item = status && find(status.catalog, f.data.itemId), quantity = Number(f.data.quantity), submit = document.querySelector('#editor-form button[type="submit"]');
+    var f = ui.form, el = document.getElementById('pet-buy-summary'), status = playStatus(), item = status && find(status.catalog, f.data.itemId), quantity = Number(f.data.quantity), submit = document.querySelector('.sheet-save');
     if (el) el.innerHTML = petPurchaseMath(f);
     if (submit) submit.disabled = pending || !item || !isFinite(quantity) || quantity < 1 || quantity > 10 || Math.floor(quantity) !== quantity || M.totals(state).available < quantity * item.points || (!local && !connected);
   }
@@ -764,14 +765,14 @@
     return '<div class="pet-choices">' + [['plant', '芽芽', '晶叶龙伙伴'], ['capybara', '团团', '太空水豚']].map(function (o) { return '<button type="button" class="pet-choice ' + (d.kind === o[0] ? 'selected' : '') + '" data-action="pet-kind" data-id="' + o[0] + '" aria-pressed="' + (d.kind === o[0] ? 'true' : 'false') + '"><div>' + petDrawing(o[0], g.stage, o[1], 'idle', true) + '</div><strong>' + o[2] + '</strong><small>' + (d.kind === o[0] ? '已选' : '选择') + '</small></button>'; }).join('') + '</div>' + field('伙伴昵称', 'petName', d.petName !== undefined ? d.petName : d.name || '', 'required maxlength="40"');
   }
   function editorContent() {
-    var f = ui.form, d = f.data, body = '', title = '', sub = '', submit = '', footer = '', r, permission, total = M.totals(state);
+    var f = ui.form, d = f.data, body = '', title = '', sub = '', submit = '', footer = '', actions = '', r, permission, total = M.totals(state);
     if (f.kind === 'behaviorPicker') return behaviorPickerContent();
     if (f.kind === 'homeInbox') { title = homeInboxTitle(); f.openedRevision = revision; ui.inboxKey = homeInboxKey(); body = '<div id="home-inbox-body">' + homeInboxBody() + '</div>'; }
     else if (f.kind === 'records') { title = '积分记录'; body = recordsBody(); }
     else if (f.kind === 'preferences') { title = '设置'; body = preferencesBody(); }
-    else if (f.kind === 'rewards') { title = '礼品兑换'; body = rewardsBody(); }
+    else if (f.kind === 'rewards') { title = '礼品兑换'; body = rewardsBody(); actions = button('reward-list', icon('edit'), 'icon-button', '', '管理礼品') + button('reward-new', icon('plus'), 'icon-button nav-add', '', '新增礼品'); }
     else if (f.kind === 'petGrowth') { title = '成长足迹'; body = growthBody(); }
-    else if (f.kind === 'petHub') { title = '伙伴'; body = petHubBody(f); footer = button('pet-config', '伙伴设置', 'btn outline') + button('pet-growth', '成长足迹', 'btn outline'); }
+    else if (f.kind === 'petHub') { title = '伙伴'; body = petHubBody(f); actions = button('pet-growth', icon('spark'), 'icon-button', '', '成长足迹') + button('pet-config', icon('settings'), 'icon-button', '', '伙伴设置'); }
     else if (f.kind === 'petBuy') {
       var supplyStatus = playStatus(), supplyItem = supplyStatus && find(supplyStatus.catalog, d.itemId);
       title = '购买补给'; submit = supplyItem ? '确认购买' : '';
@@ -779,10 +780,10 @@
     }
     else if (f.kind === 'profile') { title = '孩子资料'; submit = '保存资料'; body = profileBody(f); }
     else if (f.kind === 'petConfig') { title = '伙伴设置'; submit = '保存伙伴'; body = petConfigBody(f); }
-    else if (f.kind === 'point-list' || f.kind === 'reward-list') { title = f.kind === 'point-list' ? '常用加分项' : '管理礼品'; body = (f.kind === 'point-list' ? contextAI(f, 'pointItems') : '') + listManagement(f.kind); footer = button(f.kind === 'point-list' ? 'point-item-new' : 'reward-new', icon('plus') + '添加' + (f.kind === 'point-list' ? '加分项' : '礼品'), 'btn primary full'); }
+    else if (f.kind === 'point-list' || f.kind === 'reward-list') { title = f.kind === 'point-list' ? '常用加分' : '礼品'; body = (f.kind === 'point-list' ? contextAI(f, 'pointItems') : '') + listManagement(f.kind); actions = button(f.kind === 'point-list' ? 'point-item-new' : 'reward-new', icon('plus'), 'icon-button nav-add', '', f.kind === 'point-list' ? '新增常用加分' : '新增礼品'); }
     else if (f.kind === 'points') {
       title = '加分'; submit = !d.itemId && d.saveAsTemplate ? '加分并新增常用' : '确认加分';
-      body = pointsModeTabs(!d.itemId) + contextAI(f, 'points') + '<div class="entry-summary"><span>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因', 'reason', d.reason || '', 'required maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
+      body = contextAI(f, 'points') + '<div class="entry-summary"><span>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因', 'reason', d.reason || '', 'required maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
     } else if (f.kind === 'request' || f.kind === 'approve') {
       var req = f.kind === 'approve' ? find(state.requests, d.requestId) : null;
       r = find(state.rewards, req ? req.rewardId : d.rewardId);
@@ -824,8 +825,10 @@
       body = '<div class="voice-box">' + button('listen', icon('mic') + (recognition ? '停止听写' : '听写'), 'btn voice-start') + '<p id="voice-status">' + (recognition ? '听写中' : '') + '</p></div>' + area('指令内容', 'speech', d.speech || '', 'required maxlength="1000"') + (d.answer ? '<div class="assistant-answer" role="status">' + esc(d.answer) + '</div>' : '');
     }
     var isEditor = ['points', 'petBuy', 'request', 'approve', 'task', 'taskAction', 'reward', 'pointItem', 'point-list', 'profile', 'petConfig', 'familySettings', 'parentConfig', 'voice'].indexOf(f.kind) >= 0;
-    var inside = '<div class="sheet-body">' + body + '<p id="form-error" class="form-error" role="alert" hidden></p></div>' + (submit || footer ? '<div class="sheet-footer">' + (footer || '<button type="submit" class="btn primary full" data-label="' + esc(submit) + '"' + (pending || (f.kind === 'voice' && ui.assistantBusy) ? ' disabled' : '') + '>' + (pending ? '保存中' : submit) + '</button>') + '</div>' : '');
-    return sheet(title, sub, isEditor ? '<form id="editor-form" class="sheet-form" novalidate>' + inside + '</form>' : inside, false);
+    if (['points', 'pointItem', 'point-list'].indexOf(f.kind) >= 0) actions = button('ai-toggle', icon('spark'), 'icon-button' + (f.aiOpen ? ' active' : ''), '', '指令填写').replace('<button ', '<button aria-expanded="' + !!f.aiOpen + '" ') + actions;
+    if (submit) actions += '<button type="submit" form="editor-form" class="text-button sheet-save" aria-label="' + esc(submit) + '" data-label="' + esc(submit) + '"' + (pending || (f.kind === 'voice' && ui.assistantBusy) ? ' disabled' : '') + '>' + (pending ? '保存中' : f.kind === 'points' ? '加分' : /^保存|^设置/.test(submit) ? '保存' : f.kind === 'voice' ? submit : '确认') + '</button>';
+    var inside = '<div class="sheet-body">' + body + '<p id="form-error" class="form-error" role="alert" hidden></p></div>' + (footer ? '<div class="sheet-footer">' + footer + '</div>' : '');
+    return sheet(title, sub, isEditor ? '<form id="editor-form" class="sheet-form" novalidate>' + inside + '</form>' : inside, false, actions);
   }
   function actionSummary(action) {
     var rows = [], req, r, target, t = M.totals(state);
@@ -854,8 +857,9 @@
     body += '<p id="parent-error" class="form-error" role="alert" hidden></p>';
     return sheet(setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证', local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit" class="btn primary"' + (a.busy || pending ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
   }
-  function sheet(title, sub, content, auth) {
-    return '<div class="sheet-overlay"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + button(auth ? 'parent-cancel' : 'form-close', icon('close'), 'icon-button', '', auth ? '取消验证' : '关闭面板') + '</header>' + content + '</section></div>';
+  function sheet(title, sub, content, auth, actions) {
+    var nested = auth || ui.stack.length > 0;
+    return '<div class="sheet-overlay"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div class="sheet-nav-start">' + button(auth ? 'parent-cancel' : 'form-close', icon(nested ? 'back' : 'close'), 'icon-button', '', auth ? '返回修改' : nested ? '返回上一级' : '关闭面板') + '</div><div class="sheet-heading"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div><div class="sheet-nav-actions">' + (actions || '') + '</div></header>' + content + '</section></div>';
   }
   function render(reset) {
     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
@@ -952,6 +956,7 @@
     if (action === 'nav') { rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
     else if (action === 'home-inbox') openForm('homeInbox', {});
     else if (action === 'all-behaviors') openForm('behaviorPicker', { query: '', page: 0 });
+    else if (action === 'picker-search' && ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.searchOpen = !(ui.form.data.searchOpen || ui.form.data.query); if (!ui.form.data.searchOpen) { ui.form.data.query = ''; ui.form.data.page = 0; } render(false); var pickerSearch = document.getElementById('behavior-search'); if (ui.form.data.searchOpen && pickerSearch) pickerSearch.focus(); }
     else if (action === 'picker-clear') { if (ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.query = ''; ui.form.data.page = 0; var search = document.getElementById('behavior-search'); if (search) search.value = ''; updatePicker(); if (search) search.focus(); } }
     else if (action === 'picker-prev' || action === 'picker-next') { if (ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.page = (Number(ui.form.data.page) || 0) + (action === 'picker-next' ? 1 : -1); updatePicker(); } }
     else if (action === 'jump-rewards') openForm('rewards', {});
@@ -975,10 +980,11 @@
     else if (action === 'pet-growth') openForm('petGrowth', {});
     else if (action === 'pet-config') openForm('petConfig', currentPet());
     else if (action === 'pet-kind') { rememberDraft(); var petName = ui.form.data.petName !== undefined ? ui.form.data.petName : ui.form.data.name; ui.form.data.kind = id; if (!petName || petName === '芽芽' || petName === '团团') petName = id === 'plant' ? '芽芽' : '团团'; ui.form.data.petName = petName; render(false); }
+    else if (action === 'ai-toggle' && ui.form) { rememberDraft(); ui.form.aiOpen = !ui.form.aiOpen; if (!ui.form.aiOpen) { stopRecognition(); invalidateAssistant(ui.form); } render(false); if (ui.form.aiOpen) { var aiInput = document.querySelector('[name="aiText"]'); if (aiInput) aiInput.focus(); } }
     else if (action === 'ai-fill') contextualInterpret(id);
     else if (action === 'listen-context') listen('aiText');
     else if (action === 'add-points') openForm('behaviorPicker', { query: '', page: 0 });
-    else if (action === 'points-mode') { if (id === 'custom') { if (!ui.form || ui.form.kind !== 'points' || ui.form.data.itemId) choosePoints(null); } else if (ui.form && ui.form.kind === 'points') { var pickerState = clone(ui.form.pickerState || { query: '', page: 0 }); pickerState.returnToPoints = true; openForm('behaviorPicker', pickerState); } }
+    else if (action === 'points-new') choosePoints(null);
     else if (action === 'choose-point') { item = find(state.pointItems, id); if (item && item.enabled) choosePoints(item); }
     else if (action === 'records' || action === 'preferences' || action === 'point-list' || action === 'reward-list') openForm(action, {});
     else if (action === 'reward-filter') { ui.filter = id; render(false); }

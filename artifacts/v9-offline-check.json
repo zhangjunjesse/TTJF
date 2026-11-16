@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-11-16T02:43:35.037Z",
+  "mode": "offline-local",
+  "protocol": "file:",
+  "offlineFlag": true,
+  "newPlusOpenedPoints": true,
+  "headerSaveAssociated": true,
+  "embeddedSourcesMatch": true,
+  "sources": {
+    "app.js": "771e9ff9ab0608a19cb853d803a5ad1570bc9b8420e7405562fb926f71da1ed6",
+    "styles.css": "7a41033ce5247c252627a3f5a30a74caed06509d639839a3c62942b8c1ce1807"
+  },
+  "exportHash": "73fbbfdcb1770209f57644d2754a8f26404842a730750f3d11463aa957ab26e5",
+  "errors": [],
+  "postRequests": 0,
+  "caseCountAddition": 0
+}

@@ -1,0 +1,11 @@
+PASS 735 App entry, back/draft, row navigation and touch sizing
+PASS 390 App entry, back/draft, row navigation and touch sizing
+PASS 320 App entry, back/draft, row navigation and touch sizing
+PASS Custom points plus saved common item uses the actual PIN-authorized ledger
+PASS Common-management header plus creates and authorizes a saved item
+PASS Reminder header plus creates an authorized reminder
+PASS Existing reminder full-row entry saves through header and PIN
+PASS Rewards header plus creates an authorized gift
+PASS Existing gift full-row management entry saves through header and PIN
+PASS Search expansion, Chinese composition, clear and numeric last-page jump
+10 targeted checks passed; 6 authorized saves; 4 screenshots
