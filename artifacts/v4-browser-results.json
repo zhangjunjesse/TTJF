@@ -1,0 +1,448 @@
+{
+  "version": "0.4",
+  "browser": "Microsoft Edge / Chromium, real DOM and hit-tested mouse",
+  "deviceBoundary": "Real Edge rendered DOM and hit-tested pointer coordinates; no physical iPad/Safari, software keyboard, microphone, audible playback, wake word or long-running-device evidence.",
+  "assistantBoundary": "Local instruction demonstration; a separately labelled loopback mock provider verifies outbound privacy. Neither is a real external LLM run.",
+  "fixtureBoundary": "Fixed/accelerated clock; synthetic avatar with tagged metadata; isolated real HTTP servers and real model state. Stage gallery uses controlled starting ledgers, never claims user-earned points.",
+  "startedAt": "2026-11-15T03:15:44.563Z",
+  "requested": "cumulative targeted runs",
+  "sourceHashes": {
+    "app.js": "7ad28df07d8d3b1ba4443b8ccf874b78cb918609c83842690a085ce5a366e0b6",
+    "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+    "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+    "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+    "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+    "styles.css": "c35ac9e2de435517bbd99b46736ae66c7cfb0447fe412f9b6dd825164831f951",
+    "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+    "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+    "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+  },
+  "exportHash": "60eb3f4a65f3ce3cf23b0a878f81ea9226d61c30845febdba933ae55a554a69b",
+  "checks": [
+    {
+      "group": "points-ai",
+      "label": "Contextual AI fills the same editable points form without committing; every actual award is verified"
+    },
+    {
+      "group": "ai-races",
+      "label": "Typing manually during contextual AI processing is preserved when the late result arrives"
+    },
+    {
+      "group": "ai-races",
+      "label": "Closing an in-flight AI draft and opening profile cannot let the late response overwrite the new scene"
+    },
+    {
+      "group": "ai-races",
+      "label": "Assistant request failure preserves manual input and a normal verified save remains usable"
+    },
+    {
+      "group": "growth-redemption",
+      "label": "Verified awards cross all visual thresholds, then stars continue; spending from the secondary panel never reduces growth"
+    },
+    {
+      "group": "profile",
+      "label": "A real file chooser locally crops the tagged photo; cancel writes nothing and profile save requires PIN"
+    },
+    {
+      "group": "profile",
+      "label": "SVG, over-8MiB files and over-16MP photos are rejected without replacing the saved avatar"
+    },
+    {
+      "group": "profile",
+      "label": "The real assistant HTTP path sends no photo or original metadata to a loopback mock model; removing an avatar is also verified"
+    },
+    {
+      "group": "companions",
+      "label": "Both companions have three visibly distinct free interactions and public switching preserves growth"
+    },
+    {
+      "group": "companions",
+      "label": "Reduced-motion rendering still provides a clear static interaction and no sustained animation"
+    },
+    {
+      "group": "gallery",
+      "label": "plant stage 1: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "plant stage 2: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "plant stage 3: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "plant stage 4: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "plant stage 5: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "capybara stage 1: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "capybara stage 2: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "capybara stage 3: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "capybara stage 4: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "gallery",
+      "label": "capybara stage 5: real home renders the stage derived from its starting ledger"
+    },
+    {
+      "group": "layout",
+      "label": "desktop: two fixed tabs, prominent points/companion, reachable lower-frequency redemption, no horizontal overflow"
+    },
+    {
+      "group": "layout",
+      "label": "desktop: profile, companion settings and contextual AI remain usable within the sheet"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-landscape: two fixed tabs, prominent points/companion, reachable lower-frequency redemption, no horizontal overflow"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-landscape: profile, companion settings and contextual AI remain usable within the sheet"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-portrait: two fixed tabs, prominent points/companion, reachable lower-frequency redemption, no horizontal overflow"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-portrait: profile, companion settings and contextual AI remain usable within the sheet"
+    },
+    {
+      "group": "layout",
+      "label": "phone: two fixed tabs, prominent points/companion, reachable lower-frequency redemption, no horizontal overflow"
+    },
+    {
+      "group": "layout",
+      "label": "phone: profile, companion settings and contextual AI remain usable within the sheet"
+    },
+    {
+      "group": "layout",
+      "label": "small-phone: two fixed tabs, prominent points/companion, reachable lower-frequency redemption, no horizontal overflow"
+    },
+    {
+      "group": "layout",
+      "label": "small-phone: profile, companion settings and contextual AI remain usable within the sheet"
+    },
+    {
+      "group": "template-ai",
+      "label": "Template-management AI creates a reviewable verified template, never an accidental award"
+    },
+    {
+      "group": "template-ai",
+      "label": "Cancel keeps the description without a stale busy message and another management request remains usable"
+    },
+    {
+      "group": "template-ai",
+      "label": "Editing name, points, preset reason, disabling and enabling stays in template management with a fresh verification each time"
+    },
+    {
+      "group": "offline",
+      "label": "Final single-file export exactly embeds the current app, model, assistant, pet renderer and both stylesheets"
+    },
+    {
+      "group": "offline",
+      "label": "Offline file supports the real avatar chooser, local PIN setup, context filling and companion persistence without HTTP"
+    },
+    {
+      "group": "offline-hosted",
+      "label": "The v0.4 export remains local over a real HTTP host, with pet changes persisted and no API calls"
+    }
+  ],
+  "failed": [],
+  "errors": [],
+  "layouts": [
+    {
+      "name": "desktop",
+      "width": 1440,
+      "height": 1000,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "ipad-landscape",
+      "width": 1024,
+      "height": 768,
+      "critical": {
+        "navTop": 692,
+        "behaviors": [
+          {
+            "text": "自主阅读今天主动读了一会儿自己选的书+5",
+            "top": 489.078125,
+            "bottom": 575.078125
+          },
+          {
+            "text": "专心完成作业把今天的作业认真完成了+8",
+            "top": 489.078125,
+            "bottom": 575.078125
+          },
+          {
+            "text": "主动整理不用提醒，自己收好了书包+5",
+            "top": 585.078125,
+            "bottom": 671.078125
+          },
+          {
+            "text": "关心家人主动帮家人做了一件力所能及的事+3",
+            "top": 585.078125,
+            "bottom": 671.078125
+          }
+        ],
+        "interactions": [
+          {
+            "text": "摸叶子",
+            "top": 501,
+            "bottom": 549
+          },
+          {
+            "text": "浇水",
+            "top": 501,
+            "bottom": 549
+          },
+          {
+            "text": "晒太阳",
+            "top": 501,
+            "bottom": 549
+          }
+        ],
+        "growth": [
+          {
+            "text": "再 122 分，到花苞伙伴",
+            "top": 618,
+            "bottom": 634.5
+          }
+        ]
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "name": "ipad-portrait",
+      "width": 768,
+      "height": 1024,
+      "horizontalOverflow": false
+    },
+    {
+      "name": "phone",
+      "width": 390,
+      "height": 844,
+      "mobile": {
+        "behaviorsTop": 476.640625,
+        "companionTop": 775.640625,
+        "cardWidth": 356,
+        "sceneWidth": 318,
+        "sceneHeight": 190
+      },
+      "horizontalOverflow": false
+    },
+    {
+      "name": "small-phone",
+      "width": 320,
+      "height": 568,
+      "mobile": {
+        "behaviorsTop": 461.9375,
+        "companionTop": 760.9375,
+        "cardWidth": 296,
+        "sceneWidth": 266,
+        "sceneHeight": 180
+      },
+      "horizontalOverflow": false
+    }
+  ],
+  "skipped": [],
+  "passed": 36,
+  "finishedAt": "2026-11-15T03:15:51.820Z",
+  "runs": [
+    {
+      "requested": [
+        "gallery",
+        "companions",
+        "layout"
+      ],
+      "startedAt": "2026-11-15T02:53:27.929Z",
+      "finishedAt": "2026-11-15T02:55:23.325Z",
+      "sourceHashes": {
+        "app.js": "9d192ce5917afcbfa4baf8b1b453656c6cb8db8c3bd40e5bdae3bd5afa0b584b",
+        "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+        "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+        "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+        "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+        "styles.css": "9b17b314ba78ab063677735edf7d5b211eab9624f80117a04323df741a925a64",
+        "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+        "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+        "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+      },
+      "exportHash": "66d023c436c3fbacb33d2d32675f8860a9018b30731a550d3b9875b95b1f364a",
+      "passed": 21,
+      "failed": [
+        {
+          "group": "companions",
+          "check": "Reduced-motion rendering still provides a clear static interaction and no sustained animation",
+          "message": "Expected values to be strictly equal:\n\nnull !== 'true'\n",
+          "stack": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\nnull !== 'true'\n\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:344:16\n    at async check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:137:11)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:339:7\n    at async group (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:147:7)\n    at async runSuite (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:307:5)"
+        }
+      ]
+    },
+    {
+      "requested": [
+        "points-ai",
+        "template-ai",
+        "ai-races",
+        "growth-redemption",
+        "profile"
+      ],
+      "startedAt": "2026-11-15T03:00:07.741Z",
+      "finishedAt": "2026-11-15T03:01:05.191Z",
+      "sourceHashes": {
+        "app.js": "f246ab5e1034cb3bf54a4c320fad2a0829a25b25b2154350c4917038623555e2",
+        "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+        "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+        "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+        "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+        "styles.css": "9b17b314ba78ab063677735edf7d5b211eab9624f80117a04323df741a925a64",
+        "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+        "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+        "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+      },
+      "exportHash": "66d023c436c3fbacb33d2d32675f8860a9018b30731a550d3b9875b95b1f364a",
+      "passed": 10,
+      "failed": []
+    },
+    {
+      "requested": [
+        "layout",
+        "companions",
+        "gallery"
+      ],
+      "startedAt": "2026-11-15T03:04:22.863Z",
+      "finishedAt": "2026-11-15T03:05:17.852Z",
+      "sourceHashes": {
+        "app.js": "54194de0b4ebfb271707bf4cfa850c0af69ccb7ad6201ee53ee8ac6d73557f2a",
+        "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+        "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+        "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+        "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+        "styles.css": "c35ac9e2de435517bbd99b46736ae66c7cfb0447fe412f9b6dd825164831f951",
+        "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+        "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+        "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+      },
+      "exportHash": "66d023c436c3fbacb33d2d32675f8860a9018b30731a550d3b9875b95b1f364a",
+      "passed": 14,
+      "failed": [
+        {
+          "group": "layout",
+          "check": "ipad-landscape: two fixed tabs, prominent points/companion, reachable lower-frequency redemption, no horizontal overflow",
+          "message": ".bottom-nav button[data-action=\"nav\"][data-id=\"points\"] outside viewport: {\"x\":304,\"y\":962,\"width\":1024,\"height\":768,\"disabled\":false,\"reachable\":false,\"hit\":null}",
+          "stack": "AssertionError [ERR_ASSERTION]: .bottom-nav button[data-action=\"nav\"][data-id=\"points\"] outside viewport: {\"x\":304,\"y\":962,\"width\":1024,\"height\":768,\"disabled\":false,\"reachable\":false,\"hit\":null}\n    at click (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:151:12)\n    at async navigate (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:178:3)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:161:11\n    at async check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:138:11)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:160:9\n    at async group (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:148:7)\n    at async runSuite (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:157:5)"
+        }
+      ]
+    },
+    {
+      "requested": [
+        "layout",
+        "offline",
+        "offline-hosted"
+      ],
+      "startedAt": "2026-11-15T03:07:25.737Z",
+      "finishedAt": "2026-11-15T03:07:58.757Z",
+      "sourceHashes": {
+        "app.js": "54194de0b4ebfb271707bf4cfa850c0af69ccb7ad6201ee53ee8ac6d73557f2a",
+        "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+        "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+        "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+        "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+        "styles.css": "c35ac9e2de435517bbd99b46736ae66c7cfb0447fe412f9b6dd825164831f951",
+        "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+        "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+        "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+      },
+      "exportHash": "56bbeca7f77e1b846ab59d0f7a184b60a29f7210e928073db0ee142d6a152646",
+      "passed": 13,
+      "failed": []
+    },
+    {
+      "requested": [
+        "template-ai"
+      ],
+      "startedAt": "2026-11-15T03:10:13.550Z",
+      "finishedAt": "2026-11-15T03:10:17.183Z",
+      "sourceHashes": {
+        "app.js": "54194de0b4ebfb271707bf4cfa850c0af69ccb7ad6201ee53ee8ac6d73557f2a",
+        "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+        "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+        "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+        "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+        "styles.css": "c35ac9e2de435517bbd99b46736ae66c7cfb0447fe412f9b6dd825164831f951",
+        "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+        "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+        "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+      },
+      "exportHash": "56bbeca7f77e1b846ab59d0f7a184b60a29f7210e928073db0ee142d6a152646",
+      "passed": 0,
+      "failed": [
+        {
+          "group": "template-ai",
+          "check": "Template-management AI creates a reviewable verified template, never an accidental award",
+          "message": "Returned management screen must not show a stale pending state: {\"busy\":false,\"disabled\":false,\"status\":\"正在整理；你也可以继续手动填写。\"}",
+          "stack": "AssertionError [ERR_ASSERTION]: Returned management screen must not show a stale pending state: {\"busy\":false,\"disabled\":false,\"status\":\"正在整理；你也可以继续手动填写。\"}\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:267:16\n    at async check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:138:11)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:254:7\n    at async group (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:148:7)\n    at async runSuite (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v4-browser.cjs:252:5)"
+        }
+      ]
+    },
+    {
+      "requested": [
+        "template-ai"
+      ],
+      "startedAt": "2026-11-15T03:12:01.311Z",
+      "finishedAt": "2026-11-15T03:12:09.898Z",
+      "sourceHashes": {
+        "app.js": "7ad28df07d8d3b1ba4443b8ccf874b78cb918609c83842690a085ce5a366e0b6",
+        "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+        "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+        "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+        "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+        "styles.css": "c35ac9e2de435517bbd99b46736ae66c7cfb0447fe412f9b6dd825164831f951",
+        "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+        "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+        "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+      },
+      "exportHash": "56bbeca7f77e1b846ab59d0f7a184b60a29f7210e928073db0ee142d6a152646",
+      "passed": 3,
+      "failed": []
+    },
+    {
+      "requested": [
+        "offline",
+        "offline-hosted"
+      ],
+      "startedAt": "2026-11-15T03:15:44.563Z",
+      "finishedAt": "2026-11-15T03:15:51.820Z",
+      "sourceHashes": {
+        "app.js": "7ad28df07d8d3b1ba4443b8ccf874b78cb918609c83842690a085ce5a366e0b6",
+        "model.js": "138a9822d4f88ac34d146ffb0882d933932e67eb950fe34444ba13b81919c2f5",
+        "server.cjs": "b9cb52727056510f7677bd00445b4d067c8377075714f811ed46fbc8b39220e4",
+        "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+        "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+        "styles.css": "c35ac9e2de435517bbd99b46736ae66c7cfb0447fe412f9b6dd825164831f951",
+        "pet.js": "4f9065c4f3f3679fe1abb557329b7d729d372f11a69d19d31bfec101fa4635d5",
+        "pet.css": "8c43d6c4cf6a60b21bb3f35838c13aba52db8348b3cfd78d343d53fad6ae5270",
+        "index.html": "25e06826b467213b2b706793061effbce642d0778c6e33d01a2af6d2dac69b8f"
+      },
+      "exportHash": "60eb3f4a65f3ce3cf23b0a878f81ea9226d61c30845febdba933ae55a554a69b",
+      "passed": 3,
+      "failed": []
+    }
+  ]
+}

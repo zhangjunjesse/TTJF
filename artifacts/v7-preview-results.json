@@ -1,0 +1,18 @@
+{
+  "capturedAt": "2026-11-15T12:08:34.286Z",
+  "description": "Real 390×844 Edge screenshots captured through hit-tested clicks and form input. Ordinary user facts for product preview; no composited notes or image edits. Drafts only; no saved business actions.",
+  "sourceHashes": {
+    "app.js": "664fb54b3e39a470a239e2a9d0e7b2def04d93a2b38ac1633887beb176d35d38",
+    "styles.css": "e64a78c56356225b34a81caf4b737135ef2869cc75ccaf26316b5de091d1229f",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235"
+  },
+  "images": {
+    "artifacts/v7-preview-phone-diy.png": "33de12d1a7b9a6aebcfafdd2b8dda9ae35e06c02e8fcd0dd36f1d93e9c088332",
+    "artifacts/v7-preview-phone-parent-verify.png": "7b15216f5c8133c2dee14ac490754e635652eddd199bcb0ce50f14925a16850a",
+    "artifacts/v7-preview-phone-pet-buy.png": "532869b27e8633129d0d8f8a51011542ed8a311d609df01432dd62455f25d0b7"
+  },
+  "scriptErrors": []
+}

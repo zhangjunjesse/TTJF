@@ -1,0 +1,23 @@
+{
+  "text": "+6 分 · 记好啦！",
+  "font": "650 30px -apple-system, BlinkMacSystemFont, \"PingFang SC\", \"Hiragino Sans GB\", \"Microsoft YaHei\", sans-serif",
+  "fontSize": "30px",
+  "lineHeight": "28px",
+  "box": {
+    "x": 711.3125,
+    "y": 96,
+    "width": 1085.6875,
+    "height": 28,
+    "top": 96,
+    "bottom": 124
+  },
+  "clientHeight": 28,
+  "scrollHeight": 34,
+  "fontAscent": 32,
+  "fontDescent": 8,
+  "inkAscent": 25,
+  "inkDescent": 4,
+  "baseline": 122,
+  "inkTop": 97,
+  "inkBottom": 126
+}

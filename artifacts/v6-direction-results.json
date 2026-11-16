@@ -1,0 +1,1040 @@
+{
+  "directionOnly": true,
+  "createdAt": "2026-11-15T08:30:40.781Z",
+  "scope": "Standalone stage3 renderer preview, not integrated homepage or resource-consumption acceptance",
+  "errors": [],
+  "captures": [
+    {
+      "file": "v6-direction-idle.png",
+      "sha256": "8d250afe75314bf6e8b48dd4403a78529d0321adba90b12690b6d7c3b603ec34",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "idle",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 297.275,
+            "w": 317.87941589355466,
+            "h": 359.7666557312012
+          },
+          "animations": [
+            {
+              "name": "pet-v6-breathe",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-blink",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-blink",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "idle",
+          "body": {
+            "x": 832.1625,
+            "y": 294.6376650810242,
+            "w": 222.9556167602539,
+            "h": 362.5668785095215
+          },
+          "animations": [
+            {
+              "name": "pet-v6-breathe",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-blink",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-blink",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-feed-0000ms.png",
+      "reaction": "feed",
+      "targetMilliseconds": 0,
+      "measuredMilliseconds": 0.9000000953674316,
+      "sha256": "2f35e91ecefc9ff5d9457263b27a48d83095d36f77ddd5aa4aa8784160f3eac6",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "feed",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 297.275,
+            "w": 317.87941589355466,
+            "h": 359.7666557312012
+          },
+          "animations": [
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-snack",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-feed-burst",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-charge",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "feed",
+          "body": {
+            "x": 832.1625,
+            "y": 294.6376650810242,
+            "w": 222.9556167602539,
+            "h": 362.5668785095215
+          },
+          "animations": [
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-snack",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-feed-burst",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-charge",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-feed-1100ms.png",
+      "reaction": "feed",
+      "targetMilliseconds": 1100,
+      "measuredMilliseconds": 1101.6000000238419,
+      "sha256": "b154ab7afc9a49fc1a71874de7d9f231b958200b4d69d5115db2fede1004fbf7",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "feed",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 295.9711876869202,
+            "w": 322.73600921630856,
+            "h": 361.0704803466797
+          },
+          "animations": [
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-snack",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-feed-burst",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-charge",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "feed",
+          "body": {
+            "x": 832.1625,
+            "y": 292.93055963516235,
+            "w": 227.92929611206054,
+            "h": 364.2739921569824
+          },
+          "animations": [
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-snack",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-feed-burst",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-charge",
+              "currentTime": 1083.31499999927,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-feed-2200ms.png",
+      "reaction": "feed",
+      "targetMilliseconds": 2200,
+      "measuredMilliseconds": 2208.9000000953674,
+      "sha256": "17a3fe31a07f629c3101bc3a87e622e6ed3d5af21abd5be32a100c8b2a36efd8",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "feed",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 296.09909982681273,
+            "w": 322.2388610839844,
+            "h": 360.9425682067871
+          },
+          "animations": [
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-snack",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-feed-burst",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-charge",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "feed",
+          "body": {
+            "x": 832.1625,
+            "y": 293.10112829208373,
+            "w": 227.41948471069335,
+            "h": 364.10339889526364
+          },
+          "animations": [
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-lift",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-munch",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-snack",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-feed-burst",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-charge",
+              "currentTime": 2199.84699999927,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-wash-0000ms.png",
+      "reaction": "wash",
+      "targetMilliseconds": 0,
+      "measuredMilliseconds": 3.600000023841858,
+      "sha256": "607421de06518c9ec09aafd19c263f7267347097c735e500ad5b2b992ea4321a",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "wash",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 297.275,
+            "w": 317.87941589355466,
+            "h": 359.7666557312012
+          },
+          "animations": [
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drone",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-sweep",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "wash",
+          "body": {
+            "x": 832.1625,
+            "y": 294.6376650810242,
+            "w": 222.9556167602539,
+            "h": 362.5668785095215
+          },
+          "animations": [
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drone",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-sweep",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-wash-1100ms.png",
+      "reaction": "wash",
+      "targetMilliseconds": 1100,
+      "measuredMilliseconds": 1103.3000000715256,
+      "sha256": "0c95df39d505761231428db5730106d55a653061a9a477d8e29b9fa6a04e17ba",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "wash",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 293.9421325683594,
+            "w": 322.65884857177736,
+            "h": 363.09952316284176
+          },
+          "animations": [
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drone",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-sweep",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "wash",
+          "body": {
+            "x": 832.1625,
+            "y": 290.91564202308655,
+            "w": 227.8479362487793,
+            "h": 366.2888954162598
+          },
+          "animations": [
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drone",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-sweep",
+              "currentTime": 1099.9549999742655,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-wash-2200ms.png",
+      "reaction": "wash",
+      "targetMilliseconds": 2200,
+      "measuredMilliseconds": 2202.3000000715256,
+      "sha256": "9721e4ce72c001a342740fdde391889a075e5af15ab2a81c08e3965d96953d36",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "wash",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 295.36706199645994,
+            "w": 318.46924209594727,
+            "h": 361.6746429443359
+          },
+          "animations": [
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drone",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-sweep",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "wash",
+          "body": {
+            "x": 832.1625,
+            "y": 292.7671345710754,
+            "w": 223.66157760620115,
+            "h": 364.4374008178711
+          },
+          "animations": [
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-shake",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drone",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-drops",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-sweep",
+              "currentTime": 2199.8829999742657,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-train-0000ms.png",
+      "reaction": "train",
+      "targetMilliseconds": 0,
+      "measuredMilliseconds": 4.299999952316284,
+      "sha256": "3493fbef0cca71ef4116c30160766ec2dfc539d2c44823b3f81ae96f856be756",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "train",
+          "body": {
+            "x": 133.47363252639767,
+            "y": 297.275,
+            "w": 317.87941589355466,
+            "h": 359.7666557312012
+          },
+          "animations": [
+            {
+              "name": "pet-v6-leap",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-wing",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-trail",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-ball",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-impact",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "train",
+          "body": {
+            "x": 832.1625,
+            "y": 294.6376650810242,
+            "w": 222.9556167602539,
+            "h": 362.5668785095215
+          },
+          "animations": [
+            {
+              "name": "pet-v6-leap",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-trail",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-ball",
+              "currentTime": 0,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-impact",
+              "currentTime": 0,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-train-1100ms.png",
+      "reaction": "train",
+      "targetMilliseconds": 1100,
+      "measuredMilliseconds": 1101.1000000238419,
+      "sha256": "cd3d1da2445ce35119f7f471d18c86c6342152b76416889a4fff91671f3fc2f3",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "train",
+          "body": {
+            "x": 110.03048214409577,
+            "y": 285.2009516635701,
+            "w": 321.0718593414264,
+            "h": 359.2229152505893
+          },
+          "animations": [
+            {
+              "name": "pet-v6-leap",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-wing",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-trail",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-ball",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-impact",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "train",
+          "body": {
+            "x": 808.4685249584256,
+            "y": 277.7467437771558,
+            "w": 223.06586227177985,
+            "h": 362.01890585659726
+          },
+          "animations": [
+            {
+              "name": "pet-v6-leap",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-trail",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-ball",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-impact",
+              "currentTime": 1099.9040000177924,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "file": "v6-direction-train-2200ms.png",
+      "reaction": "train",
+      "targetMilliseconds": 2200,
+      "measuredMilliseconds": 2201.7999999523163,
+      "sha256": "9a8b2ccd7bc253b1569562bdf2974b39abf5ebb2305d84c0f559f025580c8378",
+      "metrics": [
+        {
+          "kind": "plant",
+          "reaction": "train",
+          "body": {
+            "x": 130.05923796508682,
+            "y": 302.55681856889765,
+            "w": 323.596851660054,
+            "h": 354.3743210039271
+          },
+          "animations": [
+            {
+              "name": "pet-v6-leap",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-wing",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-trail",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-ball",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-impact",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            }
+          ]
+        },
+        {
+          "kind": "capybara",
+          "reaction": "train",
+          "body": {
+            "x": 830.41515409606,
+            "y": 299.9564773803073,
+            "w": 226.96573617620834,
+            "h": 357.13257285945315
+          },
+          "animations": [
+            {
+              "name": "pet-v6-leap",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-catch",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-trail",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-ball",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            },
+            {
+              "name": "pet-v6-impact",
+              "currentTime": 2199.8040000177925,
+              "playState": "running"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,578 @@
+--- v0.7/app.js
++++ v0.8/app.js
+@@ -1,13 +1,13 @@
+-/* v0.7: concise controls, values, and operation status. */
++/* v0.8: parent setup and per-action authorization. */
+ (function () {
+   'use strict';
+   var M = window.FamilyModel, KEY = 'little-steps-demo-v1', PREF = 'little-steps-preferences';
+   var DRAFT = 'little-steps-drafts-v03', PRIVATE = 'little-steps-parent-private-v03';
+   var local = location.protocol === 'file:' || window.__FAMILY_OFFLINE__ === true, state, revision = 0, connected = false, serverReached = false;
+-  var syncBusy = false, pending = false, retryTx = null, recognition = null, toastTimer, wakeLock = null;
++  var syncBusy = false, pending = false, retryTx = null, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
+   var assistantSequence = 0, avatarSequence = 0, petTimer = null, familyDay = null;
+   var privateConfig = readStore(PRIVATE, null), drafts = readStore(DRAFT, {}), reminderSound = '';
+-  var meta = { parent: { method: 'pin' }, assistant: { mode: 'local', label: '指令演示' } };
++  var meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
+   var ui = { view: 'points', day: 0, reminderMode: 'near', filter: 'all', history: 'points', form: null, stack: [], auth: null, sound: false, display: false, assistantBusy: false, petReaction: 'idle', petMessage: '', homeFeedback: '', careBusy: false, petTab: 'bag', petTouches: 0 };
+   var paths = {
+     star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
+@@ -83,7 +83,13 @@
+   function play(name) { if (!ui.sound) return; var a = document.getElementById('sound-' + name); if (a) { a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () {}); } }
+   function syncLabel() { return local ? '本机' : connected ? '共享 · 已连接' : serverReached ? '共享 · 连接中断' : '共享 · 连接中'; }
+   function updateConnectionStatus() { var status = document.getElementById('sync-status'), badge = document.getElementById('connection-state'); if (status) status.textContent = syncLabel(); if (badge) badge.textContent = local || connected ? '' : serverReached ? '连接中断' : '连接中'; refreshPetControls(); refreshPetPurchase(); }
+-  function setSnapshot(result) { if (result && result.state && typeof result.revision === 'number' && result.revision >= revision) { state = result.state; revision = result.revision; if (typeof result.familyDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(result.familyDay)) familyDay = result.familyDay; connected = !local; if (connected) serverReached = true; persist(); updateConnectionStatus(); return true; } return false; }
++  function acceptParent(parent, atRevision) {
++    if (!parent || typeof parent.configured !== 'boolean' || typeof atRevision !== 'number' || atRevision < parentRevision) return false;
++    if (parent.configured && parent.method !== 'pin' && parent.method !== 'math') return false;
++    parentRevision = atRevision; meta.parent = { configured: parent.configured, method: parent.configured ? parent.method : null }; return true;
++  }
++  function refreshParentEditor() { if (ui.form && ui.form.kind === 'parentConfig' && ui.form.parentConfigured == null && meta.parent.configured != null) { ui.form.parentConfigured = meta.parent.configured; ui.form.data.method = meta.parent.method || 'pin'; render(false); } }
++  function setSnapshot(result) { if (result && result.state && typeof result.revision === 'number' && result.revision >= revision) { state = result.state; revision = result.revision; acceptParent(result.parent, revision); if (typeof result.familyDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(result.familyDay)) familyDay = result.familyDay; connected = !local; if (connected) serverReached = true; persist(); updateConnectionStatus(); return true; } return false; }
+   function sync() {
+     if (local || syncBusy || pending) return;
+     syncBusy = true;
+@@ -92,7 +98,12 @@
+       if (status === 200 && result.state && result.state.tasks && result.revision >= revision) {
+         var changed = !connected || result.revision !== revision || (result.familyDay && result.familyDay !== familyDay);
+         setSnapshot(result);
++        if (setupTx && !setupTx.cancelled && setupTx.uncertain) {
++          if (state.appliedActions.indexOf(setupTx.action.id) >= 0) { finishSetup(setupTx); return; }
++          if (meta.parent.configured === true) { failSetup(setupTx, '家长验证已设置'); return; }
++        }
+         if (retryTx && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
++        refreshParentEditor();
+         if (changed && !ui.auth && (!ui.form || ui.form.kind === 'petHub')) render(false); else renderReminder();
+         updateConnectionStatus();
+       } else if (status !== 200 || !result.state || !result.state.tasks || typeof result.revision !== 'number') {
+@@ -101,11 +112,11 @@
+     });
+   }
+   function loadMeta() {
+-    if (local) { meta.parent.method = privateConfig ? privateConfig.method : 'pin'; return; }
+-    request('GET', '/api/meta', null, function (status, result) { if (status === 200) { meta = result; if (!meta.assistant) meta.assistant = { mode: 'local', label: '指令演示' }; if (!ui.form && !ui.auth) render(false); } });
++    if (local) { meta.parent = { configured: !!privateConfig, method: privateConfig ? privateConfig.method : null }; parentRevision = revision; return; }
++    request('GET', '/api/meta', null, function (status, result) { if (status === 200) { if (result.assistant) meta.assistant = result.assistant; acceptParent(result.parent, result.revision); refreshParentEditor(); if (!ui.form && !ui.auth) render(false); } });
+   }
+   function errorText(result) {
+-    var codes = { RATE_LIMITED: '操作频繁', CHALLENGE_EXPIRED: '验证已过期', VERIFICATION_FAILED: '验证未通过', PARENT_REQUIRED: '待家长验证', GRANT_EXPIRED: '验证已过期', GRANT_INVALID: '验证已失效', ACTION_ID_REUSED: '操作已提交', BODY_TOO_LARGE: '内容超出限制', SAVE_FAILED: '保存失败', INTERNAL_ERROR: '服务暂不可用', ASSISTANT_UNAVAILABLE: '指令服务不可用' };
++    var codes = { RATE_LIMITED: '操作频繁', CHALLENGE_EXPIRED: '验证已过期', VERIFICATION_FAILED: '验证未通过', PARENT_REQUIRED: '待家长验证', PARENT_SETUP_REQUIRED: '家长验证未设置', PARENT_ALREADY_CONFIGURED: '家长验证已设置', GRANT_EXPIRED: '验证已过期', GRANT_INVALID: '验证已失效', ACTION_ID_REUSED: '操作已提交', BODY_TOO_LARGE: '内容超出限制', SAVE_FAILED: '保存失败', INTERNAL_ERROR: '服务暂不可用', ASSISTANT_UNAVAILABLE: '指令服务不可用' };
+     if (result && codes[result.code]) return codes[result.code];
+     var text = typeof result === 'string' ? result : result && (result.error || result.message) || '', match;
+     if (/^(?:一次说一件事就好|请输入不超过)[\s\S]*1200\s*字/.test(text)) return '指令 · 1–1200字';
+@@ -117,7 +128,7 @@
+       [/场景.*未解锁/, '场景未解锁'], [/申请.*已|已经确认的兑换/, '申请已处理'], [/申请.*不存在/, '申请不存在'], [/礼品.*不存在|奖励.*不存在/, '礼品不存在'], [/奖励已停用/, '礼品已停用'],
+       [/加分项.*不存在|常用项.*不存在/, '常用项不存在'], [/加分项已停用/, '常用项已停用'], [/已有常用项不能/, '常用项已选定'], [/新常用项标识/, '常用项已更新'], [/道具不存在/, '道具不存在'],
+       [/事项不存在|已删除事项/, '提醒不存在'], [/已完成事项/, '提醒已完成'], [/过去日期/, '日期早于今天'], [/近期待办只能/, '日期范围 · 今天至后天'], [/加分时间只能/, '记录时间 · 今天至此刻'],
+-      [/本机.*PIN|浏览器.*PIN/, '本机PIN不可用'], [/PIN|家长密码/, 'PIN格式无效'], [/头像|图片/, '头像无效'], [/日期/, '日期无效'], [/时间/, '时间无效'], [/数量/, '数量 · 1–10件'],
++      [/本机.*PIN|浏览器.*PIN/, '本机PIN不可用'], [/PIN.*一致/, 'PIN不一致'], [/PIN|家长密码/, 'PIN格式无效'], [/头像|图片/, '头像无效'], [/日期/, '日期无效'], [/时间/, '时间无效'], [/数量/, '数量 · 1–10件'],
+       [/指令|助手|模型/, '指令服务不可用'], [/不支持的操作|未识别此操作/, '操作不支持']
+     ];
+     for (var i = 0; i < rules.length; i++) if (rules[i][0].test(text)) return rules[i][1];
+@@ -138,14 +149,70 @@
+   function isPublic(action) { return ['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene'].indexOf(action.type) >= 0; }
+   function conflict(tx, result) {
+     if (result.state) setSnapshot(result);
+-    tx.grant = null; tx.uncertain = false; tx.revision = revision; retryTx = tx;
++    if (ui.auth && ui.auth.tx === tx) ui.auth.autoPin = null;
++    clearParentSecrets(tx);
++    tx.grant = null; tx.uncertain = false; tx.revision = revision; retryTx = tx.action.type === 'parent.configure' ? null : tx;
+     ui.auth = null;
+     if (ui.form) ui.form.openedRevision = revision;
+     render(false);
+     showError(tx.action.type === 'pet.care' ? '资源已更新' : '记录已更新 · 待确认');
+   }
++  function clearParentSecrets(tx) { if (!tx) return; if (tx.action && (tx.action.type === 'parent.setup' || tx.action.type === 'parent.configure')) { delete tx.action.pin; delete tx.action.confirmPin; tx.signature = ''; } }
++  function cancelSetup() {
++    var tx = setupTx; if (!tx) return;
++    tx.cancelled = true; if (tx.auth) tx.auth.autoPin = null; clearParentSecrets(tx); setupTx = null;
++    if (retryTx && tx.auth && retryTx === tx.auth.tx) { retryTx.grant = null; retryTx = null; }
++  }
++  function failSetup(tx, message) {
++    clearParentSecrets(tx); if (setupTx === tx) setupTx = null; pending = false;
++    if (tx.auth && ui.auth === tx.auth) { tx.auth.autoPin = null; tx.auth.tx.grant = null; if (retryTx === tx.auth.tx) retryTx = null; ui.auth = null; }
++    if (ui.form) { ui.form.openedRevision = revision; if (ui.form.kind === 'parentConfig' && message === '家长验证已设置') ui.form.setupConflict = true; }
++    render(false); if (!tx.cancelled) showError(message);
++  }
++  function finishSetup(tx) {
++    var pin = tx.action.pin, auth = tx.auth;
++    clearParentSecrets(tx); if (setupTx === tx) setupTx = null; pending = false;
++    if (tx.cancelled) { render(false); return; }
++    if (auth && ui.auth === auth && ui.form === tx.form) {
++      if (revision !== tx.revision + 1) { auth.autoPin = null; auth.tx.grant = null; if (retryTx === auth.tx) retryTx = null; ui.auth = null; if (ui.form) ui.form.openedRevision = revision; render(false); showError('PIN已设置 · 记录已更新'); return; }
++      auth.tx.revision = tx.revision + 1; auth.tx.uncertain = false; auth.tx.grant = null; auth.tx.previousGrowth = M.growth(state); auth.tx.previousPetStatus = playStatus();
++      if (ui.form) ui.form.openedRevision = revision;
++      auth.autoPin = pin; auth.phase = 'loading'; auth.busy = false; issueChallenge(auth); return;
++    }
++    if (!auth && ui.form === tx.form) { ui.form = ui.stack.pop() || null; if (ui.form) ui.form.openedRevision = revision; }
++    render(false); toast('家长验证已设置');
++  }
++  function submitSetup(tx) {
++    if (pending || tx.cancelled || setupTx !== tx) return;
++    pending = true; tx.busy = true; if (tx.auth && ui.auth === tx.auth) tx.auth.phase = 'setup-saving'; render(false);
++    if (local) {
++      if (tx.revision !== revision) { failSetup(tx, '记录已更新 · 待确认'); return; }
++      saveLocalParent(tx.action.method, tx.action.pin, function (err) {
++        pending = false; tx.busy = false;
++        if (err) { failSetup(tx, errorText(err)); return; }
++        state = clone(state); state.appliedActions.push(tx.action.id); revision++; parentRevision = revision; persist(); finishSetup(tx);
++      }, true); return;
++    }
++    request('POST', '/api/action', { revision: tx.revision, action: tx.action }, function (status, result) {
++      pending = false; tx.busy = false;
++      if (result.state) setSnapshot(result);
++      if (tx.cancelled) { clearParentSecrets(tx); render(false); if (!status) sync(); return; }
++      if (status === 200 && result.state) { finishSetup(tx); return; }
++      if (status === 0) { tx.uncertain = true; connected = false; if (tx.auth && ui.auth === tx.auth) tx.auth.phase = 'setup-retry'; render(false); showError('设置结果待确认'); sync(); return; }
++      failSetup(tx, status === 409 ? result.code === 'PARENT_ALREADY_CONFIGURED' ? '家长验证已设置' : '记录已更新 · 待确认' : errorText(result));
++    });
++  }
++  function startSetup(action, auth) {
++    if (pending) return;
++    if (setupTx && setupTx.uncertain && setupTx.form === ui.form) { submitSetup(setupTx); return; }
++    if (!local && !connected) { showError('未连接'); return; }
++    if (action.method === 'pin' && (!/^\d{6}$/.test(action.pin || '') || action.pin !== action.confirmPin)) { showError(action.pin !== action.confirmPin ? 'PIN不一致' : 'PIN格式无效'); return; }
++    action.id = uid(); setupTx = { action: action, revision: auth ? auth.tx.revision : revision, form: ui.form, auth: auth || null, busy: false, uncertain: false, cancelled: false }; submitSetup(setupTx);
++  }
+   function beginAction(action, message) {
+     if (pending) return;
++    if (action.type === 'parent.setup') { startSetup(action, null); return; }
++    if (action.type === 'parent.configure' && meta.parent.configured === false) { if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); return; }
+     if (!local && !connected) { showError('未连接 · 草稿已保留'); return; }
+     rememberDraft();
+     if (ui.form && ui.form.openedRevision !== revision) {
+@@ -160,24 +227,34 @@
+     if (tx.uncertain && tx.grant) { submitTransaction(tx); return; }
+     if (isPublic(tx.action)) { submitTransaction(tx); return; }
+     rememberSheetFocus();
+-    ui.auth = { tx: tx, phase: 'loading', busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null };
+-    render(false); issueChallenge(ui.auth);
++    ui.auth = { tx: tx, phase: meta.parent.configured === false ? 'setup' : 'loading', busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
++    render(false); if (ui.auth.phase !== 'setup') issueChallenge(ui.auth);
+   }
+   function issueChallenge(auth) {
+     if (auth !== ui.auth) return;
+     auth.phase = 'loading'; auth.busy = true; auth.tx.grant = null; render(false);
++    function ready() {
++      auth.busy = false; auth.phase = 'verify';
++      if (auth.method === 'pin' && auth.autoPin) { verifyParentAnswer(auth, auth.autoPin, true); return; }
++      auth.autoPin = null; render(false);
++    }
+     if (local) {
+-      auth.busy = false;
+-      if (!privateConfig) { auth.phase = 'setup'; render(false); return; }
+-      auth.method = privateConfig.method; auth.phase = 'verify'; auth.expiresAt = Date.now() + 120000;
++      privateConfig = readStore(PRIVATE, privateConfig); loadMeta();
++      if (!privateConfig) { auth.busy = false; auth.phase = 'setup'; render(false); return; }
++      auth.method = privateConfig.method; auth.expiresAt = Date.now() + 120000;
+       if (auth.method === 'math') { var a = 12 + Math.floor(Math.random() * 18), b = 3 + Math.floor(Math.random() * 7); auth.question = a + ' × ' + b + ' = ?'; auth.localAnswer = String(a * b); }
+-      render(false); return;
++      ready(); return;
+     }
+     request('POST', '/api/parent/challenge', { revision: auth.tx.revision, action: auth.tx.action }, function (status, result) {
+       if (ui.auth !== auth) return;
+       auth.busy = false;
+-      if (status === 200 && result.challengeId) { auth.challengeId = result.challengeId; auth.method = result.method; auth.question = result.question || ''; auth.expiresAt = result.expiresAt; auth.phase = 'verify'; render(false); }
+-      else if (status === 409) conflict(auth.tx, result);
++      if (status === 200 && result.challengeId) { auth.challengeId = result.challengeId; auth.method = result.method; auth.question = result.question || ''; auth.expiresAt = result.expiresAt; ready(); }
++      else if (result.code === 'PARENT_SETUP_REQUIRED') {
++        acceptParent(result.parent || { configured: false, method: null }, typeof result.revision === 'number' ? result.revision : auth.tx.revision);
++        auth.autoPin = null;
++        if (auth.tx.action.type === 'parent.configure') { clearParentSecrets(auth.tx); retryTx = null; ui.auth = null; if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); }
++        else { auth.phase = 'setup'; render(false); }
++      } else if (status === 409) conflict(auth.tx, result);
+       else { auth.phase = 'challenge-error'; render(false); showError(errorText(result)); }
+     });
+   }
+@@ -186,15 +263,19 @@
+     if (!window.crypto || !window.crypto.subtle || !window.TextEncoder) { done(new Error('本机PIN不可用')); return; }
+     window.crypto.subtle.digest('SHA-256', new TextEncoder().encode(salt + ':' + pin)).then(function (buf) { var out = Array.prototype.map.call(new Uint8Array(buf), function (v) { return ('0' + v.toString(16)).slice(-2); }).join(''); done(null, out); }, function () { done(new Error('本机PIN保存失败')); });
+   }
+-  function saveLocalParent(method, pin, done) {
+-    if (method === 'math') { privateConfig = { method: 'math', attempts: 0, blockedUntil: 0 }; saveStore(PRIVATE, privateConfig); meta.parent.method = method; done(); return; }
++  function saveLocalParent(method, pin, done, setupOnly) {
++    function store(config) {
++      if (setupOnly && readStore(PRIVATE, null)) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); done({ code: 'PARENT_ALREADY_CONFIGURED' }); return; }
++      if (!saveStore(PRIVATE, config)) { done(new Error('本机存储不可用')); return; }
++      privateConfig = config; loadMeta(); done();
++    }
++    if (setupOnly && readStore(PRIVATE, null)) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); done({ code: 'PARENT_ALREADY_CONFIGURED' }); return; }
++    if (method === 'math') { store({ configured: true, method: 'math', attempts: 0, blockedUntil: 0 }); return; }
+     var salt;
+     try { salt = randomSalt(); } catch (e) { done(new Error('本机PIN不可用')); return; }
+     digestPin(pin, salt, function (err, digest) {
+       if (err) { done(err); return; }
+-      privateConfig = { method: 'pin', salt: salt, digest: digest, attempts: 0, blockedUntil: 0 };
+-      if (!saveStore(PRIVATE, privateConfig)) { privateConfig = null; done(new Error('本机存储不可用')); return; }
+-      meta.parent.method = 'pin'; done();
++      store({ configured: true, method: 'pin', salt: salt, digest: digest, attempts: 0, blockedUntil: 0 });
+     });
+   }
+   function verifyLocal(auth, answer) {
+@@ -203,36 +284,36 @@
+     function checked(ok) {
+       if (ui.auth !== auth) return;
+       auth.busy = false;
+-      if (!ok) { privateConfig.attempts = (privateConfig.attempts || 0) + 1; if (privateConfig.attempts >= 5) { privateConfig.blockedUntil = Date.now() + 60000; privateConfig.attempts = 0; } saveStore(PRIVATE, privateConfig); render(false); showError('验证未通过'); return; }
+-      privateConfig.attempts = 0; privateConfig.blockedUntil = 0; saveStore(PRIVATE, privateConfig);
++      if (!ok) { auth.autoPin = null; auth.phase = 'verify'; privateConfig.attempts = (privateConfig.attempts || 0) + 1; if (privateConfig.attempts >= 5) { privateConfig.blockedUntil = Date.now() + 60000; privateConfig.attempts = 0; } saveStore(PRIVATE, privateConfig); render(false); showError('验证未通过'); return; }
++      auth.autoPin = null; privateConfig.attempts = 0; privateConfig.blockedUntil = 0; saveStore(PRIVATE, privateConfig);
+       auth.tx.grant = { id: uid(), expiresAt: Date.now() + 60000, signature: auth.tx.signature }; submitTransaction(auth.tx);
+     }
+     if (auth.method === 'math') checked(answer.trim() === auth.localAnswer);
+     else digestPin(answer, privateConfig.salt, function (err, digest) { checked(!err && digest === privateConfig.digest); });
+   }
++  function verifyParentAnswer(auth, answer, automatic) {
++    if (ui.auth !== auth) return;
++    auth.busy = true; if (automatic) auth.phase = 'verifying'; render(false);
++    if (local) { verifyLocal(auth, answer); return; }
++    request('POST', '/api/parent/verify', { challengeId: auth.challengeId, answer: answer }, function (status, result) {
++      if (ui.auth !== auth) return; auth.busy = false;
++      if (status === 200 && result.grant) { auth.autoPin = null; auth.tx.grant = result.grant; submitTransaction(auth.tx); }
++      else if (status === 409) conflict(auth.tx, result);
++      else { if (status !== 0) auth.autoPin = null; auth.phase = status === 0 || status === 410 ? 'challenge-error' : 'verify'; render(false); showError(errorText(result)); }
++    });
++  }
+   function submitParent(form) {
+     var auth = ui.auth; if (!auth || auth.busy || pending) return;
++    if (auth.phase === 'setup-retry') { if (setupTx && setupTx.auth === auth) submitSetup(setupTx); return; }
+     if (auth.phase === 'retry') { submitTransaction(auth.tx); return; }
+     if (auth.phase === 'challenge-error') { issueChallenge(auth); return; }
+     if (auth.phase === 'setup') {
+       var pin = form.elements.setupPin.value, again = form.elements.setupConfirm.value;
+-      if (!/^\d{6}$/.test(pin) || pin !== again) { showError('PIN格式无效或不一致'); return; }
+-      auth.busy = true;
+-      saveLocalParent('pin', pin, function (err) {
+-        if (ui.auth !== auth) return; auth.busy = false;
+-        if (err) { showError(errorText(err)); return; }
+-        auth.tx.grant = { id: uid(), expiresAt: Date.now() + 60000, signature: auth.tx.signature }; submitTransaction(auth.tx);
+-      }); return;
++      startSetup({ type: 'parent.setup', method: 'pin', pin: pin, confirmPin: again }, auth); return;
+     }
+     var answer = form.elements.answer ? form.elements.answer.value : '';
+     if (!answer.trim()) { showError('验证答案 · 必填'); return; }
+-    auth.busy = true;
+-    if (local) { verifyLocal(auth, answer); return; }
+-    request('POST', '/api/parent/verify', { challengeId: auth.challengeId, answer: answer }, function (status, result) {
+-      if (ui.auth !== auth) return; auth.busy = false;
+-      if (status === 200 && result.grant) { auth.tx.grant = result.grant; submitTransaction(auth.tx); }
+-      else { if (status === 410) auth.phase = 'challenge-error'; render(false); showError(errorText(result)); }
+-    });
++    verifyParentAnswer(auth, answer, false);
+   }
+   function submitTransaction(tx) {
+     if (pending) return;
+@@ -286,14 +367,14 @@
+     if (tx.action.type === 'pet.care') reactPet(ui.petReaction, message);
+     if (tx.action.type === 'points.add' || tx.action.type === 'pet.care' || tx.action.type === 'pet.scene') { var hero = document.querySelector('.companion-scene'); if (hero) hero.focus(); }
+     if (tx.action.type === 'redemption.approve') play('redeem');
+-    if (tx.action.type === 'parent.configure') loadMeta();
++    if (tx.action.type === 'parent.configure') { clearParentSecrets(tx); loadMeta(); }
+   }
+   function draftKey(f) { return f.kind + ':' + (f.kind === 'points' || f.kind === 'petBuy' ? f.data.itemId || 'new' : f.data.id || f.data.rewardId || f.data.requestId || 'new'); }
+   function fields(formId) { var form = document.getElementById(formId || 'editor-form'), out = {}; if (!form) return out; Array.prototype.forEach.call(form.elements, function (e) { if (e.name && !e.disabled && e.type !== 'file') out[e.name] = e.type === 'checkbox' ? e.checked : e.value; }); return out; }
+   function rememberDraft() {
+     if (!ui.form || ui.auth) return;
+     var values = fields(), f = ui.form;
+-    Object.keys(values).forEach(function (key) { f.data[key] = values[key]; });
++    Object.keys(values).forEach(function (key) { if (['pin', 'confirmPin', 'setupPin', 'setupConfirm', 'answer'].indexOf(key) < 0) f.data[key] = values[key]; });
+     if (['points', 'petBuy', 'task', 'reward', 'pointItem', 'voice'].indexOf(f.kind) >= 0) { drafts[draftKey(f)] = clone(f.data); saveStore(DRAFT, drafts); }
+   }
+   function focusKey(element) { if (!element || !element.getAttribute) return null; return { tag: element.tagName, type: element.type || '', id: element.id || '', name: element.name || '', action: element.getAttribute('data-action') || '', dataId: element.getAttribute('data-id') || '' }; }
+@@ -309,16 +390,19 @@
+     rememberSheetFocus(); if (!ui.form) ui.homeFocus = focusKey(document.activeElement); rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
+     if (ui.form && !replace) ui.stack.push(ui.form);
+     var f = { kind: kind, data: clone(data || {}), openedRevision: revision };
++    if (kind === 'parentConfig') f.parentConfigured = meta.parent.configured;
+     if (restore && drafts[draftKey(f)]) f.data = clone(drafts[draftKey(f)]);
+     if (kind === 'task' && !f.data.id && f.data.date < today()) f.data.date = today();
+     if (kind === 'points' && (!f.data.recordTime || f.data.recordDate !== today())) { f.data.recordTime = clock(); f.data.recordDate = today(); }
+     ui.form = f; ui.auth = null; render(false);
+   }
+   function closeForm() {
+-    if (pending) return;
+-    if (ui.auth) { ui.auth.tx.grant = null; ui.auth = null; render(false); return; }
++    if (pending && !setupTx) return;
++    if (setupTx) cancelSetup();
++    if (ui.auth) { ui.auth.autoPin = null; ui.auth.tx.grant = null; clearParentSecrets(ui.auth.tx); if (retryTx && retryTx.action.type === 'parent.configure') retryTx = null; ui.auth = null; render(false); return; }
+     rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
+     var closed = ui.form, parent = ui.stack.pop() || null;
++    if (closed && closed.kind === 'parentConfig' && retryTx && retryTx.form === closed) { clearParentSecrets(retryTx); retryTx = null; }
+     if (closed && parent && closed.kind === 'behaviorPicker' && parent.kind === 'points') parent.pickerState = { query: closed.data.query || '', page: closed.data.page || 0 };
+     if (closed && parent && closed.kind === 'points' && parent.kind === 'behaviorPicker' && closed.pickerState) { parent.data.query = closed.pickerState.query || ''; parent.data.page = closed.pickerState.page || 0; }
+     ui.form = parent; render(false);
+@@ -507,7 +591,7 @@
+   function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row', id); }
+   function preferencesBody() {
+     var speech = !!(window.SpeechRecognition || window.webkitSpeechRecognition), wake = navigator.wakeLock && navigator.wakeLock.request;
+-    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', local && !privateConfig ? 'PIN · 未设置' : meta.parent && meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + button('export', icon('archive') + '导出家庭记录', 'btn outline full') + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
++    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + button('export', icon('archive') + '导出家庭记录', 'btn outline full') + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
+   }
+   function listManagement(kind) {
+     var isReward = kind === 'reward-list', rows = isReward ? state.rewards : state.pointItems;
+@@ -710,8 +794,14 @@
+       title = '家庭设置'; submit = '保存设置';
+       body = field('孩子名字', 'childName', d.childName || state.childName, 'required maxlength="40"') + field('月底兑换天数', 'monthEndDays', d.monthEndDays || state.settings.monthEndDays, 'required min="1" max="31" step="1" inputmode="numeric"', 'number');
+     } else if (f.kind === 'parentConfig') {
+-      title = '家长验证设置'; submit = '确认修改';
+-      body = select('验证方式', 'method', d.method || (meta.parent && meta.parent.method) || 'pin', [['pin', '6位 PIN'], ['math', '算术题']]) + field('新 PIN（6位数字）', 'pin', '', 'inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (d.method === 'math' ? ' disabled' : ''), 'password');
++      var initial = f.parentConfigured === false, parentSetup = setupTx && setupTx.form === f && !setupTx.auth ? setupTx : null, method = d.method || meta.parent.method || 'pin';
++      title = initial ? '设置家长验证' : '修改家长验证'; sub = local ? '本机' : '共享'; submit = initial ? '保存设置' : '保存修改';
++      if (f.parentConfigured == null) { body = '<p class="status-line">家长验证 · 待确认</p>'; submit = ''; }
++      else if (f.setupConflict) { body = '<p class="status-line">家长验证已设置</p>'; submit = ''; }
++      else if (parentSetup && parentSetup.uncertain) { body = facts([['验证方式', parentSetup.action.method === 'math' ? '算术题' : 'PIN']]) + '<p class="status-line">设置结果待确认</p>'; submit = '重试设置'; }
++      else {
++        body = (!initial ? facts([['当前方式', meta.parent.method === 'math' ? '算术题' : 'PIN']]) : '') + select('验证方式', 'method', method, [['pin', '6位 PIN'], ['math', '算术题']]) + field(initial ? '设置PIN' : '新PIN', 'pin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ') + field(initial ? '确认PIN' : '确认新PIN', 'confirmPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ');
++      }
+     } else if (f.kind === 'voice') {
+       title = '指令'; sub = meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示'; submit = ui.assistantBusy ? '整理中' : '发送';
+       body = '<div class="voice-box">' + button('listen', icon('mic') + (recognition ? '停止听写' : '听写'), 'btn voice-start') + '<p id="voice-status">' + (recognition ? '听写中' : '') + '</p></div>' + area('指令内容', 'speech', d.speech || '', 'required maxlength="1000"') + (d.answer ? '<div class="assistant-answer" role="status">' + esc(d.answer) + '</div>' : '');
+@@ -735,15 +825,17 @@
+     return facts(rows, 'authorization-values');
+   }
+   function parentContent() {
+-    var a = ui.auth, body = '<div class="authorization-summary">' + actionSummary(a.tx.action) + '</div>', submit = '验证并完成';
+-    if (a.phase === 'setup') { body += field('新 PIN（6位数字）', 'setupPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password') + field('确认 PIN', 'setupConfirm', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password'); submit = '设置并完成'; }
+-    else if (a.phase === 'verify') { body += (a.method === 'math' ? '<p class="math-question">' + esc(a.question) + '</p>' : '') + field(a.method === 'math' ? '答案' : '家长 PIN', 'answer', '', 'required inputmode="numeric" autocomplete="off"' + (a.method === 'pin' ? ' maxlength="6"' : ''), a.method === 'pin' ? 'password' : 'text'); }
++    var a = ui.auth, setup = a.phase === 'setup' || a.phase === 'setup-saving' || a.phase === 'setup-retry', body = '<div class="authorization-summary">' + actionSummary(a.tx.action) + '</div>', submit = '验证并完成';
++    if (a.phase === 'setup') { body += field('设置PIN', 'setupPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password') + field('确认PIN', 'setupConfirm', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password'); submit = '设置并完成'; }
++    else if (a.phase === 'verify') { body += (a.method === 'math' ? '<p class="math-question">' + esc(a.question) + '</p>' : '') + field(a.method === 'math' ? '答案' : a.tx.action.type === 'parent.configure' ? '当前PIN' : '家长PIN', 'answer', '', 'required inputmode="numeric" autocomplete="off"' + (a.method === 'pin' ? ' minlength="6" maxlength="12" pattern="[0-9]{6,12}"' : ''), a.method === 'pin' ? 'password' : 'text'); }
+     else if (a.phase === 'loading') submit = '准备中';
+-    else if (a.phase === 'saving') submit = '保存中';
++    else if (a.phase === 'verifying') submit = '验证中';
++    else if (a.phase === 'saving' || a.phase === 'setup-saving') submit = '保存中';
++    else if (a.phase === 'setup-retry') { body += '<p class="status-line">设置结果待确认</p>'; submit = '重试设置'; }
+     else if (a.phase === 'retry') { body += '<p class="status-line">结果待确认</p>'; submit = '重试保存'; }
+     else submit = '重新验证';
+     body += '<p id="parent-error" class="form-error" role="alert" hidden></p>';
+-    return sheet(a.phase === 'setup' ? '设置家长 PIN' : '家长验证', local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit" class="btn primary"' + (a.busy || pending ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
++    return sheet(setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证', local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit" class="btn primary"' + (a.busy || pending ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
+   }
+   function sheet(title, sub, content, auth) {
+     return '<div class="sheet-overlay"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div>' + button(auth ? 'parent-cancel' : 'form-close', icon('close'), 'icon-button', '', auth ? '取消验证' : '关闭面板') + '</header>' + content + '</section></div>';
+@@ -774,7 +866,7 @@
+     if (f.kind === 'profile') return { type: 'profile.update', childName: (v.childName || '').trim(), childAvatar: f.data.childAvatar || '' };
+     if (f.kind === 'petConfig') return { type: 'pet.configure', kind: f.data.kind, name: (v.petName || '').trim() };
+     if (f.kind === 'familySettings') return { type: 'settings.update', childName: v.childName.trim(), settings: { monthEndDays: Number(v.monthEndDays), preferredReward: state.settings.preferredReward } };
+-    if (f.kind === 'parentConfig') { if (v.method === 'pin' && !/^\d{6}$/.test(v.pin)) throw new Error('PIN格式无效'); return { type: 'parent.configure', method: v.method, pin: v.method === 'pin' ? v.pin : undefined }; }
++    if (f.kind === 'parentConfig') { if (f.parentConfigured == null || f.setupConflict) throw new Error('家长验证待确认'); if (v.method === 'pin' && !/^\d{6}$/.test(v.pin || '')) throw new Error('PIN格式无效'); if (v.method === 'pin' && v.pin !== v.confirmPin) throw new Error('PIN不一致'); var config = { type: f.parentConfigured ? 'parent.configure' : 'parent.setup', method: v.method }; if (v.method === 'pin') { config.pin = v.pin; config.confirmPin = v.confirmPin; } return config; }
+     throw new Error('未识别此操作');
+   }
+   function interpret() {
+@@ -836,8 +928,8 @@
+   function exportData() { var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = '家庭积分提醒-' + today() + '.json'; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); toast('记录已导出'); }
+   function onAction(action, id, element) {
+     if (action === 'pet-touch' && !ui.auth) { touchPet(); return; }
++    if (action === 'form-close' || action === 'parent-cancel') { closeForm(); return; }
+     if (pending) return;
+-    if (action === 'form-close' || action === 'parent-cancel') { closeForm(); return; }
+     if (ui.auth) return;
+     var item, task, copy;
+     if (action === 'nav') { rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
+@@ -904,11 +996,12 @@
+   document.addEventListener('click', function (event) { var el = event.target; while (el && el !== document) { if (el.getAttribute && el.getAttribute('data-action')) { event.preventDefault(); onAction(el.getAttribute('data-action'), el.getAttribute('data-id'), el); return; } el = el.parentNode; } });
+   function draftInput(event) { if (event.target.id === 'behavior-search' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.query === event.target.value) return; ui.form.data.query = event.target.value; ui.form.data.page = 0; updatePicker(); return; } if (event.target.form && event.target.form.id === 'editor-form' && ui.form) { if (event.target.name !== 'aiText' && event.target.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1; rememberDraft(); if (ui.form.kind === 'points') refreshTemplatePreview(); if (ui.form.kind === 'petBuy') refreshPetPurchase(); } }
+   document.addEventListener('input', draftInput);
+-  document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { var pin = document.querySelector('[name="pin"]'); if (pin) pin.disabled = event.target.value === 'math'; } });
++  document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); } });
+   document.addEventListener('submit', function (event) {
+     if (event.target.id === 'parent-form') { event.preventDefault(); submitParent(event.target); return; }
+     if (event.target.id !== 'editor-form') return; event.preventDefault(); if (pending || (ui.form && ui.form.kind === 'voice' && ui.assistantBusy)) return;
+     rememberDraft();
++    if (setupTx && setupTx.uncertain && setupTx.form === ui.form && !setupTx.auth) { submitSetup(setupTx); return; }
+     if (ui.form.kind === 'profile' && ui.form.avatarBusy) { showError('照片处理中'); return; }
+     if (ui.form.kind === 'point-list') { contextualInterpret('pointItems'); return; }
+     if (!event.target.checkValidity()) { var bad = event.target.querySelector(':invalid'); if (bad) bad.focus(); showError(fieldError(bad)); return; }
+@@ -926,7 +1019,7 @@
+     if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();
+   }
+   window.addEventListener('resize', fitViewport); if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
+-  window.addEventListener('storage', function (event) { if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (!ui.auth && (!ui.form || ui.form.kind === 'petHub')) render(false); } } });
++  window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (!ui.auth && (!ui.form || ui.form.kind === 'petHub')) render(false); } } });
+   if (!M) { document.getElementById('app').innerHTML = '<p class="loading-screen">数据模块未加载</p>'; return; }
+   state = readStore(KEY, null); if (!state || state.version !== 1 || !state.tasks) state = M.createSeed(new Date());
+   state = M.normalize(state);
+@@ -935,5 +1028,5 @@
+   persist(); loadMeta(); render(false); sync();
+   var lastDay = today();
+   setInterval(function () { sync(); renderReminder(); if (lastDay !== today()) { lastDay = today(); if (!ui.auth && (!ui.form || (local && ui.form.kind === 'petHub'))) render(false); } }, 5000);
+-  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { return { view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeWide() ? 4 : 2).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches }; } };
++  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { return { view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeWide() ? 4 : 2).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches }; } };
+ }());
+--- v0.7/server.cjs
++++ v0.8/server.cjs
+@@ -43,45 +43,58 @@
+ }
+ 
+ function pinValue(pin) {
+-  if (typeof pin !== 'string' || !/^\d{6,12}$/.test(pin)) { throw new Error('家长密码须为6至12位数字'); }
++  if (typeof pin !== 'string' || pin.length < 6 || pin.length > 12 || /\D/.test(pin)) { throw new Error('家长密码须为6至12位数字'); }
+   return pin;
+ }
+ function pinHash(pin, salt) { return crypto.scryptSync(pin, salt, 32).toString('hex'); }
+ function newParent(pin) {
+   const salt = crypto.randomBytes(16).toString('hex');
+-  return { method: 'pin', salt, hash: pinHash(pinValue(pin), salt) };
++  return { configured: true, method: 'pin', salt, hash: pinHash(pinValue(pin), salt) };
+ }
+ function validParent(parent) {
+-  if (!parent || !['pin', 'math'].includes(parent.method) || typeof parent.salt !== 'string' ||
+-      typeof parent.hash !== 'string' || !/^[a-f0-9]{32}$/.test(parent.salt) ||
+-      !/^[a-f0-9]{64}$/.test(parent.hash)) { throw new Error('家长核验配置无效'); }
++  if (!parent || typeof parent !== 'object' || Array.isArray(parent) ||
++      Object.keys(parent).some(key => !['configured', 'method', 'salt', 'hash'].includes(key)) ||
++      typeof parent.configured !== 'boolean') { throw new Error('家长核验配置无效'); }
++  if (!parent.configured) {
++    if (parent.method !== null || own(parent, 'salt') || own(parent, 'hash')) { throw new Error('家长核验配置无效'); }
++    return;
++  }
++  if (!['pin', 'math'].includes(parent.method)) { throw new Error('家长核验配置无效'); }
++  const hasCredentials = own(parent, 'salt') || own(parent, 'hash');
++  if ((parent.method === 'pin' || hasCredentials) &&
++      (typeof parent.salt !== 'string' || typeof parent.hash !== 'string' ||
++       !/^[a-f0-9]{32}$/.test(parent.salt) || !/^[a-f0-9]{64}$/.test(parent.hash))) {
++    throw new Error('家长核验配置无效');
++  }
+ }
+ function loadState(dataFile, now, initialPin) {
+   const exists = fs.existsSync(dataFile);
+   let saved;
+-  let generatedPin;
+   try {
+     saved = exists ? JSON.parse(fs.readFileSync(dataFile, 'utf8')) : { revision: 1, state: FamilyModel.createSeed(now()) };
+     if (!saved || !Number.isSafeInteger(saved.revision) || saved.revision < 1) { throw new Error('版本号无效'); }
+     const state = FamilyModel.normalize(saved.state);
+-    if (saved.parent === undefined) {
++    let parent = saved.parent;
++    if (parent === undefined) {
+       if (saved.receipts !== undefined) { throw new Error('家长核验配置缺失'); }
+-      const pin = initialPin === undefined ? String(crypto.randomInt(100000, 1000000)) : initialPin;
+-      saved.parent = newParent(pin);
+-      if (initialPin === undefined) { generatedPin = pin; }
+-    }
+-    validParent(saved.parent);
++      parent = initialPin === undefined ? { configured: false, method: null } : newParent(initialPin);
++    } else if (parent && typeof parent === 'object' && !Array.isArray(parent) && !own(parent, 'configured')) {
++      // Legacy files always carried credentials, even when the selected method
++      // was arithmetic. Their absence must not become a public setup/reset path.
++      if (!own(parent, 'salt') || !own(parent, 'hash')) { throw new Error('家长核验配置缺失'); }
++      parent = Object.assign({}, parent, { configured: true });
++    }
++    validParent(parent);
+     const receipts = saved.receipts === undefined ? {} : saved.receipts;
+     if (!receipts || typeof receipts !== 'object' || Array.isArray(receipts)) { throw new Error('动作凭据格式无效'); }
+     for (const [id, receipt] of Object.entries(receipts)) {
+       if (!ACTION_ID.test(id) || !state.appliedActions.includes(id) || !receipt ||
+           !['sha256', 'scrypt'].includes(receipt.algorithm) || typeof receipt.digest !== 'string' || !/^[a-f0-9]{64}$/.test(receipt.digest) ||
+           (receipt.algorithm === 'scrypt' && (typeof receipt.salt !== 'string' || !/^[a-f0-9]{32}$/.test(receipt.salt)))) { throw new Error('动作凭据无效'); }
+-    }
+-    const envelope = { revision: saved.revision, state, parent: saved.parent, receipts };
++      if (!parent.configured && receipt.algorithm === 'scrypt') { throw new Error('已有家长配置记录不能标记为未设置'); }
++    }
++    const envelope = { revision: saved.revision, state, parent, receipts };
+     if (!exists || JSON.stringify(saved) !== JSON.stringify(envelope)) { atomicWrite(dataFile, envelope); }
+-    // The bootstrap credential is emitted only after its hash is durably committed.
+-    if (generatedPin) { console.log('首次家长密码：' + generatedPin + '。请家长妥善保存，并在设置中修改。'); }
+     return envelope;
+   } catch (error) {
+     throw new Error('无法读取持久数据，已保留原文件：' + error.message);
+@@ -98,7 +111,7 @@
+ function makeReceipt(action) {
+   // A configuration action can contain a PIN. A fast unsalted digest of that
+   // payload would undermine the slow, salted PIN hash in the same private file.
+-  if (action.type === 'parent.configure') {
++  if (action.type === 'parent.configure' || action.type === 'parent.setup') {
+     const salt = crypto.randomBytes(16).toString('hex');
+     return { algorithm: 'scrypt', salt, digest: pinHash(canonical(action), salt) };
+   }
+@@ -136,7 +149,8 @@
+   const grants = new Map();
+   const rates = new Map();
+   let assistantInFlight = 0;
+-  const snapshot = () => ({ revision: current.revision, state: current.state, familyDay: FamilyModel.dateKey(now()) });
++  const publicParent = () => ({ configured: current.parent.configured, method: current.parent.method });
++  const snapshot = () => ({ revision: current.revision, state: current.state, familyDay: FamilyModel.dateKey(now()), parent: publicParent() });
+   const clock = () => new Date(now()).getTime();
+   function respond(response, status, value, extraHeaders) {
+     response.writeHead(status, Object.assign({
+@@ -241,7 +255,33 @@
+   }
+   function configValues(action) {
+     if (!['pin', 'math'].includes(action.method)) { throw new Error('家长核验方式无效'); }
++    if (action.type === 'parent.setup') {
++      if (Object.keys(action).some(key => !['id', 'type', 'method', 'pin', 'confirmPin'].includes(key))) {
++        throw new Error('首次设置包含无效字段');
++      }
++      if (action.method === 'pin') {
++        if (typeof action.pin !== 'string' || action.pin.length !== 6 || /\D/.test(action.pin)) { throw new Error('PIN须为6位数字'); }
++        if (action.confirmPin !== action.pin) { throw new Error('PIN确认不一致'); }
++      } else if (own(action, 'pin') || own(action, 'confirmPin')) { throw new Error('算术方式无需PIN'); }
++      return;
++    }
+     if (own(action, 'pin')) { pinValue(action.pin); }
++    if (own(action, 'confirmPin') && (!own(action, 'pin') || action.confirmPin !== action.pin)) {
++      throw new Error('PIN确认不一致');
++    }
++    if (action.method === 'pin' && !own(action, 'pin') && !current.parent.hash) {
++      throw new Error('请设置新PIN');
++    }
++  }
++  function setupRequired(response) {
++    return reject(response, 403, 'PARENT_SETUP_REQUIRED', '请先设置家长验证', { revision: current.revision, parent: publicParent() });
++  }
++  function conflict(response, action) {
++    const latest = snapshot();
++    if (action.type === 'parent.setup' && current.parent.configured) {
++      return reject(response, 409, 'PARENT_ALREADY_CONFIGURED', '家长验证已设置', latest);
++    }
++    return respond(response, 409, latest);
+   }
+   function replay(payload, response) {
+     if (!current.state.appliedActions.includes(payload.action.id)) { return false; }
+@@ -255,7 +295,9 @@
+   }
+   function challengeRequest(request, response, payload) {
+     if (!limit(request, response, 'challenge', 20) || !failuresAllowed(response) || !command(payload, response)) { return; }
+-    if (payload.revision !== current.revision) { return respond(response, 409, snapshot()); }
++    if (payload.revision !== current.revision) { return conflict(response, payload.action); }
++    if (!current.parent.configured) { return setupRequired(response); }
++    if (payload.action.type === 'parent.setup') { return conflict(response, payload.action); }
+     if (PUBLIC_ACTIONS.has(payload.action.type)) { return reject(response, 400, 'VALIDATION_ERROR', '此日常操作无需家长验证'); }
+     if (current.state.appliedActions.includes(payload.action.id)) {
+       return reject(response, 400, 'ACTION_ID_REUSED', '此操作已提交，请使用相同内容直接重试');
+@@ -309,8 +351,11 @@
+   }
+   function actionRequest(request, response, payload) {
+     if (!limit(request, response, 'action', 60) || !command(payload, response) || replay(payload, response)) { return; }
+-    if (payload.revision !== current.revision) { return respond(response, 409, snapshot()); }
+-    if (!PUBLIC_ACTIONS.has(payload.action.type)) {
++    if (payload.revision !== current.revision) { return conflict(response, payload.action); }
++    const settingUp = payload.action.type === 'parent.setup';
++    if (settingUp && current.parent.configured) { return conflict(response, payload.action); }
++    if (!settingUp && !PUBLIC_ACTIONS.has(payload.action.type)) {
++      if (!current.parent.configured) { return setupRequired(response); }
+       if (!payload.grant) { return reject(response, 403, 'PARENT_REQUIRED', '此操作需要家长验证'); }
+       const grant = typeof payload.grant === 'string' && grants.get(payload.grant);
+       if (grant && grant.expiresAt <= clock()) {
+@@ -322,9 +367,10 @@
+     }
+     let state, parent = current.parent;
+     try {
+-      if (payload.action.type === 'parent.configure') {
++      if (settingUp || payload.action.type === 'parent.configure') {
+         configValues(payload.action);
+-        parent = own(payload.action, 'pin') ? newParent(payload.action.pin) : Object.assign({}, current.parent);
++        parent = own(payload.action, 'pin') ? newParent(payload.action.pin) :
++          settingUp ? { configured: true, method: 'math' } : Object.assign({}, current.parent);
+         parent.method = payload.action.method;
+         state = FamilyModel.normalize(current.state);
+         state.appliedActions.push(payload.action.id);
+@@ -407,7 +453,7 @@
+         const status = assistant.status();
+         if (!status || !['local', 'connected'].includes(status.mode) || typeof status.label !== 'string') { throw new Error('invalid status'); }
+         const sampledNow = new Date(now());
+-        return respond(response, 200, { parent: { method: current.parent.method }, assistant: { mode: status.mode, label: status.label }, now: sampledNow.toISOString(), familyDay: FamilyModel.dateKey(sampledNow) });
++        return respond(response, 200, { revision: current.revision, parent: publicParent(), assistant: { mode: status.mode, label: status.label }, now: sampledNow.toISOString(), familyDay: FamilyModel.dateKey(sampledNow) });
+       } catch (_) { return reject(response, 503, 'ASSISTANT_UNAVAILABLE', '助手暂不可用'); }
+     }
+     const handlers = { '/api/action': actionRequest, '/api/parent/challenge': challengeRequest,

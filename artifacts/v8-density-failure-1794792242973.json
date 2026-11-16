@@ -1,0 +1,38 @@
+{
+  "scope": "Only behavior-picker density and affected interactions; no replay of the prior 79 checks.",
+  "mode": "--after",
+  "startedAt": "2026-11-16T01:24:00.988Z",
+  "cases": [
+    {
+      "name": "Frozen source/export and identical seven-item before fixture",
+      "result": "failed",
+      "error": "AssertionError [ERR_ASSERTION]: Export is stale: app.js\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:113:139\n    at check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:100:27)\n    at after (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:110:9)\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:168:56"
+    }
+  ],
+  "screens": [],
+  "images": {},
+  "errors": [],
+  "posts": [],
+  "fixtures": [],
+  "sources": {
+    "app.js": "842c1da8b90184f243e963dff1e94eb90e5ba18fc9b2395b6048a70184256cd9",
+    "styles.css": "a430c70c15288cecec6ebfa2f23228a682bb795902ebf47f8c77410183dca3c0",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+    "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235"
+  },
+  "exportHash": "7b0183a22b20c4821edc0f92ae8cb0c68bb16f8270105a8d4440cad3338f2dbd",
+  "harnessHash": "5269a7ae78a91589ad8f1e2d36e49d045ffe1a19469cb28d0f9003a9a833b7dd",
+  "baseline": {
+    "hash": "4053fbb2d189a973876edaf3dc68a509d177c316b4eb66e007e2ef9b2056b137",
+    "fixtureHash": "817051ea9654406eff80e870151f0b4b055012f9561238d8a38fd072c99e79b6"
+  },
+  "failure": "AssertionError [ERR_ASSERTION]: Export is stale: app.js\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:113:139\n    at check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:100:27)\n    at after (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:110:9)\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v8-density.cjs:168:56",
+  "finishedAt": "2026-11-16T01:24:02.971Z",
+  "passed": 0,
+  "failed": 1
+}

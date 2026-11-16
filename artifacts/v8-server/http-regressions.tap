@@ -1,0 +1,358 @@
+TAP version 13
+# Subtest: initial state and metadata expose only public fields, while one private envelope persists hashes
+ok 1 - initial state and metadata expose only public fields, while one private envelope persists hashes
+  ---
+  duration_ms: 331.8337
+  type: 'test'
+  ...
+# Subtest: every non-public action fails without a real grant and cannot change the file
+ok 2 - every non-public action fails without a real grant and cannot change the file
+  ---
+  duration_ms: 196.6573
+  type: 'test'
+  ...
+# Subtest: the eight public actions work before parent setup without a grant and never award or spend points
+ok 3 - the eight public actions work before parent setup without a grant and never award or spend points
+  ---
+  duration_ms: 182.7454
+  type: 'test'
+  ...
+# Subtest: verified actions increment revision durably and are visible to another reader
+ok 4 - verified actions increment revision durably and are visible to another reader
+  ---
+  duration_ms: 187.6792
+  type: 'test'
+  ...
+# Subtest: lost-response retries accept only the identical complete action, independent of key order or stale revision
+ok 5 - lost-response retries accept only the identical complete action, independent of key order or stale revision
+  ---
+  duration_ms: 168.2698
+  type: 'test'
+  ...
+# Subtest: a grant is bound to the full action including id, amount, reason, optional fields and revision
+ok 6 - a grant is bound to the full action including id, amount, reason, optional fields and revision
+  ---
+  duration_ms: 202.113
+  type: 'test'
+  ...
+# Subtest: a successful verification cannot be replayed and its grant cannot authorize a second action
+ok 7 - a successful verification cannot be replayed and its grant cannot authorize a second action
+  ---
+  duration_ms: 180.9884
+  type: 'test'
+  ...
+# Subtest: expired challenges and grants fail without writing, using the injectable clock
+ok 8 - expired challenges and grants fail without writing, using the injectable clock
+  ---
+  duration_ms: 197.0657
+  type: 'test'
+  ...
+# Subtest: wrong-answer limits survive fresh challenges and forged forwarding headers
+ok 9 - wrong-answer limits survive fresh challenges and forged forwarding headers
+  ---
+  duration_ms: 359.8889
+  type: 'test'
+  ...
+# Subtest: challenge creation is bounded even before verification
+ok 10 - challenge creation is bounded even before verification
+  ---
+  duration_ms: 129.7535
+  type: 'test'
+  ...
+# Subtest: parent configuration changes require the old method and persist no plaintext PIN or fast PIN receipt
+ok 11 - parent configuration changes require the old method and persist no plaintext PIN or fast PIN receipt
+  ---
+  duration_ms: 363.7367
+  type: 'test'
+  ...
+# Subtest: math challenges use the saved method, reveal no answer and can authorize a method change only once
+ok 12 - math challenges use the saved method, reveal no answer and can authorize a method change only once
+  ---
+  duration_ms: 271.1012
+  type: 'test'
+  ...
+# Subtest: stale challenges and grants require a fresh confirmation after another device writes
+ok 13 - stale challenges and grants require a fresh confirmation after another device writes
+  ---
+  duration_ms: 224.7618
+  type: 'test'
+  ...
+# Subtest: simultaneous authorized redemptions cannot overspend or reuse the losing grant at a new revision
+ok 14 - simultaneous authorized redemptions cannot overspend or reuse the losing grant at a new revision
+  ---
+  duration_ms: 279.7651
+  type: 'test'
+  ...
+# Subtest: the real request-to-approval API writes one redemption under concurrent parent confirmations
+ok 15 - the real request-to-approval API writes one redemption under concurrent parent confirmations
+  ---
+  duration_ms: 306.3322
+  type: 'test'
+  ...
+# Subtest: restart retains exact-payload idempotency but never revives ephemeral grants
+ok 16 - restart retains exact-payload idempotency but never revives ephemeral grants
+  ---
+  duration_ms: 279.8717
+  type: 'test'
+  ...
+# Subtest: old v1 files migrate without reseeding and unprovable legacy action IDs cannot be reused
+ok 17 - old v1 files migrate without reseeding and unprovable legacy action IDs cannot be reused
+  ---
+  duration_ms: 171.9319
+  type: 'test'
+  ...
+# Subtest: write failure keeps the old ledger, credential and grant so the exact action can retry atomically
+ok 18 - write failure keeps the old ledger, credential and grant so the exact action can retry atomically
+  ---
+  duration_ms: 244.7311
+  type: 'test'
+  ...
+# Subtest: invalid sensitive drafts are rejected before challenge issuance without changing disk
+ok 19 - invalid sensitive drafts are rejected before challenge issuance without changing disk
+  ---
+  duration_ms: 102.0493
+  type: 'test'
+  ...
+# Subtest: corrupt state, credentials and receipts fail closed and preserve the original file
+ok 20 - corrupt state, credentials and receipts fail closed and preserve the original file
+  ---
+  duration_ms: 157.3953
+  type: 'test'
+  ...
+# Subtest: same-origin enforcement covers action, challenge, verify and assistant, including CORS preflight
+ok 21 - same-origin enforcement covers action, challenge, verify and assistant, including CORS preflight
+  ---
+  duration_ms: 155.2534
+  type: 'test'
+  ...
+# Subtest: explicit publicOrigin supports a trusted HTTPS reverse proxy origin
+ok 22 - explicit publicOrigin supports a trusted HTTPS reverse proxy origin
+  ---
+  duration_ms: 187.4559
+  type: 'test'
+  ...
+# Subtest: all POST JSON bodies preserve syntax, content-type and streaming-size bounds
+ok 23 - all POST JSON bodies preserve syntax, content-type and streaming-size bounds
+  ---
+  duration_ms: 132.3032
+  type: 'test'
+  ...
+# Subtest: static allowlist includes assistant and pet assets and denies private files and traversal
+ok 24 - static allowlist includes assistant and pet assets and denies private files and traversal
+  ---
+  duration_ms: 263.2956
+  type: 'test'
+  ...
+# Subtest: assistant gets only a copied public state and can neither write a ledger nor create a grant
+ok 25 - assistant gets only a copied public state and can neither write a ledger nor create a grant
+  ---
+  duration_ms: 117.662
+  type: 'test'
+  ...
+# Subtest: assistant failures disclose no provider credentials and leave the manual path usable
+ok 26 - assistant failures disclose no provider credentials and leave the manual path usable
+  ---
+  duration_ms: 159.6342
+  type: 'test'
+  ...
+# Subtest: assistant input and per-address minute budget are enforced without consulting the service
+ok 27 - assistant input and per-address minute budget are enforced without consulting the service
+  ---
+  duration_ms: 94.0554
+  type: 'test'
+  ...
+# Subtest: assistant has a family-wide concurrency ceiling of two and frees slots after completion
+ok 28 - assistant has a family-wide concurrency ceiling of two and frees slots after completion
+  ---
+  duration_ms: 73.1326
+  type: 'test'
+  ...
+# Subtest: redemption conditions are rechecked at commit if the date changes after parent verification
+ok 29 - redemption conditions are rechecked at commit if the date changes after parent verification
+  ---
+  duration_ms: 108.4459
+  type: 'test'
+  ...
+# Subtest: a failed points commit does not consume its grant and a successful retry awards exactly once
+ok 30 - a failed points commit does not consume its grant and a successful retry awards exactly once
+  ---
+  duration_ms: 138.6416
+  type: 'test'
+  ...
+# Subtest: a fresh family stays explicitly unconfigured without generating or logging a bootstrap PIN
+ok 31 - a fresh family stays explicitly unconfigured without generating or logging a bootstrap PIN
+  ---
+  duration_ms: 35.395
+  type: 'test'
+  ...
+# Subtest: v3 migration adds only profile defaults while preserving the real name, requests, ledger, PIN and receipts
+ok 32 - v3 migration adds only profile defaults while preserving the real name, requests, ledger, PIN and receipts
+  ---
+  duration_ms: 288.3572
+  type: 'test'
+  ...
+# Subtest: profile photos require a payload-bound parent grant and survive restart until explicitly removed
+ok 33 - profile photos require a payload-bound parent grant and survive restart until explicitly removed
+  ---
+  duration_ms: 168.0595
+  type: 'test'
+  ...
+# Subtest: public pet configuration cannot alter a ledger, child profile, growth or verification settings
+ok 34 - public pet configuration cannot alter a ledger, child profile, growth or verification settings
+  ---
+  duration_ms: 91.8797
+  type: 'test'
+  ...
+# Subtest: the 256 KiB default accepts a large valid PNG avatar but still rejects oversized photos and requests
+ok 35 - the 256 KiB default accepts a large valid PNG avatar but still rejects oversized photos and requests
+  ---
+  duration_ms: 180.6521
+  type: 'test'
+  ...
+# Subtest: avatar validation rejects unsafe formats or invalid markers before issuing a parent challenge
+ok 36 - avatar validation rejects unsafe formats or invalid markers before issuing a parent challenge
+  ---
+  duration_ms: 108.5105
+  type: 'test'
+  ...
+# Subtest: assistant context and target are validated and forwarded without the saved photo or private state
+ok 37 - assistant context and target are validated and forwarded without the saved photo or private state
+  ---
+  duration_ms: 163.8985
+  type: 'test'
+  ...
+# Subtest: v5 migration adds empty pet ledgers without changing the profile, PIN, receipts or original history
+ok 38 - v5 migration adds empty pet ledgers without changing the profile, PIN, receipts or original history
+  ---
+  duration_ms: 184.7825
+  type: 'test'
+  ...
+# Subtest: pet purchases are parent-protected, bind the whole price and survive restart and exact retries
+ok 39 - pet purchases are parent-protected, bind the whole price and survive restart and exact retries
+  ---
+  duration_ms: 152.886
+  type: 'test'
+  ...
+# Subtest: two devices cannot double-use the last free care and only the server family day restores it
+ok 40 - two devices cannot double-use the last free care and only the server family day restores it
+  ---
+  duration_ms: 229.43
+  type: 'test'
+  ...
+# Subtest: competing inventory uses cannot overspend or silently switch to the still-available free quota
+ok 41 - competing inventory uses cannot overspend or silently switch to the still-available free quota
+  ---
+  duration_ms: 148.8948
+  type: 'test'
+  ...
+# Subtest: simultaneous protected purchases share the exact gift balance and reject a fresh overdraft
+ok 42 - simultaneous protected purchases share the exact gift balance and reject a fresh overdraft
+  ---
+  duration_ms: 227.5601
+  type: 'test'
+  ...
+# Subtest: buying inventory invalidates a pending gift grant and fresh approval rechecks the shared balance
+ok 43 - buying inventory invalidates a pending gift grant and fresh approval rechecks the shared balance
+  ---
+  duration_ms: 192.0013
+  type: 'test'
+  ...
+# Subtest: invalid purchase prices, quantities, locked scenes and missing sources reject before writing
+ok 44 - invalid purchase prices, quantities, locked scenes and missing sources reject before writing
+  ---
+  duration_ms: 78.5064
+  type: 'test'
+  ...
+# Subtest: one parent authorization creates the custom credit and template atomically even under concurrent retries
+ok 45 - one parent authorization creates the custom credit and template atomically even under concurrent retries
+  ---
+  duration_ms: 312.1294
+  type: 'test'
+  ...
+# Subtest: a failed atomic-template file commit retains both old collections and its grant for one successful retry
+ok 46 - a failed atomic-template file commit retains both old collections and its grant for one successful retry
+  ---
+  duration_ms: 227.0495
+  type: 'test'
+  ...
+# Subtest: a stale template grant cannot leave a half-template after another device performs care
+ok 47 - a stale template grant cannot leave a half-template after another device performs care
+  ---
+  duration_ms: 372.3085
+  type: 'test'
+  ...
+# Subtest: v8 unconfigured sensitive writes and challenges require setup without accepting caller authority
+ok 48 - v8 unconfigured sensitive writes and challenges require setup without accepting caller authority
+  ---
+  duration_ms: 176.1152
+  type: 'test'
+  ...
+# Subtest: v8 first PIN setup writes only configuration and a salted receipt, then ordinary authorization works after restart
+ok 49 - v8 first PIN setup writes only configuration and a salted receipt, then ordinary authorization works after restart
+  ---
+  duration_ms: 497.4232
+  type: 'test'
+  ...
+# Subtest: v8 invalid first setup drafts never write credentials, action IDs or receipts
+ok 50 - v8 invalid first setup drafts never write credentials, action IDs or receipts
+  ---
+  duration_ms: 273.622
+  type: 'test'
+  ...
+# Subtest: v8 two different first setups race atomically and configured state cannot be overwritten by setup
+ok 51 - v8 two different first setups race atomically and configured state cannot be overwritten by setup
+  ---
+  duration_ms: 297.7536
+  type: 'test'
+  ...
+# Subtest: v8 concurrent identical setup retries commit once and reject changed PIN or confirmation under the same ID
+ok 52 - v8 concurrent identical setup retries commit once and reject changed PIN or confirmation under the same ID
+  ---
+  duration_ms: 299.9266
+  type: 'test'
+  ...
+# Subtest: v8 public progress can stale setup without closing it and the retry preserves that progress
+ok 53 - v8 public progress can stale setup without closing it and the retry preserves that progress
+  ---
+  duration_ms: 161.9541
+  type: 'test'
+  ...
+# Subtest: v8 first setup write failure retains unset state and permits the identical atomic retry
+ok 54 - v8 first setup write failure retains unset state and permits the identical atomic retry
+  ---
+  duration_ms: 316.065
+  type: 'test'
+  ...
+# Subtest: v8 arithmetic can be the first method without a hidden PIN and a later PIN needs current arithmetic authorization
+ok 55 - v8 arithmetic can be the first method without a hidden PIN and a later PIN needs current arithmetic authorization
+  ---
+  duration_ms: 208.6563
+  type: 'test'
+  ...
+# Subtest: v8 changing a self-set PIN validates confirmation and still requires the currently configured PIN
+ok 56 - v8 changing a self-set PIN validates confirmation and still requires the currently configured PIN
+  ---
+  duration_ms: 389.2099
+  type: 'test'
+  ...
+# Subtest: v8 legacy credentials without a configured flag remain closed, retain twelve-digit PIN support and ignore replacement deployment PINs
+ok 57 - v8 legacy credentials without a configured flag remain closed, retain twelve-digit PIN support and ignore replacement deployment PINs
+  ---
+  duration_ms: 442.3728
+  type: 'test'
+  ...
+# Subtest: v8 malformed configuration states cannot reopen setup and leave their original files untouched
+ok 58 - v8 malformed configuration states cannot reopen setup and leave their original files untouched
+  ---
+  duration_ms: 670.5294
+  type: 'test'
+  ...
+1..58
+# tests 58
+# suites 0
+# pass 58
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 13185.9336

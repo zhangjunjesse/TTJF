@@ -1,0 +1,92 @@
+{
+  "version": "0.8.1",
+  "reviewer": "ux-verifier",
+  "reviewedDate": "2026-11-16",
+  "method": "Each listed image was opened with read_image and visually inspected. Layout assertions are recorded separately in v8-density-results.json.",
+  "finalImageFilesOpened": 10,
+  "finalDistinctImageHashes": 9,
+  "additionalBeforeAndDiagnosticFilesOpened": 2,
+  "totalListedFiles": 12,
+  "totalDistinctImageHashes": 11,
+  "result": "No blocking visual issue remains in the inspected final picker states.",
+  "images": [
+    {
+      "file": "artifacts/v8-density-before-735.png",
+      "sha256": "fa6c3f4d89460c875338c527c1c5704e67272fc7b2339de61e989ae656965e95",
+      "kind": "immutable-v8-before",
+      "observation": "Same seven-item fixture shows six tall cards, two columns and a second page; names and scores leave substantial vertical whitespace."
+    },
+    {
+      "file": "artifacts/v8-density-after-reported.png",
+      "sha256": "f0ebb81562bbdff117b00f868f09425cf76bfd49c05e0a27c9de9cd0e7d435eb",
+      "kind": "final",
+      "observation": "735x754: all seven items are visible in three compact columns; the long seventh title wraps without colliding with its score; no pagination; sheet fits its content."
+    },
+    {
+      "file": "artifacts/v8-density-after-ipad-portrait.png",
+      "sha256": "fd961fb443755df757edef8ba1f60b20234a35819d3ad36e296e82eb096fb849",
+      "kind": "final",
+      "observation": "768x1024: three compact columns, seven items and no pagination. The panel stays at content height rather than stretching cards into the tall viewport."
+    },
+    {
+      "file": "artifacts/v8-density-after-ipad-landscape.png",
+      "sha256": "cdd428add0407ccc8f4c025a41d03570f248df63d886eb1483cb1478b95c9733",
+      "kind": "final",
+      "observation": "1024x768: centered wider panel, readable titles, scores and reason previews; seven items fit without a footer."
+    },
+    {
+      "file": "artifacts/v8-density-after-phone.png",
+      "sha256": "5cd89b1c7a6b73feb0261a102e8e23ab428ccc69f6f2c177d01522413dd18263",
+      "kind": "final",
+      "observation": "390x844: two columns and all seven items visible. The last title wraps to two lines; score and truncated reason preview remain distinct."
+    },
+    {
+      "file": "artifacts/v8-density-after-small-phone.png",
+      "sha256": "fc0d56b4853675b497bbe0fd67b9c7bf8e445228653a84326079b3dc2e1f3196",
+      "kind": "final",
+      "observation": "320x568: four visible items and a necessary two-page footer. Search, management, page input and next button remain visible and separated."
+    },
+    {
+      "file": "artifacts/v8-density-eighty-last-page.png",
+      "sha256": "a64630379abb4bd1900c3b52269bf52040c5fdc60456966f98f326e4875cfdd2",
+      "kind": "final",
+      "observation": "735x754: final page 7/7 exposes items 73-80; long two-line titles remain distinct from scores, and the active page field is visible."
+    },
+    {
+      "file": "artifacts/v8-density-empty-search.png",
+      "sha256": "2cb73487f5103c958a01cd99f58482ddb8be0da1e3013876307fc1d09007acdb",
+      "kind": "final",
+      "observation": "No-result search retains the typed query, shows the result state beside a clear action, and hides pagination."
+    },
+    {
+      "file": "artifacts/v8-density-short-screen.png",
+      "sha256": "d0730d18e27363f58ff52bff7eb632e2080113a378c5cb960c83c953158f108b",
+      "kind": "final",
+      "observation": "735x360: three 64px-high cards and the page footer fit. Long titles wrap; reason previews are omitted in this compact short-screen mode."
+    },
+    {
+      "file": "artifacts/v8-density-short-empty.png",
+      "sha256": "b3a1e155f3837466dd98f43810c8966b0cacfa4076890cd56c9cab77188328ec",
+      "kind": "final",
+      "observation": "735x360: the no-result state and 50px clear button sit side by side, wholly above the viewport bottom. The prior clipping is resolved."
+    },
+    {
+      "file": "artifacts/v8-density-offline-after.png",
+      "sha256": "f0ebb81562bbdff117b00f868f09425cf76bfd49c05e0a27c9de9cd0e7d435eb",
+      "kind": "final",
+      "observation": "The final file-mode export produces the same seven-item picker as the isolated shared page. Image bytes match after-reported; this is one duplicate visual, not extra unique coverage."
+    },
+    {
+      "file": "artifacts/v8-density-before-fix-short-empty.png",
+      "sha256": "4b28a09cda14825515845349a36226e028448ebf51f70cd1e6de3e016c5a2664",
+      "kind": "historical-diagnostic",
+      "observation": "The superseded vertical empty state clipped the clear button below the viewport: bottom 365.5px in a 360px screen. Kept only as failure evidence."
+    }
+  ],
+  "boundaries": [
+    "Desktop Microsoft Edge with controlled viewport sizes; not physical iPad or Safari validation.",
+    "Chinese composition uses Chromium DevTools IME events plus real keyboard typing; no operating-system IME candidate UI or software keyboard was exercised.",
+    "Every visible picker control is geometrically bounded and center-hit-tested. The actual select/return/draft interaction uses item 80; the seven-item visual case does not claim seven separate form-entry clicks.",
+    "No business submission or family authorization flow was repeated. This report concerns the bounded picker change only."
+  ]
+}

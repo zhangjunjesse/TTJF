@@ -1,0 +1,12 @@
+PASS Frozen source/export and identical seven-item before fixture
+PASS reported: seven-item layout and keyboard focus
+PASS ipad-portrait: seven-item layout and keyboard focus
+PASS ipad-landscape: seven-item layout and keyboard focus
+PASS phone: seven-item layout and keyboard focus
+PASS small-phone: seven-item layout and keyboard focus
+PASS 24/80 items remain reachable with paging at normal and small sizes
+PASS Chinese IME, empty/clear, Enter and blur-then-next keep stable inputs
+PASS Selecting, returning and reselecting preserves the original form draft and focus
+PASS Orientation and short-height changes keep search focus and valid pagination
+PASS Final offline export exposes the same seven-item compact picker
+11 density checks passed; 10 screenshots; zero POST

@@ -1,0 +1,38 @@
+1. small-phone-setup, phone-setup, ipad-landscape-setup, ipad-portrait-setup
+设置家长验证 | 共享 | 验证方式 | 6位 PIN | 算术题 | 设置PIN | 确认PIN | 保存设置
+
+2. small-phone-setup-mismatch, phone-setup-mismatch, ipad-landscape-setup-mismatch, ipad-portrait-setup-mismatch
+设置家长验证 | 共享 | 验证方式 | 6位 PIN | 算术题 | 设置PIN | 确认PIN | PIN不一致 | 保存设置
+
+3. small-phone-configured, phone-configured, ipad-landscape-configured, ipad-portrait-configured, phone-late-setup-cancelled
+修改家长验证 | 共享 | 当前方式 | PIN | 验证方式 | 6位 PIN | 算术题 | 新PIN | 确认新PIN | 保存修改
+
+4. phone-current-pin
+修改家长PIN | 共享 | 验证方式 | PIN | 当前PIN | 返回修改 | 验证并完成
+
+5. phone-current-pin-error
+修改家长PIN | 共享 | 验证方式 | PIN | 当前PIN | 验证未通过 | 返回修改 | 验证并完成
+
+6. phone-math-current
+修改家长PIN | 共享 | 验证方式 | PIN | 79 + 42 = ? | 答案 | 返回修改 | 验证并完成
+
+7. phone-business-setup
+设置家长PIN | 共享 | 孩子 | 小禾 | 行为 | 自己整理书包 | 本次加分 | +7 | 原因 | 自己把书包和水杯放好 | 设置PIN | 确认PIN | 返回修改 | 设置并完成
+
+8. phone-setup-competition
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 小禾 | +6 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | 家长验证已设置 | 确认加分
+
+9. phone-setup-stale-business
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 小禾 | +6 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | 记录已更新 · 待确认 | 确认加分
+
+10. phone-setup-response-lost
+设置家长PIN | 共享 | 孩子 | 小禾 | 行为 | 响应丢失后的一次加分 | 本次加分 | +8 | 原因 | 自己把书包和水杯放好 | 设置结果待确认 | 设置结果待确认 | 返回修改 | 重试设置
+
+11. phone-setup-recovered-stale-business
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 小禾 | +8 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | PIN已设置 · 记录已更新 | 确认加分
+
+12. offline-file-settings-setup, offline-http-settings-setup
+设置家长验证 | 本机 | 验证方式 | 6位 PIN | 算术题 | 设置PIN | 确认PIN | 保存设置
+
+13. offline-file-business-setup, offline-http-business-setup
+设置家长PIN | 本机 | 孩子 | 小禾 | 行为 | 离线首次加分 | 本次加分 | +6 | 原因 | 自己把书包和水杯放好 | 设置PIN | 确认PIN | 返回修改 | 设置并完成

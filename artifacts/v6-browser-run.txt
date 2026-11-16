@@ -1,0 +1,121 @@
+PASS atomic-api: Atomic DIY save requires verification; cancelled and wrong-PIN challenges leave both ledgers unchanged
+PASS atomic-api: One verified transaction adds one linked template and one award without overwriting an existing same-name template
+PASS atomic-api: Lost-response replay is idempotent for both award and template; changing the payload under the same id is rejected
+PASS atomic-api: A version conflict creates no partial template; the same draft requires a new grant and then commits once
+PASS pet-api: Legacy state migrates without invented pet activity; the independent catalog, day, thresholds and resource projection match
+PASS pet-api: Public buying, forged client date/progress/resources, nonexistent inventory and locked scenes are rejected without fallback
+PASS pet-api: Three different free cares consume exactly three shared uses and award one daily bonus, unlocking the first scene without spending or XP
+PASS pet-api: Buying validates fixed price and quantity, adds inventory, spends only available points, and needs a fresh parent grant for the next purchase
+PASS pet-api: Only explicit inventory use consumes an item; exhausted free care never silently spends or switches source and the daily bonus never repeats
+PASS pet-api: Server-day rollover restores only free uses; permanent exploration, unlocked scene and inventory survive with no backdated client reset
+PASS pet-api: Real daily public cares reach every permanent scene threshold, with no fabricated XP or loss of already unlocked scenes
+PASS pet-api: Explicit inventory use while free uses remain consumes only inventory, and mixed-source care still earns the one daily three-kind bonus
+PASS pet-concurrency: Two devices racing the final free care yield one success and one conflict, with no duplicate exploration
+PASS pet-concurrency: An exactly affordable purchase reaches zero without reducing XP; insufficient and cancelled follow-ups never write
+PASS pet-concurrency: Two devices racing the last inventory item consume it once; retry never falls back to a different source
+PASS layout: wide: home fills the available viewport and every main action is directly hittable
+PASS layout: wide: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: desktop: home fills the available viewport and every main action is directly hittable
+PASS layout: desktop: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: ipad-landscape: home fills the available viewport and every main action is directly hittable
+PASS layout: ipad-landscape: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: ipad-portrait: home fills the available viewport and every main action is directly hittable
+PASS layout: ipad-portrait: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: short-landscape: home fills the available viewport and every main action is directly hittable
+PASS layout: short-landscape: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: phone: home fills the available viewport and every main action is directly hittable
+PASS layout: phone: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: short-phone: home fills the available viewport and every main action is directly hittable
+PASS layout: short-phone: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: small-phone: home fills the available viewport and every main action is directly hittable
+PASS layout: small-phone: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS stress: wide: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS stress: desktop: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS stress: ipad-landscape: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS stress: ipad-portrait: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS stress: short-landscape: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS stress: phone: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS stress: short-phone: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS stress: small-phone: 0/1/4/24 long-name behaviors × four reminder/request states keep all home actions visible
+PASS unified: wide: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: desktop: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: ipad-landscape: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: ipad-portrait: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: short-landscape: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: phone: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: short-phone: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: small-phone: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS picker: wide: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS picker: desktop: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS picker: ipad-landscape: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS picker: ipad-portrait: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS picker: short-landscape: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS picker: phone: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS picker: short-phone: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS picker: small-phone: Chinese search, empty/clear, paging, cancel and verified last-item award return to visible home feedback
+PASS inbox: wide: compact inbox opens real reminders and pending approval without expanding home
+PASS inbox: desktop: compact inbox opens real reminders and pending approval without expanding home
+PASS inbox: ipad-landscape: compact inbox opens real reminders and pending approval without expanding home
+PASS inbox: ipad-portrait: compact inbox opens real reminders and pending approval without expanding home
+PASS inbox: short-landscape: compact inbox opens real reminders and pending approval without expanding home
+PASS inbox: phone: compact inbox opens real reminders and pending approval without expanding home
+PASS inbox: short-phone: compact inbox opens real reminders and pending approval without expanding home
+PASS inbox: small-phone: compact inbox opens real reminders and pending approval without expanding home
+PASS ranking: ipad-landscape: independent ledger history orders by count, recency and configuration; cancel does not count and disable removes immediately
+PASS ranking: phone: independent ledger history orders by count, recency and configuration; cancel does not count and disable removes immediately
+PASS points-ai: Contextual AI fills the same editable points form without committing; every actual award is verified
+PASS template-ai: Template-management AI creates a reviewable verified template, never an accidental award
+PASS template-ai: Cancel keeps the description without a stale busy message and another management request remains usable
+PASS template-ai: Editing name, points, preset reason, disabling and enabling stays in template management with a fresh verification each time
+PASS ai-races: Typing manually during contextual AI processing is preserved when the late result arrives
+PASS ai-races: Closing an in-flight AI draft and opening profile cannot let the late response overwrite the new scene
+PASS ai-races: Assistant request failure preserves manual input and a normal verified save remains usable
+PASS pet-journey: Touch is always free; three visibly distinct care buttons disclose their free source before consumption
+PASS pet-journey: A child performs the first three daily cares, earns exactly one bonus and immediately sees the forest scene and unlock feedback
+PASS pet-journey: Empty care opens a reviewable purchase, cancellation and wrong PIN spend nothing, and a single verified purchase adds two inventory items
+PASS pet-journey: A second purchase requires a new parent confirmation; a child then uses inventory without another grant and double taps do not consume twice
+PASS pet-journey: Refresh and switching companions preserve shared resources; a manual scene stays selected during ordinary care, with greeting and collection still available at zero resources
+PASS pet-clock: A browser on yesterday’s local date uses the server family day for both display and preflight, despite exhausted yesterday care
+PASS pet-clock: A midnight poll updates familyDay and the three free uses when state and revision are unchanged; a legal free care is still accepted
+PASS pet-stale-source: A stale browser explicitly asking for the last free care receives the new snapshot and never silently consumes available inventory
+PASS pet-network: A 503 before commit leaves a visible error and no resource mutation; its busy state clears and a real retry commits once
+PASS pet-network: After a committed response is lost and an earlier snapshot arrives, the real retry keeps its original id/source and cannot consume twice
+PASS companions: plant stage 3 feed: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: plant stage 3 wash: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: plant stage 3 train: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: plant stage 3 pet: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: plant stage 1 feed: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: plant stage 4 train: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: plant stage 5 train: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: capybara stage 3 feed: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: capybara stage 3 wash: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: capybara stage 3 train: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: capybara stage 3 pet: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: capybara stage 1 feed: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: capybara stage 4 train: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS companions: capybara stage 5 train: real contact has before/early/contact/late/after images, changing body/prop motion and the exact resource effect
+PASS reaction-bounds: plant stage 5 celebrate: a real award or third care drives the largest-body effect once without clipping
+PASS reaction-bounds: plant stage 5 unlock: a real award or third care drives the largest-body effect once without clipping
+PASS reaction-bounds: capybara stage 5 celebrate: a real award or third care drives the largest-body effect once without clipping
+PASS reaction-bounds: capybara stage 5 unlock: a real award or third care drives the largest-body effect once without clipping
+PASS reduced: Reduced motion keeps static care contact/effects and authoritative resource feedback without running animation
+PASS scenes: plant: every unlocked scene can be selected through the collection and renders its actual background on the homepage
+PASS scenes: capybara: every unlocked scene can be selected through the collection and renders its actual background on the homepage
+PASS gallery: plant stage 1: real home renders the stage derived from its starting ledger
+PASS gallery: plant stage 2: real home renders the stage derived from its starting ledger
+PASS gallery: plant stage 3: real home renders the stage derived from its starting ledger
+PASS gallery: plant stage 4: real home renders the stage derived from its starting ledger
+PASS gallery: plant stage 5: real home renders the stage derived from its starting ledger
+PASS gallery: capybara stage 1: real home renders the stage derived from its starting ledger
+PASS gallery: capybara stage 2: real home renders the stage derived from its starting ledger
+PASS gallery: capybara stage 3: real home renders the stage derived from its starting ledger
+PASS gallery: capybara stage 4: real home renders the stage derived from its starting ledger
+PASS gallery: capybara stage 5: real home renders the stage derived from its starting ledger
+PASS growth-redemption: Verified awards cross all visual thresholds, then stars continue; spending from the secondary panel never reduces growth
+PASS profile: A real file chooser locally crops the tagged photo; cancel writes nothing and profile save requires PIN
+PASS profile: SVG, over-8MiB files and over-16MP photos are rejected without replacing the saved avatar
+PASS profile: The real assistant HTTP path sends no photo or original metadata to a loopback mock model; removing an avatar is also verified
+PASS offline: Final single-file export exactly embeds the current app, model, assistant, pet renderer and both stylesheets
+PASS offline: Offline file supports the real avatar chooser, local PIN setup, context filling and companion persistence without HTTP
+PASS offline-hosted: The v0.6 export remains local over a real HTTP host, with pet changes persisted and no API calls
+120 checks passed; 0 failed.

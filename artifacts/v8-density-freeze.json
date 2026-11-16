@@ -1,0 +1,55 @@
+{
+  "frozenAt": "2026-11-16T01:41:44.701Z",
+  "finalChecks": {
+    "passed": 11,
+    "failed": 0,
+    "scriptErrors": 0,
+    "browserPostRequests": 0
+  },
+  "targetedFixChecks": 2,
+  "targetedFixChecksCountedAgain": false,
+  "protectedFiles": 51,
+  "protectionScope": "The exact files listed in v8-density-before.json; not a new test count or a complete archive audit.",
+  "sources": {
+    "app.js": "d1776d77dd649e5063a368a251cc805b30d937edbdaca8422fca865093dd79e9",
+    "styles.css": "9ceca772f5712f46f6abf38d07458c32b112697938af008ad74b46cf7aad4fe8",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+    "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235"
+  },
+  "exportHash": "903566acff6da0051f74bd80935125048ba8d4277e8b0bfe6c04efa274c91d06",
+  "harnessHash": "a33f52b6aae1f5ad1d8008df4234a2bdaca0be7a8d6da631e978347fcc2468a5",
+  "baselineHash": "4053fbb2d189a973876edaf3dc68a509d177c316b4eb66e007e2ef9b2056b137",
+  "visualReview": {
+    "listedFiles": 12,
+    "distinctImageHashes": 11,
+    "finalFiles": 10,
+    "finalDistinctImageHashes": 9
+  },
+  "artifacts": {
+    "artifacts/v8-density-after-reported.png": "f0ebb81562bbdff117b00f868f09425cf76bfd49c05e0a27c9de9cd0e7d435eb",
+    "artifacts/v8-density-after-ipad-portrait.png": "fd961fb443755df757edef8ba1f60b20234a35819d3ad36e296e82eb096fb849",
+    "artifacts/v8-density-after-ipad-landscape.png": "cdd428add0407ccc8f4c025a41d03570f248df63d886eb1483cb1478b95c9733",
+    "artifacts/v8-density-after-phone.png": "5cd89b1c7a6b73feb0261a102e8e23ab428ccc69f6f2c177d01522413dd18263",
+    "artifacts/v8-density-after-small-phone.png": "fc0d56b4853675b497bbe0fd67b9c7bf8e445228653a84326079b3dc2e1f3196",
+    "artifacts/v8-density-eighty-last-page.png": "a64630379abb4bd1900c3b52269bf52040c5fdc60456966f98f326e4875cfdd2",
+    "artifacts/v8-density-empty-search.png": "2cb73487f5103c958a01cd99f58482ddb8be0da1e3013876307fc1d09007acdb",
+    "artifacts/v8-density-short-screen.png": "d0730d18e27363f58ff52bff7eb632e2080113a378c5cb960c83c953158f108b",
+    "artifacts/v8-density-short-empty.png": "b3a1e155f3837466dd98f43810c8966b0cacfa4076890cd56c9cab77188328ec",
+    "artifacts/v8-density-offline-after.png": "f0ebb81562bbdff117b00f868f09425cf76bfd49c05e0a27c9de9cd0e7d435eb",
+    "artifacts/v8-density-before-735.png": "fa6c3f4d89460c875338c527c1c5704e67272fc7b2339de61e989ae656965e95",
+    "artifacts/v8-density-before-fix-short-empty.png": "4b28a09cda14825515845349a36226e028448ebf51f70cd1e6de3e016c5a2664",
+    "artifacts/v8-density-probe-selecting-orientation-short-screen.png": "d0730d18e27363f58ff52bff7eb632e2080113a378c5cb960c83c953158f108b",
+    "artifacts/v8-density-probe-selecting-orientation-short-empty.png": "b3a1e155f3837466dd98f43810c8966b0cacfa4076890cd56c9cab77188328ec",
+    "artifacts/v8-density-before.json": "7c5b8f35a98217d22ed68b5b33e1f6513799328da69558233ace3cb2d21a2539",
+    "artifacts/v8-density-results.json": "4cbbec09a512164dbd68249175538dc46cd8749177e50aba79433d13645908b1",
+    "artifacts/v8-density-run.txt": "7ef15eca07ade97758ea346abb08c4fe055c35944a91b68e8885f3bb1394b1ba",
+    "artifacts/v8-density-visual-review.json": "cac08ce630b5ff47ea87ede1f3d9a71c497695715e0fe136d6f1a4ff4f013cf1",
+    "artifacts/v8-density-verification.md": "4afa9ccf148bd4e03b1a323c9e78347203557cb3cef43b263bb42f4e1f73f6a9",
+    "artifacts/v8-density-probe-selecting-orientation.json": "0c3e6f37f836b2359a9e5068509d0e10d1812f35632903b2dba9b3b694be01a6"
+  }
+}

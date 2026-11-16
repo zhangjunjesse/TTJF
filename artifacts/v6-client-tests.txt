@@ -1,0 +1,58 @@
+TAP version 13
+# Subtest: C1 HTTP startup and failed sync block writes while retaining a usable draft
+ok 1 - C1 HTTP startup and failed sync block writes while retaining a usable draft
+  ---
+  duration_ms: 4279.8282
+  type: 'test'
+  ...
+# Subtest: C2 file mode still permits local public actions without any network request
+ok 2 - C2 file mode still permits local public actions without any network request
+  ---
+  duration_ms: 717.6811
+  type: 'test'
+  ...
+# Subtest: C3 polling remains single-flight and releases the lock on success and timeout
+ok 3 - C3 polling remains single-flight and releases the lock on success and timeout
+  ---
+  duration_ms: 866.6445
+  type: 'test'
+  ...
+# Subtest: C4 a delayed older GET cannot roll back a successful public POST in memory/storage
+ok 4 - C4 a delayed older GET cannot roll back a successful public POST in memory/storage
+  ---
+  duration_ms: 1127.112
+  type: 'test'
+  ...
+# Subtest: C5 a synced gift-price change requires visible reconfirmation before a protected approval
+ok 5 - C5 a synced gift-price change requires visible reconfirmation before a protected approval
+  ---
+  duration_ms: 1666.6428
+  type: 'test'
+  ...
+# Subtest: C6 a committed response lost in transit is reconciled once and the next award is a new operation
+ok 6 - C6 a committed response lost in transit is reconciled once and the next award is a new operation
+  ---
+  duration_ms: 3120.323
+  type: 'test'
+  ...
+# Subtest: C8 a previously connected page visibly disconnects on failed/invalid polls and preserves drafts until recovery
+ok 7 - C8 a previously connected page visibly disconnects on failed/invalid polls and preserves drafts until recovery
+  ---
+  duration_ms: 2197.2967
+  type: 'test'
+  ...
+# Subtest: C7 an uncommitted conflict preserves the draft/id but renews revision-bound verification
+ok 8 - C7 an uncommitted conflict preserves the draft/id but renews revision-bound verification
+  ---
+  duration_ms: 1674.1348
+  type: 'test'
+  ...
+1..8
+# tests 8
+# suites 0
+# pass 8
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 19275.494

@@ -1,0 +1,114 @@
+--- v0.8/app.js
++++ v0.8.1/app.js
+@@ -501,7 +501,20 @@
+   }
+   function pickerData() {
+     var f = ui.form, query = (f.data.query || '').trim().toLowerCase(), all = rankedItems(), items = all.filter(function (p) { return !query || (p.name + ' ' + (p.reason || '')).toLowerCase().indexOf(query) >= 0; });
+-    var viewportHeight = (window.visualViewport && window.visualViewport.height) || window.innerHeight, pageSize = viewportHeight < 440 ? 2 : viewportHeight < 650 ? 4 : 6, pages = Math.max(1, Math.ceil(items.length / pageSize));
++    var viewportHeight = (window.visualViewport && window.visualViewport.height) || window.innerHeight, shortScreen = window.innerHeight <= 440;
++    var columns = window.innerWidth >= 700 ? 3 : 2, rowHeight = shortScreen ? 64 : 88, chrome = shortScreen ? 195 : 223, footerHeight = shortScreen ? 57 : 66;
++    var sheetEl = document.querySelector('.behavior-picker-sheet'), grid = sheetEl && sheetEl.querySelector('.picker-grid'), body = sheetEl && sheetEl.querySelector('.behavior-picker-body'), footer = sheetEl && sheetEl.querySelector('.picker-footer');
++    if (grid && body && footer) {
++      var gridStyle = window.getComputedStyle(grid), bodyStyle = window.getComputedStyle(body), sheetStyle = window.getComputedStyle(sheetEl), footerStyle = window.getComputedStyle(footer);
++      columns = gridStyle.gridTemplateColumns.split(' ').length;
++      rowHeight = parseFloat(gridStyle.gridAutoRows) || rowHeight;
++      chrome = grid.getBoundingClientRect().top - sheetEl.getBoundingClientRect().top + body.scrollTop + (parseFloat(bodyStyle.paddingBottom) || 0) + (parseFloat(sheetStyle.paddingBottom) || 0);
++      footerHeight = Math.max(parseFloat(footerStyle.minHeight) || 0, 48 + (parseFloat(footerStyle.paddingTop) || 0) + (parseFloat(footerStyle.paddingBottom) || 0) + 1);
++    }
++    var available = Math.min(740, viewportHeight - 12) - chrome;
++    var rows = Math.max(1, Math.floor((available + 8) / (rowHeight + 8)));
++    if (items.length > rows * columns) rows = Math.max(1, Math.floor((available - footerHeight + 8) / (rowHeight + 8)));
++    var pageSize = rows * columns, pages = Math.max(1, Math.ceil(items.length / pageSize));
+     f.data.page = Math.max(0, Math.min(pages - 1, Math.floor(Number(f.data.page) || 0)));
+     return { all: all.length, total: items.length, query: query, page: f.data.page, pages: pages, pageSize: pageSize, items: items.slice(f.data.page * pageSize, (f.data.page + 1) * pageSize) };
+   }
+@@ -511,19 +524,23 @@
+   }
+   function behaviorPickerContent() {
+     var data = pickerData();
+-    return sheet('加分', '', '<div class="behavior-picker-body">' + pointsModeTabs(false) + '<div class="picker-tools"><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div>' + button('point-list', '管理', 'text-button') + '</div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer">' + pickerFooter(data) + '</div>', false).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
++    return sheet('加分', '', '<div class="behavior-picker-body">' + pointsModeTabs(false) + '<div class="picker-tools"><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div>' + button('point-list', '管理', 'text-button') + '</div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer"' + (data.pages === 1 ? ' hidden' : '') + '>' + pickerFooter(data) + '</div>', false).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
+   }
+   function updatePicker(commitPage) {
+     if (!ui.form || ui.form.kind !== 'behaviorPicker' || ui.auth) return;
+     var data = pickerData(), results = document.getElementById('behavior-picker-results'), footer = document.getElementById('behavior-picker-footer');
++    var resultFocus = results && results.contains(document.activeElement) ? focusKey(document.activeElement) : null;
+     if (results) results.innerHTML = pickerResults(data);
+     if (footer) {
+       var previous = footer.querySelector('[data-action="picker-prev"]'), next = footer.querySelector('[data-action="picker-next"]'), page = document.getElementById('behavior-page'), total = document.getElementById('behavior-page-total'), active = document.activeElement;
++      if (data.pages === 1 && footer.contains(active)) { var search = document.getElementById('behavior-search'); if (search) search.focus(); }
++      footer.hidden = data.pages === 1;
+       if (previous) previous.disabled = data.page === 0; if (next) next.disabled = data.page + 1 >= data.pages;
+       if (page) { page.max = data.pages; if (commitPage || document.activeElement !== page) page.value = data.page + 1; }
+       if (total) total.textContent = ' / ' + data.pages + ' 页';
+-      if (page && ((active === previous && previous.disabled) || (active === next && next.disabled))) page.focus();
+-    }
++      if (data.pages > 1 && page && ((active === previous && previous.disabled) || (active === next && next.disabled))) page.focus();
++    }
++    if (resultFocus) restorePlayFocus(resultFocus);
+   }
+   function rewardsBody() {
+     var req = activeRequest(), t = M.totals(state), rewards = state.rewards.filter(function (r) { return r.enabled && (ui.filter === 'all' || ui.filter === r.category); });
+@@ -1011,7 +1028,7 @@
+   document.addEventListener('keydown', function (event) {
+     if (event.key === 'Enter' && event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { event.preventDefault(); if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; }
+     if (event.key === 'Escape' && (ui.form || ui.auth)) closeForm();
+-    if (event.key === 'Tab' && (ui.form || ui.auth)) { var sheetEl = document.querySelector('.sheet'), nodes = sheetEl ? sheetEl.querySelectorAll('button:not([disabled]),input:not([type="hidden"]),select,textarea,[tabindex="0"]') : []; if (nodes.length) { var first = nodes[0], last = nodes[nodes.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }
++    if (event.key === 'Tab' && (ui.form || ui.auth)) { var sheetEl = document.querySelector('.sheet'), nodes = sheetEl ? sheetEl.querySelectorAll('button:not([disabled]),input:not([type="hidden"]),select,textarea,[tabindex="0"]') : []; nodes = Array.prototype.filter.call(nodes, function (node) { return node.getClientRects().length > 0; }); if (nodes.length) { var first = nodes[0], last = nodes[nodes.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }
+   });
+   function fitViewport() {
+     var root = document.documentElement; if (root.style && root.style.setProperty) root.style.setProperty('--app-height', ((window.visualViewport && window.visualViewport.height) || window.innerHeight) + 'px');
+--- v0.8/styles.css
++++ v0.8.1/styles.css
+@@ -525,29 +525,32 @@
+ .inbox-task > p { margin: 4px 0 10px; color: #8b7549; font-size: 12px; }
+ .inbox-task .reminder-banner-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+ .inbox-task .reminder-banner-actions .btn { min-width: 48px; min-height: 48px; padding: 9px 4px; margin: 0; font-size: 12px; }
+-.behavior-picker-sheet { width: 100%; max-width: 800px; height: min(740px, calc(var(--app-height, 100vh) - 12px)); max-height: calc(var(--app-height, 100vh) - 12px); }
+-.behavior-picker-sheet .sheet-header { min-height: 68px; padding: 8px 16px; }
++.behavior-picker-sheet { width: 100%; max-width: 800px; height: auto; max-height: min(740px, calc(var(--app-height, 100vh) - 12px)); padding-bottom: env(safe-area-inset-bottom); }
++.behavior-picker-sheet .sheet-header { min-height: 56px; padding: 4px 16px; }
+ .behavior-picker-sheet .sheet-header h2 { font-size: 21px; }
+ .behavior-picker-sheet .sheet-header p { font-size: 11px; }
+ .behavior-picker-sheet .sheet-header > .icon-button { margin-right: 0; }
+-.behavior-picker-body { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; padding: 12px 16px; }
+-.picker-tools { display: flex; align-items: center; flex-shrink: 0; min-width: 0; height: 48px; margin-bottom: 8px; }
++.behavior-picker-body { display: flex; flex-direction: column; flex: 0 1 auto; min-width: 0; min-height: 0; padding: 10px 16px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
++.behavior-picker-body .points-mode-tabs { margin-bottom: 8px; }
++.picker-tools { display: flex; align-items: center; flex-shrink: 0; min-width: 0; height: 48px; margin-bottom: 6px; }
+ .picker-search { position: relative; flex: 1; min-width: 0; }
+ .picker-search input { display: block; width: 100%; height: 48px; padding: 10px 48px 10px 12px; border: 1px solid #d5decd; border-radius: 13px; background: #fff; font-size: 16px; -webkit-appearance: none; }
+ .picker-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
+ .picker-search .icon-button { position: absolute; right: 0; top: 0; background: transparent; }
+ .picker-search .icon { width: 17px; height: 17px; }
+ .picker-tools > .text-button { min-height: 48px; min-width: 48px; margin-left: 4px; padding: 4px 6px; font-size: 14px; }
+-.behavior-picker-results { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+-.picker-summary { flex-shrink: 0; min-height: 26px; color: #758368; font-size: 12px; line-height: 26px; }
+-.picker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); flex: 1; min-height: 0; min-width: 0; gap: 8px; }
++.behavior-picker-results { display: flex; flex-direction: column; flex: 0 0 auto; min-height: 0; }
++.picker-summary { flex-shrink: 0; min-height: 22px; color: #758368; font-size: 12px; line-height: 22px; }
++.picker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 88px; align-content: start; flex: 0 0 auto; min-height: 0; min-width: 0; gap: 8px; }
++@media (min-width: 700px) { .picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+ .picker-grid .behavior-card { padding: 10px 12px; }
+ .picker-grid .behavior-copy b { font-size: 15px; line-height: 21px; }
+-.picker-grid .behavior-copy small { display: -webkit-box; margin-top: 6px; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #7c876f; font-size: 12px; line-height: 17px; overflow-wrap: anywhere; }
+-.picker-grid .behavior-card > strong { align-self: start; font-size: 20px; }
+-.picker-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; }
+-.picker-empty p { margin-bottom: 12px; color: #7b876e; font-size: 14px; }
+-.picker-footer { display: flex; align-items: center; justify-content: space-between; min-height: 66px; padding: 8px 16px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
++.picker-grid .behavior-copy small { display: block; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #7c876f; font-size: 12px; line-height: 17px; }
++.picker-grid .behavior-card > strong { align-self: center; font-size: 20px; }
++.picker-empty { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 12px; min-width: 0; }
++.picker-empty p { margin: 0; color: #7b876e; font-size: 14px; }
++.picker-footer { display: flex; align-items: center; justify-content: space-between; min-height: 66px; padding: 8px 16px; }
++.picker-footer[hidden] { display: none; }
+ .picker-footer > .icon-button { background: #edf2e6; }
+ .picker-page-label { display: flex; align-items: center; color: #62735a; font-size: 12px; white-space: nowrap; }
+ .picker-page-label input { width: 60px; height: 48px; padding: 7px 4px; margin: 0 6px; border: 1px solid #d2ddc7; border-radius: 11px; text-align: center; font-size: 16px; }
+@@ -715,5 +718,5 @@
+ .ledger-summary b { display: block; margin-top: 6px; font-size: 23px; overflow-wrap: anywhere; }
+ .history-tabs .day-tab { flex: 1; min-width: 48px; padding: 8px 5px; font-size: 13px; }
+ @media (max-width: 359px) { .home-portrait .pet-name[data-feedback="true"] { font-size: 17px; } .pet-supply-card { grid-template-columns: 38px minmax(0, 1fr) auto; gap: 7px; padding: 10px 8px; } .pet-supply-card .pet-item-art { width: 38px; height: 38px; } }
+-@media (max-height: 440px) { .behavior-picker-sheet .sheet-header { min-height: 48px; padding: 0 12px; } .behavior-picker-body { padding: 4px 12px; } .behavior-picker-body .points-mode-tabs { margin-bottom: 4px; } .picker-tools { margin-bottom: 4px; } .picker-summary { min-height: 20px; line-height: 20px; } .picker-footer { min-height: 56px; padding: 4px 12px; } .picker-grid .behavior-copy small, .picker-grid .behavior-symbol { display: none; } }
++@media (max-height: 440px) { .behavior-picker-sheet .sheet-header { min-height: 48px; padding: 0 12px; } .behavior-picker-body { padding: 4px 12px; } .behavior-picker-body .points-mode-tabs { margin-bottom: 4px; } .picker-tools { margin-bottom: 4px; } .picker-summary { min-height: 20px; line-height: 20px; } .picker-footer { min-height: 56px; padding: 4px 12px; } .picker-grid { grid-auto-rows: 64px; } .picker-grid .behavior-copy small, .picker-grid .behavior-symbol { display: none; } }
+ @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }

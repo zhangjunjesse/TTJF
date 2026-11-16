@@ -1,0 +1,532 @@
+{
+  "scope": "Only behavior-picker density and affected interactions; no replay of the prior 79 checks.",
+  "mode": "--after",
+  "startedAt": "2026-11-16T01:30:15.820Z",
+  "cases": [
+    {
+      "name": "Selecting, returning and reselecting preserves the original form draft and focus",
+      "result": "passed",
+      "detail": {
+        "itemId": "density-80",
+        "retainedPoints": 13
+      }
+    },
+    {
+      "name": "Orientation and short-height changes keep search focus and valid pagination",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 844,
+          "height": 390,
+          "pageSize": 3,
+          "pages": 25
+        },
+        {
+          "width": 768,
+          "height": 1024,
+          "pageSize": 12,
+          "pages": 7
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "pageSize": 4,
+          "pages": 19
+        },
+        {
+          "width": 735,
+          "height": 360,
+          "pageSize": 3,
+          "pages": 25
+        }
+      ]
+    }
+  ],
+  "screens": [
+    {
+      "viewport": {
+        "width": 735,
+        "height": 360
+      },
+      "panel": {
+        "left": 0,
+        "top": 47,
+        "right": 735,
+        "bottom": 360,
+        "width": 735,
+        "height": 313
+      },
+      "grid": {
+        "left": 12,
+        "top": 235,
+        "right": 723,
+        "bottom": 299,
+        "width": 711,
+        "height": 64,
+        "scrollHeight": 64,
+        "clientHeight": 64
+      },
+      "document": {
+        "width": 735,
+        "height": 360
+      },
+      "picker": {
+        "all": 80,
+        "total": 74,
+        "query": "练习",
+        "page": 0,
+        "pages": 25,
+        "pageSize": 3,
+        "items": [
+          {
+            "id": "density-06",
+            "name": "练习跳绳",
+            "points": 4,
+            "reason": "自己完成第6项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-08",
+            "name": "练习08：独立完成并整理自己的学习用品",
+            "points": 5,
+            "reason": "自己完成第8项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-09",
+            "name": "练习09：独立完成并整理自己的学习用品",
+            "points": 8,
+            "reason": "自己完成第9项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": true,
+      "controls": [
+        {
+          "left": 675,
+          "top": 58,
+          "right": 723,
+          "bottom": 106,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 111,
+          "right": 363.5,
+          "bottom": 159,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 111,
+          "right": 723,
+          "bottom": 159,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 163,
+          "right": 671,
+          "bottom": 211,
+          "width": 659,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 623,
+          "top": 163,
+          "right": 671,
+          "bottom": 211,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 675,
+          "top": 163,
+          "right": 723,
+          "bottom": 211,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 235,
+          "right": 243.65625,
+          "bottom": 299,
+          "width": 231.65625,
+          "height": 64,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习跳绳，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 251.65625,
+          "top": 235,
+          "right": 483.328125,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习08：独立完成并整理自己的学习用品，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 491.328125,
+          "top": 235,
+          "right": 723,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习09：独立完成并整理自己的学习用品，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 308,
+          "right": 60,
+          "bottom": 356,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-prev",
+          "label": "上一页",
+          "disabled": true,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 324.34375,
+          "top": 308,
+          "right": 384.34375,
+          "bottom": 356,
+          "width": 60,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-page",
+          "action": "",
+          "label": "跳转到指定页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 675,
+          "top": 308,
+          "right": 723,
+          "bottom": 356,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-next",
+          "label": "下一页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 12,
+          "top": 235,
+          "right": 243.65625,
+          "bottom": 299,
+          "width": 231.65625,
+          "height": 64,
+          "id": "density-06",
+          "name": "练习跳绳",
+          "text": "练习跳绳\n+4"
+        },
+        {
+          "left": 251.65625,
+          "top": 235,
+          "right": 483.328125,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "id": "density-08",
+          "name": "练习08：独立完成并整理自己的学习用品",
+          "text": "练习08：独立完成并整理自己的学习用品\n+5"
+        },
+        {
+          "left": 491.328125,
+          "top": 235,
+          "right": 723,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "id": "density-09",
+          "name": "练习09：独立完成并整理自己的学习用品",
+          "text": "练习09：独立完成并整理自己的学习用品\n+8"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n搜索结果 74 项\n练习跳绳\n+4\n练习08：独立完成并整理自己的学习用品\n+5\n练习09：独立完成并整理自己的学习用品\n+8\n第\n/ 25 页",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "resize-735-360"
+    },
+    {
+      "viewport": {
+        "width": 735,
+        "height": 360
+      },
+      "panel": {
+        "left": 0,
+        "top": 104,
+        "right": 735,
+        "bottom": 360,
+        "width": 735,
+        "height": 256
+      },
+      "grid": {
+        "left": 12,
+        "top": 292,
+        "right": 723,
+        "bottom": 356,
+        "width": 711,
+        "height": 64,
+        "scrollHeight": 64,
+        "clientHeight": 64
+      },
+      "document": {
+        "width": 735,
+        "height": 360
+      },
+      "picker": {
+        "all": 80,
+        "total": 0,
+        "query": "没有对应行为xyz",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 6,
+        "items": []
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 675,
+          "top": 115,
+          "right": 723,
+          "bottom": 163,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 168,
+          "right": 363.5,
+          "bottom": 216,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 168,
+          "right": 723,
+          "bottom": 216,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 220,
+          "right": 671,
+          "bottom": 268,
+          "width": 659,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 623,
+          "top": 220,
+          "right": 671,
+          "bottom": 268,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 675,
+          "top": 220,
+          "right": 723,
+          "bottom": 268,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 354.671875,
+          "top": 299,
+          "right": 460.671875,
+          "bottom": 349,
+          "width": 106,
+          "height": 50,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [],
+      "text": "加分\n常用加分\n自己定一项\n管理\n搜索结果 0 项\n\n搜索结果 0\n\n清除搜索",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "short-empty"
+    }
+  ],
+  "images": {
+    "artifacts/v8-density-probe-selecting-orientation-short-screen.png": "d0730d18e27363f58ff52bff7eb632e2080113a378c5cb960c83c953158f108b",
+    "artifacts/v8-density-probe-selecting-orientation-short-empty.png": "b3a1e155f3837466dd98f43810c8966b0cacfa4076890cd56c9cab77188328ec"
+  },
+  "errors": [],
+  "posts": [],
+  "fixtures": [
+    {
+      "count": 7,
+      "mode": "isolated-shared",
+      "stateHash": "817051ea9654406eff80e870151f0b4b055012f9561238d8a38fd072c99e79b6"
+    },
+    {
+      "count": 80,
+      "mode": "isolated-shared",
+      "stateHash": "9d1f578530edf02d9947a8b882437174f1b53279c1366a6f9250dd24ebaaa217"
+    },
+    {
+      "count": 80,
+      "mode": "isolated-shared",
+      "stateHash": "9d1f578530edf02d9947a8b882437174f1b53279c1366a6f9250dd24ebaaa217"
+    }
+  ],
+  "sources": {
+    "app.js": "d1776d77dd649e5063a368a251cc805b30d937edbdaca8422fca865093dd79e9",
+    "styles.css": "9ceca772f5712f46f6abf38d07458c32b112697938af008ad74b46cf7aad4fe8",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+    "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235"
+  },
+  "exportHash": "903566acff6da0051f74bd80935125048ba8d4277e8b0bfe6c04efa274c91d06",
+  "harnessHash": "a33f52b6aae1f5ad1d8008df4234a2bdaca0be7a8d6da631e978347fcc2468a5",
+  "baseline": {
+    "hash": "4053fbb2d189a973876edaf3dc68a509d177c316b4eb66e007e2ef9b2056b137",
+    "fixtureHash": "817051ea9654406eff80e870151f0b4b055012f9561238d8a38fd072c99e79b6"
+  },
+  "sourceStable": true,
+  "preservedPriorV8": 51,
+  "finishedAt": "2026-11-16T01:30:22.815Z",
+  "requested": "Selecting,Orientation",
+  "passed": 2,
+  "failed": 0
+}

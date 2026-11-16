@@ -1,0 +1,26 @@
+{
+  "sourceHash": "664fb54b3e39a470a239e2a9d0e7b2def04d93a2b38ac1633887beb176d35d38",
+  "images": {
+    "artifacts/v7-phone-ai-unclear.png": "7ae944fc683ebe54c6fdc5de87b8da34ebb2af8d62c285f177d267aac3ab6e63",
+    "artifacts/v7-phone-ai-semantic-multiple-general.png": "da706f4df009dcdabfe1825d0c5f5c925f9f3f03bf691b076e7f664d940d0e89",
+    "artifacts/v7-phone-ai-semantic-target-pin.png": "662db41fcd03b1e70ea7961514950c85cb71d4f8a26a2bc116b89ffdabe3cb7f",
+    "artifacts/v7-phone-ai-semantic-service-soft.png": "a3c429c042d4910b54142034849e2feaad41f467cd513109a7e987ef896bc1bf",
+    "artifacts/v7-phone-ai-semantic-length-http.png": "f19b45397e28864ef5551a6f95503cbe4eb0210b3934bd6624d764fcb7e5f1d5",
+    "artifacts/v7-phone-ai-semantic-duplicate-reward.png": "aaa4a096cd6f2a3b8990c64584ee841dc2527db1c9bcc9ef34c7388bb6165802",
+    "artifacts/v7-offline-file-pin-setup.png": "82d793cfe4951b079af090bc6d54fd0e4d66f6773969d3e10859f33333abda1f",
+    "artifacts/v7-offline-http-math.png": "8dfc6223c886f90980b2774267f2bb6e222c0a788817027a3c9c651d36f24c13",
+    "artifacts/v7-offline-file-preferences.png": "16aafedf0c56db5d67b26f95ea218f0003d48600b726da7b421248d05852856a",
+    "artifacts/v7-offline-file-query.png": "8c4fd0179f1adb6e7f5c1c945e9220ce4184b5571c47d7d34a087ec869062b04",
+    "artifacts/v7-preview-phone-diy.png": "33de12d1a7b9a6aebcfafdd2b8dda9ae35e06c02e8fcd0dd36f1d93e9c088332",
+    "artifacts/v7-preview-phone-parent-verify.png": "7b15216f5c8133c2dee14ac490754e635652eddd199bcb0ce50f14925a16850a",
+    "artifacts/v7-preview-phone-pet-buy.png": "532869b27e8633129d0d8f8a51011542ed8a311d609df01432dd62455f25d0b7"
+  },
+  "notes": [
+    "These exact PNG bytes were opened using read_image; all final capture hashes must still match.",
+    "The unrelated greeting now shows 指令未识别; multiple commands, target mismatch and service failure retain their distinct meanings.",
+    "The three preview images use ordinary user facts, show +7 consistently, and show the purchase equation 3×2=6 and 88−6=82.",
+    "The final 75 distinct rendered text states were read in full from v7-system-copy-review.txt, lines 1–224. No unexplained change of the original known problem meaning remains in these exercised states.",
+    "Offline screens identify 本机, show matching PIN fields or an actual arithmetic question, and preserve the user reason and reward query facts.",
+    "Two same-name rewards have different prices in the controlled fixture; the final answer preserves the name and eligibility without inventing which price the name refers to."
+  ]
+}

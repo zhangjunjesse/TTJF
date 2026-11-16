@@ -1,0 +1,3493 @@
+{
+  "scope": "Only behavior-picker density and affected interactions; no replay of the prior 79 checks.",
+  "mode": "--after",
+  "startedAt": "2026-11-16T01:31:19.859Z",
+  "cases": [
+    {
+      "name": "Frozen source/export and identical seven-item before fixture",
+      "result": "passed",
+      "detail": {
+        "protectedFiles": 51
+      }
+    },
+    {
+      "name": "reported: seven-item layout and keyboard focus",
+      "result": "passed",
+      "detail": {
+        "cards": 7,
+        "pages": 1,
+        "pageSize": 15,
+        "cardHeight": [
+          88,
+          88,
+          88,
+          88,
+          88,
+          88,
+          88
+        ],
+        "panelHeight": 504
+      }
+    },
+    {
+      "name": "ipad-portrait: seven-item layout and keyboard focus",
+      "result": "passed",
+      "detail": {
+        "cards": 7,
+        "pages": 1,
+        "pageSize": 15,
+        "cardHeight": [
+          88,
+          88,
+          88,
+          88,
+          88,
+          88,
+          88
+        ],
+        "panelHeight": 504
+      }
+    },
+    {
+      "name": "ipad-landscape: seven-item layout and keyboard focus",
+      "result": "passed",
+      "detail": {
+        "cards": 7,
+        "pages": 1,
+        "pageSize": 15,
+        "cardHeight": [
+          88,
+          88,
+          88,
+          88,
+          88,
+          88,
+          88
+        ],
+        "panelHeight": 504
+      }
+    },
+    {
+      "name": "phone: seven-item layout and keyboard focus",
+      "result": "passed",
+      "detail": {
+        "cards": 7,
+        "pages": 1,
+        "pageSize": 10,
+        "cardHeight": [
+          88,
+          88,
+          88,
+          88,
+          88,
+          88,
+          88
+        ],
+        "panelHeight": 600
+      }
+    },
+    {
+      "name": "small-phone: seven-item layout and keyboard focus",
+      "result": "passed",
+      "detail": {
+        "cards": 4,
+        "pages": 2,
+        "pageSize": 4,
+        "cardHeight": [
+          88,
+          88,
+          88,
+          88
+        ],
+        "panelHeight": 474
+      }
+    },
+    {
+      "name": "24/80 items remain reachable with paging at normal and small sizes",
+      "result": "passed",
+      "detail": [
+        {
+          "count": 24,
+          "width": 735,
+          "height": 754,
+          "pages": 2,
+          "pageSize": 12,
+          "visited": 24
+        },
+        {
+          "count": 80,
+          "width": 735,
+          "height": 754,
+          "pages": 7,
+          "pageSize": 12,
+          "visited": 80
+        },
+        {
+          "count": 80,
+          "width": 320,
+          "height": 568,
+          "pages": 20,
+          "pageSize": 4,
+          "visited": 80
+        }
+      ]
+    },
+    {
+      "name": "Chinese IME, empty/clear, Enter and blur-then-next keep stable inputs",
+      "result": "passed",
+      "detail": {
+        "matched": "density-08",
+        "totalAfterClear": 80,
+        "firstNextAfterBlur": 3
+      }
+    },
+    {
+      "name": "Selecting, returning and reselecting preserves the original form draft and focus",
+      "result": "passed",
+      "detail": {
+        "itemId": "density-80",
+        "retainedPoints": 13
+      }
+    },
+    {
+      "name": "Orientation and short-height changes keep search focus and valid pagination",
+      "result": "passed",
+      "detail": [
+        {
+          "width": 844,
+          "height": 390,
+          "pageSize": 3,
+          "pages": 25
+        },
+        {
+          "width": 768,
+          "height": 1024,
+          "pageSize": 12,
+          "pages": 7
+        },
+        {
+          "width": 320,
+          "height": 568,
+          "pageSize": 4,
+          "pages": 19
+        },
+        {
+          "width": 735,
+          "height": 360,
+          "pageSize": 3,
+          "pages": 25
+        }
+      ]
+    },
+    {
+      "name": "Final offline export exposes the same seven-item compact picker",
+      "result": "passed",
+      "detail": {
+        "fixtureHash": "817051ea9654406eff80e870151f0b4b055012f9561238d8a38fd072c99e79b6",
+        "cards": 7
+      }
+    }
+  ],
+  "screens": [
+    {
+      "viewport": {
+        "width": 735,
+        "height": 754
+      },
+      "panel": {
+        "left": 0,
+        "top": 250,
+        "right": 735,
+        "bottom": 754,
+        "width": 735,
+        "height": 504
+      },
+      "grid": {
+        "left": 16,
+        "top": 464,
+        "right": 719,
+        "bottom": 744,
+        "width": 703,
+        "height": 280,
+        "scrollHeight": 280,
+        "clientHeight": 280
+      },
+      "document": {
+        "width": 735,
+        "height": 754
+      },
+      "picker": {
+        "all": 7,
+        "total": 7,
+        "query": "",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 15,
+        "items": [
+          {
+            "id": "density-01",
+            "name": "自主阅读",
+            "points": 5,
+            "reason": "自己完成第1项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-02",
+            "name": "专心完成作业",
+            "points": 8,
+            "reason": "自己完成第2项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-03",
+            "name": "主动整理",
+            "points": 5,
+            "reason": "自己完成第3项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-04",
+            "name": "关心家人",
+            "points": 3,
+            "reason": "自己完成第4项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-05",
+            "name": "按时刷牙",
+            "points": 2,
+            "reason": "自己完成第5项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-06",
+            "name": "练习跳绳",
+            "points": 4,
+            "reason": "自己完成第6项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-07",
+            "name": "准备明天要用的书包和水杯",
+            "points": 7,
+            "reason": "自己完成第7项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 671,
+          "top": 269,
+          "right": 719,
+          "bottom": 317,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 332,
+          "right": 363.5,
+          "bottom": 380,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 332,
+          "right": 719,
+          "bottom": 380,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 388,
+          "right": 667,
+          "bottom": 436,
+          "width": 651,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 619,
+          "top": 388,
+          "right": 667,
+          "bottom": 436,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 671,
+          "top": 388,
+          "right": 719,
+          "bottom": 436,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 464,
+          "right": 245,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "自主阅读，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 253,
+          "top": 464,
+          "right": 482,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "专心完成作业，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 490,
+          "top": 464,
+          "right": 719,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "主动整理，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 560,
+          "right": 245,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "关心家人，加3分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 253,
+          "top": 560,
+          "right": 482,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "按时刷牙，加2分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 490,
+          "top": 560,
+          "right": 719,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习跳绳，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 656,
+          "right": 245,
+          "bottom": 744,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "准备明天要用的书包和水杯，加7分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 16,
+          "top": 464,
+          "right": 245,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "id": "density-01",
+          "name": "自主阅读",
+          "text": "自主阅读\n自己完成第1项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 253,
+          "top": 464,
+          "right": 482,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "id": "density-02",
+          "name": "专心完成作业",
+          "text": "专心完成作业\n自己完成第2项，并把用品放回原处\n+8"
+        },
+        {
+          "left": 490,
+          "top": 464,
+          "right": 719,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "id": "density-03",
+          "name": "主动整理",
+          "text": "主动整理\n自己完成第3项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 16,
+          "top": 560,
+          "right": 245,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "id": "density-04",
+          "name": "关心家人",
+          "text": "关心家人\n自己完成第4项，并把用品放回原处\n+3"
+        },
+        {
+          "left": 253,
+          "top": 560,
+          "right": 482,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "id": "density-05",
+          "name": "按时刷牙",
+          "text": "按时刷牙\n自己完成第5项，并把用品放回原处\n+2"
+        },
+        {
+          "left": 490,
+          "top": 560,
+          "right": 719,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "id": "density-06",
+          "name": "练习跳绳",
+          "text": "练习跳绳\n自己完成第6项，并把用品放回原处\n+4"
+        },
+        {
+          "left": 16,
+          "top": 656,
+          "right": 245,
+          "bottom": 744,
+          "width": 229,
+          "height": 88,
+          "id": "density-07",
+          "name": "准备明天要用的书包和水杯",
+          "text": "准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n全部 7 项\n自主阅读\n自己完成第1项，并把用品放回原处\n+5\n专心完成作业\n自己完成第2项，并把用品放回原处\n+8\n主动整理\n自己完成第3项，并把用品放回原处\n+5\n关心家人\n自己完成第4项，并把用品放回原处\n+3\n按时刷牙\n自己完成第5项，并把用品放回原处\n+2\n练习跳绳\n自己完成第6项，并把用品放回原处\n+4\n准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "after-reported"
+    },
+    {
+      "viewport": {
+        "width": 768,
+        "height": 1024
+      },
+      "panel": {
+        "left": 0,
+        "top": 520,
+        "right": 768,
+        "bottom": 1024,
+        "width": 768,
+        "height": 504
+      },
+      "grid": {
+        "left": 16,
+        "top": 734,
+        "right": 752,
+        "bottom": 1014,
+        "width": 736,
+        "height": 280,
+        "scrollHeight": 280,
+        "clientHeight": 280
+      },
+      "document": {
+        "width": 768,
+        "height": 1024
+      },
+      "picker": {
+        "all": 7,
+        "total": 7,
+        "query": "",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 15,
+        "items": [
+          {
+            "id": "density-01",
+            "name": "自主阅读",
+            "points": 5,
+            "reason": "自己完成第1项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-02",
+            "name": "专心完成作业",
+            "points": 8,
+            "reason": "自己完成第2项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-03",
+            "name": "主动整理",
+            "points": 5,
+            "reason": "自己完成第3项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-04",
+            "name": "关心家人",
+            "points": 3,
+            "reason": "自己完成第4项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-05",
+            "name": "按时刷牙",
+            "points": 2,
+            "reason": "自己完成第5项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-06",
+            "name": "练习跳绳",
+            "points": 4,
+            "reason": "自己完成第6项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-07",
+            "name": "准备明天要用的书包和水杯",
+            "points": 7,
+            "reason": "自己完成第7项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 704,
+          "top": 539,
+          "right": 752,
+          "bottom": 587,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 602,
+          "right": 380,
+          "bottom": 650,
+          "width": 364,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 388,
+          "top": 602,
+          "right": 752,
+          "bottom": 650,
+          "width": 364,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 658,
+          "right": 700,
+          "bottom": 706,
+          "width": 684,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 652,
+          "top": 658,
+          "right": 700,
+          "bottom": 706,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 704,
+          "top": 658,
+          "right": 752,
+          "bottom": 706,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 734,
+          "right": 256,
+          "bottom": 822,
+          "width": 240,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "自主阅读，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 264,
+          "top": 734,
+          "right": 504,
+          "bottom": 822,
+          "width": 240,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "专心完成作业，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 512,
+          "top": 734,
+          "right": 752,
+          "bottom": 822,
+          "width": 240,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "主动整理，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 830,
+          "right": 256,
+          "bottom": 918,
+          "width": 240,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "关心家人，加3分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 264,
+          "top": 830,
+          "right": 504,
+          "bottom": 918,
+          "width": 240,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "按时刷牙，加2分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 512,
+          "top": 830,
+          "right": 752,
+          "bottom": 918,
+          "width": 240,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习跳绳，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 926,
+          "right": 256,
+          "bottom": 1014,
+          "width": 240,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "准备明天要用的书包和水杯，加7分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 16,
+          "top": 734,
+          "right": 256,
+          "bottom": 822,
+          "width": 240,
+          "height": 88,
+          "id": "density-01",
+          "name": "自主阅读",
+          "text": "自主阅读\n自己完成第1项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 264,
+          "top": 734,
+          "right": 504,
+          "bottom": 822,
+          "width": 240,
+          "height": 88,
+          "id": "density-02",
+          "name": "专心完成作业",
+          "text": "专心完成作业\n自己完成第2项，并把用品放回原处\n+8"
+        },
+        {
+          "left": 512,
+          "top": 734,
+          "right": 752,
+          "bottom": 822,
+          "width": 240,
+          "height": 88,
+          "id": "density-03",
+          "name": "主动整理",
+          "text": "主动整理\n自己完成第3项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 16,
+          "top": 830,
+          "right": 256,
+          "bottom": 918,
+          "width": 240,
+          "height": 88,
+          "id": "density-04",
+          "name": "关心家人",
+          "text": "关心家人\n自己完成第4项，并把用品放回原处\n+3"
+        },
+        {
+          "left": 264,
+          "top": 830,
+          "right": 504,
+          "bottom": 918,
+          "width": 240,
+          "height": 88,
+          "id": "density-05",
+          "name": "按时刷牙",
+          "text": "按时刷牙\n自己完成第5项，并把用品放回原处\n+2"
+        },
+        {
+          "left": 512,
+          "top": 830,
+          "right": 752,
+          "bottom": 918,
+          "width": 240,
+          "height": 88,
+          "id": "density-06",
+          "name": "练习跳绳",
+          "text": "练习跳绳\n自己完成第6项，并把用品放回原处\n+4"
+        },
+        {
+          "left": 16,
+          "top": 926,
+          "right": 256,
+          "bottom": 1014,
+          "width": 240,
+          "height": 88,
+          "id": "density-07",
+          "name": "准备明天要用的书包和水杯",
+          "text": "准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n全部 7 项\n自主阅读\n自己完成第1项，并把用品放回原处\n+5\n专心完成作业\n自己完成第2项，并把用品放回原处\n+8\n主动整理\n自己完成第3项，并把用品放回原处\n+5\n关心家人\n自己完成第4项，并把用品放回原处\n+3\n按时刷牙\n自己完成第5项，并把用品放回原处\n+2\n练习跳绳\n自己完成第6项，并把用品放回原处\n+4\n准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "after-ipad-portrait"
+    },
+    {
+      "viewport": {
+        "width": 1024,
+        "height": 768
+      },
+      "panel": {
+        "left": 112,
+        "top": 264,
+        "right": 912,
+        "bottom": 768,
+        "width": 800,
+        "height": 504
+      },
+      "grid": {
+        "left": 128,
+        "top": 478,
+        "right": 896,
+        "bottom": 758,
+        "width": 768,
+        "height": 280,
+        "scrollHeight": 280,
+        "clientHeight": 280
+      },
+      "document": {
+        "width": 1024,
+        "height": 768
+      },
+      "picker": {
+        "all": 7,
+        "total": 7,
+        "query": "",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 15,
+        "items": [
+          {
+            "id": "density-01",
+            "name": "自主阅读",
+            "points": 5,
+            "reason": "自己完成第1项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-02",
+            "name": "专心完成作业",
+            "points": 8,
+            "reason": "自己完成第2项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-03",
+            "name": "主动整理",
+            "points": 5,
+            "reason": "自己完成第3项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-04",
+            "name": "关心家人",
+            "points": 3,
+            "reason": "自己完成第4项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-05",
+            "name": "按时刷牙",
+            "points": 2,
+            "reason": "自己完成第5项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-06",
+            "name": "练习跳绳",
+            "points": 4,
+            "reason": "自己完成第6项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-07",
+            "name": "准备明天要用的书包和水杯",
+            "points": 7,
+            "reason": "自己完成第7项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 848,
+          "top": 283,
+          "right": 896,
+          "bottom": 331,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 128,
+          "top": 346,
+          "right": 508,
+          "bottom": 394,
+          "width": 380,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 516,
+          "top": 346,
+          "right": 896,
+          "bottom": 394,
+          "width": 380,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 128,
+          "top": 402,
+          "right": 844,
+          "bottom": 450,
+          "width": 716,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 796,
+          "top": 402,
+          "right": 844,
+          "bottom": 450,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 848,
+          "top": 402,
+          "right": 896,
+          "bottom": 450,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 128,
+          "top": 478,
+          "right": 378.65625,
+          "bottom": 566,
+          "width": 250.65625,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "自主阅读，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 386.65625,
+          "top": 478,
+          "right": 637.328125,
+          "bottom": 566,
+          "width": 250.671875,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "专心完成作业，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 645.328125,
+          "top": 478,
+          "right": 896,
+          "bottom": 566,
+          "width": 250.671875,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "主动整理，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 128,
+          "top": 574,
+          "right": 378.65625,
+          "bottom": 662,
+          "width": 250.65625,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "关心家人，加3分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 386.65625,
+          "top": 574,
+          "right": 637.328125,
+          "bottom": 662,
+          "width": 250.671875,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "按时刷牙，加2分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 645.328125,
+          "top": 574,
+          "right": 896,
+          "bottom": 662,
+          "width": 250.671875,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习跳绳，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 128,
+          "top": 670,
+          "right": 378.65625,
+          "bottom": 758,
+          "width": 250.65625,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "准备明天要用的书包和水杯，加7分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 128,
+          "top": 478,
+          "right": 378.65625,
+          "bottom": 566,
+          "width": 250.65625,
+          "height": 88,
+          "id": "density-01",
+          "name": "自主阅读",
+          "text": "自主阅读\n自己完成第1项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 386.65625,
+          "top": 478,
+          "right": 637.328125,
+          "bottom": 566,
+          "width": 250.671875,
+          "height": 88,
+          "id": "density-02",
+          "name": "专心完成作业",
+          "text": "专心完成作业\n自己完成第2项，并把用品放回原处\n+8"
+        },
+        {
+          "left": 645.328125,
+          "top": 478,
+          "right": 896,
+          "bottom": 566,
+          "width": 250.671875,
+          "height": 88,
+          "id": "density-03",
+          "name": "主动整理",
+          "text": "主动整理\n自己完成第3项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 128,
+          "top": 574,
+          "right": 378.65625,
+          "bottom": 662,
+          "width": 250.65625,
+          "height": 88,
+          "id": "density-04",
+          "name": "关心家人",
+          "text": "关心家人\n自己完成第4项，并把用品放回原处\n+3"
+        },
+        {
+          "left": 386.65625,
+          "top": 574,
+          "right": 637.328125,
+          "bottom": 662,
+          "width": 250.671875,
+          "height": 88,
+          "id": "density-05",
+          "name": "按时刷牙",
+          "text": "按时刷牙\n自己完成第5项，并把用品放回原处\n+2"
+        },
+        {
+          "left": 645.328125,
+          "top": 574,
+          "right": 896,
+          "bottom": 662,
+          "width": 250.671875,
+          "height": 88,
+          "id": "density-06",
+          "name": "练习跳绳",
+          "text": "练习跳绳\n自己完成第6项，并把用品放回原处\n+4"
+        },
+        {
+          "left": 128,
+          "top": 670,
+          "right": 378.65625,
+          "bottom": 758,
+          "width": 250.65625,
+          "height": 88,
+          "id": "density-07",
+          "name": "准备明天要用的书包和水杯",
+          "text": "准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n全部 7 项\n自主阅读\n自己完成第1项，并把用品放回原处\n+5\n专心完成作业\n自己完成第2项，并把用品放回原处\n+8\n主动整理\n自己完成第3项，并把用品放回原处\n+5\n关心家人\n自己完成第4项，并把用品放回原处\n+3\n按时刷牙\n自己完成第5项，并把用品放回原处\n+2\n练习跳绳\n自己完成第6项，并把用品放回原处\n+4\n准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "after-ipad-landscape"
+    },
+    {
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "panel": {
+        "left": 0,
+        "top": 244,
+        "right": 390,
+        "bottom": 844,
+        "width": 390,
+        "height": 600
+      },
+      "grid": {
+        "left": 16,
+        "top": 458,
+        "right": 374,
+        "bottom": 834,
+        "width": 358,
+        "height": 376,
+        "scrollHeight": 376,
+        "clientHeight": 376
+      },
+      "document": {
+        "width": 390,
+        "height": 844
+      },
+      "picker": {
+        "all": 7,
+        "total": 7,
+        "query": "",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 10,
+        "items": [
+          {
+            "id": "density-01",
+            "name": "自主阅读",
+            "points": 5,
+            "reason": "自己完成第1项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-02",
+            "name": "专心完成作业",
+            "points": 8,
+            "reason": "自己完成第2项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-03",
+            "name": "主动整理",
+            "points": 5,
+            "reason": "自己完成第3项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-04",
+            "name": "关心家人",
+            "points": 3,
+            "reason": "自己完成第4项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-05",
+            "name": "按时刷牙",
+            "points": 2,
+            "reason": "自己完成第5项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-06",
+            "name": "练习跳绳",
+            "points": 4,
+            "reason": "自己完成第6项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-07",
+            "name": "准备明天要用的书包和水杯",
+            "points": 7,
+            "reason": "自己完成第7项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 326,
+          "top": 263,
+          "right": 374,
+          "bottom": 311,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 326,
+          "right": 191,
+          "bottom": 374,
+          "width": 175,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 199,
+          "top": 326,
+          "right": 374,
+          "bottom": 374,
+          "width": 175,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 382,
+          "right": 322,
+          "bottom": 430,
+          "width": 306,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 274,
+          "top": 382,
+          "right": 322,
+          "bottom": 430,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 326,
+          "top": 382,
+          "right": 374,
+          "bottom": 430,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 458,
+          "right": 191,
+          "bottom": 546,
+          "width": 175,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "自主阅读，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 199,
+          "top": 458,
+          "right": 374,
+          "bottom": 546,
+          "width": 175,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "专心完成作业，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 554,
+          "right": 191,
+          "bottom": 642,
+          "width": 175,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "主动整理，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 199,
+          "top": 554,
+          "right": 374,
+          "bottom": 642,
+          "width": 175,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "关心家人，加3分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 650,
+          "right": 191,
+          "bottom": 738,
+          "width": 175,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "按时刷牙，加2分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 199,
+          "top": 650,
+          "right": 374,
+          "bottom": 738,
+          "width": 175,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习跳绳，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 746,
+          "right": 191,
+          "bottom": 834,
+          "width": 175,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "准备明天要用的书包和水杯，加7分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 16,
+          "top": 458,
+          "right": 191,
+          "bottom": 546,
+          "width": 175,
+          "height": 88,
+          "id": "density-01",
+          "name": "自主阅读",
+          "text": "自主阅读\n自己完成第1项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 199,
+          "top": 458,
+          "right": 374,
+          "bottom": 546,
+          "width": 175,
+          "height": 88,
+          "id": "density-02",
+          "name": "专心完成作业",
+          "text": "专心完成作业\n自己完成第2项，并把用品放回原处\n+8"
+        },
+        {
+          "left": 16,
+          "top": 554,
+          "right": 191,
+          "bottom": 642,
+          "width": 175,
+          "height": 88,
+          "id": "density-03",
+          "name": "主动整理",
+          "text": "主动整理\n自己完成第3项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 199,
+          "top": 554,
+          "right": 374,
+          "bottom": 642,
+          "width": 175,
+          "height": 88,
+          "id": "density-04",
+          "name": "关心家人",
+          "text": "关心家人\n自己完成第4项，并把用品放回原处\n+3"
+        },
+        {
+          "left": 16,
+          "top": 650,
+          "right": 191,
+          "bottom": 738,
+          "width": 175,
+          "height": 88,
+          "id": "density-05",
+          "name": "按时刷牙",
+          "text": "按时刷牙\n自己完成第5项，并把用品放回原处\n+2"
+        },
+        {
+          "left": 199,
+          "top": 650,
+          "right": 374,
+          "bottom": 738,
+          "width": 175,
+          "height": 88,
+          "id": "density-06",
+          "name": "练习跳绳",
+          "text": "练习跳绳\n自己完成第6项，并把用品放回原处\n+4"
+        },
+        {
+          "left": 16,
+          "top": 746,
+          "right": 191,
+          "bottom": 834,
+          "width": 175,
+          "height": 88,
+          "id": "density-07",
+          "name": "准备明天要用的书包和水杯",
+          "text": "准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n全部 7 项\n自主阅读\n自己完成第1项，并把用品放回原处\n+5\n专心完成作业\n自己完成第2项，并把用品放回原处\n+8\n主动整理\n自己完成第3项，并把用品放回原处\n+5\n关心家人\n自己完成第4项，并把用品放回原处\n+3\n按时刷牙\n自己完成第5项，并把用品放回原处\n+2\n练习跳绳\n自己完成第6项，并把用品放回原处\n+4\n准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "after-phone"
+    },
+    {
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "panel": {
+        "left": 0,
+        "top": 94,
+        "right": 320,
+        "bottom": 568,
+        "width": 320,
+        "height": 474
+      },
+      "grid": {
+        "left": 12,
+        "top": 308,
+        "right": 308,
+        "bottom": 492,
+        "width": 296,
+        "height": 184,
+        "scrollHeight": 184,
+        "clientHeight": 184
+      },
+      "document": {
+        "width": 320,
+        "height": 568
+      },
+      "picker": {
+        "all": 7,
+        "total": 7,
+        "query": "",
+        "page": 0,
+        "pages": 2,
+        "pageSize": 4,
+        "items": [
+          {
+            "id": "density-01",
+            "name": "自主阅读",
+            "points": 5,
+            "reason": "自己完成第1项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-02",
+            "name": "专心完成作业",
+            "points": 8,
+            "reason": "自己完成第2项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-03",
+            "name": "主动整理",
+            "points": 5,
+            "reason": "自己完成第3项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-04",
+            "name": "关心家人",
+            "points": 3,
+            "reason": "自己完成第4项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": true,
+      "controls": [
+        {
+          "left": 256,
+          "top": 113,
+          "right": 304,
+          "bottom": 161,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 176,
+          "right": 156,
+          "bottom": 224,
+          "width": 144,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 164,
+          "top": 176,
+          "right": 308,
+          "bottom": 224,
+          "width": 144,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 232,
+          "right": 256,
+          "bottom": 280,
+          "width": 244,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 208,
+          "top": 232,
+          "right": 256,
+          "bottom": 280,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 260,
+          "top": 232,
+          "right": 308,
+          "bottom": 280,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 308,
+          "right": 156,
+          "bottom": 396,
+          "width": 144,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "自主阅读，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 164,
+          "top": 308,
+          "right": 308,
+          "bottom": 396,
+          "width": 144,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "专心完成作业，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 404,
+          "right": 156,
+          "bottom": 492,
+          "width": 144,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "主动整理，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 164,
+          "top": 404,
+          "right": 308,
+          "bottom": 492,
+          "width": 144,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "关心家人，加3分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 511.5,
+          "right": 64,
+          "bottom": 559.5,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-prev",
+          "label": "上一页",
+          "disabled": true,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 120.375,
+          "top": 511.5,
+          "right": 180.375,
+          "bottom": 559.5,
+          "width": 60,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-page",
+          "action": "",
+          "label": "跳转到指定页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 256,
+          "top": 511.5,
+          "right": 304,
+          "bottom": 559.5,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-next",
+          "label": "下一页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 12,
+          "top": 308,
+          "right": 156,
+          "bottom": 396,
+          "width": 144,
+          "height": 88,
+          "id": "density-01",
+          "name": "自主阅读",
+          "text": "自主阅读\n自己完成第1项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 164,
+          "top": 308,
+          "right": 308,
+          "bottom": 396,
+          "width": 144,
+          "height": 88,
+          "id": "density-02",
+          "name": "专心完成作业",
+          "text": "专心完成作业\n自己完成第2项，并把用品放回原处\n+8"
+        },
+        {
+          "left": 12,
+          "top": 404,
+          "right": 156,
+          "bottom": 492,
+          "width": 144,
+          "height": 88,
+          "id": "density-03",
+          "name": "主动整理",
+          "text": "主动整理\n自己完成第3项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 164,
+          "top": 404,
+          "right": 308,
+          "bottom": 492,
+          "width": 144,
+          "height": 88,
+          "id": "density-04",
+          "name": "关心家人",
+          "text": "关心家人\n自己完成第4项，并把用品放回原处\n+3"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n全部 7 项\n自主阅读\n自己完成第1项，并把用品放回原处\n+5\n专心完成作业\n自己完成第2项，并把用品放回原处\n+8\n主动整理\n自己完成第3项，并把用品放回原处\n+5\n关心家人\n自己完成第4项，并把用品放回原处\n+3\n第\n/ 2 页",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "after-small-phone"
+    },
+    {
+      "viewport": {
+        "width": 735,
+        "height": 754
+      },
+      "panel": {
+        "left": 0,
+        "top": 184,
+        "right": 735,
+        "bottom": 754,
+        "width": 735,
+        "height": 570
+      },
+      "grid": {
+        "left": 16,
+        "top": 398,
+        "right": 719,
+        "bottom": 678,
+        "width": 703,
+        "height": 280,
+        "scrollHeight": 280,
+        "clientHeight": 280
+      },
+      "document": {
+        "width": 735,
+        "height": 754
+      },
+      "picker": {
+        "all": 80,
+        "total": 80,
+        "query": "",
+        "page": 6,
+        "pages": 7,
+        "pageSize": 12,
+        "items": [
+          {
+            "id": "density-73",
+            "name": "练习73：独立完成并整理自己的学习用品",
+            "points": 5,
+            "reason": "自己完成第73项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-74",
+            "name": "练习74：独立完成并整理自己的学习用品",
+            "points": 3,
+            "reason": "自己完成第74项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-75",
+            "name": "练习75：独立完成并整理自己的学习用品",
+            "points": 2,
+            "reason": "自己完成第75项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-76",
+            "name": "练习76：独立完成并整理自己的学习用品",
+            "points": 4,
+            "reason": "自己完成第76项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-77",
+            "name": "练习77：独立完成并整理自己的学习用品",
+            "points": 7,
+            "reason": "自己完成第77项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-78",
+            "name": "练习78：独立完成并整理自己的学习用品",
+            "points": 5,
+            "reason": "自己完成第78项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-79",
+            "name": "练习79：独立完成并整理自己的学习用品",
+            "points": 8,
+            "reason": "自己完成第79项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-80",
+            "name": "练习80：独立完成并整理自己的学习用品",
+            "points": 5,
+            "reason": "自己完成第80项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": true,
+      "controls": [
+        {
+          "left": 671,
+          "top": 203,
+          "right": 719,
+          "bottom": 251,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 266,
+          "right": 363.5,
+          "bottom": 314,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 266,
+          "right": 719,
+          "bottom": 314,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 322,
+          "right": 667,
+          "bottom": 370,
+          "width": 651,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 619,
+          "top": 322,
+          "right": 667,
+          "bottom": 370,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 671,
+          "top": 322,
+          "right": 719,
+          "bottom": 370,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 398,
+          "right": 245,
+          "bottom": 486,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习73：独立完成并整理自己的学习用品，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 253,
+          "top": 398,
+          "right": 482,
+          "bottom": 486,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习74：独立完成并整理自己的学习用品，加3分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 490,
+          "top": 398,
+          "right": 719,
+          "bottom": 486,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习75：独立完成并整理自己的学习用品，加2分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 494,
+          "right": 245,
+          "bottom": 582,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习76：独立完成并整理自己的学习用品，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 253,
+          "top": 494,
+          "right": 482,
+          "bottom": 582,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习77：独立完成并整理自己的学习用品，加7分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 490,
+          "top": 494,
+          "right": 719,
+          "bottom": 582,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习78：独立完成并整理自己的学习用品，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 590,
+          "right": 245,
+          "bottom": 678,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习79：独立完成并整理自己的学习用品，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 253,
+          "top": 590,
+          "right": 482,
+          "bottom": 678,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习80：独立完成并整理自己的学习用品，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 697.5,
+          "right": 64,
+          "bottom": 745.5,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-prev",
+          "label": "上一页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 327.875,
+          "top": 697.5,
+          "right": 387.875,
+          "bottom": 745.5,
+          "width": 60,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-page",
+          "action": "",
+          "label": "跳转到指定页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 671,
+          "top": 697.5,
+          "right": 719,
+          "bottom": 745.5,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-next",
+          "label": "下一页",
+          "disabled": true,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 16,
+          "top": 398,
+          "right": 245,
+          "bottom": 486,
+          "width": 229,
+          "height": 88,
+          "id": "density-73",
+          "name": "练习73：独立完成并整理自己的学习用品",
+          "text": "练习73：独立完成并整理自己的学习用品\n自己完成第73项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 253,
+          "top": 398,
+          "right": 482,
+          "bottom": 486,
+          "width": 229,
+          "height": 88,
+          "id": "density-74",
+          "name": "练习74：独立完成并整理自己的学习用品",
+          "text": "练习74：独立完成并整理自己的学习用品\n自己完成第74项，并把用品放回原处\n+3"
+        },
+        {
+          "left": 490,
+          "top": 398,
+          "right": 719,
+          "bottom": 486,
+          "width": 229,
+          "height": 88,
+          "id": "density-75",
+          "name": "练习75：独立完成并整理自己的学习用品",
+          "text": "练习75：独立完成并整理自己的学习用品\n自己完成第75项，并把用品放回原处\n+2"
+        },
+        {
+          "left": 16,
+          "top": 494,
+          "right": 245,
+          "bottom": 582,
+          "width": 229,
+          "height": 88,
+          "id": "density-76",
+          "name": "练习76：独立完成并整理自己的学习用品",
+          "text": "练习76：独立完成并整理自己的学习用品\n自己完成第76项，并把用品放回原处\n+4"
+        },
+        {
+          "left": 253,
+          "top": 494,
+          "right": 482,
+          "bottom": 582,
+          "width": 229,
+          "height": 88,
+          "id": "density-77",
+          "name": "练习77：独立完成并整理自己的学习用品",
+          "text": "练习77：独立完成并整理自己的学习用品\n自己完成第77项，并把用品放回原处\n+7"
+        },
+        {
+          "left": 490,
+          "top": 494,
+          "right": 719,
+          "bottom": 582,
+          "width": 229,
+          "height": 88,
+          "id": "density-78",
+          "name": "练习78：独立完成并整理自己的学习用品",
+          "text": "练习78：独立完成并整理自己的学习用品\n自己完成第78项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 16,
+          "top": 590,
+          "right": 245,
+          "bottom": 678,
+          "width": 229,
+          "height": 88,
+          "id": "density-79",
+          "name": "练习79：独立完成并整理自己的学习用品",
+          "text": "练习79：独立完成并整理自己的学习用品\n自己完成第79项，并把用品放回原处\n+8"
+        },
+        {
+          "left": 253,
+          "top": 590,
+          "right": 482,
+          "bottom": 678,
+          "width": 229,
+          "height": 88,
+          "id": "density-80",
+          "name": "练习80：独立完成并整理自己的学习用品",
+          "text": "练习80：独立完成并整理自己的学习用品\n自己完成第80项，并把用品放回原处\n+5"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n全部 80 项\n练习73：独立完成并整理自己的学习用品\n自己完成第73项，并把用品放回原处\n+5\n练习74：独立完成并整理自己的学习用品\n自己完成第74项，并把用品放回原处\n+3\n练习75：独立完成并整理自己的学习用品\n自己完成第75项，并把用品放回原处\n+2\n练习76：独立完成并整理自己的学习用品\n自己完成第76项，并把用品放回原处\n+4\n练习77：独立完成并整理自己的学习用品\n自己完成第77项，并把用品放回原处\n+7\n练习78：独立完成并整理自己的学习用品\n自己完成第78项，并把用品放回原处\n+5\n练习79：独立完成并整理自己的学习用品\n自己完成第79项，并把用品放回原处\n+8\n练习80：独立完成并整理自己的学习用品\n自己完成第80项，并把用品放回原处\n+5\n第\n/ 7 页",
+      "focus": {
+        "id": "behavior-page",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "pages-80-735"
+    },
+    {
+      "viewport": {
+        "width": 735,
+        "height": 754
+      },
+      "panel": {
+        "left": 0,
+        "top": 442,
+        "right": 735,
+        "bottom": 754,
+        "width": 735,
+        "height": 312
+      },
+      "grid": {
+        "left": 16,
+        "top": 656,
+        "right": 719,
+        "bottom": 744,
+        "width": 703,
+        "height": 88,
+        "scrollHeight": 88,
+        "clientHeight": 88
+      },
+      "document": {
+        "width": 735,
+        "height": 754
+      },
+      "picker": {
+        "all": 80,
+        "total": 0,
+        "query": "没有对应行为xyz",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 15,
+        "items": []
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 671,
+          "top": 461,
+          "right": 719,
+          "bottom": 509,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 524,
+          "right": 363.5,
+          "bottom": 572,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 524,
+          "right": 719,
+          "bottom": 572,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 580,
+          "right": 667,
+          "bottom": 628,
+          "width": 651,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 619,
+          "top": 580,
+          "right": 667,
+          "bottom": 628,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 671,
+          "top": 580,
+          "right": 719,
+          "bottom": 628,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 354.671875,
+          "top": 675,
+          "right": 460.671875,
+          "bottom": 725,
+          "width": 106,
+          "height": 50,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [],
+      "text": "加分\n常用加分\n自己定一项\n管理\n搜索结果 0 项\n\n搜索结果 0\n\n清除搜索",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "empty-search"
+    },
+    {
+      "viewport": {
+        "width": 735,
+        "height": 360
+      },
+      "panel": {
+        "left": 0,
+        "top": 47,
+        "right": 735,
+        "bottom": 360,
+        "width": 735,
+        "height": 313
+      },
+      "grid": {
+        "left": 12,
+        "top": 235,
+        "right": 723,
+        "bottom": 299,
+        "width": 711,
+        "height": 64,
+        "scrollHeight": 64,
+        "clientHeight": 64
+      },
+      "document": {
+        "width": 735,
+        "height": 360
+      },
+      "picker": {
+        "all": 80,
+        "total": 74,
+        "query": "练习",
+        "page": 0,
+        "pages": 25,
+        "pageSize": 3,
+        "items": [
+          {
+            "id": "density-06",
+            "name": "练习跳绳",
+            "points": 4,
+            "reason": "自己完成第6项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-08",
+            "name": "练习08：独立完成并整理自己的学习用品",
+            "points": 5,
+            "reason": "自己完成第8项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-09",
+            "name": "练习09：独立完成并整理自己的学习用品",
+            "points": 8,
+            "reason": "自己完成第9项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": true,
+      "controls": [
+        {
+          "left": 675,
+          "top": 58,
+          "right": 723,
+          "bottom": 106,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 111,
+          "right": 363.5,
+          "bottom": 159,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 111,
+          "right": 723,
+          "bottom": 159,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 163,
+          "right": 671,
+          "bottom": 211,
+          "width": 659,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 623,
+          "top": 163,
+          "right": 671,
+          "bottom": 211,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 675,
+          "top": 163,
+          "right": 723,
+          "bottom": 211,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 235,
+          "right": 243.65625,
+          "bottom": 299,
+          "width": 231.65625,
+          "height": 64,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习跳绳，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 251.65625,
+          "top": 235,
+          "right": 483.328125,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习08：独立完成并整理自己的学习用品，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 491.328125,
+          "top": 235,
+          "right": 723,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习09：独立完成并整理自己的学习用品，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 308,
+          "right": 60,
+          "bottom": 356,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-prev",
+          "label": "上一页",
+          "disabled": true,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 324.34375,
+          "top": 308,
+          "right": 384.34375,
+          "bottom": 356,
+          "width": 60,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-page",
+          "action": "",
+          "label": "跳转到指定页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 675,
+          "top": 308,
+          "right": 723,
+          "bottom": 356,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-next",
+          "label": "下一页",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 12,
+          "top": 235,
+          "right": 243.65625,
+          "bottom": 299,
+          "width": 231.65625,
+          "height": 64,
+          "id": "density-06",
+          "name": "练习跳绳",
+          "text": "练习跳绳\n+4"
+        },
+        {
+          "left": 251.65625,
+          "top": 235,
+          "right": 483.328125,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "id": "density-08",
+          "name": "练习08：独立完成并整理自己的学习用品",
+          "text": "练习08：独立完成并整理自己的学习用品\n+5"
+        },
+        {
+          "left": 491.328125,
+          "top": 235,
+          "right": 723,
+          "bottom": 299,
+          "width": 231.671875,
+          "height": 64,
+          "id": "density-09",
+          "name": "练习09：独立完成并整理自己的学习用品",
+          "text": "练习09：独立完成并整理自己的学习用品\n+8"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n搜索结果 74 项\n练习跳绳\n+4\n练习08：独立完成并整理自己的学习用品\n+5\n练习09：独立完成并整理自己的学习用品\n+8\n第\n/ 25 页",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "resize-735-360"
+    },
+    {
+      "viewport": {
+        "width": 735,
+        "height": 360
+      },
+      "panel": {
+        "left": 0,
+        "top": 104,
+        "right": 735,
+        "bottom": 360,
+        "width": 735,
+        "height": 256
+      },
+      "grid": {
+        "left": 12,
+        "top": 292,
+        "right": 723,
+        "bottom": 356,
+        "width": 711,
+        "height": 64,
+        "scrollHeight": 64,
+        "clientHeight": 64
+      },
+      "document": {
+        "width": 735,
+        "height": 360
+      },
+      "picker": {
+        "all": 80,
+        "total": 0,
+        "query": "没有对应行为xyz",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 6,
+        "items": []
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 675,
+          "top": 115,
+          "right": 723,
+          "bottom": 163,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 168,
+          "right": 363.5,
+          "bottom": 216,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 168,
+          "right": 723,
+          "bottom": 216,
+          "width": 351.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 12,
+          "top": 220,
+          "right": 671,
+          "bottom": 268,
+          "width": 659,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 623,
+          "top": 220,
+          "right": 671,
+          "bottom": 268,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 675,
+          "top": 220,
+          "right": 723,
+          "bottom": 268,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 354.671875,
+          "top": 299,
+          "right": 460.671875,
+          "bottom": 349,
+          "width": 106,
+          "height": 50,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [],
+      "text": "加分\n常用加分\n自己定一项\n管理\n搜索结果 0 项\n\n搜索结果 0\n\n清除搜索",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "short-empty"
+    },
+    {
+      "viewport": {
+        "width": 735,
+        "height": 754
+      },
+      "panel": {
+        "left": 0,
+        "top": 250,
+        "right": 735,
+        "bottom": 754,
+        "width": 735,
+        "height": 504
+      },
+      "grid": {
+        "left": 16,
+        "top": 464,
+        "right": 719,
+        "bottom": 744,
+        "width": 703,
+        "height": 280,
+        "scrollHeight": 280,
+        "clientHeight": 280
+      },
+      "document": {
+        "width": 735,
+        "height": 754
+      },
+      "picker": {
+        "all": 7,
+        "total": 7,
+        "query": "",
+        "page": 0,
+        "pages": 1,
+        "pageSize": 15,
+        "items": [
+          {
+            "id": "density-01",
+            "name": "自主阅读",
+            "points": 5,
+            "reason": "自己完成第1项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-02",
+            "name": "专心完成作业",
+            "points": 8,
+            "reason": "自己完成第2项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-03",
+            "name": "主动整理",
+            "points": 5,
+            "reason": "自己完成第3项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-04",
+            "name": "关心家人",
+            "points": 3,
+            "reason": "自己完成第4项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-05",
+            "name": "按时刷牙",
+            "points": 2,
+            "reason": "自己完成第5项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-06",
+            "name": "练习跳绳",
+            "points": 4,
+            "reason": "自己完成第6项，并把用品放回原处",
+            "enabled": true
+          },
+          {
+            "id": "density-07",
+            "name": "准备明天要用的书包和水杯",
+            "points": 7,
+            "reason": "自己完成第7项，并把用品放回原处",
+            "enabled": true
+          }
+        ]
+      },
+      "footerVisible": false,
+      "controls": [
+        {
+          "left": 671,
+          "top": 269,
+          "right": 719,
+          "bottom": 317,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "form-close",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 332,
+          "right": 363.5,
+          "bottom": 380,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "常用加分",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 371.5,
+          "top": 332,
+          "right": 719,
+          "bottom": 380,
+          "width": 347.5,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "points-mode",
+          "label": "自己定一项",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 388,
+          "right": 667,
+          "bottom": 436,
+          "width": 651,
+          "height": 48,
+          "tag": "INPUT",
+          "id": "behavior-search",
+          "action": "",
+          "label": "搜索行为",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 619,
+          "top": 388,
+          "right": 667,
+          "bottom": 436,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "picker-clear",
+          "label": "清除搜索",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 671,
+          "top": 388,
+          "right": 719,
+          "bottom": 436,
+          "width": 48,
+          "height": 48,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "point-list",
+          "label": "管理",
+          "disabled": false,
+          "font": 14,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 464,
+          "right": 245,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "自主阅读，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 253,
+          "top": 464,
+          "right": 482,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "专心完成作业，加8分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 490,
+          "top": 464,
+          "right": 719,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "主动整理，加5分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 560,
+          "right": 245,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "关心家人，加3分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 253,
+          "top": 560,
+          "right": 482,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "按时刷牙，加2分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 490,
+          "top": 560,
+          "right": 719,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "练习跳绳，加4分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        },
+        {
+          "left": 16,
+          "top": 656,
+          "right": 245,
+          "bottom": 744,
+          "width": 229,
+          "height": 88,
+          "tag": "BUTTON",
+          "id": "",
+          "action": "choose-point",
+          "label": "准备明天要用的书包和水杯，加7分",
+          "disabled": false,
+          "font": 16,
+          "hit": true
+        }
+      ],
+      "cards": [
+        {
+          "left": 16,
+          "top": 464,
+          "right": 245,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "id": "density-01",
+          "name": "自主阅读",
+          "text": "自主阅读\n自己完成第1项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 253,
+          "top": 464,
+          "right": 482,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "id": "density-02",
+          "name": "专心完成作业",
+          "text": "专心完成作业\n自己完成第2项，并把用品放回原处\n+8"
+        },
+        {
+          "left": 490,
+          "top": 464,
+          "right": 719,
+          "bottom": 552,
+          "width": 229,
+          "height": 88,
+          "id": "density-03",
+          "name": "主动整理",
+          "text": "主动整理\n自己完成第3项，并把用品放回原处\n+5"
+        },
+        {
+          "left": 16,
+          "top": 560,
+          "right": 245,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "id": "density-04",
+          "name": "关心家人",
+          "text": "关心家人\n自己完成第4项，并把用品放回原处\n+3"
+        },
+        {
+          "left": 253,
+          "top": 560,
+          "right": 482,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "id": "density-05",
+          "name": "按时刷牙",
+          "text": "按时刷牙\n自己完成第5项，并把用品放回原处\n+2"
+        },
+        {
+          "left": 490,
+          "top": 560,
+          "right": 719,
+          "bottom": 648,
+          "width": 229,
+          "height": 88,
+          "id": "density-06",
+          "name": "练习跳绳",
+          "text": "练习跳绳\n自己完成第6项，并把用品放回原处\n+4"
+        },
+        {
+          "left": 16,
+          "top": 656,
+          "right": 245,
+          "bottom": 744,
+          "width": 229,
+          "height": 88,
+          "id": "density-07",
+          "name": "准备明天要用的书包和水杯",
+          "text": "准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7"
+        }
+      ],
+      "text": "加分\n常用加分\n自己定一项\n管理\n全部 7 项\n自主阅读\n自己完成第1项，并把用品放回原处\n+5\n专心完成作业\n自己完成第2项，并把用品放回原处\n+8\n主动整理\n自己完成第3项，并把用品放回原处\n+5\n关心家人\n自己完成第4项，并把用品放回原处\n+3\n按时刷牙\n自己完成第5项，并把用品放回原处\n+2\n练习跳绳\n自己完成第6项，并把用品放回原处\n+4\n准备明天要用的书包和水杯\n自己完成第7项，并把用品放回原处\n+7",
+      "focus": {
+        "id": "behavior-search",
+        "action": "",
+        "dataId": "",
+        "inside": true
+      },
+      "label": "offline-after"
+    }
+  ],
+  "images": {
+    "artifacts/v8-density-after-reported.png": "f0ebb81562bbdff117b00f868f09425cf76bfd49c05e0a27c9de9cd0e7d435eb",
+    "artifacts/v8-density-after-ipad-portrait.png": "fd961fb443755df757edef8ba1f60b20234a35819d3ad36e296e82eb096fb849",
+    "artifacts/v8-density-after-ipad-landscape.png": "cdd428add0407ccc8f4c025a41d03570f248df63d886eb1483cb1478b95c9733",
+    "artifacts/v8-density-after-phone.png": "5cd89b1c7a6b73feb0261a102e8e23ab428ccc69f6f2c177d01522413dd18263",
+    "artifacts/v8-density-after-small-phone.png": "fc0d56b4853675b497bbe0fd67b9c7bf8e445228653a84326079b3dc2e1f3196",
+    "artifacts/v8-density-eighty-last-page.png": "a64630379abb4bd1900c3b52269bf52040c5fdc60456966f98f326e4875cfdd2",
+    "artifacts/v8-density-empty-search.png": "2cb73487f5103c958a01cd99f58482ddb8be0da1e3013876307fc1d09007acdb",
+    "artifacts/v8-density-short-screen.png": "d0730d18e27363f58ff52bff7eb632e2080113a378c5cb960c83c953158f108b",
+    "artifacts/v8-density-short-empty.png": "b3a1e155f3837466dd98f43810c8966b0cacfa4076890cd56c9cab77188328ec",
+    "artifacts/v8-density-offline-after.png": "f0ebb81562bbdff117b00f868f09425cf76bfd49c05e0a27c9de9cd0e7d435eb"
+  },
+  "errors": [],
+  "posts": [],
+  "fixtures": [
+    {
+      "count": 7,
+      "mode": "isolated-shared",
+      "stateHash": "817051ea9654406eff80e870151f0b4b055012f9561238d8a38fd072c99e79b6"
+    },
+    {
+      "count": 24,
+      "mode": "isolated-shared",
+      "stateHash": "687f378117b046fe284d674478621cf8082fb5b1383b17621a108ea2901f4b4e"
+    },
+    {
+      "count": 80,
+      "mode": "isolated-shared",
+      "stateHash": "9d1f578530edf02d9947a8b882437174f1b53279c1366a6f9250dd24ebaaa217"
+    },
+    {
+      "count": 80,
+      "mode": "isolated-shared",
+      "stateHash": "9d1f578530edf02d9947a8b882437174f1b53279c1366a6f9250dd24ebaaa217"
+    },
+    {
+      "count": 80,
+      "mode": "isolated-shared",
+      "stateHash": "9d1f578530edf02d9947a8b882437174f1b53279c1366a6f9250dd24ebaaa217"
+    },
+    {
+      "count": 80,
+      "mode": "isolated-shared",
+      "stateHash": "9d1f578530edf02d9947a8b882437174f1b53279c1366a6f9250dd24ebaaa217"
+    },
+    {
+      "count": 80,
+      "mode": "isolated-shared",
+      "stateHash": "9d1f578530edf02d9947a8b882437174f1b53279c1366a6f9250dd24ebaaa217"
+    },
+    {
+      "count": 7,
+      "mode": "offline-file",
+      "stateHash": "817051ea9654406eff80e870151f0b4b055012f9561238d8a38fd072c99e79b6"
+    }
+  ],
+  "sources": {
+    "app.js": "d1776d77dd649e5063a368a251cc805b30d937edbdaca8422fca865093dd79e9",
+    "styles.css": "9ceca772f5712f46f6abf38d07458c32b112697938af008ad74b46cf7aad4fe8",
+    "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+    "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+    "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+    "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+    "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235"
+  },
+  "exportHash": "903566acff6da0051f74bd80935125048ba8d4277e8b0bfe6c04efa274c91d06",
+  "harnessHash": "a33f52b6aae1f5ad1d8008df4234a2bdaca0be7a8d6da631e978347fcc2468a5",
+  "baseline": {
+    "hash": "4053fbb2d189a973876edaf3dc68a509d177c316b4eb66e007e2ef9b2056b137",
+    "fixtureHash": "817051ea9654406eff80e870151f0b4b055012f9561238d8a38fd072c99e79b6"
+  },
+  "sourceStable": true,
+  "preservedPriorV8": 51,
+  "finishedAt": "2026-11-16T01:31:40.244Z",
+  "requested": "all",
+  "passed": 11,
+  "failed": 0
+}

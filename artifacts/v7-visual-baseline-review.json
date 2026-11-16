@@ -1,0 +1,25 @@
+{
+  "basis": "These exact images were opened with read_image during manual review; final hashes must match the reviewed baseline or be inspected again.",
+  "baseline": "artifacts/v7-before-semantic-fix-acceptance-summary.json",
+  "images": [
+    "v7-ipad-landscape-home.png", "v7-phone-home.png", "v7-small-phone-home.png",
+    "v7-phone-picker.png", "v7-phone-point-list.png", "v7-phone-point-item.png", "v7-phone-records-points.png",
+    "v7-phone-inbox.png", "v7-phone-reminders.png", "v7-phone-task-new.png", "v7-phone-event-new.png",
+    "v7-phone-rewards.png", "v7-phone-reward-list.png", "v7-phone-reward-new.png", "v7-phone-reward-request.png", "v7-phone-reward-approve.png",
+    "v7-phone-pet-bag.png", "v7-phone-pet-config.png", "v7-phone-pet-growth.png",
+    "v7-phone-profile.png", "v7-phone-preferences.png", "v7-phone-family-settings.png", "v7-phone-parent-settings.png",
+    "v7-ipad-landscape-diy.png", "v7-ipad-landscape-parent-verify.png", "v7-small-phone-parent-verify.png", "v7-small-phone-pet-buy.png",
+    "v7-phone-voice.png", "v7-phone-ai-task-action.png", "v7-phone-parent-error.png", "v7-phone-backend-error.png",
+    "v7-phone-empty-picker.png", "v7-phone-empty-records.png", "v7-phone-empty-rewards.png"
+  ],
+  "observations": [
+    "All three main viewport images show the balance, points action, pet actions and navigation within the viewport.",
+    "Picker counts and paging, editor fields, saved amounts and user facts remain visible; the complete sentinel reason is retained in the form and records.",
+    "Reminder acknowledgement, date and time, ordinary versus event selection, and user notes remain distinct.",
+    "Reward request shows object, cost, balance equation, zero request debit and parent approval; confirmation retains the user note.",
+    "Care UI shows shared free allowance, family date, action completion, inventory source/count, and explicit reward state.",
+    "Growth stages show reached/current/locked states and numeric thresholds; profile and preferences retain factual controls and capability states.",
+    "Narrow authorization uses a scrollable body and a reachable fixed footer; buying two items shows 3×2=6 and 123−6=117.",
+    "Wrong PIN and backend rejection show distinct concise states with concrete retry or edit controls."
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "purpose": "Additional presentation inspection for the frozen math option; not another consumer scenario count",
+  "appHash": "dde75de8b82256d53bf35f83bcc25964a090c9a1cd2208e2f1cf8abad5e83af6",
+  "screens": [
+    {
+      "file": "artifacts/v8-math-settings-first.png",
+      "sha256": "165ccd28a97edb23824446deabbba8ffe374116c1775a4cd8ff62823aa8f30a4",
+      "title": "设置家长验证",
+      "text": "设置家长验证\n\n共享\n\n验证方式\n6位 PIN\n算术题\n保存设置",
+      "fields": [
+        {
+          "name": "pin",
+          "hidden": true,
+          "disabled": true,
+          "empty": true,
+          "height": 0
+        },
+        {
+          "name": "confirmPin",
+          "hidden": true,
+          "disabled": true,
+          "empty": true,
+          "height": 0
+        }
+      ]
+    },
+    {
+      "file": "artifacts/v8-math-settings-change.png",
+      "sha256": "531a3f7eaa04a176455f901d216c38620aa8c29dd7efa660dea11863f2ed8285",
+      "title": "修改家长验证",
+      "text": "修改家长验证\n\n共享\n\n当前方式\n算术题\n验证方式\n6位 PIN\n算术题\n保存修改",
+      "fields": [
+        {
+          "name": "pin",
+          "hidden": true,
+          "disabled": true,
+          "empty": true,
+          "height": 0
+        },
+        {
+          "name": "confirmPin",
+          "hidden": true,
+          "disabled": true,
+          "empty": true,
+          "height": 0
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "passed": true
+}

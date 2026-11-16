@@ -1,0 +1,2 @@
+# Preserve exact bytes for frozen HTML fixtures and recorded release hashes.
+* -text

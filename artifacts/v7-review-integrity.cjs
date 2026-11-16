@@ -1,0 +1,16 @@
+'use strict';
+const fs=require('node:fs'),crypto=require('node:crypto'),assert=require('node:assert/strict');
+const read=f=>JSON.parse(fs.readFileSync(f,'utf8'));
+const hash=f=>crypto.createHash('sha256').update(fs.readFileSync(f)).digest('hex');
+const plan=read('artifacts/v7-visual-baseline-review.json');
+const before=read(plan.baseline);
+const latest=read('artifacts/v7-visual-latest-review.json');
+const final=read('artifacts/v7-acceptance-summary.json');
+const prior=Object.fromEntries(plan.images.map(name=>{const file='artifacts/'+name;return [file,before.screenshotHashes[file]];}));
+const inspected={...prior,...latest.images};
+const changed=Object.entries(inspected).filter(([file,value])=>hash(file)!==value).map(([file])=>file);
+console.log(JSON.stringify({source:final.integrity.productSources['app.js'],export:final.integrity.exportHash,inspected:Object.keys(inspected).length,changed,copyStates:fs.readFileSync('artifacts/v7-system-copy-review.txt','utf8').match(/^\d+\. /gm).length},null,2));
+assert.deepEqual(changed,[],'Changed screenshots must be read again and their hashes recorded.');
+assert.equal(final.integrity.productSources['app.js'],latest.sourceHash);
+const report={sourceHash:latest.sourceHash,inspectedCount:Object.keys(inspected).length,method:'The listed exact PNG images were opened with read_image. Images inspected before the final semantic-only change are accepted here only when their final PNG hash is byte-identical. This is a selective manual inspection, not a claim that all captured images were opened.',images:inspected,observations:[...plan.observations,...latest.notes]};
+fs.writeFileSync('artifacts/v7-visual-review.json',JSON.stringify(report,null,2)+'\n');

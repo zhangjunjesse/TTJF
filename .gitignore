@@ -1,0 +1,26 @@
+# Local family records and credentials
+/data/
+.env
+.env.*
+**/.env
+**/.env.*
+*.key
+*.pem
+*.pfx
+*.p12
+
+# Installed dependencies and local caches
+node_modules/
+__pycache__/
+*.pyc
+*.log
+.DS_Store
+
+# Versioned archives stay in local delivery storage
+/export/*
+!/export/little-steps-demo.html
+!/export/little-steps-v8.html
+
+# Actual family screenshots and migration/runtime records
+/artifacts/*live*
+/artifacts/*migration*

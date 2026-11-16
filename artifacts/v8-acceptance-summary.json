@@ -1,0 +1,101 @@
+{
+  "version": "0.8",
+  "run": {
+    "startedAt": "2026-11-15T13:53:29.978Z",
+    "finishedAt": "2026-11-15T13:54:49.319Z",
+    "durationSeconds": 79.3
+  },
+  "results": {
+    "consumer": 13,
+    "client": 8,
+    "freshConsumerClientTotal": 21,
+    "failed": 0,
+    "scriptErrors": 0,
+    "server": {
+      "passed": 58,
+      "failed": 0,
+      "priorCasesRerun": 47,
+      "addedV8Cases": 11,
+      "owner": "data-engine",
+      "evidence": "artifacts/v8-server/results.json"
+    },
+    "totalAcrossThreeSuites": 79
+  },
+  "coverage": {
+    "viewports": [
+      "320×568",
+      "390×844",
+      "1024×768",
+      "768×1024"
+    ],
+    "genuinelyUnconfiguredServerFixtures": 10,
+    "configuredServerFixtures": 1,
+    "screenAudits": 25,
+    "uniqueRenderedTexts": 13,
+    "consumerScreenshots": 25,
+    "previewImages": [
+      "v8-preview-setup.png",
+      "v8-preview-change.png",
+      "v8-preview-verify.png"
+    ],
+    "privacyChecks": 23,
+    "additionalMathPresentationScreens": 2
+  },
+  "integrity": {
+    "sourceStable": true,
+    "sources": {
+      "app.js": "dde75de8b82256d53bf35f83bcc25964a090c9a1cd2208e2f1cf8abad5e83af6",
+      "styles.css": "e64a78c56356225b34a81caf4b737135ef2869cc75ccaf26316b5de091d1229f",
+      "index.html": "eda5f60a74d0f73f6d94759e753782229fa695be2b3bff8b3d1a118f6ccf8479",
+      "server.cjs": "3b5212773688ec0a62afc7aaf35ad5fe669a45530ceab3ec7f19bebe304de9f2",
+      "model.js": "54cb2efb69d172e0d217899a7d3fef8d61a7d29fa157de9045edcc7a9debf40f",
+      "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+      "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+      "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+      "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235"
+    },
+    "exportHash": "4053fbb2d189a973876edaf3dc68a509d177c316b4eb66e007e2ef9b2056b137",
+    "harnessHash": "581463475d8dc0db40b8480028d24de96c389d5411662a14399f177ae266ac70",
+    "clientMatchesBrowserSource": true,
+    "preservedV7Files": 135,
+    "preservedV7Changes": []
+  },
+  "screenshotHashes": {
+    "artifacts/v8-small-phone-setup.png": "79574038ca4bad8ce02513a09122d861f5502a699b6c9f7d56d4d6115e95ec6a",
+    "artifacts/v8-small-phone-setup-mismatch.png": "d928e0d58bfa1372b7e2bce91c9f6a6e010852f2eb64a03e57fef68ae7dcc07e",
+    "artifacts/v8-small-phone-configured.png": "4f0f1d44cc4c2478d36022360a299fb98bc61bf40f25e69ce99dc385bf11d226",
+    "artifacts/v8-phone-setup.png": "88891d43494049b4e746677266f338422e57b15f55e40a8a434b68acdec3e34b",
+    "artifacts/v8-phone-setup-mismatch.png": "03e51f68458eb435d9b1a8a415581cfef7e5626e241cad7d09d007f1b76dfd5d",
+    "artifacts/v8-phone-configured.png": "77e8fdcbc3983b722a0da209c90fe15421b6d2cd8ef189b0c3f505b6842be45d",
+    "artifacts/v8-ipad-landscape-setup.png": "f2b7508d245b30b6b6ae0a1b30e29f1f4428a75494c8c555d1638247a366f725",
+    "artifacts/v8-ipad-landscape-setup-mismatch.png": "d12b80b181e8b74f7ab1149eb9a505af0120108ceebba3f4a0e7406322e66594",
+    "artifacts/v8-ipad-landscape-configured.png": "91ef5ee8f047ac5c3450b612db90a61c7af147e16d06f10c3a9d88d8d8eaa243",
+    "artifacts/v8-ipad-portrait-setup.png": "ab903504f8f78c3ca6d4afe1d4af478812b865edc1e0cf1c882d2da48ff78a01",
+    "artifacts/v8-ipad-portrait-setup-mismatch.png": "b1730761b70af032a54ce75c709975c991690b323afe221eb64b75f30c71372c",
+    "artifacts/v8-ipad-portrait-configured.png": "567d24b7a216e77b00593b6d8010af8265bb49c32617f28cf5c480d662b1b54b",
+    "artifacts/v8-phone-current-pin.png": "d4c4534fb7574c7b2ab45a86f74a80053ce4278fd409378ddf301af9337512ab",
+    "artifacts/v8-phone-current-pin-error.png": "5808874611ffb369841f874fd63e4165f0245f3e3d3c1d5472274feed1017aad",
+    "artifacts/v8-phone-math-current.png": "34a17d1df8b7fe49a3137d61c4c5d2d3e65f6a3952cc38955471a82fabd2cada",
+    "artifacts/v8-phone-business-setup.png": "23d3d0f9b173995383f08b357c8757ebc43d39bc745486ac9d77c0b3b6aae229",
+    "artifacts/v8-phone-setup-competition.png": "f6538a5c79caa37ab4deed3331c44fba25eefc1b3c2e7278bc7b61f0777b76ef",
+    "artifacts/v8-phone-setup-stale-business.png": "5e4693e3f25f57295c76f7daeeca0828d54aebad309045cbbfed8e5efc745564",
+    "artifacts/v8-phone-setup-response-lost.png": "b3c6ae62a7af4d0a032e0f06ddf5965fd75606c520e728f4e4d44451f1ab87ec",
+    "artifacts/v8-phone-setup-recovered-stale-business.png": "208b19d92e4274066d3329fc77c7ba1bff645c3015994bfa5831ed45365188ba",
+    "artifacts/v8-phone-late-setup-cancelled.png": "77e8fdcbc3983b722a0da209c90fe15421b6d2cd8ef189b0c3f505b6842be45d",
+    "artifacts/v8-offline-file-settings-setup.png": "dbe4bb2c80a9cd0e4dcddb1aad3ddcae8aeaac464c950e051e43251490cb383f",
+    "artifacts/v8-offline-file-business-setup.png": "df55891fbb4ab7e5f646a37293b03a5ca613039998d409cc8e2b79b82817d910",
+    "artifacts/v8-offline-http-settings-setup.png": "dbe4bb2c80a9cd0e4dcddb1aad3ddcae8aeaac464c950e051e43251490cb383f",
+    "artifacts/v8-offline-http-business-setup.png": "df55891fbb4ab7e5f646a37293b03a5ca613039998d409cc8e2b79b82817d910",
+    "artifacts/v8-preview-setup.png": "88891d43494049b4e746677266f338422e57b15f55e40a8a434b68acdec3e34b",
+    "artifacts/v8-preview-change.png": "77e8fdcbc3983b722a0da209c90fe15421b6d2cd8ef189b0c3f505b6842be45d",
+    "artifacts/v8-preview-verify.png": "d4c4534fb7574c7b2ab45a86f74a80053ce4278fd409378ddf301af9337512ab"
+  },
+  "manualReview": {
+    "evidence": "artifacts/v8-visual-review.json",
+    "verification": "artifacts/v8-verification.md",
+    "status": "passed",
+    "imagesActuallyOpened": 30,
+    "uniqueImageBytes": 24,
+    "distinctTextsRead": 15
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "version": "v0.8",
+  "owner": "data-engine",
+  "task": "task-23",
+  "decision": "docs/parent-onboarding.md",
+  "status": "passed",
+  "sourceHashes": {
+    "server.cjs": "3B5212773688EC0A62AFC7AAF35AD5FE669A45530CEAB3EC7F19BEBE304DE9F2",
+    "test/server.test.cjs": "8855D1C317C72723719ACD24BBC65036B511C11705159D4B37D3A3F416F7186C"
+  },
+  "checks": [
+    {
+      "command": "node --check server.cjs",
+      "exitCode": 0
+    },
+    {
+      "command": "node --test --test-reporter=tap test/server.test.cjs",
+      "exitCode": 0,
+      "tests": 58,
+      "pass": 58,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 13185.9336,
+      "existingCases": 47,
+      "addedV8Cases": 11,
+      "log": "artifacts/v8-server/http-regressions.tap",
+      "logSha256": "06C4BBF90A75290EEAAC280D81A2194172B8636E89E31452AB3DF735EB82994B"
+    }
+  ],
+  "evidence": [
+    "New persisted families without an explicit parentPin are unconfigured and generate no console PIN; restart and a later deployment PIN do not override the saved status.",
+    "All eight existing public actions work before setup, while protected writes and challenges require PARENT_SETUP_REQUIRED.",
+    "parent.setup accepts only its declared fields; first PIN is six ASCII digits with identical confirmation; math accepts no PIN fields and creates no hidden credentials.",
+    "A setup writes configuration, one action ID and one salted scrypt receipt without changing business ledgers; the original business operation still needs the ordinary challenge and grant.",
+    "Different concurrent setups produce one success and one PARENT_ALREADY_CONFIGURED conflict; identical concurrent retries produce one durable commit.",
+    "Exact setup retries work after restart and later writes; changed PIN or confirmation under the same ID is rejected.",
+    "A public write can stale a setup while keeping initialization open; retry with the latest revision preserves the public write.",
+    "A forced atomic file write failure leaves credentials, revision, action IDs and receipts unchanged, and the identical request can retry successfully.",
+    "Self-set PIN changes require the current credential and validate supplied confirmation; first math can switch to a new PIN only after the current arithmetic challenge.",
+    "Legacy pin and math configurations without the configured marker retain state, receipts and credential hashes, including twelve-digit PIN verification; they never reopen public setup.",
+    "Malformed configured flags, credential pairs, legacy empty math credentials and unset state with prior sensitive receipts fail closed without rewriting the source file.",
+    "Same-origin protection rejects cross-origin first setup; public metadata and snapshots expose only configured and method, with revision available for ordering."
+  ],
+  "boundaries": [
+    "Only server.cjs and test/server.test.cjs were modified; new evidence is under artifacts/v8-server/.",
+    "All servers and data files used in these tests were isolated temporary fixtures.",
+    "No real family data, preview process, package, historical v7 evidence, UI or decision document was modified by this task.",
+    "Browser onboarding, draft secrecy, automatic client continuation and live demo migration remain Lead/UI/QA integration responsibilities."
+  ]
+}

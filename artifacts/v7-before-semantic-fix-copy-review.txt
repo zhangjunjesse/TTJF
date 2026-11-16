@@ -1,0 +1,179 @@
+1. wide-home, desktop-home, ipad-landscape-home, short-landscape-home
+小 | 〈用户内容〉 | 提醒 | 1 | 可用积分 | 128 | 加分 | 兑换 | 〈用户内容〉 | Lv.3 · 128 成长值 · 探索0 | 背包·探索 | 微光森林 差4 | ♥ 摸摸 | 投喂 | 共享免费·余3 | 清洁 | 共享免费·余3 | 训练 | 共享免费·余3 | 常用行为 | 全部行为 | 24 | 〈用户内容〉 | +5 | 〈用户内容〉 | +5 | 〈用户内容〉 | +5 | 〈用户内容〉 | +5 | 积分 | 提醒 | 指令
+
+2. wide-reminders-overview, desktop-reminders-overview, ipad-landscape-reminders-overview, ipad-portrait-reminders-overview, short-landscape-reminders-overview
+小小向前 | 11月15日 · 星期日 | 到点提醒 | 〈用户内容〉 | 知道了 | 10分钟后 | 完成 | 提醒 | 新增提醒 | 今天 | 15 | 明天 | 16 | 后天 | 17 | 重要事件 | 12:00 | 〈用户内容〉 | 〈用户内容〉 | 完成 | 积分 | 提醒 | 指令
+
+3. ipad-portrait-home, phone-home, short-phone-home, small-phone-home
+小 | 〈用户内容〉 | 提醒 | 1 | 可用积分 | 128 | 加分 | 兑换 | 〈用户内容〉 | Lv.3 · 128 成长值 · 探索0 | 背包·探索 | 微光森林 差4 | ♥ 摸摸 | 投喂 | 共享免费·余3 | 清洁 | 共享免费·余3 | 训练 | 共享免费·余3 | 常用行为 | 全部行为 | 24 | 〈用户内容〉 | +5 | 〈用户内容〉 | +5 | 积分 | 提醒 | 指令
+
+4. phone-reminders-overview, short-phone-reminders-overview, small-phone-reminders-overview
+小小向前 | 11月15日 · 星期日 | 到点提醒 | 〈用户内容〉 | 知道了 | 10分钟后 | 完成 | 提醒 | 新增提醒 | 今天 | 明天 | 后天 | 重要事件 | 12:00 | 〈用户内容〉 | 〈用户内容〉 | 完成 | 积分 | 提醒 | 指令
+
+5. ipad-landscape-picker, phone-picker
+加分 | 常用加分 | 自己定一项 | 管理 | 全部 24 项 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 第 | / 4 页
+
+6. ipad-landscape-common-award, phone-common-award, small-phone-common-award
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 〈用户内容〉 | +5 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 确认加分
+
+7. ipad-landscape-diy, phone-diy, small-phone-diy
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 〈用户内容〉 | +7 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | 新增常用 | 〈用户内容〉 | 默认分值 | +7 | 加分并新增常用
+
+8. ipad-landscape-duplicate, phone-duplicate, small-phone-duplicate
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 〈用户内容〉 | +7 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | 新增常用 | 〈用户内容〉 | 默认分值 | +7 | 同名 · 另存一项 | 选用已有 | 加分并新增常用
+
+9. ipad-landscape-picker-empty, phone-picker-empty, small-phone-picker-empty
+加分 | 常用加分 | 自己定一项 | 管理 | 搜索结果 0 项 | 搜索结果 0 | 清除搜索 | 第 | / 1 页
+
+10. ipad-landscape-missing-field, phone-missing-field, small-phone-missing-field
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 〈用户内容〉 | +7 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | 新增常用 | 〈用户内容〉 | 默认分值 | +7 | 具体原因 · 必填 | 加分并新增常用
+
+11. ipad-landscape-parent-verify, phone-parent-verify, small-phone-parent-verify
+家长验证 | 共享 | 孩子 | 〈用户内容〉 | 行为 | 自己整理书包 | 本次加分 | +7 | 原因 | 〈用户内容〉 | 新增常用 | 自己整理书包 | 家长 PIN | 返回修改 | 验证并完成
+
+12. ipad-landscape-parent-error, phone-parent-error, small-phone-parent-error
+家长验证 | 共享 | 孩子 | 〈用户内容〉 | 行为 | 自己整理书包 | 本次加分 | +7 | 原因 | 〈用户内容〉 | 新增常用 | 自己整理书包 | 家长 PIN | 验证未通过 | 返回修改 | 验证并完成
+
+13. ipad-landscape-records-points, phone-records-points, small-phone-records-points
+积分记录 | 累计获得 | 135 | 已使用 | 0 | 当前可用 | 135 | 加分记录 | 礼品兑换 | 道具购买 | 〈用户内容〉 | 〈用户内容〉 | 11/15 12:30 | +7 分 | 〈用户内容〉 | 〈用户内容〉 | 11/15 12:30 | +128 分
+
+14. ipad-landscape-records-empty, ipad-landscape-purchases-empty, phone-records-empty, phone-purchases-empty, small-phone-records-empty, small-phone-purchases-empty
+积分记录 | 累计获得 | 135 | 已使用 | 0 | 当前可用 | 135 | 加分记录 | 礼品兑换 | 道具购买 | 记录 0
+
+15. ipad-landscape-point-list, phone-point-list, small-phone-point-list
+常用加分项 | AI 填写 | 指令演示 | 指令 | 填写 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 5 分 · 启用中 | 〈用户内容〉 | 7 分 · 启用中 | 添加加分项
+
+16. ipad-landscape-point-item, phone-point-item, small-phone-point-item
+添加加分项 | AI 填写 | 指令演示 | 指令 | 填写 | 行为名称 | 默认分值 | 预设原因 | 状态 | 启用 | 停用 | 保存加分项
+
+17. ipad-landscape-template-ai, phone-template-ai, small-phone-template-ai
+添加加分项 | AI 填写 | 指令演示 | 指令 | 填写 | 草稿已填写 | 行为名称 | 默认分值 | 预设原因 | 状态 | 启用 | 停用 | 保存加分项
+
+18. ipad-landscape-inbox, phone-inbox, small-phone-inbox
+待处理 · 1 项 | 到点提醒 | 〈用户内容〉 | 11月15日 12:00 | 知道了 | 10分钟后 | 完成
+
+19. ipad-landscape-inbox-empty, phone-inbox-empty, small-phone-inbox-empty
+待处理 · 0 项 | 待处理 0
+
+20. ipad-landscape-reminders
+小小向前 | 11月15日 · 星期日 | 提醒 | 新增提醒 | 今天 | 15 | 明天 | 16 | 后天 | 17 | 重要事件 | 12:00 | 〈用户内容〉 | 〈用户内容〉 | 已知道 | 完成 | 积分 | 提醒 | 指令
+
+21. ipad-landscape-task-new, phone-task-new, small-phone-task-new
+新增提醒 | 近期待办 | 重要事件 | 事项 | 今天 | 明天 | 后天 | 日期 | 时间（选填） | 备注（选填） | 保存提醒
+
+22. ipad-landscape-event-new, phone-event-new, small-phone-event-new
+新增提醒 | 近期待办 | 重要事件 | 事项 | 日期 | 时间（选填） | 提前天数 | 备注（选填） | 保存提醒
+
+23. ipad-landscape-task-edit, phone-task-edit, small-phone-task-edit
+编辑提醒 | 近期待办 | 重要事件 | 事项 | 今天 | 明天 | 后天 | 日期 | 时间（选填） | 备注（选填） | 改到明天 | 复制提醒 | 取消提醒 | 保存提醒
+
+24. ipad-landscape-rewards, phone-rewards, small-phone-rewards
+礼品兑换 | 可用 135 分 | 管理 | 添加 | 全部 | 日常 | 周末 | 月底 | 〈用户内容〉 | 12 分 | 可兑换 | 〈用户内容〉 | 8 分 | 可兑换 | 〈用户内容〉 | 60 分 | 可兑换 | 〈用户内容〉 | 180 分 | 开放 · 月末3天
+
+25. ipad-landscape-reward-list, phone-reward-list, small-phone-reward-list
+管理礼品 | 〈用户内容〉 | 12 分 · 日常 · 启用中 | 〈用户内容〉 | 8 分 · 日常 · 启用中 | 〈用户内容〉 | 60 分 · 周末 · 启用中 | 〈用户内容〉 | 180 分 · 月底 · 启用中 | 添加礼品
+
+26. ipad-landscape-reward-new, phone-reward-new, small-phone-reward-new, phone-empty-add-reward
+添加礼品 | 礼品名称 | 所需积分 | 兑换日期 | 每天 | 周末 | 月底 | 状态 | 启用 | 停用 | 保存礼品
+
+27. ipad-landscape-reward-edit, phone-reward-edit, small-phone-reward-edit
+编辑礼品 | 礼品名称 | 所需积分 | 兑换日期 | 每天 | 周末 | 月底 | 状态 | 启用 | 停用 | 保存礼品
+
+28. ipad-landscape-reward-request, phone-reward-request, small-phone-reward-request
+申请兑换 | 〈用户内容〉 | 12 分 | 可用 | 135 | − | 兑换扣分 | 12 | = | 兑换后 | 123 | 本次申请扣分 | 0 | 审批 | 家长 | 提交申请
+
+29. ipad-landscape-reward-approve, phone-reward-approve, small-phone-reward-approve
+确认兑换 | 〈用户内容〉 | 12 分 | 可用 | 135 | − | 兑换扣分 | 12 | = | 兑换后 | 123 | 备注（选填） | 确认兑换
+
+30. ipad-landscape-reward-auth, phone-reward-auth, small-phone-reward-auth
+家长验证 | 共享 | 礼品 | 〈用户内容〉 | 本次扣分 | −12 | 兑换后余额 | 123 | 备注 | 〈用户内容〉 | 家长 PIN | 返回修改 | 验证并完成
+
+31. ipad-landscape-records-reward, phone-records-reward, small-phone-records-reward
+积分记录 | 累计获得 | 135 | 已使用 | 12 | 当前可用 | 123 | 加分记录 | 礼品兑换 | 道具购买 | 〈用户内容〉 | 〈用户内容〉 | 11/15 12:30 | −12 分
+
+32. ipad-landscape-pet-bag, phone-pet-bag, small-phone-pet-bag
+伙伴 | 背包 | 补给 | 探索收藏 | 今日共享免费 3 / 3 次 | 探索里程 0 | 家庭日 · 2026-11-15 | 投喂 | 未完成 | 清洁 | 未完成 | 训练 | 未完成 | 今日全项奖励 | +1里程 · 待完成 | 能量果 | 投喂 · 库存 0 件 | 补给 | 星露瓶 | 清洁 · 库存 0 件 | 补给 | 训练球 | 训练 · 库存 0 件 | 补给 | 照料伙伴 | 伙伴设置 | 成长足迹
+
+33. ipad-landscape-pet-supply, phone-pet-supply, small-phone-pet-supply
+伙伴 | 背包 | 补给 | 探索收藏 | 今日共享免费 3 / 3 次 | 探索里程 0 | 家庭日 · 2026-11-15 | 能量果 | 投喂 · 库存 0 件 | 3积分 / 件 | 购买 | 星露瓶 | 清洁 · 库存 0 件 | 3积分 / 件 | 购买 | 训练球 | 训练 · 库存 0 件 | 3积分 / 件 | 购买 | 伙伴设置 | 成长足迹
+
+34. ipad-landscape-pet-buy, phone-pet-buy, small-phone-pet-buy
+购买补给 | 能量果 | 投喂 · 3 积分 / 件 | 数量（1–10件） | 3 分 × 2 件 = 6 分 | 可用 | 123 | − | 总价 | 6 | = | 购买后 | 117 | 确认购买
+
+35. ipad-landscape-pet-buy-auth, phone-pet-buy-auth, small-phone-pet-buy-auth
+家长验证 | 共享 | 道具 | 能量果 | 单价 | 3 分 / 件 | 数量 | 2 | 本次扣分 | −6 | 购买后余额 | 117 | 家长 PIN | 返回修改 | 验证并完成
+
+36. ipad-landscape-pet-stock, phone-pet-stock, small-phone-pet-stock
+伙伴 | 背包 | 补给 | 探索收藏 | 今日共享免费 3 / 3 次 | 探索里程 1 | 家庭日 · 2026-11-15 | 投喂 | 已完成 | 清洁 | 未完成 | 训练 | 未完成 | 今日全项奖励 | +1里程 · 待完成 | 能量果 | 投喂 · 库存 1 件 | 使用1件 | 能量果 −1 | 星露瓶 | 清洁 · 库存 0 件 | 补给 | 训练球 | 训练 · 库存 0 件 | 补给 | 照料伙伴 | 伙伴设置 | 成长足迹
+
+37. ipad-landscape-pet-explore, phone-pet-explore, small-phone-pet-explore
+伙伴 | 背包 | 补给 | 探索收藏 | 今日共享免费 3 / 3 次 | 探索里程 1 | 家庭日 · 2026-11-15 | 投喂 | 已完成 | 清洁 | 未完成 | 训练 | 未完成 | 今日全项奖励 | +1里程 · 待完成 | 下一站 | 微光森林 | 所差里程 | 3 | 起航基地 | 0里程 · 已解锁 | 当前 | 微光森林 | 4里程 · 还差3 | 未解锁 | 晶石洞穴 | 10里程 · 还差9 | 未解锁 | 云海浮岛 | 18里程 · 还差17 | 未解锁 | 流星营地 | 28里程 · 还差27 | 未解锁 | 星环港湾 | 40里程 · 还差39 | 未解锁 | 极光山巅 | 56里程 · 还差55 | 未解锁 | 伙伴设置 | 成长足迹
+
+38. ipad-landscape-pet-config, phone-pet-config, small-phone-pet-config
+伙伴设置 | 晶叶龙伙伴 | 已选 | 太空水豚 | 选择 | 伙伴昵称 | 保存伙伴
+
+39. ipad-landscape-pet-growth, phone-pet-growth, small-phone-pet-growth
+成长足迹 | 成长值 | 135 | 成长阶段 | 星岛探员 | 成长星 | 0 | 阶段 1 · 成长值 0 | 初见〈用户内容〉 | 已到达 | 阶段 2 · 成长值 30 | 好奇学员 | 已到达 | 阶段 3 · 成长值 100 | 星岛探员 | 当前 | 阶段 4 · 成长值 250 | 银河领航员 | 还差 115 | 阶段 5 · 成长值 500 | 星光守护者 | 还差 365
+
+40. ipad-landscape-profile, phone-profile, small-phone-profile, phone-ai-cancel-new-panel
+孩子资料 | 小 | 选择照片 | 孩子昵称 | 保存资料
+
+41. ipad-landscape-preferences, phone-preferences, small-phone-preferences
+设置 | 家庭设置 | 〈用户内容〉 | 家长验证 | PIN | 提醒声音 | 已关闭 | 屏幕常亮 | 未开启 | 听写 | 未开启 | 免触摸唤醒 | 未开启 | 指令 | 指令演示 | 导出家庭记录 | 共享 · 已连接
+
+42. ipad-landscape-family-settings, phone-family-settings, small-phone-family-settings
+家庭设置 | 孩子名字 | 月底兑换天数 | 保存设置
+
+43. ipad-landscape-parent-settings, phone-parent-settings, small-phone-parent-settings
+家长验证设置 | 验证方式 | 6位 PIN | 算术题 | 新 PIN（6位数字） | 确认修改
+
+44. ipad-landscape-parent-config-auth, phone-parent-config-auth, small-phone-parent-config-auth
+家长验证 | 共享 | 验证方式 | 算术题 | 家长 PIN | 返回修改 | 验证并完成
+
+45. ipad-landscape-ai-filled, phone-ai-filled, small-phone-ai-filled
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 草稿已填写 | 〈用户内容〉 | +5 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | 确认加分
+
+46. ipad-landscape-voice, phone-voice, small-phone-voice
+指令 | 指令演示 | 听写 | 指令内容 | 发送
+
+47. ipad-landscape-ai-query, phone-ai-query, small-phone-ai-query, offline-file-query, offline-http-query
+指令 | 指令演示 | 听写 | 指令内容 | 〈用户内容〉 | 所需积分 60 | 积分充足 · 可申请 | 发送
+
+48. ipad-landscape-ai-unclear, phone-ai-unclear, small-phone-ai-unclear
+指令 | 指令演示 | 听写 | 指令内容 | 分值是多少？ | 发送
+
+49. phone-reminders, small-phone-reminders
+小小向前 | 11月15日 · 星期日 | 提醒 | 新增提醒 | 今天 | 明天 | 后天 | 重要事件 | 12:00 | 〈用户内容〉 | 〈用户内容〉 | 已知道 | 完成 | 积分 | 提醒 | 指令
+
+50. small-phone-picker
+加分 | 常用加分 | 自己定一项 | 管理 | 全部 24 项 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 〈用户内容〉 | 〈用户内容〉 | +5 | 第 | / 6 页
+
+51. phone-backend-error
+家长验证 | 共享 | 孩子 | 〈用户内容〉 | 行为 | 自己整理书包 | 本次加分 | +5 | 原因 | 〈用户内容〉 | 操作未完成 | 返回修改 | 重新验证
+
+52. phone-ai-manual-preserved
+加分 | 常用加分 | 自己定一项 | AI 填写 | 指令演示 | 指令 | 填写 | 已保留手动输入 | 〈用户内容〉 | +9 分 | 行为名称 | 本次分值 | 今天 · 记录时间 | 具体原因 | 同时存为常用 | 确认加分
+
+53. phone-ai-task-action
+完成状态 | 提醒 | 〈用户内容〉 | 操作 | 完成 | 确认
+
+54. phone-empty-picker
+加分 | 常用加分 | 自己定一项 | 管理 | 全部 0 项 | 常用行为 0 | 添加行为 | 第 | / 1 页
+
+55. phone-empty-records
+积分记录 | 累计获得 | 0 | 已使用 | 0 | 当前可用 | 0 | 加分记录 | 礼品兑换 | 道具购买 | 记录 0
+
+56. phone-empty-rewards
+礼品兑换 | 可用 0 分 | 管理 | 添加 | 全部 | 日常 | 周末 | 月底 | 礼品 0
+
+57. offline-file-pin-setup, offline-http-pin-setup
+设置家长 PIN | 本机 | 孩子 | 〈用户内容〉 | 行为 | 离线自己整理 | 本次加分 | +5 | 原因 | 请不要缩短这条用户事实：例如孩子自己整理了书包，还解释了水杯为什么放在侧袋。 | 新 PIN（6位数字） | 确认 PIN | 返回修改 | 设置并完成
+
+58. offline-file-preferences, offline-http-preferences
+设置 | 家庭设置 | 〈用户内容〉 | 家长验证 | PIN | 提醒声音 | 已关闭 | 屏幕常亮 | 未开启 | 听写 | 未开启 | 免触摸唤醒 | 未开启 | 指令 | 指令演示 | 导出家庭记录 | 本机
+
+59. offline-file-math
+家长验证 | 本机 | 孩子 | 〈用户内容〉 | 行为 | 算术题取消 | 本次加分 | +3 | 原因 | 〈用户内容〉 | 19 × 5 = ? | 答案 | 返回修改 | 验证并完成
+
+60. offline-http-math
+家长验证 | 本机 | 孩子 | 〈用户内容〉 | 行为 | 算术题取消 | 本次加分 | +3 | 原因 | 〈用户内容〉 | 24 × 4 = ? | 答案 | 返回修改 | 验证并完成

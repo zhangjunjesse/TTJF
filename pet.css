@@ -1,0 +1,77 @@
+/* FamilyPet v0.6 motion. Namespaced SVG groups, no filters or WebGL; UI resets after 2700ms. */
+.pet-v6 { display:block; width:100%; height:100%; overflow:hidden; --pet-feed-angle:-76deg; --pet-train-angle:-52deg; --pet-feed-y:148px; }
+.pet-v6.pet-stage-1 { --pet-feed-y:160px; }
+.pet-v6.pet-stage-4,.pet-v6.pet-stage-5 { --pet-feed-angle:-35deg; --pet-train-angle:-8deg; }
+.pet-scene,.pet-item { display:block; width:100%; height:100%; min-width:0; max-width:100%; -webkit-user-select:none; user-select:none; touch-action:manipulation; }
+.pet-v6 .pet-faceplate { transform-origin:247px 48px; }
+.pet-v6.pet-reaction-feed .pet-faceplate { animation:pet-v6-visor 2700ms ease-in-out both; }
+.pet-v6 .pet-actor { transform-origin:235px 365px; }
+.pet-v6 .pet-head-motion { transform-origin:247px 145px; }
+.pet-v6 .pet-arm-front { transform-origin:278px 218px; }
+.pet-v6 .pet-arm-back { transform-origin:184px 220px; }
+.pet-v6 .pet-wing { transform-origin:214px 188px; }
+.pet-v6 .pet-tail { transform-origin:182px 285px; }
+.pet-v6.pet-reaction-idle .pet-actor { animation:pet-v6-breathe 6s ease-in-out infinite; }
+.pet-v6.pet-reaction-idle .pet-eye { transform-box:fill-box; transform-origin:center; animation:pet-v6-blink 6s ease-in-out infinite; }
+.pet-v6.pet-reaction-pet .pet-head-motion { animation:pet-v6-nod 2700ms ease-in-out both; }
+.pet-v6.pet-reaction-pet .pet-arm-front { animation:pet-v6-wave 2700ms ease-in-out both; }
+.pet-v6.pet-reaction-pet .pet-affection { animation:pet-v6-heart 2700ms ease-out both; }
+.pet-v6.pet-reaction-feed .pet-arm-front { animation:pet-v6-lift 2700ms ease-in-out both; }
+.pet-v6.pet-reaction-feed .pet-head-motion { animation:pet-v6-munch 2700ms ease-in-out both; }
+.pet-v6 .pet-snack-motion { transform:translate(316px,var(--pet-feed-y)) rotate(-12deg) scale(.75); animation:pet-v6-snack 2700ms ease-in-out both; }
+.pet-v6 .pet-feed-burst { animation:pet-v6-feed-burst 2700ms ease-out both; }
+.pet-v6 .pet-energy-pulse { transform-origin:235px 223px; animation:pet-v6-charge 2700ms ease-out both; }
+.pet-v6.pet-reaction-wash .pet-head-motion { animation:pet-v6-shake 2700ms ease-in-out both; }
+.pet-v6 .pet-wash-drone { animation:pet-v6-drone 2700ms ease-in-out both; }
+.pet-v6 .pet-wash-sweep { animation:pet-v6-sweep 2700ms ease-in-out both; }
+.pet-v6 .pet-wash-drop { animation:pet-v6-drops 2700ms ease-out both; }
+.pet-v6 .pet-drop-1,.pet-v6 .pet-drop-4 { animation-delay:80ms; }
+.pet-v6 .pet-drop-2,.pet-v6 .pet-drop-5 { animation-delay:140ms; }
+.pet-v6.pet-reaction-train .pet-actor { animation:pet-v6-leap 2700ms cubic-bezier(.3,.1,.3,1) both; }
+.pet-v6.pet-reaction-train .pet-arm-front { animation:pet-v6-catch 2700ms ease-in-out both; }
+.pet-v6.pet-reaction-train .pet-wing { animation:pet-v6-wing 2700ms ease-in-out both; }
+.pet-v6 .pet-ball-motion { transform:translate(338px,192px); animation:pet-v6-ball 2700ms ease-in-out both; }
+.pet-v6 .pet-train-trail { animation:pet-v6-trail 2700ms ease-out both; }
+.pet-v6 .pet-train-impact { transform-origin:322px 190px; animation:pet-v6-impact 2700ms ease-out both; }
+.pet-v6.pet-reaction-celebrate .pet-actor { animation:pet-v6-proud 2700ms ease-in-out both; }
+.pet-v6.pet-reaction-celebrate .pet-wing { animation:pet-v6-wing 2700ms ease-in-out both; }
+.pet-v6 .pet-victory-ring { transform-origin:235px 202px; animation:pet-v6-ring 2700ms ease-out both; }
+.pet-v6 .pet-victory-shard { transform-origin:235px 202px; animation:pet-v6-shards 2700ms ease-out both; }
+.pet-v6 .pet-star-map { transform-origin:235px 154px; animation:pet-v6-map 2700ms ease-out both; }
+@keyframes pet-v6-visor { 0%,8%,100%{transform:translateY(0) scaleY(1);opacity:1}28%,82%{transform:translateY(-18px) scaleY(.6);opacity:.75} }
+@keyframes pet-v6-breathe { 0%,100%{transform:translateY(0)}50%{transform:translateY(-1.5px) scale(1.003,.998)} }
+@keyframes pet-v6-blink { 0%,43%,47%,100%{transform:scaleY(1)}45%{transform:scaleY(.08)} }
+@keyframes pet-v6-nod { 0%,100%{transform:rotate(0)}22%{transform:rotate(-4deg) translateY(2px)}48%{transform:rotate(3deg)}72%{transform:rotate(-2deg)} }
+@keyframes pet-v6-wave { 0%,100%{transform:rotate(0)}25%{transform:rotate(-27deg)}44%{transform:rotate(-15deg)}63%{transform:rotate(-30deg)} }
+@keyframes pet-v6-heart { 0%{opacity:.2;transform:translateY(12px)}35%,70%{opacity:1;transform:translateY(0)}100%{opacity:.75;transform:translateY(-12px)} }
+@keyframes pet-v6-lift { 0%,12%{transform:rotate(0)}38%,72%{transform:rotate(var(--pet-feed-angle))}100%{transform:rotate(-4deg)} }
+@keyframes pet-v6-munch { 0%,25%,100%{transform:rotate(0)}40%,58%,76%{transform:rotate(2.5deg) translateY(2px)}48%,66%{transform:rotate(-1.5deg)} }
+@keyframes pet-v6-snack { 0%{transform:translate(386px,314px) rotate(25deg) scale(.65)}20%{transform:translate(340px,238px) rotate(6deg) scale(.8)}40%,54%{transform:translate(316px,var(--pet-feed-y)) rotate(-12deg) scale(.75)}66%{transform:translate(316px,var(--pet-feed-y)) rotate(-20deg) scale(.62)}79%{transform:translate(316px,var(--pet-feed-y)) rotate(-12deg) scale(.48)}100%{transform:translate(316px,var(--pet-feed-y)) rotate(-12deg) scale(.48)} }
+@keyframes pet-v6-feed-burst { 0%,34%{opacity:0;transform:translate(-12px,6px)}49%,82%{opacity:1;transform:translate(0,0)}100%{opacity:.35;transform:translate(8px,-7px)} }
+@keyframes pet-v6-charge { 0%,40%{opacity:0;transform:scale(.6)}68%{opacity:1;transform:scale(1)}100%{opacity:.5;transform:scale(1.24)} }
+@keyframes pet-v6-shake { 0%,12%,100%{transform:rotate(0)}28%,48%{transform:rotate(-3.5deg)}38%,58%{transform:rotate(3.5deg)}78%{transform:rotate(-1deg)} }
+@keyframes pet-v6-drone { 0%{opacity:.3;transform:translate(14px,-10px)}23%,80%{opacity:1;transform:translate(0,0)}100%{opacity:.65;transform:translate(8px,-5px)} }
+@keyframes pet-v6-sweep { 0%{opacity:0;transform:translateY(-126px) scaleY(.8)}20%{opacity:1;transform:translateY(-90px)}74%{opacity:1;transform:translateY(92px)}100%{opacity:.55;transform:translateY(95px)} }
+@keyframes pet-v6-drops { 0%,8%{opacity:0;transform:translateY(-35px)}26%{opacity:1;transform:translateY(-12px)}82%{opacity:.85;transform:translateY(69px)}100%{opacity:.35;transform:translateY(84px)} }
+@keyframes pet-v6-leap { 0%,100%{transform:translate(0,0) rotate(0)}20%{transform:scale(1.02,.975)}43%{transform:translate(-5px,-21px) rotate(-3deg)}67%{transform:translate(-9px,-10px) rotate(-2deg)}82%{transform:translate(0,0) scale(1.018,.985)} }
+@keyframes pet-v6-catch { 0%,100%{transform:rotate(0)}30%,50%{transform:rotate(var(--pet-train-angle))}70%{transform:rotate(19deg)} }
+@keyframes pet-v6-wing { 0%,100%{transform:rotate(0)}40%{transform:rotate(-6deg) scale(1.035,1)}65%{transform:rotate(3deg)} }
+@keyframes pet-v6-ball { 0%{transform:translate(386px,321px) rotate(0)}25%{transform:translate(343px,227px) rotate(85deg)}40%,48%{transform:translate(322px,190px) rotate(145deg)}68%{transform:translate(202px,261px) rotate(245deg)}84%{transform:translate(123px,295px) rotate(330deg)}100%{transform:translate(94px,332px) rotate(405deg)} }
+@keyframes pet-v6-trail { 0%{opacity:.1;stroke-dashoffset:90}35%,75%{opacity:1;stroke-dashoffset:0}100%{opacity:.55;stroke-dashoffset:-25} }
+@keyframes pet-v6-impact { 0%,34%{opacity:0;transform:scale(.55)}43%{opacity:1;transform:scale(1)}60%{opacity:.5;transform:scale(1.18)}100%{opacity:0;transform:scale(1.23)} }
+@keyframes pet-v6-proud { 0%,100%{transform:translateY(0)}28%{transform:scale(1.01,.99)}55%{transform:translateY(-12px)}82%{transform:translateY(0)} }
+@keyframes pet-v6-ring { 0%{opacity:0;transform:scale(.56) rotate(-12deg)}28%,73%{opacity:1;transform:scale(1) rotate(0)}100%{opacity:.6;transform:scale(1.03) rotate(8deg)} }
+@keyframes pet-v6-shards { 0%{opacity:0;transform:scale(.6)}30%,78%{opacity:1;transform:scale(1)}100%{opacity:.5;transform:scale(1.07)} }
+@keyframes pet-v6-map { 0%,9%{opacity:0;transform:scaleY(.05)}28%{opacity:.96;transform:scaleY(1)}87%,100%{opacity:.84;transform:scaleY(1)} }
+.pet-v6.pet-reduced .pet-actor,.pet-v6.pet-reduced .pet-head-motion,.pet-v6.pet-reduced .pet-eye,.pet-v6.pet-reduced .pet-arm-front,.pet-v6.pet-reduced .pet-arm-back,.pet-v6.pet-reduced .pet-wing,.pet-v6.pet-reduced .pet-tail,.pet-v6.pet-reduced .pet-faceplate,.pet-v6.pet-reduced .pet-reaction-art * { animation:none !important; }
+.pet-v6.pet-reduced.pet-reaction-feed .pet-arm-front { transform:rotate(var(--pet-feed-angle)); }
+.pet-v6.pet-reduced.pet-reaction-feed .pet-faceplate { transform:translateY(-18px) scaleY(.6); opacity:.75; }
+.pet-v6.pet-reduced.pet-reaction-train .pet-arm-front { transform:rotate(var(--pet-train-angle)); }
+.pet-v6.pet-reduced .pet-wash-sweep { transform:translateY(45px); }
+@media(prefers-reduced-motion:reduce) {
+  .pet-v6 .pet-actor,.pet-v6 .pet-head-motion,.pet-v6 .pet-eye,.pet-v6 .pet-arm-front,.pet-v6 .pet-arm-back,.pet-v6 .pet-wing,.pet-v6 .pet-tail,.pet-v6 .pet-faceplate,.pet-v6 .pet-reaction-art * { animation:none !important; }
+  .pet-v6.pet-reaction-feed .pet-arm-front { transform:rotate(var(--pet-feed-angle)); }
+  .pet-v6.pet-reaction-feed .pet-faceplate { transform:translateY(-18px) scaleY(.6); opacity:.75; }
+  .pet-v6.pet-reaction-train .pet-arm-front { transform:rotate(var(--pet-train-angle)); }
+  .pet-v6 .pet-wash-sweep { transform:translateY(45px); }
+}

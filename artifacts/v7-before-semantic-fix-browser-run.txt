@@ -1,0 +1,40 @@
+PASS source: Unchanged business/art modules match the accepted v0.6 source and the final offline page embeds the current presentation sources
+PASS layout: wide: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS layout: desktop: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS layout: ipad-landscape: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS layout: ipad-portrait: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS layout: short-landscape: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS layout: phone: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS layout: short-phone: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS layout: small-phone: both main screens fit the viewport with named 48px controls and 16px input foundations
+PASS journey-ipad-landscape: ipad-landscape: picker, DIY, duplicate status, queries and cancellation preserve independent drafts
+PASS journey-ipad-landscape: ipad-landscape: missing fields, per-operation PIN, wrong PIN and cancellation remain understandable; atomic save preserves user reason
+PASS journey-ipad-landscape: ipad-landscape: template management exposes actual fields and AI drafts without explanatory copy or ledger changes
+PASS journey-ipad-landscape: ipad-landscape: public reminders and both reminder editors preserve user notes; saved changes remain parent protected
+PASS journey-ipad-landscape: ipad-landscape: reward fields, public request and approval show object, amount and user note while applying one verified debit
+PASS journey-ipad-landscape: ipad-landscape: care sources, stock, price and balance remain explicit and children consume purchased inventory without another grant
+PASS journey-ipad-landscape: ipad-landscape: profile, family and verification settings retain labelled values, concise capability states and cancelable protection
+PASS journey-ipad-landscape: ipad-landscape: AI fill and real query keep editable business content while empty/unclear states stay concise
+PASS journey-phone: phone: picker, DIY, duplicate status, queries and cancellation preserve independent drafts
+PASS journey-phone: phone: missing fields, per-operation PIN, wrong PIN and cancellation remain understandable; atomic save preserves user reason
+PASS journey-phone: phone: template management exposes actual fields and AI drafts without explanatory copy or ledger changes
+PASS journey-phone: phone: public reminders and both reminder editors preserve user notes; saved changes remain parent protected
+PASS journey-phone: phone: reward fields, public request and approval show object, amount and user note while applying one verified debit
+PASS journey-phone: phone: care sources, stock, price and balance remain explicit and children consume purchased inventory without another grant
+PASS journey-phone: phone: profile, family and verification settings retain labelled values, concise capability states and cancelable protection
+PASS journey-phone: phone: AI fill and real query keep editable business content while empty/unclear states stay concise
+PASS journey-small-phone: small-phone: picker, DIY, duplicate status, queries and cancellation preserve independent drafts
+PASS journey-small-phone: small-phone: missing fields, per-operation PIN, wrong PIN and cancellation remain understandable; atomic save preserves user reason
+PASS journey-small-phone: small-phone: template management exposes actual fields and AI drafts without explanatory copy or ledger changes
+PASS journey-small-phone: small-phone: public reminders and both reminder editors preserve user notes; saved changes remain parent protected
+PASS journey-small-phone: small-phone: reward fields, public request and approval show object, amount and user note while applying one verified debit
+PASS journey-small-phone: small-phone: care sources, stock, price and balance remain explicit and children consume purchased inventory without another grant
+PASS journey-small-phone: small-phone: profile, family and verification settings retain labelled values, concise capability states and cancelable protection
+PASS journey-small-phone: small-phone: AI fill and real query keep editable business content while empty/unclear states stay concise
+PASS faults: Backend unknown errors are short visible states and preserve manual content until a real retry succeeds
+PASS faults: A late contextual response cannot overwrite manually edited facts or another open panel
+PASS faults: The AI reminder-action preview retains its target and uses the public action after an explicit click (controlled response fixture)
+PASS empty: An actually empty family renders short empty states with working creation controls
+PASS offline: file: offline PIN setup, cancellation, math verification, AI query and local persistence stay concise and never call APIs
+PASS offline: http: offline PIN setup, cancellation, math verification, AI query and local persistence stay concise and never call APIs
+39 checks passed; 0 failed; 0 script errors.

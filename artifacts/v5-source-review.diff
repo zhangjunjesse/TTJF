@@ -1,0 +1,1069 @@
+--- v4/app.js
++++ v5/app.js
+@@ -1,4 +1,4 @@
+-/* v0.4: frequent points, companion growth, contextual drafts, per-operation authorization. */
++/* v0.5: full viewport play, confirmed-use shortcuts, and direct points feedback. */
+ (function () {
+   'use strict';
+   var M = window.FamilyModel, KEY = 'little-steps-demo-v1', PREF = 'little-steps-preferences';
+@@ -8,7 +8,7 @@
+   var assistantSequence = 0, avatarSequence = 0, petTimer = null;
+   var privateConfig = readStore(PRIVATE, null), drafts = readStore(DRAFT, {}), reminderSound = '';
+   var meta = { parent: { method: 'pin' }, assistant: { mode: 'local', label: '指令演示' } };
+-  var ui = { view: 'points', day: 0, reminderMode: 'near', filter: 'all', history: 'points', form: null, stack: [], auth: null, sound: false, display: false, assistantBusy: false, petReaction: 'idle', petMessage: '' };
++  var ui = { view: 'points', day: 0, reminderMode: 'near', filter: 'all', history: 'points', form: null, stack: [], auth: null, sound: false, display: false, assistantBusy: false, petReaction: 'idle', petMessage: '', homeFeedback: '' };
+   var paths = {
+     star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
+     plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="m5 12 4 4L19 6"/>',
+@@ -65,7 +65,21 @@
+     x.send(data ? JSON.stringify(data) : null);
+   }
+   function persist() { if (!saveStore(KEY, state)) toast('本机存储不可用，请保持页面开启。'); }
+-  function toast(text) { var el = document.getElementById('toast'); clearTimeout(toastTimer); el.textContent = text; el.className = 'toast visible'; toastTimer = setTimeout(function () { el.className = 'toast'; }, 4200); }
++  function paintHomeFeedback() {
++    var line = document.getElementById('home-feedback');
++    if (line) { line.textContent = ui.homeFeedback || currentPet().name; line.setAttribute('data-feedback', ui.homeFeedback ? 'true' : 'false'); line.title = line.textContent; }
++  }
++  function clearToast() {
++    clearTimeout(toastTimer); ui.homeFeedback = ''; paintHomeFeedback();
++    var el = document.getElementById('toast'); el.className = 'toast'; el.style.display = 'none'; el.textContent = '';
++  }
++  function toast(text) {
++    clearToast();
++    var el = document.getElementById('toast'), inline = ui.view === 'points' && !ui.form && !ui.auth && document.getElementById('home-feedback');
++    if (inline) { ui.homeFeedback = text; paintHomeFeedback(); }
++    else { el.textContent = text; el.style.display = ''; el.className = 'toast visible'; }
++    toastTimer = setTimeout(clearToast, inline ? 3200 : 4200);
++  }
+   function play(name) { if (!ui.sound) return; var a = document.getElementById('sound-' + name); if (a) { a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () {}); } }
+   function syncLabel() { return local ? '离线演示' : connected ? '家庭共享已连接' : serverReached ? '连接中断 · 草稿已保留' : '正在连接服务器'; }
+   function updateConnectionStatus() { var status = document.getElementById('sync-status'), badge = document.getElementById('connection-state'); if (status) status.textContent = syncLabel(); if (badge) badge.textContent = local || connected ? '' : serverReached ? '连接中断' : '连接中'; }
+@@ -215,16 +229,22 @@
+     });
+   }
+   function finishTransaction(tx) {
++    if (tx.action.type === 'points.add' && ui.form && ui.form !== tx.form) rememberDraft();
+     pending = false; tx.grant = null; if (retryTx === tx) retryTx = null;
+     if (ui.auth && ui.auth.tx === tx) ui.auth = null;
++    var keepInbox = tx.form && ui.form === tx.form && tx.form.kind === 'homeInbox' && ['task.ack', 'task.snooze', 'task.toggle', 'redemption.cancel'].indexOf(tx.action.type) >= 0;
+     if (tx.form && ui.form === tx.form) {
+-      delete drafts[draftKey(tx.form)]; saveStore(DRAFT, drafts); ui.form = ui.stack.pop() || null;
+-      if (tx.action.type === 'pointItem.save' && ui.form && ui.form.kind === 'point-list') { ui.form.data.aiText = ''; ui.form.aiStatus = '已保存，常用项列表已更新。'; }
++      if (keepInbox) ui.form.openedRevision = revision;
++      else {
++        delete drafts[draftKey(tx.form)]; saveStore(DRAFT, drafts); ui.form = ui.stack.pop() || null;
++        if (tx.action.type === 'pointItem.save' && ui.form && ui.form.kind === 'point-list') { ui.form.data.aiText = ''; ui.form.aiStatus = '已保存，常用项列表已更新。'; }
++      }
+     }
+     var message = tx.message || '已保存';
+-    if (tx.action.type === 'points.add') { var g = growthInfo(), pet = currentPet(); message = tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' + pet.name + '成为' + g.stageName + (g.stars ? ' · 成长星 ' + g.stars : '') : '+' + tx.action.points + ' 分，' + pet.name + '也长大了一点。'; ui.petReaction = 'celebrate'; ui.petMessage = message; }
+-    if (tx.action.type === 'pet.configure') { ui.petReaction = 'idle'; ui.petMessage = ''; }
+-    persist(); render(false); toast(message);
++    if (tx.action.type === 'points.add') { stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; var g = growthInfo(), pet = currentPet(); message = '+' + tx.action.points + ' 分 · ' + (tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' : '记好啦！'); ui.petReaction = 'celebrate'; ui.petMessage = message; }
++    if (tx.action.type === 'pet.configure') { ui.petReaction = 'idle'; ui.petMessage = ''; clearToast(); }
++    persist(); render(false);
++    if (keepInbox) clearToast(); else toast(message);
+     if (tx.action.type === 'points.add') { play('points'); reactPet('celebrate', message); }
+     if (tx.action.type === 'redemption.approve') play('redeem');
+     if (tx.action.type === 'parent.configure') loadMeta();
+@@ -257,8 +277,24 @@
+   function sectionHeading(title, actions) { return '<div class="section-heading"><h2>' + title + '</h2><div class="heading-actions">' + (actions || '') + '</div></div>'; }
+   function empty(text) { return '<p class="empty-state">' + esc(text) + '</p>'; }
+   function activeRequest() { return (state.requests || []).filter(function (r) { return r.status === 'pending'; })[0]; }
++  function homeWide() { return window.innerWidth >= 900 && window.innerWidth >= window.innerHeight; }
++  function homeInboxKey() { return dueTasks().map(function (t) { return t.id + ':' + (t.snoozeUntil || ''); }).join('|') + '/' + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).map(function (r) { return r.id; }).join('|') + '/' + revision; }
++  function homeInboxButton() {
++    var due = dueTasks().length, requests = (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, count = due + requests;
++    return count ? button('home-inbox', icon(due ? 'clock' : 'gift') + '<span>' + (due && requests ? '待处理' : due ? '提醒' : '待审批') + '<b>' + count + '</b></span>', 'home-inbox-button', '', due + '条到点提醒，' + requests + '份待审批申请') : '';
++  }
++  function homeInboxTitle() { return '待处理 · ' + (dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length) + ' 项'; }
++  function focusInbox() {
++    var target = document.querySelector('#home-inbox-body button:not([disabled])') || document.querySelector('.sheet [data-action="form-close"]');
++    if (target) target.focus();
++  }
++  function homeInboxBody() {
++    var list = dueTasks(), requests = (state.requests || []).filter(function (r) { return r.status === 'pending'; });
++    return (list.length ? '<h3 class="inbox-heading">到点提醒</h3>' + list.map(function (t) { return '<section class="inbox-task"><h3>' + esc(t.title) + '</h3><p>' + niceDate(t.date) + ' ' + esc(t.time || '当天事项') + '</p><div class="reminder-banner-actions">' + button('task-ack', '知道了', 'btn', t.id) + button('task-snooze', '10分钟后', 'btn', t.id) + button('task-toggle', '完成', 'btn reminder-primary', t.id) + '</div></section>'; }).join('') : '') + (requests.length ? '<h3 class="inbox-heading">礼品申请</h3>' + requests.map(requestStrip).join('') : '') + (!list.length && !requests.length ? empty('都处理好了。接下来一起玩一会儿吧。') : '');
++  }
+   function header() {
+-    return '<header class="app-header"><div class="brand-mark" aria-hidden="true">' + icon('star') + '</div><div class="app-title"><h1>小小向前</h1><span class="date-label">' + niceDate(today()) + ' · 星期' + ['日', '一', '二', '三', '四', '五', '六'][new Date().getDay()] + '<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span></div><div class="header-tools">' + (ui.display ? button('display', icon('close'), 'icon-button', '', '退出常亮布局') : '') + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
++    if (ui.view === 'points') return '<header class="app-header home-header">' + button('profile-edit', '<span class="child-avatar">' + avatarImage(state.childAvatar, state.childName) + '</span><span class="child-profile-copy"><strong>' + esc(state.childName) + '</strong><small>小小向前<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></small></span>', 'child-profile home-profile', '', '修改' + state.childName + '的昵称和头像') + '<div class="header-tools"><div id="home-inbox-slot">' + homeInboxButton() + '</div>' + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
++    return '<header class="app-header"><div class="brand-mark" aria-hidden="true">' + icon('star') + '</div><div class="app-title"><h1>小小向前</h1><span class="date-label">' + niceDate(today()) + ' · 星期' + ['日', '一', '二', '三', '四', '五', '六'][new Date().getDay()] + '<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span></div><div class="header-tools">' + (ui.display ? button('display', icon('close'), 'icon-button', '', '恢复自动锁定') : '') + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
+   }
+   function navigation() {
+     return '<nav class="bottom-nav" aria-label="主要模块"><div class="main-tabs">' + [['points', 'star', '积分'], ['reminders', 'calendar', '提醒']].map(function (item) { return button('nav', icon(item[1]) + '<span>' + item[2] + '</span>', 'nav-item ' + (ui.view === item[0] ? 'active' : ''), item[0], item[2]).replace('<button ', '<button aria-current="' + (ui.view === item[0] ? 'page' : 'false') + '" '); }).join('') + '</div>' + button('voice', icon('mic') + '<span>说一句</span>', 'voice-entry', '', '说一句，也可以打字') + '</nav>';
+@@ -266,18 +302,45 @@
+   function currentPet() { return state.pet || { kind: 'plant', name: '芽芽' }; }
+   function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+   function growthInfo() { return M.growth(state); }
+-  function petDrawing(kind, stage, name, reaction, staticPreview) { return window.FamilyPet ? window.FamilyPet.render({ kind: kind, stage: stage, name: name, reaction: reaction || 'idle', reducedMotion: !!staticPreview || reducedMotion() }) : '<div class="companion-loading">伙伴正在准备中</div>'; }
++  function petDrawing(kind, stage, name, reaction, staticPreview, framing) { return window.FamilyPet ? window.FamilyPet.render({ kind: kind, stage: stage, name: name, reaction: reaction || 'idle', framing: framing || 'scene', reducedMotion: !!staticPreview || reducedMotion() }) : '<div class="companion-loading">伙伴正在准备中</div>'; }
+   function avatarImage(value, name, extra) { return value ? '<img class="profile-avatar-image ' + (extra || '') + '" src="' + esc(value) + '" alt="' + esc(name || '孩子') + '的头像">' : '<span class="avatar-initial ' + (extra || '') + '" aria-hidden="true">' + esc(String(name || '小').slice(0, 1)) + '</span>'; }
+   function companionPanel() {
+-    var pet = currentPet(), g = growthInfo(), nextNames = pet.kind === 'plant' ? ['小种子', '冒芽啦', '小树苗', '花苞伙伴', '星光花开'] : ['初见团团', '好奇幼崽', '活力伙伴', '探索朋友', '星光伙伴'];
+-    var interactions = pet.kind === 'plant' ? [['pet', 'heart', '摸叶子'], ['water', 'water', '浇水'], ['sun', 'sun', '晒太阳']] : [['pet', 'heart', '摸摸'], ['feed', 'snack', '喂点心'], ['play', 'ball', '一起玩']];
+-    var remaining = g.stage < 5 ? '再 ' + g.remaining + ' 分，到' + nextNames[g.stage] : '再 ' + g.remaining + ' 分，添一颗成长星';
+-    return '<section class="companion-card" aria-label="成长伙伴"><div class="companion-heading"><div><span class="eyebrow">我们的成长伙伴</span><h2>' + esc(pet.name) + '<span class="level-badge">Lv.' + g.level + '</span></h2></div>' + button('pet-config', '换伙伴' + icon('chevron'), 'text-button') + '</div><div class="companion-stage"><span>' + esc(g.stageName) + '</span>' + (g.stars ? '<small>' + icon('star') + ' ' + g.stars + ' 颗成长星</small>' : '') + '</div><button type="button" class="companion-scene" data-action="pet-touch" aria-label="摸摸' + esc(pet.name) + '"><div id="pet-art">' + petDrawing(pet.kind, g.stage, pet.name, ui.petReaction) + '</div></button><p id="pet-dialogue" class="pet-dialogue" aria-live="polite">' + esc(ui.petMessage || (pet.kind === 'plant' ? '摸摸我的叶子，再给我一点阳光吧。' : '摸摸我的头，今天也想和你一起玩。')) + '</p><div class="companion-interactions">' + interactions.map(function (o) { return button('pet-interact', icon(o[1]) + '<span>' + o[2] + '</span>', 'companion-interact', o[0]); }).join('') + '</div><div class="growth-progress"><div class="growth-caption"><b>成长值 ' + g.xp + '</b>' + button('pet-growth', '成长说明' + icon('chevron'), 'text-button') + '</div><div class="growth-track" role="progressbar" aria-label="本阶段成长进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(g.progress * 100) + '"><div style="width:' + Math.max(0, Math.min(100, g.progress * 100)) + '%"></div></div><p>' + esc(remaining) + '</p></div></section>';
++    var pet = currentPet(), g = growthInfo(), interactions = pet.kind === 'plant' ? [['pet', 'heart', '摸叶子'], ['water', 'water', '浇水'], ['sun', 'sun', '晒太阳']] : [['pet', 'heart', '摸摸'], ['feed', 'snack', '喂点心'], ['play', 'ball', '一起玩']];
++    return '<section class="companion-card" aria-label="成长伙伴"><div class="companion-heading">' + button('pet-growth', '<span id="home-feedback" class="pet-name" role="status" aria-live="polite" data-feedback="' + (ui.homeFeedback ? 'true' : 'false') + '" title="' + esc(ui.homeFeedback || pet.name) + '">' + esc(ui.homeFeedback || pet.name) + '</span><span class="pet-level">Lv.' + g.level + ' · ' + g.xp + ' 成长值' + (g.stars ? ' · ' + g.stars + '星' : '') + ' ' + icon('chevron') + '</span>', 'pet-growth-entry', '', '查看' + pet.name + '的成长说明，当前' + g.stageName) + button('pet-config', '换伙伴', 'text-button') + '</div><div class="growth-track" role="progressbar" aria-label="本阶段成长进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(g.progress * 100) + '"><div style="width:' + Math.max(0, Math.min(100, g.progress * 100)) + '%"></div></div><button type="button" class="companion-scene" data-action="pet-touch" aria-label="摸摸' + esc(pet.name) + '"><div id="pet-art">' + petDrawing(pet.kind, g.stage, pet.name, ui.petReaction, false, 'hero') + '</div></button><p id="pet-dialogue" class="pet-announcement" aria-hidden="true">' + esc(ui.petMessage || '') + '</p><div class="companion-interactions">' + interactions.map(function (o) { return button('pet-interact', icon(o[1]) + '<span>' + o[2] + '</span>', 'companion-interact', o[0]); }).join('') + '</div></section>';
++  }
++  function rankedItems() { return M.frequentPointItems(state, new Date()); }
++  function behaviorTile(p, i, extra) {
++    return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b><small>' + esc(p.reason || '点开记录这次的进步') + '</small></span><strong>+' + p.points + '</strong>', 'behavior-card ' + (extra || ''), p.id, p.name + '，加' + p.points + '分');
+   }
+   function pointsPage() {
+-    var t = M.totals(state), req = activeRequest(), recent = state.points[state.points.length - 1];
+-    var items = state.pointItems.filter(function (p) { return p.enabled; });
+-    return '<section class="growth-home"><section class="credit-card"><div class="credit-profile-row">' + button('profile-edit', '<span class="child-avatar">' + avatarImage(state.childAvatar, state.childName) + '</span><span class="child-profile-copy"><strong>' + esc(state.childName) + '</strong><small>昵称与头像 ' + icon('edit') + '</small></span>', 'child-profile') + button('records', icon('list') + '记录', 'text-button') + '</div><div class="credit-balance"><div><span class="credit-label">可用积分</span><p><strong data-testid="available-points">' + t.available + '</strong><small>分</small></p></div><div class="credit-lifetime"><span>累计获得</span><b>' + t.earned + '<small> 分</small></b></div></div><div class="credit-actions">' + button('add-points', icon('plus') + '<span>加分</span>', 'btn primary credit-add') + button('jump-rewards', icon('gift') + '<span>礼品兑换</span>', 'btn credit-rewards') + '</div>' + (req ? '<div class="home-pending"><span><b>有一份礼品申请</b><small>' + esc(req.name) + ' · 等待家长确认</small></span>' + button('redemption-approve', '去确认' + icon('chevron'), 'text-button', req.id) + '</div>' : '') + '</section>' + companionPanel() + '<section class="frequent-behaviors">' + sectionHeading('常用行为', button('point-list', '管理' + icon('chevron'), 'text-button')) + '<div class="behavior-grid">' + items.map(function (p, i) { return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b><small>' + esc(p.reason || '点开填写这次的具体原因') + '</small></span><strong>+' + p.points + '</strong>', 'behavior-card', p.id); }).join('') + '</div>' + (items.length ? '' : empty('添加一个常用行为，下次就能快捷记录。')) + '</section><section class="home-recent">' + (recent ? '<span class="recent-caption">最近一次进步</span><div><span class="recent-mark">' + icon('check') + '</span><p><b>' + esc(recent.name) + '</b><small>' + esc(recent.reason) + '</small></p><strong>+' + recent.points + '</strong></div><em>' + niceTime(recent.at) + '</em>' : '<p>每一次小进步，都可以从这里开始记录。</p>') + '</section></section>';
++    var t = M.totals(state), wide = homeWide(), all = rankedItems(), items = all.slice(0, wide ? 4 : 2); ui.homeWide = wide;
++    return '<section class="growth-home interaction-home ' + (wide ? 'home-wide' : 'home-portrait') + '" data-home-layout="' + (wide ? 'landscape' : 'portrait') + '"><section class="credit-card" aria-label="积分操作">' + button('records', '<span class="credit-label">可用积分 ' + icon('list') + '</span><strong data-testid="available-points" class="' + (String(t.available).length > 5 ? 'long-balance' : '') + '">' + t.available + '</strong>', 'credit-score', '', '可用' + t.available + '积分，查看记录') + '<div class="credit-actions">' + button('add-points', icon('plus') + '<span>加分</span>', 'btn primary credit-add') + button('jump-rewards', icon('gift') + '<span>兑换</span>', 'btn credit-rewards', '', '礼品兑换') + '</div></section>' + companionPanel() + '<section class="frequent-behaviors home-behaviors"><div class="home-behavior-heading"><h2>常用行为</h2>' + button('all-behaviors', '全部行为 <small>' + all.length + '</small>' + icon('chevron'), 'text-button', '', '选择全部' + all.length + '个启用行为') + '</div><div class="home-behavior-buttons count-' + items.length + '">' + (items.length ? items.map(function (p, i) { return behaviorTile(p, i, 'home-behavior'); }).join('') : button('all-behaviors', icon('plus') + '<span>添加你的第一个常用行为</span>', 'empty-behaviors')) + '</div></section></section>';
++  }
++  function pickerData() {
++    var f = ui.form, query = (f.data.query || '').trim().toLowerCase(), all = rankedItems(), items = all.filter(function (p) { return !query || (p.name + ' ' + (p.reason || '')).toLowerCase().indexOf(query) >= 0; });
++    var viewportHeight = (window.visualViewport && window.visualViewport.height) || window.innerHeight, pageSize = viewportHeight < 440 ? 2 : viewportHeight < 650 ? 4 : 6, pages = Math.max(1, Math.ceil(items.length / pageSize));
++    f.data.page = Math.max(0, Math.min(pages - 1, Math.floor(Number(f.data.page) || 0)));
++    return { all: all.length, total: items.length, query: query, page: f.data.page, pages: pages, pageSize: pageSize, items: items.slice(f.data.page * pageSize, (f.data.page + 1) * pageSize) };
++  }
++  function pickerResults(data) { return '<div class="picker-summary">' + (data.query ? '搜索结果 ' : '全部 ') + data.total + ' 项 · 每页最多 ' + data.pageSize + ' 项</div><div class="picker-grid count-' + data.items.length + '">' + (data.items.length ? data.items.map(function (p, i) { return behaviorTile(p, i, 'picker-behavior'); }).join('') : '<div class="picker-empty"><p>' + (data.query ? '没有找到匹配的行为' : '还没有启用的常用行为') + '</p>' + button(data.query ? 'picker-clear' : 'point-list', data.query ? '清除搜索' : '去添加行为', 'btn outline') + '</div>') + '</div>'; }
++  function pickerFooter(data) {
++    return '<button type="button" data-action="picker-prev" class="icon-button" aria-label="上一页"' + (data.page === 0 ? ' disabled' : '') + '>' + icon('back') + '</button><label class="picker-page-label">第 <input id="behavior-page" type="number" min="1" max="' + data.pages + '" inputmode="numeric" value="' + (data.page + 1) + '" aria-label="跳转到指定页"><span id="behavior-page-total"> / ' + data.pages + ' 页</span></label><button type="button" data-action="picker-next" class="icon-button" aria-label="下一页"' + (data.page + 1 >= data.pages ? ' disabled' : '') + '>' + icon('arrow') + '</button>';
++  }
++  function behaviorPickerContent() {
++    var data = pickerData();
++    return sheet('全部行为', '选择后仍需核对并由家长确认', '<div class="behavior-picker-body"><div class="picker-tools"><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索名称或原因" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div>' + button('point-list', '管理', 'text-button') + '</div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer">' + pickerFooter(data) + '</div>', false).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
++  }
++  function updatePicker(commitPage) {
++    if (!ui.form || ui.form.kind !== 'behaviorPicker' || ui.auth) return;
++    var data = pickerData(), results = document.getElementById('behavior-picker-results'), footer = document.getElementById('behavior-picker-footer');
++    if (results) results.innerHTML = pickerResults(data);
++    if (footer) {
++      var previous = footer.querySelector('[data-action="picker-prev"]'), next = footer.querySelector('[data-action="picker-next"]'), page = document.getElementById('behavior-page'), total = document.getElementById('behavior-page-total'), active = document.activeElement;
++      if (previous) previous.disabled = data.page === 0; if (next) next.disabled = data.page + 1 >= data.pages;
++      if (page) { page.max = data.pages; if (commitPage || document.activeElement !== page) page.value = data.page + 1; }
++      if (total) total.textContent = ' / ' + data.pages + ' 页';
++      if (page && ((active === previous && previous.disabled) || (active === next && next.disabled))) page.focus();
++    }
+   }
+   function rewardsBody() {
+     var req = activeRequest(), t = M.totals(state), rewards = state.rewards.filter(function (r) { return r.enabled && (ui.filter === 'all' || ui.filter === r.category); });
+@@ -288,13 +351,13 @@
+     return '<div class="growth-explainer"><strong>累计获得 1 积分 = 1 成长值</strong><p>兑换不退级，互动不刷成长，换伙伴也会保留所有成长。</p></div><div class="growth-journey">' + [0, 30, 100, 250, 500].map(function (at, i) { return '<div class="journey-step ' + (g.stage === i + 1 ? 'current' : g.xp >= at ? 'unlocked' : '') + '"><div class="journey-pet">' + petDrawing(pet.kind, i + 1, pet.name, 'idle', true) + '</div><div><span>阶段 ' + (i + 1) + ' · 累计 ' + at + ' 分</span><h3>' + names[i] + '</h3><small>' + (g.xp >= at ? (g.stage === i + 1 ? '正在这里长大' : '已到达') : '还差 ' + (at - g.xp) + ' 成长值') + '</small></div><span class="journey-badge">' + icon(g.xp >= at ? 'check' : 'lock') + '</span></div>'; }).join('') + '</div><p class="form-tip">500 成长值之后，每增加 250 成长值，就多一颗成长星。不需要每天打卡，伙伴也不会因为忘记互动而退步。</p>';
+   }
+   function reactPet(reaction, message) {
+-    var pet = currentPet(), g = growthInfo(), words = { pet: pet.kind === 'plant' ? '叶子轻轻晃一晃，好舒服呀。' : '呼噜——被摸摸真开心。', water: '咕噜咕噜，喝到清凉的水啦。', sun: '暖暖的阳光，把叶子照得亮亮的。', feed: '啊呜！小点心真香。', play: '接住啦！我们再玩一次吧。', celebrate: '你的进步，也让我长大了一点！' };
++    var pet = currentPet(), g = growthInfo(), words = { pet: pet.kind === 'plant' ? '叶子轻轻晃一晃' : '摸摸好开心', water: '咕噜，喝水啦', sun: '暖暖的，好舒服', feed: '啊呜，真好吃', play: '接住啦！', celebrate: '你的进步，也让我长大了一点！' };
+     clearTimeout(petTimer); ui.petReaction = reaction; ui.petMessage = message || words[reaction] || words.pet;
+     var art = document.getElementById('pet-art'), dialogue = document.getElementById('pet-dialogue');
+-    if (art) art.innerHTML = petDrawing(pet.kind, g.stage, pet.name, reaction);
++    if (art) art.innerHTML = petDrawing(pet.kind, g.stage, pet.name, reaction, false, 'hero');
+     if (dialogue) dialogue.textContent = ui.petMessage;
+-    if (reaction !== 'celebrate') play('complete');
+-    petTimer = setTimeout(function () { ui.petReaction = 'idle'; var current = currentPet(), art = document.getElementById('pet-art'); if (art) art.innerHTML = petDrawing(current.kind, growthInfo().stage, current.name, 'idle'); }, 2300);
++    if (reaction !== 'celebrate') { play('complete'); toast(ui.petMessage); }
++    petTimer = setTimeout(function () { ui.petReaction = 'idle'; var current = currentPet(), art = document.getElementById('pet-art'); if (art) art.innerHTML = petDrawing(current.kind, growthInfo().stage, current.name, 'idle', false, 'hero'); }, 2300);
+   }
+   function requestStrip(req) {
+     var reward = find(state.rewards, req.rewardId), price = reward ? reward.points : req.points;
+@@ -324,14 +387,22 @@
+     var list = dueTasks(), t = list[0]; if (!t) return '';
+     return '<section class="reminder-banner" aria-label="到点提醒"><div class="reminder-banner-copy">' + icon('clock') + '<div><small>' + (list.length > 1 ? list.length + ' 条提醒待处理' : '提醒到点了') + '</small><strong>' + esc(t.title) + '</strong></div></div><div class="reminder-banner-actions">' + button('task-ack', '知道了', 'btn', t.id) + button('task-snooze', '10分钟后', 'btn', t.id) + button('task-toggle', '完成', 'btn reminder-primary', t.id) + '</div></section>';
+   }
+-  function renderReminder() { var el = document.getElementById('reminder-slot'); if (el) el.innerHTML = reminderBanner(); var list = dueTasks(), key = list.map(function (t) { return t.id + ':' + (t.snoozeUntil || t.date + t.time); }).join('|'); if (key && key !== reminderSound && document.visibilityState !== 'hidden') { reminderSound = key; play('complete'); } if (!key) reminderSound = ''; }
++  function renderReminder() {
++    var el = document.getElementById('reminder-slot'), inbox = document.getElementById('home-inbox-slot');
++    if (el) el.innerHTML = ui.view === 'points' ? '' : reminderBanner();
++    var inboxKey = homeInboxKey();
++    if (inbox && inbox.getAttribute('data-key') !== inboxKey) { inbox.innerHTML = homeInboxButton(); inbox.setAttribute('data-key', inboxKey); }
++    if (ui.form && ui.form.kind === 'homeInbox' && !ui.auth && ui.inboxKey !== inboxKey) { ui.inboxKey = inboxKey; var body = document.getElementById('home-inbox-body'); if (body) { var focused = body.contains(document.activeElement); body.innerHTML = homeInboxBody(); var title = document.getElementById('sheet-title'); if (title) title.textContent = homeInboxTitle(); ui.form.openedRevision = revision; if (focused) focusInbox(); } }
++    var list = dueTasks(), key = list.map(function (t) { return t.id + ':' + (t.snoozeUntil || t.date + t.time); }).join('|');
++    if (key && key !== reminderSound && document.visibilityState !== 'hidden') { reminderSound = key; play('complete'); } if (!key) reminderSound = '';
++  }
+   function recordsBody() {
+     var rows = ui.history === 'points' ? state.points : state.redemptions;
+     return '<div class="day-tabs history-tabs">' + button('history', '加分记录', 'day-tab ' + (ui.history === 'points' ? 'active' : ''), 'points') + button('history', '兑换记录', 'day-tab ' + (ui.history === 'redemptions' ? 'active' : ''), 'redemptions') + '</div><div class="record-list">' + rows.slice().reverse().map(function (r) { return '<div class="record-row"><div><strong>' + esc(r.name) + '</strong><p>' + esc(r.reason || r.note || category(r.category) + '礼品') + '</p><small>' + niceTime(r.at) + '</small></div><b class="record-number">' + (ui.history === 'points' ? '+' : '−') + r.points + '<small> 分</small></b></div>'; }).join('') + (rows.length ? '' : empty('还没有记录')) + '</div>';
+   }
+   function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row', id); }
+   function preferencesBody() {
+-    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName) + ' · 月底最后' + state.settings.monthEndDays + '天可兑换', 'settings') + menuRow('parent-config', '家长验证', (local && !privateConfig ? '本机尚未设置 PIN' : (meta.parent && meta.parent.method === 'math' ? '算术题 · 轻量防误触' : '固定 PIN · 每笔操作单独验证')), 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', 'iPad 常亮布局', ui.display ? '已开启布局' : '进入常亮布局', 'screen') + '</div><div class="capability-info"><h3>语音能力</h3><p>目标设备：iPad mini 4 / iPadOS 15.8.7。点按听写依赖 Safari 和麦克风权限，也可以使用键盘听写。</p><p>免触摸唤醒：<b>待真机验证</b>。锁屏或切到后台不保证提醒与听写持续运行。</p><p>指令理解：' + esc(meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示 · 本地规则整理') + '</p></div><p class="privacy-note">' + (local ? '离线演示，正式权限需服务器。本机 PIN 只是演示保护，不随业务记录导出。' : '家长验证仅授权本次操作，保存后不会留下解锁状态。') + '</p>' + button('export', icon('archive') + '导出家庭记录', 'btn outline full') + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
++    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName) + ' · 月底最后' + state.settings.monthEndDays + '天可兑换', 'settings') + menuRow('parent-config', '家长验证', (local && !privateConfig ? '本机尚未设置 PIN' : (meta.parent && meta.parent.method === 'math' ? '算术题 · 轻量防误触' : '固定 PIN · 每笔操作单独验证')), 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮 / 自动锁定', ui.display ? '屏幕常亮中 · 点击恢复自动锁定' : ui.wakePending ? '正在请求系统允许常亮' : (navigator.wakeLock && navigator.wakeLock.request ? '未开启 · 点击申请屏幕常亮' : '浏览器不支持，请在系统设置中调整自动锁定'), 'screen') + '</div><div class="capability-info"><h3>语音能力</h3><p>目标设备：iPad mini 4 / iPadOS 15.8.7。点按听写依赖 Safari 和麦克风权限，也可以使用键盘听写。</p><p>免触摸唤醒：<b>待真机验证</b>。锁屏或切到后台不保证提醒与听写持续运行。</p><p>指令理解：' + esc(meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示 · 本地规则整理') + '</p></div><p class="privacy-note">' + (local ? '离线演示，正式权限需服务器。本机 PIN 只是演示保护，不随业务记录导出。' : '家长验证仅授权本次操作，保存后不会留下解锁状态。') + '</p>' + button('export', icon('archive') + '导出家庭记录', 'btn outline full') + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
+   }
+   function listManagement(kind) {
+     var isReward = kind === 'reward-list', rows = isReward ? state.rewards : state.pointItems;
+@@ -430,7 +501,9 @@
+   }
+   function editorContent() {
+     var f = ui.form, d = f.data, body = '', title = '', sub = '', submit = '', footer = '', r, permission, total = M.totals(state);
+-    if (f.kind === 'records') { title = '积分记录'; body = recordsBody(); }
++    if (f.kind === 'behaviorPicker') return behaviorPickerContent();
++    if (f.kind === 'homeInbox') { title = homeInboxTitle(); f.openedRevision = revision; ui.inboxKey = homeInboxKey(); body = '<div id="home-inbox-body">' + homeInboxBody() + '</div>'; }
++    else if (f.kind === 'records') { title = '积分记录'; body = recordsBody(); }
+     else if (f.kind === 'preferences') { title = '设置'; body = preferencesBody(); }
+     else if (f.kind === 'rewards') { title = '礼品兑换'; body = rewardsBody(); }
+     else if (f.kind === 'petGrowth') { title = '一起长大的足迹'; body = growthBody(); }
+@@ -508,8 +581,11 @@
+   function render(reset) {
+     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
+     document.body.className = 'view-' + ui.view + (ui.form || ui.auth ? ' sheet-open' : '') + (ui.display ? ' display-mode' : '');
+-    document.getElementById('app').innerHTML = '<div class="app-shell"' + (ui.form || ui.auth ? ' aria-hidden="true"' : '') + '>' + header() + '<div id="reminder-slot">' + reminderBanner() + '</div><main id="main" class="app-main" tabindex="-1">' + (ui.view === 'points' ? pointsPage() : reminderPage()) + '</main>' + navigation() + '</div>' + (ui.auth ? parentContent() : ui.form ? editorContent() : '');
+-    var main = document.getElementById('main'); if (main) main.scrollTop = reset ? 0 : scroll;
++    document.getElementById('app').innerHTML = '<div class="app-shell"' + (ui.form || ui.auth ? ' aria-hidden="true"' : '') + '>' + header() + '<div id="reminder-slot">' + (ui.view === 'points' ? '' : reminderBanner()) + '</div><main id="main" class="app-main" tabindex="-1">' + (ui.view === 'points' ? pointsPage() : reminderPage()) + '</main>' + navigation() + '</div>' + (ui.auth ? parentContent() : ui.form ? editorContent() : '');
++    var main = document.getElementById('main'); if (main) main.scrollTop = reset || ui.view === 'points' ? 0 : scroll;
++    var notice = document.getElementById('toast');
++    if (ui.view === 'points' && !ui.form && !ui.auth && notice.className.indexOf('visible') >= 0) toast(notice.textContent);
++    if (ui.form && ui.form.kind === 'homeInbox' && !ui.auth) focusInbox();
+     fitViewport();
+   }
+   function makeAction(f, v) {
+@@ -566,12 +642,21 @@
+       r.start();
+     } catch (e) { recognition = null; if (status) status.textContent = '听写暂不可用，请打字或使用键盘听写。'; }
+   }
++  function refreshWakeStatus() { if (ui.form && ui.form.kind === 'preferences' && !ui.auth) render(false); }
+   function displayMode() {
+-    ui.display = !ui.display;
+-    if (!ui.display && wakeLock) { try { wakeLock.release(); } catch (e) {} wakeLock = null; }
+-    if (ui.display && navigator.wakeLock && navigator.wakeLock.request) navigator.wakeLock.request('screen').then(function (lock) { wakeLock = lock; toast('已申请屏幕常亮，切换应用后可能失效。'); }, function () { toast('系统未允许常亮，可在 iPad 设置中调整自动锁定。'); });
+-    else if (ui.display) toast('已开启常亮布局；此设备请在系统设置中调整自动锁定。');
+-    render(false);
++    if (ui.wakePending) { toast('正在等待系统处理。'); return; }
++    if (wakeLock && !wakeLock.released) {
++      var previous = wakeLock; ui.wakePending = true;
++      previous.release().then(function () { if (wakeLock === previous) { wakeLock = null; ui.display = false; } ui.wakePending = false; refreshWakeStatus(); toast('已恢复系统自动锁定。'); }, function () { ui.wakePending = false; refreshWakeStatus(); toast('未能释放常亮，请稍后重试。'); }); return;
++    }
++    ui.display = false;
++    if (!(navigator.wakeLock && navigator.wakeLock.request)) { refreshWakeStatus(); toast('浏览器不支持常亮，请在系统设置中调整自动锁定。'); return; }
++    ui.wakePending = true; refreshWakeStatus();
++    navigator.wakeLock.request('screen').then(function (lock) {
++      wakeLock = lock; ui.wakePending = false; ui.display = !lock.released;
++      lock.addEventListener('release', function () { if (wakeLock === lock) { wakeLock = null; ui.display = false; ui.wakePending = false; refreshWakeStatus(); } });
++      refreshWakeStatus(); toast(ui.display ? '屏幕常亮已开启；系统释放后会恢复自动锁定。' : '系统已恢复自动锁定。');
++    }, function () { ui.wakePending = false; ui.display = false; refreshWakeStatus(); toast('系统未允许常亮，请在系统设置中调整自动锁定。'); });
+   }
+   function exportData() { var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = '家庭积分提醒-' + today() + '.json'; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); toast('已准备业务记录，不含家长 PIN。'); }
+   function onAction(action, id) {
+@@ -580,6 +665,10 @@
+     if (ui.auth) return;
+     var item, task, copy;
+     if (action === 'nav') { rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
++    else if (action === 'home-inbox') openForm('homeInbox', {});
++    else if (action === 'all-behaviors') openForm('behaviorPicker', { query: '', page: 0 });
++    else if (action === 'picker-clear') { if (ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.query = ''; ui.form.data.page = 0; var search = document.getElementById('behavior-search'); if (search) search.value = ''; updatePicker(); if (search) search.focus(); } }
++    else if (action === 'picker-prev' || action === 'picker-next') { if (ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.page = (Number(ui.form.data.page) || 0) + (action === 'picker-next' ? 1 : -1); updatePicker(); } }
+     else if (action === 'jump-rewards') openForm('rewards', {});
+     else if (action === 'profile-edit') openForm('profile', { childName: state.childName, childAvatar: state.childAvatar || '' });
+     else if (action === 'avatar-choose') { var fileInput = document.getElementById('avatar-file'); if (fileInput) fileInput.click(); }
+@@ -592,7 +681,7 @@
+     else if (action === 'ai-fill') contextualInterpret(id);
+     else if (action === 'listen-context') listen('aiText');
+     else if (action === 'add-points') openForm('points', { points: 5 }, true);
+-    else if (action === 'choose-point') { item = find(state.pointItems, id); if (item) openForm('points', { itemId: item.id, name: item.name, points: item.points, reason: item.reason || '' }); }
++    else if (action === 'choose-point') { item = find(state.pointItems, id); if (item && item.enabled) openForm('points', { itemId: item.id, name: item.name, points: item.points, reason: item.reason || '' }); }
+     else if (action === 'records' || action === 'preferences' || action === 'point-list' || action === 'reward-list') openForm(action, {});
+     else if (action === 'reward-filter') { ui.filter = id; render(false); }
+     else if (action === 'history') { ui.history = id; render(false); }
+@@ -624,9 +713,9 @@
+     else if (action === 'export') exportData();
+   }
+   document.addEventListener('click', function (event) { var el = event.target; while (el && el !== document) { if (el.getAttribute && el.getAttribute('data-action')) { event.preventDefault(); onAction(el.getAttribute('data-action'), el.getAttribute('data-id')); return; } el = el.parentNode; } });
+-  function draftInput(event) { if (event.target.form && event.target.form.id === 'editor-form' && ui.form) { if (event.target.name !== 'aiText' && event.target.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1; rememberDraft(); } }
++  function draftInput(event) { if (event.target.id === 'behavior-search' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.query === event.target.value) return; ui.form.data.query = event.target.value; ui.form.data.page = 0; updatePicker(); return; } if (event.target.form && event.target.form.id === 'editor-form' && ui.form) { if (event.target.name !== 'aiText' && event.target.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1; rememberDraft(); } }
+   document.addEventListener('input', draftInput);
+-  document.addEventListener('change', function (event) { if (event.target.id === 'avatar-file') { loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); });
++  document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); });
+   document.addEventListener('submit', function (event) {
+     if (event.target.id === 'parent-form') { event.preventDefault(); submitParent(event.target); return; }
+     if (event.target.id !== 'editor-form') return; event.preventDefault(); if (pending || (ui.form && ui.form.kind === 'voice' && ui.assistantBusy)) return;
+@@ -638,18 +727,23 @@
+     try { var action = makeAction(ui.form, fields()), message = action.type === 'points.add' ? '已加 ' + action.points + ' 分。' : action.type === 'redemption.request' ? '已申请，等待家长确认；尚未扣分。' : action.type === 'redemption.approve' ? '兑换成功，已扣除 ' + action.expectedPoints + ' 分。' : '已保存。'; beginAction(action, message); } catch (e) { showError(e.message); }
+   });
+   document.addEventListener('keydown', function (event) {
++    if (event.key === 'Enter' && event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { event.preventDefault(); if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; }
+     if (event.key === 'Escape' && (ui.form || ui.auth)) closeForm();
+     if (event.key === 'Tab' && (ui.form || ui.auth)) { var sheetEl = document.querySelector('.sheet'), nodes = sheetEl ? sheetEl.querySelectorAll('button:not([disabled]),input:not([type="hidden"]),select,textarea,[tabindex="0"]') : []; if (nodes.length) { var first = nodes[0], last = nodes[nodes.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }
+   });
+-  function fitViewport() { var root = document.documentElement; if (root.style && root.style.setProperty) root.style.setProperty('--app-height', ((window.visualViewport && window.visualViewport.height) || window.innerHeight) + 'px'); }
++  function fitViewport() {
++    var root = document.documentElement; if (root.style && root.style.setProperty) root.style.setProperty('--app-height', ((window.visualViewport && window.visualViewport.height) || window.innerHeight) + 'px');
++    if (state && ui.view === 'points' && ui.homeWide !== homeWide() && !ui.form && !ui.auth) render(false);
++    if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();
++  }
+   window.addEventListener('resize', fitViewport); if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
+   window.addEventListener('storage', function (event) { if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = saved; revision++; if (!ui.form && !ui.auth) render(false); } } });
+   if (!M) { document.getElementById('app').innerHTML = '<p class="loading-screen">数据模块尚未加载，请刷新重试。</p>'; return; }
+   state = readStore(KEY, null); if (!state || state.version !== 1 || !state.tasks) state = M.createSeed(new Date());
+   state = M.normalize(state);
+-  var preferences = readStore(PREF, {}); ui.sound = !!preferences.sound; ui.display = location.search.indexOf('display=1') >= 0;
++  var preferences = readStore(PREF, {}); ui.sound = !!preferences.sound; ui.display = false;
+   persist(); loadMeta(); render(false); sync();
+   var lastDay = today();
+   setInterval(function () { sync(); renderReminder(); if (lastDay !== today()) { lastDay = today(); if (!ui.form && !ui.auth) render(false); } }, 5000);
+-  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { return { view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo() }; } };
++  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { return { view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeWide() ? 4 : 2).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback }; } };
+ }());
+--- v4/styles.css
++++ v5/styles.css
+@@ -1,5 +1,5 @@
+ @charset "UTF-8";
+-/* v0.4: frequent points, a lightweight growth companion, and clear daily reminders. */
++/* v0.5: full viewport interactions and a close, playable growth companion. */
+ * { box-sizing: border-box; }
+ html { width: 100%; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
+ body { position: fixed; inset: 0; margin: 0; overflow: hidden; background: #f6f7f3; color: #263b32; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; -webkit-font-smoothing: antialiased; }
+@@ -436,86 +436,164 @@
+   .bottom-nav { padding-top: 5px; padding-bottom: 5px; padding-bottom: calc(5px + env(safe-area-inset-bottom)); }
+   .nav-item { min-height: 50px; }
+ }
+-/* v0.4: the frequent action and the living companion share the home. */
+-.growth-home { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-areas: "wallet companion" "behaviors companion" "recent companion"; align-items: start; column-gap: 25px; row-gap: 20px; max-width: 1280px; margin: 0 auto; padding: 8px 28px 30px; }
+-.credit-card { grid-area: wallet; min-width: 0; padding: 21px 25px 24px; border: 1px solid #e9d9b8; border-radius: 28px; background: #fff2d9; box-shadow: 0 5px 18px rgba(84, 67, 26, .035); }
+-.credit-profile-row { display: flex; align-items: center; justify-content: space-between; }
+-.child-profile { display: flex; align-items: center; min-width: 0; min-height: 50px; padding: 0; text-align: left; border-radius: 14px; }
+-.child-avatar { display: block; flex-shrink: 0; width: 49px; height: 49px; margin-right: 12px; }
+-.profile-avatar-image { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 32%; }
+-.avatar-initial { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border: 2px solid #fffdf4; border-radius: 32%; background: #e9b768; color: #493b24; font-size: 24px; font-weight: 700; }
++/* v0.5: height is budgeted between real controls and the character, never a scrolling home. */
++.view-points .app-header { height: 56px; height: calc(56px + env(safe-area-inset-top)); min-height: 56px; padding: 4px 12px; padding-top: calc(4px + env(safe-area-inset-top)); }
++.home-profile { display: flex; align-items: center; flex: 1; min-width: 0; min-height: 48px; padding: 0; text-align: left; }
++.child-avatar { display: block; flex: 0 0 40px; width: 40px; height: 40px; margin-right: 9px; border-radius: 14px; overflow: hidden; border: 2px solid #fff; }
++.avatar-initial { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; border-radius: inherit; background: #efbd67; color: #60491f; font-size: 24px; font-weight: 700; }
++.profile-avatar-image { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+ .child-profile-copy { display: block; min-width: 0; }
+-.child-profile-copy strong { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 20px; line-height: 1.3; }
+-.child-profile-copy small { display: flex; align-items: center; margin-top: 3px; color: #7c6747; font-size: 11px; }
+-.child-profile-copy .icon { width: 12px; height: 12px; margin-left: 5px; }
+-.credit-profile-row > .text-button { margin-right: -8px; color: #70634d; font-size: 13px; }
+-.credit-balance { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 17px; }
+-.credit-label { display: block; color: #6e6146; font-size: 13px; }
+-.credit-balance p { display: flex; align-items: baseline; line-height: 1; margin-top: 4px; }
+-.credit-balance p strong { font-size: 76px; line-height: 1.05; letter-spacing: -3px; font-variant-numeric: tabular-nums; }
+-.credit-balance p small { margin-left: 10px; font-size: 18px; }
+-.credit-lifetime { padding: 6px 0 6px 20px; border-left: 1px solid #e4d4b2; color: #76684e; }
+-.credit-lifetime > span { display: block; font-size: 12px; }
+-.credit-lifetime b { display: block; margin-top: 2px; font-size: 26px; font-weight: 500; line-height: 1.2; }
+-.credit-lifetime b small { font-size: 12px; }
+-.credit-actions { display: flex; align-items: stretch; }
+-.credit-add { flex: 1.55; min-width: 0; min-height: 59px; border-radius: 17px; font-size: 22px; box-shadow: 0 4px 0 #254d3b; }
+-.credit-rewards { flex: 1; min-width: 0; min-height: 59px; margin-left: 12px; padding-right: 12px; padding-left: 12px; border: 1px solid #e1d1ad; border-radius: 17px; background: #fffcf4; color: #705a35; font-size: 15px; white-space: nowrap; }
+-.credit-add:active { transform: translateY(2px); box-shadow: 0 2px 0 #254d3b; }
+-.home-pending { display: flex; align-items: center; justify-content: space-between; margin-top: 20px; padding-top: 14px; border-top: 1px solid #e7d8b5; }
+-.home-pending > span { min-width: 0; }
+-.home-pending b, .home-pending small { display: block; }
+-.home-pending b { font-size: 14px; }
+-.home-pending small { margin-top: 2px; font-size: 11px; color: #7a6646; }
+-.home-pending .text-button { margin-right: -7px; color: #765323; }
+-.frequent-behaviors { grid-area: behaviors; min-width: 0; }
+-.frequent-behaviors .section-heading { min-height: 42px; margin-bottom: 9px; }
+-.frequent-behaviors .section-heading .text-button { margin-right: -8px; }
+-.growth-home .behavior-card { min-height: 101px; padding: 14px 13px; border-color: #e3e6db; border-radius: 20px; background: #fffefa; }
+-.growth-home .behavior-symbol { display: flex; align-items: center; justify-content: center; flex: 0 0 33px; width: 33px; height: 37px; margin-right: 11px; border-radius: 12px; background: #ebf2e3; color: #598245; }
+-.behavior-symbol .icon { width: 21px; height: 21px; }
+-.growth-home .behavior-symbol-1 { background: #eaf0f8; color: #527eb0; }
+-.growth-home .behavior-symbol-2 { background: #fff0d1; color: #bd8b36; }
+-.growth-home .behavior-symbol-3 { background: #f9e7e2; color: #bc7a64; }
+-.growth-home .behavior-copy { flex: 1; min-width: 0; }
+-.growth-home .behavior-copy b { font-size: 15px; line-height: 1.5; }
+-.growth-home .behavior-copy small { font-size: 11px; line-height: 1.5; -webkit-line-clamp: 2; }
+-.growth-home .behavior-card > strong { margin-left: 6px; font-size: 18px; }
+-.home-recent { grid-area: recent; min-width: 0; padding: 0 2px; }
+-.recent-caption { display: block; margin-bottom: 9px; font-size: 12px; color: #6c786b; }
+-.home-recent > div { display: flex; align-items: center; }
+-.recent-mark { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 33px; height: 33px; margin-right: 12px; border-radius: 12px; background: #e7efdf; color: #4c7447; }
+-.recent-mark .icon { width: 18px; height: 18px; }
+-.home-recent p { min-width: 0; flex: 1; }
+-.home-recent p b { display: block; font-size: 14px; }
+-.home-recent p small { display: block; margin-top: 3px; font-size: 12px; color: #697668; overflow-wrap: anywhere; }
+-.home-recent > div > strong { margin-left: 12px; color: #4c7447; font-size: 18px; }
+-.home-recent > em { display: block; padding-left: 45px; margin-top: 5px; font-size: 11px; color: #7b8578; }
+-.companion-card { grid-area: companion; min-width: 0; padding: 23px 24px 21px; border: 1px solid #cfdcbe; border-radius: 30px; background: linear-gradient(160deg, #f1f5df 0%, #eaf1df 70%, #e4edda 100%); }
+-.companion-heading { display: flex; align-items: center; justify-content: space-between; }
+-.eyebrow { display: block; margin-bottom: 3px; font-size: 11px; color: #6c7b53; letter-spacing: 1px; }
+-.companion-heading h2 { display: flex; align-items: center; min-width: 0; font-size: 26px; line-height: 1.35; overflow-wrap: anywhere; }
+-.level-badge { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-height: 23px; margin-left: 10px; padding: 2px 8px; border: 1px solid #c4d6ab; border-radius: 9px; background: #ffffff80; color: #63814c; font-size: 12px; letter-spacing: .4px; }
+-.companion-heading > .text-button { margin-right: -8px; padding-left: 7px; color: #647d4e; font-size: 12px; }
+-.companion-stage { display: flex; align-items: center; justify-content: space-between; min-height: 27px; color: #6b7e54; font-size: 13px; }
+-.companion-stage small { font-size: 11px; }
+-.companion-stage .icon { width: 14px; height: 14px; }
+-.companion-scene { display: block; width: 100%; height: 257px; padding: 0; margin: 7px 0 0; border-radius: 22px; overflow: hidden; }
+-#pet-art { width: 100%; height: 100%; }
+-.companion-loading { padding-top: 90px; text-align: center; color: #69844d; }
+-.pet-dialogue { min-height: 40px; margin: 7px 5px 12px; text-align: center; color: #6c7857; font-size: 13px; line-height: 1.55; }
+-.companion-interactions { display: flex; margin: 0 -4px 17px; }
+-.companion-interact { display: flex; align-items: center; justify-content: center; flex: 1; min-width: 0; min-height: 52px; margin: 0 4px; padding: 10px 5px; border: 1px solid #cdddb6; border-radius: 15px; background: #ffffffa8; color: #5a7548; font-size: 14px; font-weight: 600; }
+-.companion-interact .icon { width: 20px; height: 20px; margin-right: 7px; }
+-.companion-interact:active { background: #fff; transform: translateY(1px); }
+-.growth-progress { padding-top: 7px; border-top: 1px solid #d1ddc2; }
+-.growth-caption { display: flex; align-items: center; justify-content: space-between; min-height: 42px; }
+-.growth-caption b { font-size: 13px; color: #567047; }
+-.growth-caption .text-button { min-height: 48px; margin: -3px -7px -3px 2px; padding: 9px 7px; font-size: 11px; color: #6e7d5c; }
+-.growth-caption .icon { width: 12px; height: 12px; }
+-.growth-track { height: 10px; overflow: hidden; border-radius: 7px; background: #d6e1c5; }
+-.growth-track > div { height: 100%; min-width: 0; border-radius: 7px; background: #82a45f; }
+-.growth-progress > p { margin-top: 8px; font-size: 11px; color: #6e7e5d; }
++.child-profile-copy strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 17px; line-height: 22px; }
++.child-profile-copy > small { display: block; color: #697768; font-size: 11px; line-height: 16px; }
++.home-header .header-tools { flex-shrink: 0; margin-left: 5px; }
++.home-header .header-tools .icon-button { margin-left: 4px; }
++.home-inbox-button { display: flex; align-items: center; min-width: 48px; min-height: 48px; padding: 4px 8px; border-radius: 15px; background: #fff0cf; color: #86632a; }
++.home-inbox-button .icon { width: 19px; height: 19px; margin-right: 5px; }
++.home-inbox-button span { font-size: 12px; line-height: 16px; }
++.home-inbox-button b { display: block; font-size: 15px; }
++.view-points .app-main { overflow: visible; display: flex; min-height: 0; }
++.view-points .bottom-nav { height: 64px; height: calc(64px + env(safe-area-inset-bottom)); min-height: 64px; padding: 7px 12px; padding-bottom: calc(7px + env(safe-area-inset-bottom)); }
++.view-points .main-tabs { flex: 2; min-width: 0; max-width: none; }
++.view-points .nav-item { flex-direction: row; min-height: 48px; height: 48px; padding: 4px 8px; font-size: 14px; border-radius: 14px; }
++.view-points .nav-item + .nav-item { margin-left: 6px; }
++.view-points .nav-item .icon { width: 21px; height: 21px; margin: 0 6px 0 0; }
++.view-points .voice-entry { flex: 1; min-width: 0; min-height: 48px; height: 48px; padding: 4px 7px; margin-left: 6px; font-size: 14px; border-radius: 14px; }
++.view-points .voice-entry .icon { width: 20px; height: 20px; margin-right: 5px; }
++.interaction-home { display: grid; width: 100%; height: 100%; min-height: 0; min-width: 0; max-width: none; margin: 0; padding: 6px 12px 8px; grid-template-columns: minmax(0, 1fr); grid-template-rows: 64px minmax(0, 1fr) 104px; grid-template-areas: "wallet" "companion" "behaviors"; gap: 6px; }
++.interaction-home .credit-card { grid-area: wallet; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-width: 0; min-height: 0; padding: 4px 10px; border: 1px solid #ead7b0; border-radius: 18px; background: #fff1d7; }
++.credit-score { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-width: 48px; min-height: 48px; height: 100%; padding: 0; text-align: left; border-radius: 12px; }
++.credit-label { display: flex; align-items: center; color: #7c6d50; font-size: 12px; line-height: 16px; }
++.credit-label .icon { width: 14px; height: 14px; margin-left: 5px; }
++.credit-score > strong { font-size: 34px; line-height: 34px; letter-spacing: -1px; font-variant-numeric: tabular-nums; }
++.credit-score > strong.long-balance { font-size: 28px; }
++.credit-actions { display: flex; align-items: center; min-width: 0; }
++.credit-add { min-width: 96px; min-height: 48px; height: 48px; padding: 8px 14px; font-size: 19px; border-radius: 14px; box-shadow: 0 3px 0 #27573f; }
++.credit-add .icon { width: 21px; height: 21px; margin-right: 5px; }
++.credit-rewards { display: flex; flex-direction: column; min-width: 48px; min-height: 48px; height: 48px; padding: 3px 7px; margin-left: 8px; border: 1px solid #e2cfa9; border-radius: 14px; background: #fffaf0; color: #806237; font-size: 11px; line-height: 16px; }
++.credit-rewards .icon { width: 20px; height: 20px; margin: 0; }
++.companion-card { position: relative; grid-area: companion; display: grid; min-width: 0; min-height: 0; height: 100%; grid-template-rows: 48px 3px minmax(0, 1fr) 48px; row-gap: 2px; padding: 4px 8px 6px; border: 1px solid #cfddbd; border-radius: 24px; background: linear-gradient(150deg, #f0f5df, #e5efdb); }
++.companion-heading { display: flex; align-items: center; min-width: 0; min-height: 0; }
++.pet-growth-entry { display: flex; flex-direction: column; justify-content: center; flex: 1; min-width: 0; min-height: 48px; height: 48px; padding: 0 6px; text-align: left; border-radius: 12px; }
++.pet-name { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 19px; font-weight: 650; line-height: 23px; }
++.pet-level { display: block; max-width: 100%; color: #6b8052; font-size: 11px; line-height: 17px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
++.pet-level .icon { width: 12px; height: 12px; }
++.companion-heading > .text-button { flex-shrink: 0; min-width: 64px; min-height: 48px; padding: 5px 7px; font-size: 12px; color: #567647; background: #ffffff70; border-radius: 13px; }
++.growth-track { height: 3px; min-height: 0; margin: 0 6px; overflow: hidden; border-radius: 5px; background: #d6e2c6; }
++.growth-track > div { height: 100%; border-radius: 5px; background: #86a763; }
++.companion-scene { display: block; width: 100%; height: 100%; min-width: 48px; min-height: 0; padding: 0; margin: 0; border-radius: 16px; overflow: visible; }
++#pet-art { display: block; width: 100%; height: 100%; min-height: 0; }
++#pet-art > svg { display: block; width: 100%; height: 100%; }
++.companion-loading { display: flex; align-items: center; justify-content: center; height: 100%; color: #678050; }
++.pet-announcement { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
++.companion-interactions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); min-width: 0; height: 48px; gap: 6px; margin: 0; }
++.companion-interact { display: flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; height: 48px; margin: 0; padding: 4px 5px; border: 1px solid #c9dab0; border-radius: 13px; background: #ffffffbd; color: #557343; font-size: 13px; font-weight: 600; white-space: nowrap; }
++.companion-interact .icon { width: 18px; height: 18px; margin-right: 4px; }
++.companion-interact:active { background: #fff; }
++.home-behaviors { grid-area: behaviors; display: grid; grid-template-rows: 48px minmax(0, 1fr); min-width: 0; min-height: 0; }
++.home-behavior-heading { display: flex; align-items: center; justify-content: space-between; min-width: 0; }
++.home-behavior-heading h2 { font-size: 15px; letter-spacing: 0; }
++.home-behavior-heading .text-button { min-height: 48px; padding: 5px 1px 5px 8px; font-size: 13px; }
++.home-behavior-heading small { margin-left: 5px; font-size: 12px; }
++.home-behavior-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, 1fr); min-width: 0; min-height: 0; gap: 8px; }
++.home-behavior-buttons.count-1 > *, .home-behavior-buttons.count-0 > * { grid-column: 1 / -1; }
++.interaction-home .behavior-card, .picker-grid .behavior-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; position: relative; width: 100%; height: 100%; min-height: 48px; min-width: 0; margin: 0; padding: 6px 10px; border: 1px solid #dfe5d8; border-radius: 14px; background: #fffefa; text-align: left; }
++.interaction-home .behavior-symbol, .picker-grid .behavior-symbol { display: none; }
++.interaction-home .behavior-copy, .picker-grid .behavior-copy { display: block; min-width: 0; padding: 0; }
++.interaction-home .behavior-copy b, .picker-grid .behavior-copy b { display: -webkit-box; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; font-size: 14px; line-height: 19px; overflow-wrap: anywhere; }
++.interaction-home .behavior-copy small { display: none; }
++.interaction-home .behavior-card > strong, .picker-grid .behavior-card > strong { position: static; align-self: center; margin: 0 0 0 6px; color: #386c4c; font-size: 18px; line-height: 24px; white-space: nowrap; }
++.empty-behaviors { display: flex; align-items: center; justify-content: center; min-width: 48px; min-height: 48px; border: 1px dashed #cfd8c6; border-radius: 15px; color: #748164; font-size: 13px; }
++.empty-behaviors .icon { width: 18px; height: 18px; margin-right: 6px; }
++.home-wide { grid-template-columns: minmax(0, .36fr) minmax(0, .64fr); grid-template-rows: minmax(142px, .4fr) minmax(176px, .6fr); grid-template-areas: "wallet companion" "behaviors companion"; padding: 10px 20px 14px; gap: 14px 20px; }
++.home-wide .credit-card { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) 60px; padding: 14px 20px 18px; border-radius: 27px; }
++.home-wide .credit-score { align-items: flex-start; padding: 0 4px; }
++.home-wide .credit-label { font-size: 16px; line-height: 24px; }
++.home-wide .credit-label .icon { width: 18px; height: 18px; margin-left: 8px; }
++.home-wide .credit-score > strong { font-size: clamp(52px, 6.5vw, 104px); line-height: 1.1; letter-spacing: -2px; }
++.home-wide .credit-score > strong.long-balance { font-size: clamp(36px, 4vw, 70px); }
++.home-wide .credit-actions { height: 60px; }
++.home-wide .credit-add { flex: 1; height: 56px; min-height: 56px; font-size: 24px; }
++.home-wide .credit-rewards { flex-direction: row; min-width: 88px; height: 56px; min-height: 56px; padding: 10px; margin-left: 12px; font-size: 15px; }
++.home-wide .credit-rewards .icon { margin-right: 6px; }
++.home-wide .companion-card { grid-template-rows: 48px 4px minmax(0, 1fr) 52px; row-gap: 6px; padding: 10px 18px 14px; border-radius: 30px; }
++.home-wide .pet-name { font-size: 25px; line-height: 28px; }
++.home-wide .pet-level { font-size: 12px; line-height: 18px; }
++.home-wide .growth-track { height: 4px; }
++.home-wide .companion-interactions, .home-wide .companion-interact { height: 52px; min-height: 52px; }
++.home-wide .companion-interact { font-size: 16px; }
++.home-wide .companion-interact .icon { width: 22px; height: 22px; margin-right: 7px; }
++.home-wide .home-behavior-heading h2 { font-size: 20px; }
++.home-wide .home-behavior-heading .text-button { font-size: 15px; }
++.home-wide .home-behavior-buttons { grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 12px; }
++.home-wide .home-behavior-buttons.count-0, .home-wide .home-behavior-buttons.count-1, .home-wide .home-behavior-buttons.count-2 { grid-template-rows: minmax(0, 1fr); }
++.home-wide .home-behavior-buttons.count-3 > :last-child { grid-column: 1 / -1; }
++.home-wide .home-behavior { display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: 16px; }
++.home-wide .behavior-symbol { display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; min-height: 32px; margin-bottom: 9px; border-radius: 11px; background: #eaf2e1; color: #618844; }
++.home-wide .behavior-symbol .icon { width: 21px; height: 21px; }
++.home-wide .behavior-symbol-1 { background: #e9f0fb; color: #5c85b8; }
++.home-wide .behavior-symbol-2 { background: #fff0cf; color: #b28a3d; }
++.home-wide .behavior-symbol-3 { background: #fbe6df; color: #b47763; }
++.home-wide .behavior-copy b { font-size: 17px; line-height: 23px; }
++.home-wide .behavior-card > strong { position: absolute; top: 16px; right: 16px; margin: 0; font-size: 23px; }
++.inbox-heading { margin: 6px 0 12px; font-size: 16px; }
++.inbox-task { margin-bottom: 18px; padding: 14px; border: 1px solid #e7d29a; border-radius: 18px; background: #fff4d8; }
++.inbox-task h3 { overflow-wrap: anywhere; font-size: 17px; }
++.inbox-task > p { margin: 4px 0 10px; color: #8b7549; font-size: 12px; }
++.inbox-task .reminder-banner-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
++.inbox-task .reminder-banner-actions .btn { min-width: 48px; min-height: 48px; padding: 9px 4px; margin: 0; font-size: 12px; }
++.behavior-picker-sheet { width: 100%; max-width: 800px; height: min(740px, calc(var(--app-height, 100vh) - 12px)); max-height: calc(var(--app-height, 100vh) - 12px); }
++.behavior-picker-sheet .sheet-header { min-height: 68px; padding: 8px 16px; }
++.behavior-picker-sheet .sheet-header h2 { font-size: 21px; }
++.behavior-picker-sheet .sheet-header p { font-size: 11px; }
++.behavior-picker-sheet .sheet-header > .icon-button { margin-right: 0; }
++.behavior-picker-body { display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; padding: 12px 16px; }
++.picker-tools { display: flex; align-items: center; flex-shrink: 0; min-width: 0; height: 48px; margin-bottom: 8px; }
++.picker-search { position: relative; flex: 1; min-width: 0; }
++.picker-search input { display: block; width: 100%; height: 48px; padding: 10px 48px 10px 12px; border: 1px solid #d5decd; border-radius: 13px; background: #fff; font-size: 16px; -webkit-appearance: none; }
++.picker-search input::-webkit-search-cancel-button { -webkit-appearance: none; }
++.picker-search .icon-button { position: absolute; right: 0; top: 0; background: transparent; }
++.picker-search .icon { width: 17px; height: 17px; }
++.picker-tools > .text-button { min-height: 48px; min-width: 48px; margin-left: 4px; padding: 4px 6px; font-size: 14px; }
++.behavior-picker-results { display: flex; flex-direction: column; flex: 1; min-height: 0; }
++.picker-summary { flex-shrink: 0; min-height: 26px; color: #758368; font-size: 12px; line-height: 26px; }
++.picker-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); flex: 1; min-height: 0; min-width: 0; gap: 8px; }
++.picker-grid .behavior-card { padding: 10px 12px; }
++.picker-grid .behavior-copy b { font-size: 15px; line-height: 21px; }
++.picker-grid .behavior-copy small { display: -webkit-box; margin-top: 6px; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #7c876f; font-size: 12px; line-height: 17px; overflow-wrap: anywhere; }
++.picker-grid .behavior-card > strong { align-self: start; font-size: 20px; }
++.picker-empty { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 0; }
++.picker-empty p { margin-bottom: 12px; color: #7b876e; font-size: 14px; }
++.picker-footer { display: flex; align-items: center; justify-content: space-between; min-height: 66px; padding: 8px 16px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
++.picker-footer > .icon-button { background: #edf2e6; }
++.picker-page-label { display: flex; align-items: center; color: #62735a; font-size: 12px; white-space: nowrap; }
++.picker-page-label input { width: 60px; height: 48px; padding: 7px 4px; margin: 0 6px; border: 1px solid #d2ddc7; border-radius: 11px; text-align: center; font-size: 16px; }
++@media (min-width: 900px) and (orientation: landscape) {
++  .view-points .app-header { height: 64px; height: calc(64px + env(safe-area-inset-top)); padding: 8px 20px; padding-top: calc(8px + env(safe-area-inset-top)); }
++  .child-profile-copy strong { font-size: 19px; }
++  .view-points .bottom-nav { padding-right: 20px; padding-left: 20px; }
++}
++@media (min-width: 1500px) {
++  .home-wide { grid-template-columns: minmax(0, .34fr) minmax(0, .66fr); padding: 12px 24px 18px; column-gap: 24px; }
++  .home-wide .credit-card { padding: 25px 32px; }
++  .home-wide .companion-card { padding: 18px 28px; }
++  .home-wide .behavior-copy b { font-size: 22px; line-height: 29px; }
++  .home-wide .behavior-symbol { width: 40px; height: 40px; min-height: 40px; margin-bottom: 16px; }
++}
++@media (max-height: 650px) and (min-width: 900px) {
++  .home-wide { grid-template-rows: minmax(132px, .4fr) minmax(162px, .6fr); padding: 6px 16px 8px; gap: 8px 16px; }
++  .home-wide .credit-card { grid-template-rows: minmax(0, 1fr) 48px; padding: 7px 12px 10px; }
++  .home-wide .credit-label { font-size: 12px; line-height: 18px; }
++  .home-wide .credit-score > strong { font-size: 42px; }
++  .home-wide .credit-score > strong.long-balance { font-size: 34px; }
++  .home-wide .credit-actions, .home-wide .credit-add, .home-wide .credit-rewards { min-height: 48px; height: 48px; }
++  .home-wide .credit-add { font-size: 20px; }
++  .home-wide .home-behavior { display: grid; grid-template-columns: minmax(0, 1fr) auto; padding: 8px 10px; }
++  .home-wide .behavior-symbol { display: none; }
++  .home-wide .behavior-copy b { font-size: 14px; line-height: 20px; }
++  .home-wide .behavior-card > strong { position: static; font-size: 20px; margin-left: 5px; }
++  .home-wide .companion-card { grid-template-rows: 48px 3px minmax(0, 1fr) 48px; row-gap: 3px; padding: 5px 12px 8px; }
++  .home-wide .companion-interactions, .home-wide .companion-interact { min-height: 48px; height: 48px; }
++}
+ .rewards-sheet-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+ .rewards-sheet-heading p { font-size: 14px; color: #67725e; }
+ .rewards-sheet-heading strong { margin: 0 4px; color: #345c42; font-size: 24px; }
+@@ -561,77 +639,9 @@
+ .journey-step small { color: #7c886e; font-size: 11px; }
+ .journey-badge { display: flex; align-items: center; justify-content: center; flex-shrink: 0; width: 31px; height: 31px; margin-left: 8px; border-radius: 50%; background: #e5edd9; }
+ .journey-badge .icon { width: 16px; height: 16px; color: #7a9561; }
+-@media (min-width: 1200px) { .growth-home { column-gap: 32px; padding-top: 14px; } .companion-scene { height: 290px; } .companion-card { padding: 26px 29px 23px; } }
+-@media (min-width: 700px) and (max-width: 899px) {
+-  .growth-home { column-gap: 17px; row-gap: 17px; padding-right: 20px; padding-left: 20px; }
+-  .credit-card { padding: 18px 18px 21px; }
+-  .credit-balance p strong { font-size: 68px; }
+-  .credit-lifetime { padding-left: 13px; }
+-  .credit-add { flex: 1.2; }
+-  .credit-rewards { padding-right: 8px; padding-left: 8px; margin-left: 9px; font-size: 13px; }
+-  .credit-rewards .icon { width: 18px; height: 18px; margin-right: 5px; }
+-  .child-profile-copy strong { max-width: 140px; }
+-  .companion-card { padding: 21px 17px 19px; }
+-  .companion-heading h2 { font-size: 22px; }
+-  .companion-scene { height: 225px; }
+-  .companion-interact { font-size: 12px; }
+-  .companion-interact .icon { width: 17px; height: 17px; margin-right: 4px; }
+-  .growth-home .behavior-card { position: relative; display: block; min-height: 132px; padding: 12px; }
+-  .growth-home .behavior-symbol { width: 29px; height: 29px; margin-bottom: 7px; }
+-  .growth-home .behavior-card > strong { position: absolute; top: 12px; right: 12px; }
+-  .growth-home .behavior-copy b { font-size: 14px; }
+-}
+ @media (max-width: 699px) {
+-  .growth-home { grid-template-columns: minmax(0, 1fr); grid-template-areas: "wallet" "behaviors" "companion" "recent"; row-gap: 16px; padding: 7px 17px 24px; }
+-  .credit-card { padding: 15px 19px 20px; border-radius: 25px; }
+-  .child-avatar { width: 43px; height: 43px; margin-right: 10px; }
+-  .child-profile { min-height: 44px; }
+-  .child-profile-copy strong { max-width: 190px; font-size: 18px; }
+-  .child-profile-copy small { margin-top: 1px; font-size: 10px; }
+-  .credit-profile-row > .text-button { min-height: 48px; font-size: 12px; }
+-  .credit-balance { margin: 10px 0 14px; }
+-  .credit-label { font-size: 12px; }
+-  .credit-balance p strong { font-size: 65px; }
+-  .credit-balance p small { font-size: 16px; }
+-  .credit-lifetime { padding-left: 16px; }
+-  .credit-lifetime > span { font-size: 11px; }
+-  .credit-lifetime b { font-size: 24px; }
+-  .credit-add, .credit-rewards { min-height: 52px; border-radius: 15px; }
+-  .credit-add { font-size: 21px; }
+-  .credit-rewards { font-size: 14px; margin-left: 10px; }
+-  .credit-rewards .icon { width: 20px; height: 20px; margin-right: 6px; }
+-  .home-pending { margin-top: 16px; padding-top: 11px; }
+-  .companion-card { display: block; padding: 17px 18px 18px; border-radius: 26px; }
+-  .companion-heading { margin-bottom: 2px; }
+-  .eyebrow { margin-bottom: 1px; font-size: 10px; letter-spacing: .7px; }
+-  .companion-heading h2 { font-size: 23px; }
+-  .level-badge { margin-left: 8px; min-height: 21px; padding: 1px 7px; font-size: 11px; }
+-  .companion-heading > .text-button { min-height: 48px; font-size: 12px; }
+-  .companion-stage { min-height: 24px; font-size: 12px; }
+-  .companion-stage small { font-size: 11px; }
+-  .companion-scene { height: 190px; margin: 2px 0 0; width: 100%; border-radius: 18px; }
+-  .pet-dialogue { min-height: 20px; margin: 6px 0 11px; text-align: center; font-size: 12px; line-height: 1.6; }
+-  .companion-interactions { margin: 0 -4px 12px; }
+-  .companion-interact { min-height: 48px; padding: 8px 3px; border-radius: 13px; font-size: 13px; }
+-  .companion-interact .icon { width: 18px; height: 18px; margin-right: 5px; }
+-  .growth-progress { padding-top: 3px; border-top: 1px solid #d1ddc2; }
+-  .growth-caption { flex-wrap: nowrap; min-height: 42px; }
+-  .growth-caption b { font-size: 12px; }
+-  .growth-caption .text-button { min-height: 48px; margin: -3px -5px -3px 0; padding: 8px 5px; font-size: 11px; }
+-  .growth-caption .icon { width: 12px; height: 12px; }
+-  .growth-track { height: 8px; }
+-  .growth-progress > p { margin-top: 6px; font-size: 11px; }
+-  .frequent-behaviors .section-heading h2 { font-size: 20px; }
+-  .growth-home .behavior-card { position: relative; display: block; min-height: 108px; padding: 12px 13px; border-radius: 18px; }
+-  .growth-home .behavior-symbol { width: 29px; height: 29px; margin-bottom: 6px; }
+-  .growth-home .behavior-symbol .icon { width: 18px; height: 18px; }
+-  .growth-home .behavior-copy b { font-size: 14px; }
+-  .growth-home .behavior-copy small { font-size: 10px; -webkit-line-clamp: 1; }
+-  .growth-home .behavior-card > strong { position: absolute; top: 13px; right: 13px; font-size: 19px; }
+-  .context-ai { padding: 13px 13px 11px; margin-bottom: 20px; border-radius: 17px; }
++  .context-ai { padding: 13px; margin-bottom: 20px; border-radius: 17px; }
+   .context-ai-heading > strong { font-size: 14px; }
+-  .context-ai .field > span { font-size: 11px; }
+-  .context-ai-status { font-size: 10px; }
+   .ai-fill-button { padding: 10px 11px; font-size: 12px; }
+   .context-ai-actions .text-button { font-size: 12px; }
+   .pet-choice > div { height: 105px; }
+@@ -641,59 +651,18 @@
+   .journey-pet { flex-basis: 95px; height: 66px; margin-right: 9px; }
+   .journey-step { min-height: 92px; padding: 9px 8px; }
+   .journey-step h3 { font-size: 15px; }
+-  .journey-step span { font-size: 9px; }
+-  .journey-step small { font-size: 10px; }
++  .journey-step span { font-size: 10px; }
++  .journey-step small { font-size: 11px; }
+   .journey-badge { width: 26px; height: 26px; margin-left: 5px; }
+ }
+ @media (max-width: 359px) {
+-  .growth-home { padding-right: 12px; padding-left: 12px; }
+-  .credit-card { padding: 12px 15px 18px; }
+-  .child-profile-copy strong { max-width: 139px; }
+-  .credit-balance { margin-top: 8px; }
+-  .credit-balance p strong { font-size: 59px; }
+-  .credit-add { font-size: 19px; padding: 11px 15px; }
+-  .credit-rewards { padding: 10px 8px; font-size: 12px; margin-left: 8px; }
+-  .credit-rewards .icon { width: 17px; height: 17px; margin-right: 5px; }
+-  .companion-card { padding: 15px 14px 15px; }
+-  .companion-heading h2 { font-size: 21px; }
+-  .companion-scene { height: 180px; }
+-  .companion-stage { font-size: 12px; }
+-  .pet-dialogue { font-size: 11px; }
+-  .growth-caption b { font-size: 12px; }
+-  .growth-caption .text-button { font-size: 11px; }
+-  .growth-progress > p { font-size: 11px; }
+-  .companion-interact { font-size: 12px; }
+-  .companion-interact .icon { width: 16px; height: 16px; margin-right: 4px; }
+-  .growth-home .behavior-card { padding: 11px; }
+-  .growth-home .behavior-copy b { font-size: 13px; }
+   .pet-choice > div { height: 88px; }
+   .context-ai-heading > span { padding: 3px 5px; font-size: 9px; }
+   .ai-fill-button { padding-right: 8px; padding-left: 8px; font-size: 11px; }
+-  .context-ai-actions .text-button { font-size: 11px; }
+   .journey-pet { flex-basis: 80px; margin-right: 7px; }
+-}
+-@media (min-width: 900px) and (max-height: 850px) {
+-  .growth-home { row-gap: 16px; padding-top: 7px; }
+-  .credit-card { padding: 15px 22px 18px; }
+-  .child-avatar { width: 43px; height: 43px; }
+-  .child-profile { min-height: 48px; }
+-  .child-profile-copy strong { font-size: 19px; }
+-  .credit-balance { margin: 9px 0 12px; }
+-  .credit-balance p strong { font-size: 64px; }
+-  .credit-lifetime b { font-size: 24px; }
+-  .credit-add, .credit-rewards { min-height: 52px; }
+-  .credit-add { font-size: 21px; }
+-  .growth-home .behavior-card { min-height: 86px; padding-top: 11px; padding-bottom: 11px; }
+-  .frequent-behaviors .section-heading { margin-bottom: 7px; }
+-  .companion-card { padding: 17px 21px 16px; }
+-  .eyebrow { margin-bottom: 0; font-size: 10px; }
+-  .companion-heading h2 { font-size: 23px; }
+-  .companion-stage { min-height: 23px; font-size: 12px; }
+-  .companion-scene { height: 205px; margin-top: 2px; }
+-  .pet-dialogue { min-height: 23px; margin: 4px 0 8px; font-size: 12px; }
+-  .companion-interactions { margin-bottom: 8px; }
+-  .companion-interact { min-height: 48px; padding-top: 9px; padding-bottom: 9px; }
+-  .growth-progress { padding-top: 2px; }
+-  .growth-progress > p { margin-top: 6px; }
++  .behavior-picker-body { padding-right: 12px; padding-left: 12px; }
++  .picker-grid .behavior-card { padding: 8px; }
++  .picker-grid .behavior-copy b { font-size: 14px; line-height: 20px; }
++  .picker-grid .behavior-copy small { font-size: 11px; line-height: 16px; }
+ }
+ @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; } }
+--- v4/model.js
++++ v5/model.js
+@@ -264,6 +264,33 @@
+     }
+     if (spent > earned) { fail('剩余积分不能为负数'); }
+     return { earned: earned, spent: spent, available: earned - spent };
++  }
++  function frequentPointItems(state, suppliedNow) {
++    totals(state);
++    var now = asDate(suppliedNow).getTime();
++    var earliest = now - 30 * 24 * 60 * 60 * 1000;
++    var byId = Object.create(null);
++    var ranked = [];
++    state.pointItems.forEach(function (item, index) {
++      if (!item.enabled) { return; }
++      var row = { item: item, index: index, count: 0, latest: -Infinity };
++      byId[item.id] = row;
++      ranked.push(row);
++    });
++    state.points.forEach(function (record) {
++      if (typeof record.itemId !== 'string' || !record.itemId || !own.call(byId, record.itemId)) { return; }
++      var at = asDate(record.at).getTime();
++      if (at < earliest || at > now) { return; }
++      var row = byId[record.itemId];
++      row.count += 1;
++      if (at > row.latest) { row.latest = at; }
++    });
++    ranked.sort(function (left, right) {
++      if (left.count !== right.count) { return right.count - left.count; }
++      if (left.latest !== right.latest) { return left.latest < right.latest ? 1 : -1; }
++      return left.index - right.index;
++    });
++    return ranked.map(function (row) { return row.item; });
+   }
+   function growth(state) {
+     var xp = totals(state).earned;
+@@ -553,5 +580,5 @@
+   }
+ 
+   return { createSeed: createSeed, dateKey: dateKey, addDays: addDays, totals: totals,
+-    availability: availability, apply: apply, normalize: normalize, growth: growth };
++    availability: availability, apply: apply, normalize: normalize, growth: growth, frequentPointItems: frequentPointItems };
+ }));
+--- v4/pet.js
++++ v5/pet.js
+@@ -217,9 +217,8 @@
+   }
+ 
+   function plant(stage, reaction) {
+-    var out = '', lifted = reaction === 'play' || reaction === 'celebrate' || reaction === 'water';
+-    out += ellipse(300, 299, stage === 1 ? 65 : 79, 12, '#c4d1b0', 'opacity=".64"');
+-    out += pot(stage);
++    var out = '', front = '', lifted = reaction === 'play' || reaction === 'celebrate' || reaction === 'water';
++    var home = ellipse(300, 299, stage === 1 ? 65 : 79, 12, '#c4d1b0', 'opacity=".64"') + pot(stage);
+     if (stage === 1) {
+       out += path('M265 231 C246 205 258 174 290 161 C302 154 314 143 317 132 C326 157 345 174 345 198 C346 223 329 245 300 247 C285 247 274 241 265 231Z', '#c59c68', '#8d754b', 2.7);
+       out += path('M275 217 C266 195 276 179 296 168 C284 187 286 210 293 230 Q282 232 275 217Z', '#dfbe88');
+@@ -275,10 +274,10 @@
+         path('M268 151 C267 124 285 114 307 114 Q281 121 282 147Z', '#f7dda0'), '', 'pet-flower-crown');
+       out += plantFace(310, 151, 1.12, reaction);
+       out += leaf(293, 220, 0.57, -57, false) + leaf(313, 218, 0.57, 114, true);
+-      out += sparkle(237, 87, 0.65, '#e3bf69') + sparkle(380, 204, 0.75, '#e3bf69');
+-    }
+-    if (reaction === 'feed') { out += carrot(337, stage < 3 ? 229 : 211, 0.73, -25); }
+-    return group(out, '', 'pet-character-motion pet-plant-character');
++      front += sparkle(237, 87, 0.65, '#e3bf69') + sparkle(380, 204, 0.75, '#e3bf69');
++    }
++    if (reaction === 'feed') { front += carrot(337, stage < 3 ? 229 : 211, 0.73, -25); }
++    return { body: out, rear: '', front: front, home: home };
+   }
+ 
+   function carrot(x, y, scale, angle) {
+@@ -324,26 +323,26 @@
+       'translate(' + x + ' ' + y + ') rotate(' + angle + ') scale(' + scale + ')');
+   }
+ 
+-  function capybara(stage, reaction) {
+-    var out = '', excited = reaction === 'play' || reaction === 'celebrate';
+-    out += ellipse(304, 290, stage === 1 ? 86 : 100, 14, '#c4d1b0', 'opacity=".72"');
++  function capybara(stage, reaction, hero) {
++    var out = '', rear = '', front = '', excited = reaction === 'play' || reaction === 'celebrate';
++    var home = ellipse(304, 290, stage === 1 ? 86 : 100, 14, '#c4d1b0', 'opacity=".72"');
+     if (stage === 1) {
+-      out += path('M211 270 Q208 245 230 230 Q266 208 325 230 Q362 239 373 267 Q364 290 297 293 Q231 291 211 270Z', '#b7c6a0', '#9fb28b', 2.2);
+-      out += path('M222 271 Q263 251 352 272', 'none', '#d9e0bf', 3);
++      home += path('M211 270 Q208 245 230 230 Q266 208 325 230 Q362 239 373 267 Q364 290 297 293 Q231 291 211 270Z', '#b7c6a0', '#9fb28b', 2.2);
++      home += path('M222 271 Q263 251 352 272', 'none', '#d9e0bf', 3);
+       out += path('M231 259 C215 230 228 199 263 194 C290 187 320 209 334 231 Q348 265 315 274 Q253 288 231 259Z', '#ba9068', '#826346', 2.6);
+       out += path('M232 249 C228 223 235 211 256 205 C246 228 257 250 275 263Z', '#d1ac82');
+       out += paw(265, 268, 0.75, -67) + paw(333, 269, 0.7, 8);
+-      out += capyHead(306, 223, 0.8, reaction, true);
++      out += capyHead(306, hero ? 183 : 223, 0.8, reaction, true);
+       out += path('M226 218 Q246 209 260 223 L253 257 Q232 255 225 244Z', '#adc29b', '#8ca77b', 2);
+       out += path('M235 223 L232 241 M246 223 L241 248', 'none', '#d5dfb8', 2);
+-      out += leaf(305, 183, 0.49, 56, true);
++      front += leaf(305, hero ? 143 : 183, 0.49, 56, true);
+     } else if (stage === 2) {
+       out += paw(267, 270, 0.9, -14) + paw(333, 270, 0.9, 12);
+       out += path('M247 244 C243 215 257 181 289 180 C329 173 352 207 351 245 Q352 275 303 280 Q257 278 247 244Z', '#be936b', '#826346', 2.7);
+       out += ellipse(299, 247, 31, 28, '#d9b58a') + ellipse(291, 238, 17, 13, '#e0bf93');
+       out += paw(257, 232, 0.75, excited ? 67 : 19) + paw(345, 234, 0.75, excited ? -78 : -17);
+       out += capyHead(294, 175, 0.96, reaction, false);
+-      out += leaf(300, 128, 0.83, 62, true) + leaf(297, 126, 0.51, -28, false);
++      front += leaf(300, 128, 0.83, 62, true) + leaf(297, 126, 0.51, -28, false);
+       out += path('M274 221 Q300 236 326 221', 'none', '#9eaf7d', 7) + circle(299, 233, 6, '#f1d58e', 'stroke="#ad995f" stroke-width="1.5"');
+     } else if (stage === 3) {
+       out += paw(246, 266, 0.87, 0, '#ad8159') + paw(321, 267, 0.91, 0, '#ad8159');
+@@ -354,10 +353,10 @@
+       out += path('M275 211 Q309 225 341 209 L329 236 L308 226 L287 238Z', '#edc982', '#b29659', 2);
+       out += path('M309 224 L303 242 L320 238Z', '#dbb365', '#b29659', 1.7);
+       out += capyHead(310, 167, 1.04, reaction, false);
+-      out += group(circle(0, 0, 18, '#e5b360', 'stroke="#b88b47" stroke-width="2"') + ellipse(-6, -5, 6, 8, '#f7d083') + leaf(0, -13, 0.5, 65, false) + path('M0-15 L-1-21', 'none', '#8c8451', 2), 'translate(309 101)', 'pet-head-treasure');
++      front += group(circle(0, 0, 18, '#e5b360', 'stroke="#b88b47" stroke-width="2"') + ellipse(-6, -5, 6, 8, '#f7d083') + leaf(0, -13, 0.5, 65, false) + path('M0-15 L-1-21', 'none', '#8c8451', 2), hero ? 'translate(309 103) scale(.8)' : 'translate(309 101)', 'pet-head-treasure');
+     } else if (stage === 4) {
+-      out += path('M350 185 Q380 170 391 195 L397 239 Q396 260 365 261Z', '#a5b58a', '#788d64', 2.5);
+-      out += path('M370 197 L383 201 L387 233 Q379 245 368 235Z', '#bac69a', '#8b9d71', 1.8);
++      rear += path('M350 185 Q380 170 391 195 L397 239 Q396 260 365 261Z', '#a5b58a', '#788d64', 2.5);
++      rear += path('M370 197 L383 201 L387 233 Q379 245 368 235Z', '#bac69a', '#8b9d71', 1.8);
+       out += paw(266, 271, 1.07, -12) + paw(339, 272, 1.07, 9);
+       out += path('M241 230 C239 191 255 166 294 164 C339 158 365 195 363 236 Q362 277 306 283 Q247 284 241 230Z', '#c0966d', '#826346', 2.8);
+       out += ellipse(302, 242, 37, 32, '#dab78c');
+@@ -366,14 +365,14 @@
+       out += path('M319 239 Q336 232 349 239 L352 262 Q335 275 318 262Z', '#b7c292', '#7e9167', 2);
+       out += path('M320 239 Q334 250 349 239', 'none', '#7e9167', 1.8) + circle(335, 248, 3, '#e9d396');
+       out += capyHead(299, 160, 1.08, reaction, false);
+-      out += path('M250 111 Q253 79 295 78 Q329 77 344 109Z', '#d8c18b', '#a18d5f', 2.3);
+-      out += path('M258 102 Q296 114 339 102 L342 112 Q298 127 252 112Z', '#a6b585', '#8b9b6b', 1.5);
+-      out += path('M238 111 Q295 126 356 110 Q369 112 357 122 Q299 141 241 124 Q228 117 238 111Z', '#e6d39f', '#a18d5f', 2.2);
+-      out += daisy(336, 107, 0.59, '#fff4cd');
+-    } else {
+-      out += path('M251 177 Q227 220 226 265 Q246 281 266 272 Q290 291 313 279 Q338 292 363 276 L385 263 Q374 216 352 176Z', '#9eb9af', '#77988d', 2.6);
+-      out += path('M251 207 Q244 242 238 264 M358 210 Q370 241 372 261', 'none', '#c7d9c3', 3);
+-      out += star(243, 247, 0.5, '#f3dc9a') + star(371, 251, 0.53, '#f3dc9a');
++      front += path('M250 111 Q253 79 295 78 Q329 77 344 109Z', '#d8c18b', '#a18d5f', 2.3);
++      front += path('M258 102 Q296 114 339 102 L342 112 Q298 127 252 112Z', '#a6b585', '#8b9b6b', 1.5);
++      front += path('M238 111 Q295 126 356 110 Q369 112 357 122 Q299 141 241 124 Q228 117 238 111Z', '#e6d39f', '#a18d5f', 2.2);
++      front += daisy(336, 107, 0.59, '#fff4cd');
++    } else {
++      rear += path('M251 177 Q227 220 226 265 Q246 281 266 272 Q290 291 313 279 Q338 292 363 276 L385 263 Q374 216 352 176Z', '#9eb9af', '#77988d', 2.6);
++      rear += path('M251 207 Q244 242 238 264 M358 210 Q370 241 372 261', 'none', '#c7d9c3', 3);
++      rear += star(243, 247, 0.5, '#f3dc9a') + star(371, 251, 0.53, '#f3dc9a');
+       out += paw(270, 275, 1.12, -10) + paw(336, 275, 1.12, 10);
+       out += path('M250 227 C244 191 268 167 299 166 C336 164 359 190 359 229 Q363 271 309 281 Q255 281 250 227Z', '#c69c72', '#826346', 2.8);
+       out += ellipse(306, 242, 33, 31, '#e0bf94') + ellipse(296, 231, 18, 13, '#e8cba3');
+@@ -381,16 +380,16 @@
+       out += path('M259 202 Q300 225 348 202 L330 220 L301 212 L280 225Z', '#b6cbb2', '#7c9b80', 2.1);
+       out += star(302, 221, 0.72, '#f1d184', '#b39b58');
+       out += capyHead(300, 159, 1.1, reaction, false);
+-      out += path('M263 103 L257 83 L278 90 L295 72 L312 91 L336 82 L332 105 Q298 118 263 103Z', '#edd391', '#b19a60', 2.2);
+-      out += star(296, 79, 0.64, '#ffe8ac', '#bca267') + circle(260, 82, 3.6, '#f5dda0') + circle(336, 81, 3.6, '#f5dda0');
+-      out += path('M273 101 Q298 109 322 102', 'none', '#fff0bd', 3);
+-      out += sparkle(230, 159, 0.65, '#e1bb67') + sparkle(401, 207, 0.7, '#e1bb67');
++      front += path('M263 103 L257 83 L278 90 L295 72 L312 91 L336 82 L332 105 Q298 118 263 103Z', '#edd391', '#b19a60', 2.2);
++      front += star(296, 79, 0.64, '#ffe8ac', '#bca267') + circle(260, 82, 3.6, '#f5dda0') + circle(336, 81, 3.6, '#f5dda0');
++      front += path('M273 101 Q298 109 322 102', 'none', '#fff0bd', 3);
++      front += sparkle(230, 159, 0.65, '#e1bb67') + sparkle(401, 207, 0.7, '#e1bb67');
+     }
+     if (reaction === 'feed') {
+-      out += carrot(stage === 1 ? 354 : 369, stage === 1 ? 250 : 211, 0.93, -23);
+-      out += paw(stage === 1 ? 346 : 356, stage === 1 ? 262 : 232, 0.64, -64);
+-    }
+-    return group(out, '', 'pet-character-motion pet-capybara-character');
++      front += carrot(stage === 1 ? 354 : 369, stage === 1 ? (hero ? 210 : 250) : 211, 0.93, -23);
++      front += paw(stage === 1 ? 346 : 356, stage === 1 ? (hero ? 222 : 262) : 232, 0.64, -64);
++    }
++    return { body: out, rear: rear, front: front, home: home };
+   }
+ 
+   function wateringCan() {
+@@ -457,6 +456,105 @@
+     return group(out, '', 'pet-reaction-art');
+   }
+ 
++  /* Organic body bounds, not the pot, cushion, costume, shadow or effects.
++     Each stage gets its own camera scale. QA measures the actual paths via
++     .pet-character.getBBox() and getScreenCTM(), not these framing constants. */
++  var HERO_BODIES = {
++    plant: [
++      { top: 132, bottom: 247, center: 300 },
++      { top: 97, bottom: 250, center: 300 },
++      { top: 91, bottom: 253, center: 300 },
++      { top: 58, bottom: 253, center: 300 },
++      { top: 55.5, bottom: 253, center: 307 }
++    ],
++    capybara: [
++      { top: 132, bottom: 283, center: 297 },
++      { top: 113.8, bottom: 289, center: 301 },
++      { top: 100.7, bottom: 291.2, center: 307 },
++      { top: 91.1, bottom: 294, center: 309 },
++      { top: 88.8, bottom: 298, center: 309 }
++    ]
++  };
++
++  function heroGarden(kind, stage, reaction) {
++    var out = ellipse(230, 208, 214, 179, '#f2f5e6');
++    out += path('M17 336 C4 305 28 283 48 296 C58 267 91 276 98 305 C115 290 141 313 132 338Z', '#dfe8cf');
++    out += path('M329 338 C322 309 346 291 366 304 C378 274 410 281 418 306 C440 292 458 316 442 339Z', '#e2e9d3');
++    out += ellipse(230, 367, 217, 26, '#e1e8cc');
++    out += ellipse(230, 361, 209, 23, '#ebefda');
++    out += path('M65 86 C52 87 50 76 60 71 C63 56 85 58 88 70 C103 67 109 85 96 88Z', '#fffbee');
++    out += group(sun(reaction), 'translate(-80 -10) scale(1.01)');
++    out += path('M27 348 Q39 330 47 347 M416 360 L421 349 L425 358', 'none', '#b0c397', 2.5);
++    out += path('M53 341 Q52 316 60 300 M408 345 Q410 324 420 317', 'none', '#93ad79', 2.5);
++    out += daisy(60, 299, 0.62, '#fff5d9') + leaf(54, 335, 0.4, -29, true);
++    out += daisy(420, 316, 0.48, '#e6c3ad');
++    if (kind === 'capybara') {
++      out += ellipse(395, 374, 44, 12, '#c1d9cc') + ellipse(395, 371, 39, 9, '#b5d5cf');
++      out += path('M368 372 Q390 378 420 371', 'none', '#e9f1db', 2);
++    } else {
++      out += ellipse(385, 375, 14, 7, '#d0d8bd') + ellipse(407, 369, 10, 6, '#f5edda');
++    }
++    if (stage >= 3) { out += butterfly(49, 223, 0.67); }
++    if (stage === 5) {
++      out += star(51, 160, 0.5, '#e5ca86') + star(420, 228, 0.43, '#e5ca86');
++    }
++    return group(out, '', 'pet-garden pet-hero-garden');
++  }
++
++  function characterLayers(parts, kind, home) {
++    return group((home || '') + group(parts.rear, '', 'pet-costume-back') +
++      group(parts.body, '', 'pet-character') + group(parts.front, '', 'pet-accessories'),
++      '', 'pet-character-motion pet-' + kind + '-character');
++  }
++
++  function heroCharacter(parts, kind, stage) {
++    var body = HERO_BODIES[kind][stage - 1];
++    var scale = 328 / (body.bottom - body.top);
++    var base = kind === 'plant' ? 350 : 382;
++    var transform = 'translate(' + (230 - body.center * scale).toFixed(3) + ' ' +
++      (base - body.bottom * scale).toFixed(3) + ') scale(' + scale.toFixed(5) + ')';
++    var support = ellipse(230, 382, kind === 'plant' ? 99 : 137, 10, '#c8d4b5', 'opacity=".7"');
++    if (kind === 'plant') {
++      /* The close camera shows a shallow planter. It is independently framed
++         so a seed can be large without inflating its measured height with a pot. */
++      support += group(pot(stage), 'translate(230 365) scale(1.55 .68) translate(-300 -271)', 'pet-hero-planter');
++    } else if (stage === 1) {
++      support += ellipse(230, 380, 151, 14, '#b9c9a3') + path('M106 381 Q230 363 354 381', 'none', '#d9e2bf', 3);
++    }
++    return group(support, '', 'pet-support') + group(characterLayers(parts, kind, ''), transform, 'pet-portrait');
++  }
++
++  function heroReaction(reaction) {
++    var out = '';
++    if (reaction === 'pet') {
++      out += group(heart(49, 137, 0.86, '#e6b2a1') + heart(409, 196, 0.75, '#edc5ae') + heart(392, 112, 0.5, '#e6b2a1'), '', 'pet-affection');
++    } else if (reaction === 'water') {
++      out += group(wateringCan(), 'translate(-4 -32)');
++      out += group(path('M364 108 L360 118 M350 123 L346 135 M371 127 L369 139 M356 147 L353 158', 'none', '#87bac0', 4) +
++        path('M321 217 Q311 228 321 233 Q331 228 321 217Z', '#afd8cf'), '', 'pet-water-drops');
++    } else if (reaction === 'sun') {
++      out += group(path('M373 93 L350 126 M399 102 L389 143', 'none', '#e5cb87', 5) +
++        sparkle(63, 146, 0.85, '#dec175') + sparkle(409, 241, 0.85, '#dec175'), '', 'pet-sunbeams');
++    } else if (reaction === 'feed') {
++      out += path('M379 350 L384 370 Q405 383 432 370 L437 350Z', '#d7ba85', '#b39a69', 1.9);
++      out += ellipse(408, 349, 29, 9, '#edddb6', 'stroke="#b39a69" stroke-width="1.9"');
++      out += ellipse(400, 347, 9, 6, '#dcc488') + leaf(423, 351, 0.39, 49, true);
++      out += group(heart(406, 193, 0.6, '#e4b198') + sparkle(59, 171, 0.7, '#d8bb77'), '', 'pet-affection');
++    } else if (reaction === 'play') {
++      out += ellipse(412, 376, 28, 6, '#c9d3b2');
++      out += group(ball(), 'translate(-6 93)');
++      out += path('M440 343 Q451 331 444 322 M440 360 Q452 355 451 346', 'none', '#b4bf93', 2.5);
++      out += butterfly(51, 158, 0.84) + sparkle(405, 257, 0.7, '#d6b774');
++    } else if (reaction === 'celebrate') {
++      out += group(star(50, 120, 0.85, '#ebcc84') + star(409, 132, 0.85, '#ebcc84') +
++        star(398, 292, 0.6, '#ddbaa3') + sparkle(62, 261, 0.85, '#b3c69b') +
++        path('M57 195 L61 203 M407 219 L416 214 M83 326 L77 333', 'none', '#b3c4a0', 4), '', 'pet-celebration');
++    }
++    /* The surrounding button's live region supplies readable speech. No tiny
++       bubble consumes portrait space or clips when a long user name is used. */
++    return group(out, '', 'pet-reaction-art pet-hero-reaction-art');
++  }
++
+   function render(options) {
+     var opts = options && typeof options === 'object' ? options : {};
+     var kind = opts.kind === 'capybara' ? 'capybara' : 'plant';
+@@ -464,14 +562,19 @@
+     var stage = isFinite(stageValue) ? Math.max(1, Math.min(5, Math.floor(stageValue))) : 1;
+     var reaction = REACTIONS.indexOf(opts.reaction) === -1 ? 'idle' : opts.reaction;
+     var reduced = opts.reducedMotion === true;
++    var framing = opts.framing === 'hero' ? 'hero' : 'scene';
++    var hero = framing === 'hero';
+     var name = nameOf(opts.name, kind);
+     var title = name + ' · ' + STAGES[kind][stage - 1];
+     var description = (kind === 'plant' ? '圆润的植物伙伴，住在有花盆与石径的小院里。' : '圆润的水豚伙伴，住在有浅水池与石径的小院里。') + WORDS[reaction];
+-    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 340" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" focusable="false" aria-label="' + escapeText(title + '。' + WORDS[reaction]) + '" class="pet-scene pet-kind-' + kind + ' pet-stage-' + stage + ' pet-reaction-' + reaction + (reduced ? ' pet-reduced' : '') + '" data-pet-kind="' + kind + '" data-pet-stage="' + stage + '" data-pet-reaction="' + reaction + '" data-pet-reduced-motion="' + (reduced ? 'true' : 'false') + '" stroke-linecap="round" stroke-linejoin="round">';
++    var parts = kind === 'plant' ? plant(stage, reaction) : capybara(stage, reaction, hero);
++    var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="' + (hero ? '0 0 460 400' : '0 0 600 340') + '" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" role="img" focusable="false" aria-label="' + escapeText(title + '。' + WORDS[reaction]) + '" class="pet-scene pet-framing-' + framing + ' pet-kind-' + kind + ' pet-stage-' + stage + ' pet-reaction-' + reaction + (reduced ? ' pet-reduced' : '') + '" data-pet-kind="' + kind + '" data-pet-stage="' + stage + '" data-pet-reaction="' + reaction + '" data-pet-framing="' + framing + '" data-pet-reduced-motion="' + (reduced ? 'true' : 'false') + '" stroke-linecap="round" stroke-linejoin="round">';
+     svg += '<title>' + escapeText(title) + '</title><desc>' + escapeText(description) + '</desc>';
+-    svg += garden(kind, stage, reaction);
+-    svg += kind === 'plant' ? plant(stage, reaction) : capybara(stage, reaction);
+-    svg += reactionArt(kind, stage, reaction);
++    if (hero) {
++      svg += heroGarden(kind, stage, reaction) + heroCharacter(parts, kind, stage) + heroReaction(reaction);
++    } else {
++      svg += garden(kind, stage, reaction) + characterLayers(parts, kind, parts.home) + reactionArt(kind, stage, reaction);
++    }
+     return svg + '</svg>';
+   }
+ 
+--- v4/pet.css
++++ v5/pet.css
+@@ -189,6 +189,67 @@
+ @keyframes pet-cheer {
+   0%, 100% { opacity: .8; transform: translateY(0); }
+   50% { opacity: 1; transform: translateY(-5px); }
++}
++
++/* Portrait transforms live on a separate parent of the animated group. Keep
++   close-up movement small enough that the real body and held props stay in
++   frame even for the small seed's larger camera scale. */
++.pet-framing-hero.pet-reaction-idle .pet-character-motion {
++  -webkit-animation-name: pet-hero-breathe;
++  animation-name: pet-hero-breathe;
++}
++.pet-framing-hero.pet-reaction-pet .pet-character-motion,
++.pet-framing-hero.pet-reaction-water .pet-character-motion,
++.pet-framing-hero.pet-reaction-sun .pet-character-motion {
++  -webkit-animation-name: pet-hero-nuzzle;
++  animation-name: pet-hero-nuzzle;
++}
++.pet-framing-hero.pet-reaction-feed .pet-character-motion {
++  -webkit-animation-name: pet-hero-munch;
++  animation-name: pet-hero-munch;
++}
++.pet-framing-hero.pet-reaction-play .pet-character-motion,
++.pet-framing-hero.pet-reaction-celebrate .pet-character-motion {
++  -webkit-animation-name: pet-hero-hop;
++  animation-name: pet-hero-hop;
++}
++@-webkit-keyframes pet-hero-breathe {
++  0%, 100% { -webkit-transform: translateY(0); }
++  50% { -webkit-transform: translateY(-.5px) scale(1.002, .998); }
++}
++@keyframes pet-hero-breathe {
++  0%, 100% { transform: translateY(0); }
++  50% { transform: translateY(-.5px) scale(1.002, .998); }
++}
++@-webkit-keyframes pet-hero-nuzzle {
++  0%, 100% { -webkit-transform: rotate(0); }
++  35% { -webkit-transform: rotate(-1deg) translateY(-1px); }
++  70% { -webkit-transform: rotate(.8deg); }
++}
++@keyframes pet-hero-nuzzle {
++  0%, 100% { transform: rotate(0); }
++  35% { transform: rotate(-1deg) translateY(-1px); }
++  70% { transform: rotate(.8deg); }
++}
++@-webkit-keyframes pet-hero-munch {
++  0%, 100% { -webkit-transform: translateY(0); }
++  50% { -webkit-transform: translateY(-1px); }
++}
++@keyframes pet-hero-munch {
++  0%, 100% { transform: translateY(0); }
++  50% { transform: translateY(-1px); }
++}
++@-webkit-keyframes pet-hero-hop {
++  0%, 100% { -webkit-transform: translateY(0) scale(1, 1); }
++  20% { -webkit-transform: scale(1.008, .992); }
++  48% { -webkit-transform: translateY(-2px) rotate(-.6deg); }
++  76% { -webkit-transform: scale(1.004, .996); }
++}
++@keyframes pet-hero-hop {
++  0%, 100% { transform: translateY(0) scale(1, 1); }
++  20% { transform: scale(1.008, .992); }
++  48% { transform: translateY(-2px) rotate(-.6deg); }
++  76% { transform: scale(1.004, .996); }
+ }
+ 
+ /* Do not reset transforms here: static SVG translations position leaves,

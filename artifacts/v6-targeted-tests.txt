@@ -1,0 +1,27 @@
+PASS layout: wide: home fills the available viewport and every main action is directly hittable
+PASS layout: wide: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: desktop: home fills the available viewport and every main action is directly hittable
+PASS layout: desktop: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: ipad-landscape: home fills the available viewport and every main action is directly hittable
+PASS layout: ipad-landscape: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: ipad-portrait: home fills the available viewport and every main action is directly hittable
+PASS layout: ipad-portrait: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: short-landscape: home fills the available viewport and every main action is directly hittable
+PASS layout: short-landscape: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: phone: home fills the available viewport and every main action is directly hittable
+PASS layout: phone: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: short-phone: home fills the available viewport and every main action is directly hittable
+PASS layout: short-phone: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS layout: small-phone: home fills the available viewport and every main action is directly hittable
+PASS layout: small-phone: profile, partner settings and award sheets remain reachable and inputs stay at least 16px
+PASS unified: wide: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: desktop: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: ipad-landscape: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: ipad-portrait: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: short-landscape: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: phone: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: short-phone: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS unified: small-phone: one picker keeps separate common/DIY drafts and one verified save atomically creates the immediately usable common item
+PASS pet-network: A 503 before commit leaves a visible error and no resource mutation; its busy state clears and a real retry commits once
+PASS pet-network: After a committed response is lost and an earlier snapshot arrives, the real retry keeps its original id/source and cannot consume twice
+26 checks passed; 0 failed.

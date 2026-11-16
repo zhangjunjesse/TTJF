@@ -1,0 +1,428 @@
+{
+  "browser": "Microsoft Edge / Chromium, headless, real DOM and hit-tested mouse coordinates",
+  "deviceBoundary": "No iPad mini 4 / iPadOS 15.8.7 hardware or Safari test was performed. Viewport emulation is not Safari/device validation.",
+  "assistantBoundary": "Local instruction demonstration only; no real LLM, microphone recording, wake word or background push claim.",
+  "timingBoundary": "Reminder UI and real five-second foreground timers are exercised with an accelerated, fixed test clock; no ten-minute wall-clock or eight-hour device soak was performed.",
+  "keyboardBoundary": "Desktop Tab/Escape and phone-sized viewports only; the iPad software keyboard has not been tested.",
+  "audioBoundary": "WAV resources and format are checked; actual audible playback and microphone capture have not been verified.",
+  "command": "node test/browser.cjs",
+  "groupsRequested": "cumulative targeted runs",
+  "startedAt": "2026-11-15T02:09:21.849Z",
+  "sourceHashes": {
+    "app.js": "4d2ddcbec01f23d4cf7b55e19c4bfcae12791ee8b505a90c909850d3c08de61c",
+    "model.js": "022803edc1f0d26af02bed865e4294f0394af34364d5c49379bddfb8258a5f06",
+    "server.cjs": "8dbcca187f9be659a7f14ee0d525bfd5016a3bbb8626382e72cda3214b5ec056",
+    "assistant.js": "347be313b8bd3c3d8dddc0921cc5b487136a3ed7a30dc5e65a0121861def9dbe",
+    "styles.css": "e6e8f72c3a588f328e226abd93cb262445cf55cace5914094d5245de4e71cf63",
+    "index.html": "b82b5063f0a9bf3a382988aaf22b6e4067759a502d361e8860bdfc7a961f18d8"
+  },
+  "exportHash": "66d023c436c3fbacb33d2d32675f8860a9018b30731a550d3b9875b95b1f364a",
+  "passed": 35,
+  "checks": [
+    {
+      "group": "points",
+      "label": "Unverified and wrong-PIN submissions preserve the ledger; cancel/change never reuse authorization"
+    },
+    {
+      "group": "points",
+      "label": "The next intentional award again requires verification and no global parent unlock remains"
+    },
+    {
+      "group": "authorization",
+      "label": "Cancel while verification is in flight discards its late grant, including after opening another operation"
+    },
+    {
+      "group": "authorization",
+      "label": "Changing verification settings needs current PIN; configured arithmetic is a disclosed weak gate"
+    },
+    {
+      "group": "redemption",
+      "label": "A child request/cancel does not spend; parent approval spends available without decreasing earned"
+    },
+    {
+      "group": "redemption",
+      "label": "A gift can be added directly using name/price, without an image, after per-operation verification"
+    },
+    {
+      "group": "reminders",
+      "label": "A reminder already due when the page opens is surfaced and publicly acknowledged without completing it"
+    },
+    {
+      "group": "reminders",
+      "label": "Closing/Escape keeps a reminder draft; keyboard return and small-screen save preserve usable controls"
+    },
+    {
+      "group": "reminders",
+      "label": "Reminder editing/deleting requires verification while public completion never awards points"
+    },
+    {
+      "group": "reminders",
+      "label": "An actual foreground due reminder supports acknowledgement and a ten-minute snooze without awarding points"
+    },
+    {
+      "group": "sync",
+      "label": "Two real pages synchronize an authorized award through real HTTP polling and survive reload"
+    },
+    {
+      "group": "compatibility",
+      "label": "Audio files remain valid resources and reduced-motion CSS is honored in Edge"
+    },
+    {
+      "group": "templates",
+      "label": "A maintained quick-award template requires verification and carries its factual reason into a separately authorized award"
+    },
+    {
+      "group": "assistant",
+      "label": "Local instruction demo produces a visible editable draft; input alone never books points"
+    },
+    {
+      "group": "assistant",
+      "label": "Read-only balance queries use the real ledger; missing reasons clarify and gift sentences stay drafts"
+    },
+    {
+      "group": "assistant",
+      "label": "Unavailable speech recognition returns a keyboard route; a reminder sentence remains editable and cancellable"
+    },
+    {
+      "group": "layout",
+      "label": "Seed ledger and manifest/icon metadata remain valid"
+    },
+    {
+      "group": "layout",
+      "label": "A seeded quick-award template previews an editable specific reason without immediately writing the ledger"
+    },
+    {
+      "group": "layout",
+      "label": "desktop: exactly two fixed tabs and reachable points/reminder controls, no horizontal body overflow"
+    },
+    {
+      "group": "layout",
+      "label": "desktop: creation sheet close and primary submit remain reachable"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-landscape: exactly two fixed tabs and reachable points/reminder controls, no horizontal body overflow"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-landscape: creation sheet close and primary submit remain reachable"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-portrait: exactly two fixed tabs and reachable points/reminder controls, no horizontal body overflow"
+    },
+    {
+      "group": "layout",
+      "label": "ipad-portrait: creation sheet close and primary submit remain reachable"
+    },
+    {
+      "group": "layout",
+      "label": "phone: exactly two fixed tabs and reachable points/reminder controls, no horizontal body overflow"
+    },
+    {
+      "group": "layout",
+      "label": "phone: creation sheet close and primary submit remain reachable"
+    },
+    {
+      "group": "layout",
+      "label": "small-phone: exactly two fixed tabs and reachable points/reminder controls, no horizontal body overflow"
+    },
+    {
+      "group": "layout",
+      "label": "small-phone: creation sheet close and primary submit remain reachable"
+    },
+    {
+      "group": "assistant-public",
+      "label": "A public natural-language redemption request remains a visible draft and confirms without parent verification or spending"
+    },
+    {
+      "group": "reminder-boundaries",
+      "label": "Acknowledged unfinished tasks and events remain reachable across midnight, and overdue edits still require verification"
+    },
+    {
+      "group": "reminder-boundaries",
+      "label": "Advance preparation shows only events inside remindDays while the event list retains later events"
+    },
+    {
+      "group": "offline",
+      "label": "The final offline bundle contains the exact current scripts, styles and explicit local-mode flag"
+    },
+    {
+      "group": "offline",
+      "label": "Exported file stays offline, persists public completion and retains drafts"
+    },
+    {
+      "group": "offline",
+      "label": "Offline first-use PIN setup and every later award stay local, with wrong-code denial and no credential in business state"
+    },
+    {
+      "group": "offline-hosted",
+      "label": "The exported file explicitly remains local when served over real HTTP and never calls an API"
+    }
+  ],
+  "failed": [],
+  "errors": [],
+  "layouts": [
+    {
+      "label": "desktop-points",
+      "width": 1440,
+      "height": 1000,
+      "htmlWidth": 1440,
+      "bodyWidth": 1440,
+      "htmlHeight": 1000,
+      "bodyHeight": 1000,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "desktop-reminders",
+      "width": 1440,
+      "height": 1000,
+      "htmlWidth": 1440,
+      "bodyWidth": 1440,
+      "htmlHeight": 1000,
+      "bodyHeight": 1000,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "desktop-task-sheet",
+      "width": 1440,
+      "height": 1000,
+      "htmlWidth": 1440,
+      "bodyWidth": 1440,
+      "htmlHeight": 1000,
+      "bodyHeight": 1000,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "ipad-landscape-points",
+      "width": 1024,
+      "height": 768,
+      "htmlWidth": 1024,
+      "bodyWidth": 1024,
+      "htmlHeight": 768,
+      "bodyHeight": 768,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "ipad-landscape-reminders",
+      "width": 1024,
+      "height": 768,
+      "htmlWidth": 1024,
+      "bodyWidth": 1024,
+      "htmlHeight": 768,
+      "bodyHeight": 768,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "ipad-landscape-task-sheet",
+      "width": 1024,
+      "height": 768,
+      "htmlWidth": 1024,
+      "bodyWidth": 1024,
+      "htmlHeight": 768,
+      "bodyHeight": 768,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "ipad-portrait-points",
+      "width": 768,
+      "height": 1024,
+      "htmlWidth": 768,
+      "bodyWidth": 768,
+      "htmlHeight": 1024,
+      "bodyHeight": 1024,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "ipad-portrait-reminders",
+      "width": 768,
+      "height": 1024,
+      "htmlWidth": 768,
+      "bodyWidth": 768,
+      "htmlHeight": 1024,
+      "bodyHeight": 1024,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "ipad-portrait-task-sheet",
+      "width": 768,
+      "height": 1024,
+      "htmlWidth": 768,
+      "bodyWidth": 768,
+      "htmlHeight": 1024,
+      "bodyHeight": 1024,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "phone-points",
+      "width": 390,
+      "height": 844,
+      "htmlWidth": 390,
+      "bodyWidth": 390,
+      "htmlHeight": 844,
+      "bodyHeight": 844,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "phone-reminders",
+      "width": 390,
+      "height": 844,
+      "htmlWidth": 390,
+      "bodyWidth": 390,
+      "htmlHeight": 844,
+      "bodyHeight": 844,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "phone-task-sheet",
+      "width": 390,
+      "height": 844,
+      "htmlWidth": 390,
+      "bodyWidth": 390,
+      "htmlHeight": 844,
+      "bodyHeight": 844,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "small-phone-points",
+      "width": 320,
+      "height": 568,
+      "htmlWidth": 320,
+      "bodyWidth": 320,
+      "htmlHeight": 568,
+      "bodyHeight": 568,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "small-phone-reminders",
+      "width": 320,
+      "height": 568,
+      "htmlWidth": 320,
+      "bodyWidth": 320,
+      "htmlHeight": 568,
+      "bodyHeight": 568,
+      "scrollX": 0,
+      "scrollY": 0
+    },
+    {
+      "label": "small-phone-task-sheet",
+      "width": 320,
+      "height": 568,
+      "htmlWidth": 320,
+      "bodyWidth": 320,
+      "htmlHeight": 568,
+      "bodyHeight": 568,
+      "scrollX": 0,
+      "scrollY": 0
+    }
+  ],
+  "skipped": [],
+  "finishedAt": "2026-11-15T02:09:29.902Z",
+  "runs": [
+    {
+      "groups": "all",
+      "startedAt": "2026-11-15T01:51:22.191Z",
+      "finishedAt": "2026-11-15T01:53:17.602Z",
+      "passed": 24,
+      "failed": [
+        {
+          "group": "templates",
+          "check": "A maintained quick-award template requires verification and carries its factual reason into a separately authorized award",
+          "message": "Waiting for selector `button[data-action=\"point-new\"]` failed",
+          "stack": "TimeoutError: Waiting for selector `button[data-action=\"point-new\"]` failed\n    at CSSQueryHandler.waitFor (file:///C:/Users/Administrator/Desktop/dsh-workspace/space-1/_screenshot-tools/node_modules/puppeteer-core/lib/puppeteer/common/QueryHandler.js:211:46)\n    at async CdpFrame.waitForSelector (file:///C:/Users/Administrator/Desktop/dsh-workspace/space-1/_screenshot-tools/node_modules/puppeteer-core/lib/puppeteer/api/Frame.js:546:21)\n    at async CdpPage.waitForSelector (file:///C:/Users/Administrator/Desktop/dsh-workspace/space-1/_screenshot-tools/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:1477:20)\n    at async visibleHandle (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:109:3)\n    at async click (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:125:18)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:442:9\n    at async check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:237:11)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:439:7\n    at async group (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:247:7)\n    at async runSuite (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:438:5)"
+        },
+        {
+          "group": "assistant",
+          "check": "Read-only balance queries use the real ledger; missing reasons clarify and gift sentences stay drafts",
+          "message": "Answer must reflect current account values",
+          "stack": "AssertionError [ERR_ASSERTION]: Answer must reflect current account values\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:577:16\n    at async check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:237:11)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:568:7\n    at async group (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:247:7)\n    at async runSuite (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:549:5)"
+        }
+      ]
+    },
+    {
+      "groups": [
+        "templates",
+        "assistant"
+      ],
+      "startedAt": "2026-11-15T01:55:47.412Z",
+      "finishedAt": "2026-11-15T01:55:58.617Z",
+      "sourceHashes": {
+        "app.js": "89528cbfd588dbf9b6b4b0b5a71038b0aaec1b296697fb8f208c623b0f840acd",
+        "model.js": "022803edc1f0d26af02bed865e4294f0394af34364d5c49379bddfb8258a5f06",
+        "server.cjs": "11077f86986c7f6e816071e3ca4742c82ec223ffb651ff2fcb23c2bdec052fe2",
+        "assistant.js": "347be313b8bd3c3d8dddc0921cc5b487136a3ed7a30dc5e65a0121861def9dbe",
+        "styles.css": "37e709893caeaacb148ad392984a4b3488c6459a477c38bf596b18421d7faa73",
+        "index.html": "b82b5063f0a9bf3a382988aaf22b6e4067759a502d361e8860bdfc7a961f18d8"
+      },
+      "passed": 4,
+      "failed": []
+    },
+    {
+      "groups": [
+        "layout",
+        "assistant-public"
+      ],
+      "startedAt": "2026-11-15T02:00:50.763Z",
+      "finishedAt": "2026-11-15T02:01:03.032Z",
+      "sourceHashes": {
+        "app.js": "dc12a0e1e388fa9747cb17af34f6c9c85715aed7566f74216b3e3636e95ce033",
+        "model.js": "022803edc1f0d26af02bed865e4294f0394af34364d5c49379bddfb8258a5f06",
+        "server.cjs": "8dbcca187f9be659a7f14ee0d525bfd5016a3bbb8626382e72cda3214b5ec056",
+        "assistant.js": "347be313b8bd3c3d8dddc0921cc5b487136a3ed7a30dc5e65a0121861def9dbe",
+        "styles.css": "15adeccc19fc7129b3a77a9467ee9aaf7526dd92edd94076a15c1346bdb97b27",
+        "index.html": "b82b5063f0a9bf3a382988aaf22b6e4067759a502d361e8860bdfc7a961f18d8"
+      },
+      "passed": 13,
+      "failed": []
+    },
+    {
+      "groups": [
+        "reminder-boundaries"
+      ],
+      "startedAt": "2026-11-15T02:06:57.717Z",
+      "finishedAt": "2026-11-15T02:07:07.961Z",
+      "sourceHashes": {
+        "app.js": "4d2ddcbec01f23d4cf7b55e19c4bfcae12791ee8b505a90c909850d3c08de61c",
+        "model.js": "022803edc1f0d26af02bed865e4294f0394af34364d5c49379bddfb8258a5f06",
+        "server.cjs": "8dbcca187f9be659a7f14ee0d525bfd5016a3bbb8626382e72cda3214b5ec056",
+        "assistant.js": "347be313b8bd3c3d8dddc0921cc5b487136a3ed7a30dc5e65a0121861def9dbe",
+        "styles.css": "e6e8f72c3a588f328e226abd93cb262445cf55cace5914094d5245de4e71cf63",
+        "index.html": "b82b5063f0a9bf3a382988aaf22b6e4067759a502d361e8860bdfc7a961f18d8"
+      },
+      "passed": 2,
+      "failed": []
+    },
+    {
+      "groups": [
+        "offline",
+        "offline-hosted"
+      ],
+      "startedAt": "2026-11-15T02:09:21.849Z",
+      "finishedAt": "2026-11-15T02:09:29.902Z",
+      "sourceHashes": {
+        "app.js": "4d2ddcbec01f23d4cf7b55e19c4bfcae12791ee8b505a90c909850d3c08de61c",
+        "model.js": "022803edc1f0d26af02bed865e4294f0394af34364d5c49379bddfb8258a5f06",
+        "server.cjs": "8dbcca187f9be659a7f14ee0d525bfd5016a3bbb8626382e72cda3214b5ec056",
+        "assistant.js": "347be313b8bd3c3d8dddc0921cc5b487136a3ed7a30dc5e65a0121861def9dbe",
+        "styles.css": "e6e8f72c3a588f328e226abd93cb262445cf55cace5914094d5245de4e71cf63",
+        "index.html": "b82b5063f0a9bf3a382988aaf22b6e4067759a502d361e8860bdfc7a961f18d8"
+      },
+      "exportHash": "66d023c436c3fbacb33d2d32675f8860a9018b30731a550d3b9875b95b1f364a",
+      "passed": 4,
+      "failed": []
+    }
+  ]
+}

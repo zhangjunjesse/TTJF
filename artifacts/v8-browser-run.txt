@@ -1,0 +1,14 @@
+PASS source: Current offline HTML embeds the exact current UI sources
+PASS settings: small-phone: genuinely fresh settings, mismatch, cancellation, persistence and a protected award
+PASS settings: phone: genuinely fresh settings, mismatch, cancellation, persistence and a protected award
+PASS settings: ipad-landscape: genuinely fresh settings, mismatch, cancellation, persistence and a protected award
+PASS settings: ipad-portrait: genuinely fresh settings, mismatch, cancellation, persistence and a protected award
+PASS configured: Existing 8-digit PIN, confirmed change, wrong old PIN, restart, forged unconfigured flag and new-only verification
+PASS math: First arithmetic configuration and both PIN/arithmetic changes retain current authorization
+PASS first-action: First protected operation sets PIN twice and continues once; public action, cancellation and duplicate click remain safe
+PASS race: Two isolated devices race setup; the loser cannot continue using its own PIN
+PASS loss: A committed setup with a lost browser response recovers without duplicating the original award
+PASS late: Canceling while setup response is delayed cannot later commit the original business operation
+PASS offline: file: exported page first settings and first business setup persist without APIs
+PASS offline: http: exported page first settings and first business setup persist without APIs
+13 checks passed; 0 failed; 0 script errors. Source stable: true

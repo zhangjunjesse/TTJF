@@ -1,0 +1,22 @@
+✔ spoken date and half-hour become a precise editable draft without state changes (6.1174ms)
+✔ evening and future reminders use correct time and event domain (1.3351ms)
+✔ missing or invalid dates and times ask instead of inventing a schedule (1.7719ms)
+✔ a time-only correction keeps the original reminder day and identity (0.9893ms)
+✔ points drafts keep concrete reasons and reject absent, decimal or negative amounts (0.9913ms)
+✔ gift creation maps an explicit category and price (0.6451ms)
+✔ queries use real balances and never echo an invented AI answer (0.8254ms)
+✔ model cannot return a grant, configure the parent, or perform a final redemption (0.4306ms)
+✔ verification assistance and multiple independent commands are not auto-executed (0.2767ms)
+✔ unconfigured AI performs no network request and explicitly labels the local demonstration (0.7515ms)
+✔ configured adapter submits minimal context, validates a mocked provider response, and never mutates state (33.5048ms)
+✔ configured provider failure is explicit, keeps input actionable, and does not expose errors or secrets (0.5564ms)
+✔ verification requests never reach a configured cloud provider (0.2326ms)
+✔ provider timeout and oversized output fail without returning an action (14.4456ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 239.3626

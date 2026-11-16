@@ -1,0 +1,28 @@
+✔ spoken date and half-hour become a precise editable draft without state changes (5.6794ms)
+✔ evening and future reminders use correct time and event domain (1.7184ms)
+✔ missing or invalid dates and times ask instead of inventing a schedule (1.3092ms)
+✔ a time-only correction keeps the original reminder day and identity (1.0211ms)
+✔ points drafts keep concrete reasons and reject absent, decimal or negative amounts (1.6126ms)
+✔ gift creation maps an explicit category and price (0.9298ms)
+✔ queries use real balances and never echo an invented AI answer (1.2467ms)
+✔ model cannot return a grant, configure the parent, or perform a final redemption (0.46ms)
+✔ verification assistance and multiple independent commands are not auto-executed (0.2735ms)
+✔ unconfigured AI performs no network request and explicitly labels the local demonstration (0.7686ms)
+✔ configured adapter submits minimal context, validates a mocked provider response, and never mutates state (33.1228ms)
+✔ configured provider failure is explicit, keeps input actionable, and does not expose errors or secrets (0.5023ms)
+✔ verification requests never reach a configured cloud provider (0.2162ms)
+✔ provider timeout and oversized output fail without returning an action (20.9019ms)
+✔ in-form points context accepts a concrete reason and one amount without changing the ledger (2.0235ms)
+✔ template management drafts create, change points, rename, disable, re-enable and preserve history (5.9493ms)
+✔ template management needs an unambiguous target and never turns into an award (0.5327ms)
+✔ normalization enforces input context, selected target and domain checks even on id collision (1.2677ms)
+✔ configured management sends disabled templates and selected context but excludes photos and unrelated data (1.5064ms)
+✔ provider draft cannot cross from template management into a real award (0.4525ms)
+ℹ tests 20
+ℹ suites 0
+ℹ pass 20
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 234.2782

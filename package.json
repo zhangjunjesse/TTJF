@@ -1,0 +1,14 @@
+{
+  "name": "little-steps-family-dashboard",
+  "version": "0.8.1",
+  "private": true,
+  "description": "小小向前 · 自解释的积分与提醒界面，统一加分、伙伴探险和逐笔家长核验",
+  "scripts": {
+    "start": "node server.cjs",
+    "test": "node --test test/model.test.cjs test/server.test.cjs test/assistant.test.cjs test/pet.test.cjs test/v8-client.test.cjs",
+    "test:browser": "node test/v8-browser.cjs",
+    "test:density": "node test/v8-density.cjs --before && node test/v8-density.cjs --after"
+  },
+  "engines": {"node": ">=22"},
+  "devDependencies": {"puppeteer-core": "^25.11.0"}
+}
