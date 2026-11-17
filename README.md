@@ -14,10 +14,14 @@
 
 ```powershell
 npm ci --ignore-scripts
+npm run db:init
+# 在私有 .env.saas.local 中填写初始账号密码和 SMTP 授权码
 npm start
 ```
 
-打开 <http://127.0.0.1:4180/>。正常流程是注册、验证邮箱，再登录并填写家庭名和孩子称呼。启动时自动创建私有 `data/ttjf.sqlite`；验证、邀请和恢复邮件默认写入 `DEV_MAIL_DIR` 指定的本机私有目录（默认 `data/saas-mail`），这种模式不投递外网；配置SMTP后使用真实发信。程序不内置默认账号、密码或预置家庭；新 SQLite 数据库需要自行注册。旧环境的账号和数据不会自动出现在新库。可选 `npm run db:init` 生成本机配置，路径由 `SQLITE_FILE` 指定。
+打开 <http://127.0.0.1:4180/>。启动时自动创建私有 `data/ttjf.sqlite`，并按 `INITIAL_ACCOUNT_EMAIL` / `INITIAL_ACCOUNT_PASSWORD` 补建缺失的初始账号；初始邮箱默认 `391504704@qq.com`，密码仅从私有配置读取。运维指定的初始账号可直接登录，已有账号的密码、验证状态和家庭数据不会被重启覆盖；不预建家庭。其他账号仍正常注册、通过真实邮件验证后创建或加入家庭。旧环境的账号和数据不会自动迁移。
+
+本机使用 HTTP 回环地址，账号和业务规则与部署版本相同；验证、邀请和恢复邮件通过配置的 SMTP 真实发送。普通启动不再默认写开发文件邮件，缺少邮件配置会报错；只有测试显式指定 `DEV_MAIL_DIR` 才使用受限的本地捕获。`npm run db:init` 生成 QQ SMTP 配置模板但不包含密码或授权码。若本机已有私有 `data/initialize-private.ps1`，运行 `pwsh -File tools/start-saas.ps1` 可在配置缺失时恢复它并启动服务；修改配置后可加 `-Restart` 重启已登记的项目进程。脚本要求 PowerShell 7。私有初始化脚本、运行配置及数据库均不进入 Git。详见[初始账号决定](docs/saas-initial-user.md)。
 
 对外内测需要配置真实域名、HTTPS、私有持久化目录与SMTP，再以生产环境运行 Node 服务。[运行与数据操作](docs/saas-operations.md)给出配置、数据库备份、旧家庭导入和恢复步骤。本轮只启动本机版本，未发布外部服务，也未接入支付。
 

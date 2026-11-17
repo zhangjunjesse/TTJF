@@ -14,6 +14,7 @@ const { createBusiness } = require('./saas/business.cjs');
 const { createLifecycle } = require('./saas/lifecycle.cjs');
 const { createClientAddress } = require('./saas/network.cjs');
 const { createMaintenance, maintenanceConfig } = require('./saas/maintenance.cjs');
+const { initialAccountFromEnv, ensureInitialAccount } = require('./saas/initial-account.cjs');
 const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
@@ -95,8 +96,13 @@ async function createSaasServer(options = {}) {
   const maintenanceOptions = maintenanceConfig(options);
   const mail = createMailer({ ...options, environment, publicOrigin });
   let store;
-  try { store = await createStore({ databasePath: options.databasePath, database: options.database, migrate: options.migrate }); }
-  catch (error) { mail.close(); throw error; }
+  try {
+    store = await createStore({ databasePath: options.databasePath, database: options.database, migrate: options.migrate });
+    await ensureInitialAccount(store, options.initialAccount, now);
+  } catch (error) {
+    try { if (store) await store.close(); } finally { mail.close(); }
+    throw error;
+  }
   const cookieName = production ? '__Host-ttjf_session' : 'ttjf_session';
   const reportError = typeof options.onError === 'function' ? options.onError : code => console.error('[SaaS] ' + code);
   const auth = createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie: new URL(publicOrigin).protocol === 'https:', reportError });
@@ -253,12 +259,13 @@ if (require.main === module) {
     console.error('SAAS_PORT must be 1–65535'); process.exitCode = 1;
   } else {
     const development = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
-    // Local startup needs no database service or configuration file. Production
-    // still requires explicit HTTPS origin and SMTP settings.
-    createSaasServer({
+    // Real SMTP is required unless a test explicitly opts into local capture.
+    // Production continues to require HTTPS; bootstrap secrets stay in env.
+    Promise.resolve().then(() => createSaasServer({
       publicOrigin: process.env.PUBLIC_ORIGIN || (development ? 'http://127.0.0.1:' + port : undefined),
-      devMailDir: process.env.DEV_MAIL_DIR || (development ? path.join(__dirname, 'data', 'saas-mail') : undefined)
-    }).then(server => {
+      devMailDir: process.env.DEV_MAIL_DIR,
+      initialAccount: initialAccountFromEnv(process.env)
+    })).then(server => {
       server.on('error', async () => { console.error('SaaS listener failed'); process.exitCode = 1; await server.closeSaas(); });
       server.listen(port, host, () => console.log('SaaS listening on ' + host + ':' + port));
       for (const signal of ['SIGINT', 'SIGTERM']) { process.once(signal, () => { server.closeSaas().catch(() => { process.exitCode = 1; }); }); }
