@@ -6,7 +6,7 @@ const { createMailer } = require('../saas/mail.cjs');
 const S = require('../saas/security.cjs');
 const H = require('../saas/testing.cjs');
 
-test('real PG registration verifies once, hashes credentials/tokens, preserves empty account and revocable opaque sessions', async t => {
+test('real SQLite registration verifies once, hashes credentials/tokens, preserves empty account and revocable opaque sessions', async t => {
   const f = await H.fixture(t);
   for (const email of ['a,b@example.test', 'a;other@example.test', '"quoted"@example.test', 'a@example.test\r\nBcc:other@example.test']) {
     const invalid = await H.request(f.server, 'POST', '/api/auth/register', { email, password: H.PASSWORD });
@@ -18,11 +18,11 @@ test('real PG registration verifies once, hashes credentials/tokens, preserves e
   assert.deepEqual(user.session.families, []);
   const denied = await H.request(f.server, 'POST', '/api/families', { name: '家', childName: '新孩子', requestId: 'before-verify' }, user);
   assert.equal(denied.status, 403); assert.equal(denied.body.code, 'EMAIL_UNVERIFIED');
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_families')).rows[0].n, 0);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_families')).rows[0].n, 0);
   const token = H.mailToken(f, user.email, 'verify');
-  const stored = (await f.pool.query('SELECT * FROM saas_email_tokens')).rows[0];
+  const stored = (await f.database.query('SELECT * FROM saas_email_tokens')).rows[0];
   assert.equal(stored.token_hash, S.digest(token)); assert.notEqual(stored.token_hash, token);
-  const row = (await f.pool.query('SELECT * FROM saas_users')).rows[0];
+  const row = (await f.database.query('SELECT * FROM saas_users')).rows[0];
   assert.equal(row.password_hash.algorithm, 'scrypt'); assert.equal(row.password_hash.n, 32768);
   assert.ok(!JSON.stringify(row).includes(H.PASSWORD));
   assert.equal((await H.request(f.server, 'POST', '/api/auth/verify-email', { token }, user, { noCsrf: true })).status, 403);
@@ -32,15 +32,15 @@ test('real PG registration verifies once, hashes credentials/tokens, preserves e
   assert.equal(session.body.user.verified, true); assert.equal(session.headers['cache-control'], 'no-store');
   const second = await f.start();
   assert.equal((await H.request(second, 'GET', '/api/session', undefined, user)).body.user.id, user.userId);
-  const sessionRow = (await f.pool.query('SELECT * FROM saas_sessions')).rows[0];
+  const sessionRow = (await f.database.query('SELECT * FROM saas_sessions')).rows[0];
   const raw = user.cookie.split('=')[1];
   assert.equal(sessionRow.token_hash, S.digest(raw)); assert.equal(sessionRow.csrf_hash, S.digest(user.csrfToken));
   assert.equal((await H.request(second, 'POST', '/api/auth/logout', {}, user)).status, 200);
   assert.deepEqual((await H.request(f.server, 'GET', '/api/session', undefined, user)).body, { authenticated: false });
-  assert.ok((await f.pool.query('SELECT revoked_at FROM saas_sessions')).rows[0].revoked_at);
+  assert.ok((await f.database.query('SELECT revoked_at FROM saas_sessions')).rows[0].revoked_at);
 });
 
-test('real PG password reset, expiry and password change revoke sessions across instances with one-use tokens', async t => {
+test('real SQLite password reset, expiry and password change revoke sessions across request handlers with one-use tokens', async t => {
   const f = await H.fixture(t);
   const user = await H.register(f, 'password@example.test');
   const other = await H.login(f, user.email);
@@ -68,7 +68,7 @@ test('real PG password reset, expiry and password change revoke sessions across 
   assert.equal((await H.request(second, 'GET', '/api/session', undefined, current)).body.authenticated, false);
 });
 
-test('real PG login counters span independent instances and ignore forwarded IP spoofing', async t => {
+test('real SQLite login counters span request handlers and ignore forwarded IP spoofing', async t => {
   const f = await H.fixture(t), second = await f.start();
   const user = await H.register(f, 'rates@example.test');
   // Registration helper has consumed one login attempt; nine more are allowed.
@@ -134,7 +134,7 @@ test('configured nodemailer transport delivers over a real local SMTP connection
   } finally { mail.close(); }
 });
 
-test('production fails closed without HTTPS/SMTP/database and capture is explicitly local development only', async () => {
+test('production fails closed without HTTPS/SMTP and capture is explicitly local development only', async () => {
   const mailer = { sendMail() {} };
   await assert.rejects(createSaasServer({ environment: 'production', publicOrigin: 'http://127.0.0.1:4180', mailer }), /HTTPS/);
   await assert.rejects(createSaasServer({ environment: 'production', publicOrigin: 'https://example.test', mailer }), /injected\/test/);

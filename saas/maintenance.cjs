@@ -27,15 +27,12 @@ function createMaintenance({ store, now, reportError, intervalMs, batchSize }) {
     if (!Number.isInteger(limit) || limit < 1 || limit > 1000) { return Promise.reject(new Error('Maintenance batchSize must be 1..1000')); }
     if (running) { return running; }
     running = store.transaction(async client => {
-      // One maintenance batch per schema across all application instances. A
-      // transaction-scoped lock cannot survive process failure or pool reuse.
-      const locked = (await client.query('SELECT pg_try_advisory_xact_lock(1329434014,hashtext(current_schema())) AS acquired')).rows[0].acquired;
-      if (!locked) { return { skipped: true, deleted: {} }; }
+      // The shared database queue serializes cleanup with request transactions.
       const sampled = new Date(now()), deleted = {};
       for (const [label, table, key, predicate] of TABLES) {
-        const result = await client.query(`WITH doomed AS (
-          SELECT ${key} FROM ${table} WHERE ${predicate} ORDER BY ${key} LIMIT $2 FOR UPDATE SKIP LOCKED
-        ) DELETE FROM ${table} record USING doomed WHERE record.${key}=doomed.${key}`, [sampled, limit]);
+        const result = await client.query(`DELETE FROM ${table} WHERE ${key} IN (
+          SELECT ${key} FROM ${table} WHERE ${predicate} ORDER BY ${key} LIMIT $2
+        )`, [sampled, limit]);
         deleted[label] = result.rowCount;
       }
       return { skipped: false, at: sampled.toISOString(), batchSize: limit, deleted };

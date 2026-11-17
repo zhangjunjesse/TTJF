@@ -1,0 +1,572 @@
+{
+  "date": "2026-11-17",
+  "environment": {
+    "os": "Windows",
+    "node": "22.17.0",
+    "sqlite": "3.50.0",
+    "browser": "Microsoft Edge"
+  },
+  "baseCommit": "e045d39f2dbf27601c833abcd5c3413a91f36ed6",
+  "unitAndApiTests": 293,
+  "testRuns": [
+    {
+      "name": "core-tests",
+      "command": [
+        "node",
+        "--test",
+        "test/model.test.cjs",
+        "test/server.test.cjs",
+        "test/assistant.test.cjs",
+        "test/pet.test.cjs",
+        "test/farm-model.test.cjs",
+        "test/farm-server.test.cjs",
+        "test/farm-ui.test.cjs",
+        "test/saas-model.test.cjs",
+        "test/saas-calendar.test.cjs",
+        "test/saas-client.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:31:27.546949+00:00",
+      "elapsedSeconds": 24.688,
+      "exitCode": 0,
+      "tests": 219,
+      "pass": 219,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "client-c1-c4",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=C[1-4]",
+        "test/v15-client.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:36:54.451037+00:00",
+      "elapsedSeconds": 39.281,
+      "exitCode": 0,
+      "tests": 4,
+      "pass": 4,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "client-c5-c6",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=C[5-6]",
+        "test/v15-client.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:38:19.623144+00:00",
+      "elapsedSeconds": 13.75,
+      "exitCode": 0,
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "client-c7-c8",
+      "command": [
+        "node",
+        "--test",
+        "--test-name-pattern=C[7-8]",
+        "test/v15-client.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:39:20.209055+00:00",
+      "elapsedSeconds": 28.766,
+      "exitCode": 0,
+      "tests": 2,
+      "pass": 2,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "core-and-startup-frozen",
+      "command": [
+        "node",
+        "--test",
+        "test/sqlite-store.test.cjs",
+        "test/saas-startup.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:59:10.875793+00:00",
+      "elapsedSeconds": 5.75,
+      "exitCode": 0,
+      "tests": 15,
+      "pass": 15,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "business-auth-final",
+      "command": [
+        "node",
+        "--test",
+        "test/saas-auth.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:47:12.513712+00:00",
+      "elapsedSeconds": 7.36,
+      "exitCode": 0,
+      "tests": 6,
+      "pass": 6,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "business-store-final",
+      "command": [
+        "node",
+        "--test",
+        "test/saas-store.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:47:36.787083+00:00",
+      "elapsedSeconds": 12.25,
+      "exitCode": 0,
+      "tests": 5,
+      "pass": 5,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "business-server-final",
+      "command": [
+        "node",
+        "--test",
+        "test/saas-server.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:48:00.997303+00:00",
+      "elapsedSeconds": 16.047,
+      "exitCode": 0,
+      "tests": 9,
+      "pass": 9,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "business-lifecycle-final",
+      "command": [
+        "node",
+        "--test",
+        "test/saas-lifecycle.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:48:28.778700+00:00",
+      "elapsedSeconds": 20.469,
+      "exitCode": 0,
+      "tests": 12,
+      "pass": 12,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "business-maintenance-final",
+      "command": [
+        "node",
+        "--test",
+        "test/saas-maintenance.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:49:35.225287+00:00",
+      "elapsedSeconds": 5.329,
+      "exitCode": 0,
+      "tests": 5,
+      "pass": 5,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "saas-data-tools-frozen",
+      "command": [
+        "node",
+        "--test",
+        "test/saas-data.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:48:16.045059+00:00",
+      "elapsedSeconds": 5.328,
+      "exitCode": 0,
+      "tests": 5,
+      "pass": 5,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "saas-db-tools-stage-owner-verified",
+      "command": [
+        "node",
+        "--test",
+        "test/saas-db.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:52:26.644404+00:00",
+      "elapsedSeconds": 14.594,
+      "exitCode": 0,
+      "tests": 8,
+      "pass": 8,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    },
+    {
+      "name": "business-action-audit-final",
+      "command": [
+        "node",
+        "--test",
+        "--test-reporter=spec",
+        "test/saas-action-audit.test.cjs"
+      ],
+      "startedAt": "2026-11-17T02:59:19.665245+00:00",
+      "elapsedSeconds": 11.828,
+      "exitCode": 0,
+      "tests": 1,
+      "pass": 1,
+      "fail": 0,
+      "cancelled": 0,
+      "skipped": 0
+    }
+  ],
+  "actionAudit": {
+    "types": 27,
+    "variants": 98,
+    "sourceStable": true,
+    "sourceHashes": {
+      "assistant-service.cjs": "fac82a6bd07359839474101e3fb5691b9d988b3107240838c5ad4cdeda375c4a",
+      "assistant.js": "fcbc6b685fa90eaffcc09c4c1968a1cec5726b6f0d1a917b483e1a139e40a5bf",
+      "model.js": "9586de7f7fd5a0ec9433ab4b167aaa30e1b43a0e61cae945fc1c0b6c816f7dc3",
+      "package-lock.json": "4a9cb3694fffce550592c99b9b521d734f69bfe05e4de963810f29c86b659650",
+      "package.json": "2fdab8b0c9bfab3934df4d8784a613f0f381533d2da5533673bb9bf125244654",
+      "saas-server.cjs": "7b1f3ee2ea165dc354f1267a8c49c8fde0b61af5e4c9e01bdb7ee67bf00ddc9f",
+      "saas/auth.cjs": "13615365a194fac302ba2ecde158c239217bcd8b515ad7f007fb31c35fdf540a",
+      "saas/business.cjs": "74ec0bb549e33b8ab30af57c25f6c5e95841c8e6c5356ea7cd94e0a079017830",
+      "saas/families.cjs": "87b6d61a0281d414caf6d2c990126f3b8564fac518738f05281e9dea0a219956",
+      "saas/lifecycle.cjs": "88dd96b9ec58c7f71a145d354130c6c31d155aa2d29f6707a4813780788a77dc",
+      "saas/mail.cjs": "12a181dec05985884447ce0fc1c6021d5536967ae8de4eaa5459f1172caa25c6",
+      "saas/maintenance.cjs": "321925fffb3568203aa56c2df4d6ca533bdb816f4f7c475a74931aac91d49a03",
+      "saas/migrations/001-initial.sql": "5edb06c41736432769dd0acefde8103845e52cbfd2ac3e24e0d893395f0e658d",
+      "saas/migrations/002-lifecycle.sql": "83a10072cf0e06678d732af96c3368bfcaf45e628220db6e7afe031cc535ef2b",
+      "saas/network.cjs": "73197a59292ed171361916e6e6cacb07991459dd3ab63be5f78be5384e67849b",
+      "saas/security.cjs": "720fc68bf46e8cbaa877fb64988edfb57b4efd4d97d060cf150627c1a9817a81",
+      "saas/sqlite.cjs": "b83e1b5e6d3e170704d7df32d87371f27b10e7f2cc0164195e83615250a1b309",
+      "saas/store.cjs": "6bb8a015a0eb7a66f8f1b4035737e91d4ac463af1fdd4ba043fbe87cbc8c09c7",
+      "saas/testing.cjs": "70bdf5d353f481744a62e9b7d217a411d8f84e6a61e51735c1c7f92ca64321b9",
+      "test/saas-action-audit.test.cjs": "639efe1acba5c5bc440e9ed9e58d9359b86a9430a9fd180ddacff7a700402402"
+    }
+  },
+  "browserCoverage": {
+    "baseline": [
+      "A second family in the same browser starts empty and switching preserves separate child/ledger/farm",
+      "Anonymous real HTML cannot read a family or render synthetic legacy browser data",
+      "Creating a family yields one named child, zero points/history and a farm awaiting first use",
+      "Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged",
+      "Forgot-password mail is generated; explicit reset invalidates old sessions and changes the usable password",
+      "Late actual200 from familyA cannot replace lower-revision familyB after a switch",
+      "Late actual401 from a revoked old session cannot log out a newly authenticated family",
+      "Logout clears the old family/renderer/draft before a held200 callback and foreground ticks run",
+      "No uncaught browser errors and no product business-storage operations occurred",
+      "Owner invitation generates email; another verified email cannot consume it",
+      "Owner member removal blocks retained cookies/old page; revoked email invitation cannot be accepted",
+      "Owner sets PIN; wrong PIN cannot award points; fresh operation-bound verification commits exactly500",
+      "Registration generates mail; unverified accounts cannot create families; fragment opening is inert and explicit verification succeeds",
+      "Target account registers/verifies, explicitly accepts once, and shares the existing child/ledger/farm"
+    ],
+    "full": [
+      "Account password change validates old password, preserves current session and revokes another real session",
+      "Owner renames a family and transfers ownership only after valid current-password confirmation",
+      "Reminder create/edit/copy/tomorrow/delete follows protected save and preserves points",
+      "Template create/edit/disable/enable preserves authorized ledger snapshots"
+    ]
+  },
+  "browserRuns": [
+    {
+      "suite": "baseline",
+      "run": "20261117024727624-50960",
+      "startedAt": "2026-11-17T02:47:27.624Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "Anonymous|Registration|Creating a family|Owner sets PIN|Farm welcome|A second family|No uncaught",
+      "selection": "baseline",
+      "selectedChecks": [
+        "Anonymous real HTML cannot read a family or render synthetic legacy browser data",
+        "Registration generates mail; unverified accounts cannot create families; fragment opening is inert and explicit verification succeeds",
+        "Creating a family yields one named child, zero points/history and a farm awaiting first use",
+        "Owner sets PIN; wrong PIN cannot award points; fresh operation-bound verification commits exactly500",
+        "Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged",
+        "A second family in the same browser starts empty and switching preserves separate child/ledger/farm",
+        "No uncaught browser errors and no product business-storage operations occurred"
+      ],
+      "prerequisites": [],
+      "changedSinceRun": [
+        "saas/store.cjs",
+        "test/saas-full-browser.cjs",
+        "tools/saas-db.cjs"
+      ]
+    },
+    {
+      "suite": "baseline",
+      "run": "20261117024922010-38076",
+      "startedAt": "2026-11-17T02:49:22.010Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "Owner invitation|Target account|Owner member removal",
+      "selection": "baseline",
+      "selectedChecks": [
+        "Owner invitation generates email; another verified email cannot consume it",
+        "Target account registers/verifies, explicitly accepts once, and shares the existing child/ledger/farm",
+        "Owner member removal blocks retained cookies/old page; revoked email invitation cannot be accepted"
+      ],
+      "prerequisites": [
+        "Anonymous real HTML cannot read a family or render synthetic legacy browser data",
+        "Registration generates mail; unverified accounts cannot create families; fragment opening is inert and explicit verification succeeds",
+        "Creating a family yields one named child, zero points/history and a farm awaiting first use",
+        "Owner sets PIN; wrong PIN cannot award points; fresh operation-bound verification commits exactly500",
+        "Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged",
+        "A second family in the same browser starts empty and switching preserves separate child/ledger/farm",
+        "No uncaught browser errors and no product business-storage operations occurred"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs",
+        "test/saas-full-browser.cjs",
+        "tools/saas-db.cjs"
+      ]
+    },
+    {
+      "suite": "baseline",
+      "run": "20261117025403409-57064",
+      "startedAt": "2026-11-17T02:54:03.410Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "Late actual200|Late actual401",
+      "selection": "baseline",
+      "selectedChecks": [
+        "Late actual200 from familyA cannot replace lower-revision familyB after a switch",
+        "Late actual401 from a revoked old session cannot log out a newly authenticated family"
+      ],
+      "prerequisites": [
+        "Anonymous real HTML cannot read a family or render synthetic legacy browser data",
+        "Registration generates mail; unverified accounts cannot create families; fragment opening is inert and explicit verification succeeds",
+        "Creating a family yields one named child, zero points/history and a farm awaiting first use",
+        "Owner sets PIN; wrong PIN cannot award points; fresh operation-bound verification commits exactly500",
+        "Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged",
+        "A second family in the same browser starts empty and switching preserves separate child/ledger/farm",
+        "No uncaught browser errors and no product business-storage operations occurred"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs"
+      ]
+    },
+    {
+      "suite": "baseline",
+      "run": "20261117025537354-49684",
+      "startedAt": "2026-11-17T02:55:37.354Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "Logout clears|Forgot-password",
+      "selection": "baseline",
+      "selectedChecks": [
+        "Logout clears the old family/renderer/draft before a held200 callback and foreground ticks run",
+        "Forgot-password mail is generated; explicit reset invalidates old sessions and changes the usable password"
+      ],
+      "prerequisites": [
+        "Anonymous real HTML cannot read a family or render synthetic legacy browser data",
+        "Registration generates mail; unverified accounts cannot create families; fragment opening is inert and explicit verification succeeds",
+        "Creating a family yields one named child, zero points/history and a farm awaiting first use",
+        "Owner sets PIN; wrong PIN cannot award points; fresh operation-bound verification commits exactly500",
+        "Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged",
+        "A second family in the same browser starts empty and switching preserves separate child/ledger/farm",
+        "No uncaught browser errors and no product business-storage operations occurred"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs"
+      ]
+    },
+    {
+      "suite": "full",
+      "run": "20261117024728068-54212",
+      "startedAt": "2026-11-17T02:47:28.069Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "^Account password change",
+      "selection": "account-password",
+      "selectedChecks": [
+        "Account password change validates old password, preserves current session and revokes another real session"
+      ],
+      "prerequisites": [
+        "No uncaught browser exceptions in full-business scenarios"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs",
+        "test/saas-full-browser.cjs",
+        "tools/saas-db.cjs"
+      ]
+    },
+    {
+      "suite": "full",
+      "run": "20261117025229491-61648",
+      "startedAt": "2026-11-17T02:52:29.492Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "^Owner renames a family",
+      "selection": "family-account-lifecycle",
+      "selectedChecks": [
+        "Owner renames a family and transfers ownership only after valid current-password confirmation"
+      ],
+      "prerequisites": [
+        "No uncaught browser exceptions in full-business scenarios"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs"
+      ]
+    },
+    {
+      "suite": "full",
+      "run": "20261117025416470-30444",
+      "startedAt": "2026-11-17T02:54:16.471Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "^Template create/edit/disable/enable",
+      "selection": "points",
+      "selectedChecks": [
+        "Template create/edit/disable/enable preserves authorized ledger snapshots"
+      ],
+      "prerequisites": [
+        "No uncaught browser exceptions in full-business scenarios"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs"
+      ]
+    },
+    {
+      "suite": "full",
+      "run": "20261117025520582-43272",
+      "startedAt": "2026-11-17T02:55:20.583Z",
+      "result": "passed",
+      "sourceStable": true,
+      "casePattern": "^Reminder create/edit/copy/tomorrow/delete",
+      "selection": "reminders",
+      "selectedChecks": [
+        "Reminder create/edit/copy/tomorrow/delete follows protected save and preserves points"
+      ],
+      "prerequisites": [
+        "No uncaught browser exceptions in full-business scenarios"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs"
+      ]
+    }
+  ],
+  "excludedBrowserRuns": [
+    {
+      "suite": "baseline",
+      "run": "20261117024009156-36428",
+      "startedAt": "2026-11-17T02:40:09.157Z",
+      "result": "passed",
+      "sourceStable": false,
+      "casePattern": "Anonymous|Registration|Creating a family|Owner sets PIN|Farm welcome|A second family|No uncaught",
+      "selection": "baseline",
+      "selectedChecks": [
+        "Anonymous real HTML cannot read a family or render synthetic legacy browser data",
+        "Registration generates mail; unverified accounts cannot create families; fragment opening is inert and explicit verification succeeds",
+        "Creating a family yields one named child, zero points/history and a farm awaiting first use",
+        "Owner sets PIN; wrong PIN cannot award points; fresh operation-bound verification commits exactly500",
+        "Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged",
+        "A second family in the same browser starts empty and switching preserves separate child/ledger/farm",
+        "No uncaught browser errors and no product business-storage operations occurred"
+      ],
+      "prerequisites": [],
+      "changedSinceRun": [
+        "package.json",
+        "saas-server.cjs",
+        "saas/store.cjs",
+        "saas/migrations/001-initial.sql",
+        "test/saas-full-browser.cjs",
+        "saas/migrations/002-lifecycle.sql",
+        "saas/sqlite.cjs",
+        "tools/saas-db.cjs"
+      ],
+      "failures": []
+    },
+    {
+      "suite": "full",
+      "run": "20261117024908709-61904",
+      "startedAt": "2026-11-17T02:49:08.709Z",
+      "result": "failed",
+      "sourceStable": true,
+      "casePattern": "^Owner renames a family",
+      "selection": "family-account-lifecycle",
+      "selectedChecks": [
+        "Owner renames a family and transfers ownership only after valid current-password confirmation"
+      ],
+      "prerequisites": [
+        "No uncaught browser exceptions in full-business scenarios"
+      ],
+      "changedSinceRun": [
+        "saas/store.cjs",
+        "test/saas-full-browser.cjs",
+        "tools/saas-db.cjs"
+      ],
+      "failures": [
+        {
+          "check": "family-account-lifecycle",
+          "message": "family-account-lifecycle final persisted state: reload"
+        }
+      ]
+    }
+  ],
+  "timedOutBrowserRuns": [
+    {
+      "name": "browser-late-and-logout",
+      "status": "timed_out",
+      "selectedCoverageCounted": false
+    }
+  ],
+  "auxiliaryChecks": [
+    {
+      "name": "clean-install",
+      "command": [
+        "npm.cmd",
+        "ci",
+        "--ignore-scripts",
+        "--no-audit",
+        "--no-fund"
+      ],
+      "status": "passed",
+      "startedAt": "2026-11-17T02:45:43.243194+00:00",
+      "elapsedSeconds": 36.343,
+      "exitCode": 0
+    },
+    {
+      "name": "compose-config",
+      "command": [
+        "docker",
+        "compose",
+        "--env-file",
+        "saas.env.example",
+        "-f",
+        "compose.production.yml",
+        "config",
+        "--quiet"
+      ],
+      "status": "passed",
+      "startedAt": "2026-11-17T02:44:51.974076+00:00",
+      "elapsedSeconds": 22.922,
+      "exitCode": 0,
+      "environmentOverrides": {
+        "SAAS_ENV_FILE": "saas.env.example"
+      }
+    }
+  ],
+  "scopeNotes": [
+    "Repeated browser prerequisites do not count as additional selected coverage.",
+    "Early source-changing and failed runs are excluded. Time-limited attempts without a complete report are excluded.",
+    "Later changes to the full-browser selected-case teardown and operator restore staging guard do not alter baseline browser execution. The final legacy DATABASE_URL rejection was separately reproduced and tested, with core/startup and API action audit rerun. Browser fixtures contain no legacy URL. Each report records changedSinceRun explicitly.",
+    "All npm test/test:saas cases were run in bounded foreground groups. Full 21/27 browser suites were not run as single complete suites.",
+    "No external SMTP/HTTPS, Docker runtime, production data migration, physical iPad/Safari or sustained load verification is claimed."
+  ]
+}

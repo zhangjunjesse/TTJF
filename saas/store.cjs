@@ -2,92 +2,112 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const S = require('./security.cjs');
+const { createDatabase } = require('./sqlite.cjs');
 
-async function migrate(pool) {
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    await client.query("SELECT pg_advisory_xact_lock(1329434013, 13)");
-    await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '001-initial.sql'), 'utf8'));
-    const applied = await client.query('SELECT 1 FROM saas_schema_migrations WHERE version=2');
-    if (!applied.rowCount) { await client.query(fs.readFileSync(path.join(__dirname, 'migrations', '002-lifecycle.sql'), 'utf8')); }
-    await client.query('COMMIT');
-  } catch (error) { await client.query('ROLLBACK'); throw error; }
-  finally { client.release(); }
+const MIGRATIONS = ['001-initial.sql', '002-lifecycle.sql'];
+const REQUIRED_COLUMNS = {
+  saas_schema_migrations: ['version', 'applied_at'],
+  saas_users: ['id', 'email', 'password_hash', 'verified_at', 'created_at'],
+  saas_sessions: ['token_hash', 'user_id', 'csrf_hash', 'created_at', 'expires_at', 'revoked_at'],
+  saas_email_tokens: ['token_hash', 'user_id', 'purpose', 'created_at', 'expires_at', 'consumed_at'],
+  saas_families: ['id', 'name', 'revision', 'state', 'parent', 'owner_user_id', 'owner_role', 'created_at', 'updated_at'],
+  saas_memberships: ['family_id', 'user_id', 'role', 'created_at'],
+  saas_family_requests: ['user_id', 'request_id', 'digest', 'family_id'],
+  saas_invitations: ['id', 'family_id', 'email', 'role', 'token_hash', 'invited_by', 'created_at', 'expires_at', 'consumed_at', 'revoked_at'],
+  saas_family_imports: ['family_id', 'source_sha256', 'source_revision', 'imported_at'],
+  saas_action_receipts: ['family_id', 'action_id', 'receipt', 'revision', 'created_at'],
+  saas_parent_challenges: ['token_hash', 'family_id', 'user_id', 'session_hash', 'revision', 'action_receipt', 'method', 'answer_hash', 'attempts', 'expires_at'],
+  saas_parent_grants: ['token_hash', 'family_id', 'user_id', 'session_hash', 'revision', 'action_receipt', 'expires_at'],
+  saas_assistant_leases: ['id', 'family_id', 'user_id', 'session_hash', 'expires_at'],
+  saas_rate_limits: ['scope', 'count', 'expires_at']
+};
+async function assertDatabaseSchema(database) {
+  const names = new Set((await database.query("SELECT name FROM sqlite_schema WHERE type='table'")).rows.map(row => row.name));
+  if (Object.keys(REQUIRED_COLUMNS).some(name => !names.has(name))) throw new Error('SQLite schema is missing or incomplete. Start the application once to initialize it, or select a complete existing SQLite database.');
+  const versions = (await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version);
+  if (versions.length !== MIGRATIONS.length || versions.some((version, index) => version !== index + 1)) {
+    throw new Error('SQLite schema version is unsupported. Use the matching application version or select a compatible existing SQLite database.');
+  }
+  for (const [table, required] of Object.entries(REQUIRED_COLUMNS)) {
+    const columns = new Set((await database.query('PRAGMA table_info(' + table + ')')).rows.map(row => row.name));
+    if (required.some(column => !columns.has(column))) throw new Error('SQLite schema is missing required columns in ' + table + '. Use a complete matching backup.');
+  }
+  if ((await database.query('PRAGMA foreign_key_check')).rowCount) throw new Error('SQLite database contains broken foreign key relationships. Restore a consistent private backup.');
+}
+async function migrate(database) {
+  await database.transaction(async client => {
+    const tables = (await client.query("SELECT name FROM sqlite_schema WHERE type='table' AND name NOT LIKE 'sqlite_%'")).rows;
+    if (tables.length && !tables.some(row => row.name === 'saas_schema_migrations')) {
+      throw new Error('The selected SQLite file contains another schema. Choose a new private SQLITE_FILE; no data was changed.');
+    }
+    await client.exec(`CREATE TABLE IF NOT EXISTS saas_schema_migrations (
+      version INTEGER PRIMARY KEY,
+      applied_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+    ) STRICT;`);
+    const versions = (await client.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version);
+    if (versions.some((version, index) => version !== index + 1 || version > MIGRATIONS.length)) {
+      throw new Error('SQLite schema version is unsupported. Use the application version that created this database.');
+    }
+    for (let index = versions.length; index < MIGRATIONS.length; index++) {
+      await client.exec(fs.readFileSync(path.join(__dirname, 'migrations', MIGRATIONS[index]), 'utf8'));
+    }
+  });
+  await assertDatabaseSchema(database);
 }
 async function createStore(options = {}) {
-  const ownsPool = !options.pool;
-  const connectionString = options.databaseUrl || process.env.DATABASE_URL;
-  if (ownsPool && !connectionString) { throw new Error('SaaS requires DATABASE_URL'); }
-  const pool = options.pool || new (require('pg').Pool)({ connectionString, max: 10,
-    connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000, statement_timeout: 20000 });
-  // Idle socket errors must not crash the process; requests still fail closed.
-  const onPoolError = () => {};
-  if (ownsPool) { pool.on('error', onPoolError); }
-  try { if (options.migrate !== false) { await migrate(pool); } else { await pool.query('SELECT 1'); } }
-  catch (error) { if (ownsPool) { await pool.end(); } throw error; }
-  async function transaction(fn) {
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      const value = await fn(client);
-      await client.query('COMMIT');
-      return value;
-    } catch (error) {
-      try { await client.query('ROLLBACK'); } catch (_) { /* preserve original failure */ }
-      throw error;
-    } finally { client.release(); }
+  const ownsDatabase = !options.database;
+  if (options.pool) throw new Error('PostgreSQL pools are no longer supported. Supply database or databasePath for SQLite.');
+  if (options.databaseUrl || process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL belongs to the former PostgreSQL backend. Preserve the old database and remove DATABASE_URL before selecting a private SQLITE_FILE; PostgreSQL data is not migrated automatically.');
   }
-  async function rate(scope, maximum, windowMs, at, queryable = pool) {
+  const database = options.database || await createDatabase({
+    databasePath: options.databasePath ?? (process.env.SQLITE_FILE || path.resolve(__dirname, '..', 'data', 'ttjf.sqlite')),
+    mustExist: options.migrate === false
+  });
+  try {
+    if (options.migrate !== false) await migrate(database);
+    else await assertDatabaseSchema(database);
+  } catch (error) { if (ownsDatabase) await database.close(); throw error; }
+  async function rate(scope, maximum, windowMs, at, queryable = database) {
     const sampled = new Date(at);
-    // Single UPSERT serializes a shared fixed window on every instance.
     const { rows } = await queryable.query(`INSERT INTO saas_rate_limits(scope,count,expires_at) VALUES($1,1,$2)
       ON CONFLICT(scope) DO UPDATE SET
-        count=CASE WHEN saas_rate_limits.expires_at <= $3 THEN 1 ELSE LEAST(saas_rate_limits.count+1,1000000) END,
+        count=CASE WHEN saas_rate_limits.expires_at <= $3 THEN 1 ELSE MIN(saas_rate_limits.count+1,1000000) END,
         expires_at=CASE WHEN saas_rate_limits.expires_at <= $3 THEN $2 ELSE saas_rate_limits.expires_at END
       RETURNING count, expires_at`, [S.digest(scope), new Date(+sampled + windowMs), sampled]);
     return { allowed: rows[0].count <= maximum, until: rows[0].expires_at };
   }
-  // Order for authenticated operations: user -> session -> family -> membership.
-  // Password changes lock user exclusively; member removal locks the family.
-  // Cross-user lifecycle operations lock every involved user in UUID order
-  // before acquiring any session/family lock (including the actor's).
-  async function authenticate(client, rawToken, at, { verified = false, csrfToken, userLock = false, relatedUserIds = [] } = {}) {
-    if (typeof rawToken !== 'string' || !S.TOKEN.test(rawToken)) { S.fail(401, 'AUTH_REQUIRED', '请先登录'); }
+  // BEGIN IMMEDIATE reserves the writer before authenticated reads. Every
+  // operation uses this same serialized connection instead of row locks.
+  async function authenticate(client, rawToken, at, { verified = false, csrfToken, relatedUserIds = [] } = {}) {
+    if (typeof rawToken !== 'string' || !S.TOKEN.test(rawToken)) S.fail(401, 'AUTH_REQUIRED', '请先登录');
     const hash = S.digest(rawToken);
     const lookup = await client.query('SELECT user_id FROM saas_sessions WHERE token_hash=$1', [hash]);
-    if (!lookup.rowCount) { S.fail(401, 'AUTH_REQUIRED', '登录已失效，请重新登录'); }
+    if (!lookup.rowCount) S.fail(401, 'AUTH_REQUIRED', '登录已失效，请重新登录');
     const actorId = lookup.rows[0].user_id;
     const ids = [...new Set([actorId, ...relatedUserIds])].sort();
-    if (ids.some(id => typeof id !== 'string' || !S.UUID.test(id))) { throw new Error('Invalid internal user lock set'); }
-    const users = (await client.query('SELECT * FROM saas_users WHERE id=ANY($1::uuid[]) ORDER BY id FOR ' +
-      (userLock || relatedUserIds.length ? 'UPDATE' : 'SHARE'), [ids])).rows;
+    if (ids.some(id => typeof id !== 'string' || !S.UUID.test(id))) throw new Error('Invalid internal user set');
+    const users = (await client.query('SELECT * FROM saas_users WHERE id IN (' + ids.map((_, i) => '$' + (i + 1)).join(',') + ') ORDER BY id', ids)).rows;
     const user = users.find(row => row.id === actorId);
-    const session = (await client.query('SELECT * FROM saas_sessions WHERE token_hash=$1 FOR SHARE', [hash])).rows[0];
-    if (!user || !session || session.revoked_at || +session.expires_at <= +new Date(at)) {
-      S.fail(401, 'AUTH_REQUIRED', '登录已失效，请重新登录');
-    }
-    if (csrfToken !== undefined && (typeof csrfToken !== 'string' || !S.equal(S.digest(csrfToken), session.csrf_hash))) {
-      S.fail(403, 'CSRF_INVALID', '页面已过期，请刷新后重试');
-    }
-    if (verified && !user.verified_at) { S.fail(403, 'EMAIL_UNVERIFIED', '请先验证邮箱'); }
+    const session = (await client.query('SELECT * FROM saas_sessions WHERE token_hash=$1', [hash])).rows[0];
+    if (!user || !session || session.revoked_at || +session.expires_at <= +new Date(at)) S.fail(401, 'AUTH_REQUIRED', '登录已失效，请重新登录');
+    if (csrfToken !== undefined && (typeof csrfToken !== 'string' || !S.equal(S.digest(csrfToken), session.csrf_hash))) S.fail(403, 'CSRF_INVALID', '页面已过期，请刷新后重试');
+    if (verified && !user.verified_at) S.fail(403, 'EMAIL_UNVERIFIED', '请先验证邮箱');
     return { user, session, rawToken };
   }
   async function family(client, identity, familyId, { owner = false } = {}) {
-    if (typeof familyId !== 'string' || !S.UUID.test(familyId)) { S.fail(400, 'FAMILY_REQUIRED', '请选择家庭'); }
-    // Deny outsiders before reading or locking another family's aggregate.
+    if (typeof familyId !== 'string' || !S.UUID.test(familyId)) S.fail(400, 'FAMILY_REQUIRED', '请选择家庭');
     const preliminary = await client.query('SELECT 1 FROM saas_memberships WHERE family_id=$1 AND user_id=$2', [familyId, identity.user.id]);
-    if (!preliminary.rowCount) { S.fail(403, 'FAMILY_FORBIDDEN', '无权访问此家庭'); }
-    const row = (await client.query('SELECT * FROM saas_families WHERE id=$1 FOR UPDATE', [familyId])).rows[0];
-    const member = (await client.query('SELECT role FROM saas_memberships WHERE family_id=$1 AND user_id=$2 FOR SHARE',
-      [familyId, identity.user.id])).rows[0];
-    if (!row || !member) { S.fail(403, 'FAMILY_FORBIDDEN', '无权访问此家庭'); }
-    if (owner && member.role !== 'owner') { S.fail(403, 'OWNER_REQUIRED', '仅家庭所有者可执行此操作'); }
+    if (!preliminary.rowCount) S.fail(403, 'FAMILY_FORBIDDEN', '无权访问此家庭');
+    const row = (await client.query('SELECT * FROM saas_families WHERE id=$1', [familyId])).rows[0];
+    const member = (await client.query('SELECT role FROM saas_memberships WHERE family_id=$1 AND user_id=$2', [familyId, identity.user.id])).rows[0];
+    if (!row || !member) S.fail(403, 'FAMILY_FORBIDDEN', '无权访问此家庭');
+    if (owner && member.role !== 'owner') S.fail(403, 'OWNER_REQUIRED', '仅家庭所有者可执行此操作');
     row.revision = Number(row.revision);
     return { ...row, role: member.role };
   }
   let closed = false;
-  return { pool, transaction, authenticate, family, rate,
-    async close() { if (!closed && ownsPool) { closed = true; await pool.end(); } } };
+  return { database, transaction: fn => database.transaction(fn), authenticate, family, rate,
+    async close() { if (!closed && ownsDatabase) { closed = true; await database.close(); } } };
 }
-module.exports = { createStore, migrate };
+module.exports = { createStore, migrate, assertDatabaseSchema };

@@ -54,7 +54,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
     catch (error) {
       // Keep account-existence responses uniform even when SMTP is down. A resend
       // can recover, and operators get a redacted delivery error, never a token.
-      await store.pool.query('DELETE FROM saas_email_tokens WHERE token_hash=$1 AND consumed_at IS NULL', [S.digest(delivery.raw)]);
+      await store.database.query('DELETE FROM saas_email_tokens WHERE token_hash=$1 AND consumed_at IS NULL', [S.digest(delivery.raw)]);
       reportError('MAIL_DELIVERY_FAILED');
     }
   }
@@ -74,7 +74,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
     const email = S.email(body.email);
     await limit(ctx, purpose === 'reset' ? 'forgot' : 'resend', 20, email);
     const delivery = await store.transaction(async client => {
-      const user = (await client.query('SELECT * FROM saas_users WHERE email=$1 FOR UPDATE', [email])).rows[0];
+      const user = (await client.query('SELECT * FROM saas_users WHERE email=$1', [email])).rows[0];
       return user && (purpose === 'reset' || !user.verified_at) ? issueToken(client, user, purpose) : null;
     });
     await deliver(delivery);
@@ -86,10 +86,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
     const newHash = purpose === 'reset' ? await S.hashPassword(S.password(body.password)) : null;
     return store.transaction(async client => {
       const tokenHash = S.digest(body.token);
-      const found = (await client.query('SELECT user_id FROM saas_email_tokens WHERE token_hash=$1 AND purpose=$2', [tokenHash, purpose])).rows[0];
-      if (!found) { S.fail(400, 'TOKEN_INVALID', '链接无效或已使用'); }
-      await client.query('SELECT id FROM saas_users WHERE id=$1 FOR UPDATE', [found.user_id]);
-      const entry = (await client.query('SELECT * FROM saas_email_tokens WHERE token_hash=$1 AND purpose=$2 FOR UPDATE', [tokenHash, purpose])).rows[0];
+      const entry = (await client.query('SELECT * FROM saas_email_tokens WHERE token_hash=$1 AND purpose=$2', [tokenHash, purpose])).rows[0];
       if (!entry || entry.consumed_at) { S.fail(400, 'TOKEN_INVALID', '链接无效或已使用'); }
       if (+entry.expires_at <= +at()) { S.fail(410, 'TOKEN_EXPIRED', '链接已过期，请重新申请'); }
       const sampled = at();
@@ -109,7 +106,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
     await limit(ctx, 'login', 50, email);
     const password = typeof body.password === 'string' && body.password.length <= 128 ? body.password : '';
     return store.transaction(async client => {
-      const user = (await client.query('SELECT * FROM saas_users WHERE email=$1 FOR UPDATE', [email])).rows[0];
+      const user = (await client.query('SELECT * FROM saas_users WHERE email=$1', [email])).rows[0];
       // Unknown addresses still perform the same expensive password derivation.
       const record = user ? user.password_hash : { algorithm: 'scrypt', n: 32768, salt: '00000000000000000000000000000000', digest: '0'.repeat(64) };
       const valid = await S.checkPassword(password, record);
@@ -122,7 +119,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
   }
   async function logout(ctx) {
     return store.transaction(async client => {
-      const who = await identity(client, ctx, { userLock: true });
+      const who = await identity(client, ctx);
       await client.query('UPDATE saas_sessions SET revoked_at=$2 WHERE token_hash=$1', [who.session.token_hash, at()]);
       return { status: 200, body: { ok: true }, headers: { 'Set-Cookie': cookie('') } };
     });
@@ -131,7 +128,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
     await limit(ctx, 'change-password', 20);
     const newHash = await S.hashPassword(S.password(body.password));
     return store.transaction(async client => {
-      const who = await identity(client, ctx, { userLock: true });
+      const who = await identity(client, ctx);
       if (typeof body.currentPassword !== 'string' || body.currentPassword.length > 128 ||
           !await S.checkPassword(body.currentPassword, who.user.password_hash)) { S.fail(403, 'PASSWORD_INVALID', '当前密码不正确'); }
       await client.query('UPDATE saas_users SET password_hash=$2 WHERE id=$1', [who.user.id, newHash]);

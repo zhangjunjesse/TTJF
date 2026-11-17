@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile.saas
       args:
         NODE_IMAGE: ${SAAS_NODE_IMAGE:-node:22-alpine}
-    image: ttjf-saas:0.14.0
+    image: ttjf-saas:0.15.0
     init: true
     restart: unless-stopped
     env_file:
@@ -14,12 +14,15 @@ services:
       NODE_ENV: production
       SAAS_HOST: 0.0.0.0
       SAAS_PORT: "4180"
+      SQLITE_FILE: /app/data/ttjf.sqlite
       SAAS_TRUSTED_PROXIES: ${SAAS_PROXY_ADDRESS:-172.30.80.1}
     ports:
       - "127.0.0.1:${SAAS_PUBLISHED_PORT:-4180}:4180"
     networks:
       app_private: {}
     read_only: true
+    volumes:
+      - saas_data:/app/data
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=16m
     cap_drop:
@@ -35,6 +38,8 @@ services:
       timeout: 5s
       start_period: 15s
       retries: 3
+volumes:
+  saas_data:
 networks:
   app_private:
     driver: bridge

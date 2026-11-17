@@ -1,5 +1,5 @@
 'use strict';
-// v14: real UI -> authorization -> HTTP -> PostgreSQL. All data is synthetic.
+// v15: real UI -> authorization -> HTTP -> SQLite. All data is synthetic.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -17,15 +17,15 @@ const state = () => snapshot(page);
 const nowDate = () => M.dateKey(new Date(env.now()), 'Asia/Shanghai');
 const day = offset => M.addDays(nowDate(), offset, 'Asia/Shanghai');
 const calls = route => env.calls.filter(call => call.path === route);
-async function sql() { return (await env.pool.query('SELECT revision,state FROM saas_families WHERE id=$1', [familyId])).rows[0]; }
+async function sql() { return (await env.database.query('SELECT revision,state FROM saas_families WHERE id=$1', [familyId])).rows[0]; }
 async function proof(label) {
   await Q.settled(page);
-  const browserState = await state(), http = await env.api(page, '/api/state'), pg = await sql();
+  const browserState = await state(), http = await env.api(page, '/api/state'), databaseRow = await sql();
   assert.equal(http.status, 200); assert.equal(http.body.familyId, familyId);
   assert.deepEqual(browserState, http.body.state, label + ': UI/HTTP state');
-  assert.deepEqual(pg.state, browserState, label + ': PostgreSQL state');
-  assert.equal(Number(pg.revision), http.body.revision);
-  Q.report.persistence.push({ label, familyId, revision: Number(pg.revision), stateSha256: hash(pg.state), totals: M.totals(pg.state) });
+  assert.deepEqual(databaseRow.state, browserState, label + ': SQLite state');
+  assert.equal(Number(databaseRow.revision), http.body.revision);
+  Q.report.persistence.push({ label, familyId, revision: Number(databaseRow.revision), stateSha256: hash(databaseRow.state), totals: M.totals(databaseRow.state) });
   return browserState;
 }
 async function selectAfterReload() {
@@ -114,6 +114,7 @@ async function makeReward(name, points, category = 'daily') {
 async function group(name, fn) {
   Q.phase(name); Q.active(page);
   if (process.env.SAAS_FULL_GROUPS && !process.env.SAAS_FULL_GROUPS.split(',').includes(name)) { Q.report.skipped.push(name + ': not selected in targeted run'); return; }
+  if (!Q.includesPhase(name)) { Q.report.skipped.push(name + ': no selected checks'); return; }
   try {
     await env.setClock(env.now() + 16 * 60000);
     if (!(await Q.status(page)).ready) {
@@ -121,7 +122,9 @@ async function group(name, fn) {
       if ((await Q.status(page)).view === 'login') await Q.login(page, ownerEmail, currentPassword);
     }
     familyId = await Q.createFamily(page, '合成审查-' + name, '合成孩子-' + name); Q.assertEmpty(await state(), '合成孩子-' + name);
-    await setup(); await fn(); await reloadProof(name + ' final persisted state');
+    await setup(); await fn();
+    if (!(await Q.status(page)).ready && familyId) await Q.switchFamily(page, familyId);
+    await reloadProof(name + ' final persisted state');
   } catch (error) {
     Q.fail(error, error.check || name); console.error('FAIL ' + name + ': ' + error.message);
     Q.report.skipped.push(name + ': any dependent steps after this group failure were not executed; other independent families continue');
@@ -130,6 +133,25 @@ async function group(name, fn) {
   }
 }
 async function run() {
+  // Existing cases retain their names. Only required earlier cases execute as
+  // setup; those are recorded separately and do not count as selected coverage.
+  const cases = [], groups = new Map(); let groupName;
+  for (const line of fs.readFileSync(__filename, 'utf8').split(/\r?\n/)) {
+    const groupMatch = /^  await group\('([^']+)'/.exec(line);
+    if (groupMatch) groupName = groupMatch[1];
+    if (line.includes("Q.phase('final')")) groupName = 'final';
+    const match = /await Q\.check\('([^']+)'/.exec(line);
+    if (!match) continue;
+    const previous = groups.get(groupName) || [];
+    const independent = ['profile-partners', 'parent-settings', 'recovery', 'farm-catalog', 'final'].includes(groupName) ||
+      (groupName === 'reminders' && previous.length === 2) || (groupName === 'assistant-export' && previous.length === 1) ||
+      (groupName === 'family-account-lifecycle' && previous.length === 3);
+    const dependency = groupName === 'assistant-export' && previous.length === 2 ? previous[0] :
+      groupName === 'family-account-lifecycle' && previous.length === 2 ? previous[0] : previous.at(-1);
+    cases.push({ label: match[1], phase: groupName, dependencies: independent || !dependency ? [] : [dependency] });
+    previous.push(match[1]); groups.set(groupName, previous);
+  }
+  Q.configureSelection(cases);
   Q.report.continueAfterGroupFailure = true; Q.report.selection = process.env.SAAS_FULL_GROUPS || 'all'; Q.report.persistence = []; Q.report.failureContexts = [];
   Q.report.boundaries.push('Full-suite assistant uses the real local instruction parser through HTTP with apiKey explicitly empty; no external AI provider is called. One named input throws a controlled provider failure to verify the HTTP503 recovery path.', 'Reminder cases control browser Date/performance offsets and the injected server clock while real foreground timers run; not device background notification validation.', 'Speech recognition API is deliberately unavailable to verify the typing fallback; no microphone or external speech provider is tested.');
   const localAssistant = createAssistantService({ apiKey: '' });
@@ -237,6 +259,7 @@ async function run() {
       assert.ok(await page.$(a('task-edit', id)), 'Acknowledged overdue task remains reachable next day');
     });
     await Q.check('Important-event advance window and cancellation remain accessible', async () => {
+      await reminders();
       await click(page, a('reminder-mode', 'events')); await click(page, a('task-new'));
       await form({ title: '合成近期重要事件', date: day(2), remindDays: 3, time: '', note: '合成活动备注' }); await authorize('create near important event');
       const near = (await state()).tasks.find(row => row.title === '合成近期重要事件').id;
@@ -307,6 +330,9 @@ async function run() {
       await Q.shot(page, 'all-crops-third-house-persisted');
     });
     await Q.check('Both animals record one care per family day and expose third/seventh-day milestones', async () => {
+      if ((await state()).farm === null) {
+        await credit(500); await Q.home(page); await publicClick('animal-care farm start', a('farm-start'));
+      }
       for (let index = 0; index < 7; index++) {
         if (index) { await env.setClock(env.now() + DAY); await page.reload({ waitUntil: 'load' }); await selectAfterReload(); }
         for (const animal of ['chicken', 'rabbit']) {
@@ -371,7 +397,7 @@ async function run() {
       await page.waitForFunction(() => !window.FamilyDemo.getUI().aiBusy); assert.deepEqual(await sql(), before); assert.equal((await ui(page)).form, 'voice');
       assert.equal(await page.$eval('[name="speech"]', node => node.value), '合成服务故障'); await Q.shot(page, 'assistant-failure-draft-retained');
     });
-    await Q.check('Context instruction creates a template without awarding and export matches only the current PG business state', async () => {
+    await Q.check('Context instruction creates a template without awarding and export matches only the current SQLite business state', async () => {
       await templates(); await click(page, a('ai-toggle')); await form({ aiText: '添加一个整理书包的常用加分项，五分，原因是主动整理书包' }); await click(page, a('ai-fill', 'pointItems'));
       await page.waitForFunction(() => !window.FamilyDemo.getUI().aiBusy); await page.waitForSelector('[name="name"]'); await authorize('context AI template save');
       assert.equal((await totals(page)).earned, 5);
@@ -469,17 +495,17 @@ async function run() {
       survivorId = await Q.createFamily(page, '合成必须保留家庭', '合成保留孩子'); familyId = survivorId; await setup(); await credit(3); survivorState = await state();
       await Q.switchFamily(page, targetId); familyId = targetId;
       await familyMenu('rename-family'); await saasSubmit('PATCH', '/api/families/' + targetId, { name: renamed }); await Q.ready(page, targetId);
-      assert.deepEqual(await state(), targetState); assert.equal((await env.pool.query('SELECT name FROM saas_families WHERE id=$1', [targetId])).rows[0].name, renamed);
+      assert.deepEqual(await state(), targetState); assert.equal((await env.database.query('SELECT name FROM saas_families WHERE id=$1', [targetId])).rows[0].name, renamed);
       const parentLink = await invite(parentEmail), memberLink = await invite(memberEmail);
       parentPage = await env.newPage({ controlledClock: true }); await Q.registerAndVerify(parentPage, parentEmail); parentId = (await Q.status(parentPage)).userId; await accept(parentPage, parentLink, targetId);
       memberPage = await env.newPage({ controlledClock: true }); await Q.registerAndVerify(memberPage, memberEmail); memberId = (await Q.status(memberPage)).userId; await accept(memberPage, memberLink, targetId);
       await page.bringToFront(); await Q.switchFamily(page, targetId); await familyMenu(); assert.equal(await page.$(Q.sa('leave-family')), null, 'Owner cannot use parent leave entry');
       await click(page, Q.sa('transfer-owner')); await page.waitForSelector('#saas-userId'); await page.select('#saas-userId', parentId);
       const denial = await saasSubmit('POST', '/api/families/' + targetId + '/transfer-owner', { currentPassword: 'Wrong-Current-Password!' }, 403); assert.equal(denial.code, 'PASSWORD_INVALID');
-      const ownersBefore = (await env.pool.query("SELECT user_id FROM saas_memberships WHERE family_id=$1 AND role='owner'", [targetId])).rows; assert.equal(ownersBefore.length, 1); assert.equal(ownersBefore[0].user_id, (await Q.status(page)).userId);
+      const ownersBefore = (await env.database.query("SELECT user_id FROM saas_memberships WHERE family_id=$1 AND role='owner'", [targetId])).rows; assert.equal(ownersBefore.length, 1); assert.equal(ownersBefore[0].user_id, (await Q.status(page)).userId);
       await page.setViewport({ width: 320, height: 568 }); await Q.audit(page, 'small-transfer-owner'); await page.setViewport({ width: 390, height: 844 });
       await page.select('#saas-userId', parentId); await saasSubmit('POST', '/api/families/' + targetId + '/transfer-owner', { currentPassword }); await Q.ready(page, targetId);
-      const ownersAfter = (await env.pool.query("SELECT user_id FROM saas_memberships WHERE family_id=$1 AND role='owner'", [targetId])).rows; assert.deepEqual(ownersAfter, [{ user_id: parentId }]);
+      const ownersAfter = (await env.database.query("SELECT user_id FROM saas_memberships WHERE family_id=$1 AND role='owner'", [targetId])).rows; assert.deepEqual(ownersAfter, [{ user_id: parentId }]);
       await familyMenu(); assert.ok(await page.$(Q.sa('leave-family'))); assert.equal(await page.$(Q.sa('delete-family')), null); await Q.shot(page, 'transferred-owner-now-parent');
     });
     await Q.check('A suspended removed member cannot recover its old draft; rejoining starts an empty draft and self-deletion preserves shared business', async () => {
@@ -500,8 +526,8 @@ async function run() {
         await Q.fillSaas(page, { email: memberEmail, currentPassword: PASSWORD }); await page.setViewport({ width: 320, height: 568 }); await Q.audit(page, 'small-delete-parent-account'); await page.setViewport({ width: 390, height: 844 });
         await saasSubmit('POST', '/api/auth/delete-account', { email: memberEmail, currentPassword: PASSWORD }); await Q.waitView(page, 'login');
       });
-      assert.equal((await env.pool.query('SELECT 1 FROM saas_users WHERE id=$1', [memberId])).rowCount, 0); assert.equal((await env.pool.query('SELECT 1 FROM saas_memberships WHERE user_id=$1', [memberId])).rowCount, 0);
-      assert.deepEqual((await env.pool.query('SELECT state FROM saas_families WHERE id=$1', [targetId])).rows[0].state, targetState);
+      assert.equal((await env.database.query('SELECT 1 FROM saas_users WHERE id=$1', [memberId])).rowCount, 0); assert.equal((await env.database.query('SELECT 1 FROM saas_memberships WHERE user_id=$1', [memberId])).rowCount, 0);
+      assert.deepEqual((await env.database.query('SELECT state FROM saas_families WHERE id=$1', [targetId])).rows[0].state, targetState);
     });
     await Q.check('Parent leaves; owner account deletion is blocked until exact-name/password family deletion; other families survive', async () => {
       await familyMenu('leave-family'); const leaving = page.waitForResponse(result => new URL(result.url()).pathname.endsWith('/leave'));
@@ -512,14 +538,14 @@ async function run() {
       await usingPage(parentPage, targetId, async () => {
         await Q.account(page); await click(page, Q.sa('delete-account')); const blocked = await saasSubmit('POST', '/api/auth/delete-account', { email: parentEmail, currentPassword: PASSWORD }, 409); assert.equal(blocked.code, 'ACCOUNT_OWNS_FAMILIES');
         await click(page, Q.sa('account')); await click(page, Q.sa('family-settings')); await click(page, Q.sa('delete-family'));
-        await saasSubmit('DELETE', '/api/families/' + targetId, { name: renamed + '错误', currentPassword: PASSWORD }, 400); assert.equal((await env.pool.query('SELECT 1 FROM saas_families WHERE id=$1', [targetId])).rowCount, 1);
-        await saasSubmit('DELETE', '/api/families/' + targetId, { name: renamed, currentPassword: 'Wrong-Current-Password!' }, 403); assert.equal((await env.pool.query('SELECT 1 FROM saas_families WHERE id=$1', [targetId])).rowCount, 1);
+        await saasSubmit('DELETE', '/api/families/' + targetId, { name: renamed + '错误', currentPassword: PASSWORD }, 400); assert.equal((await env.database.query('SELECT 1 FROM saas_families WHERE id=$1', [targetId])).rowCount, 1);
+        await saasSubmit('DELETE', '/api/families/' + targetId, { name: renamed, currentPassword: 'Wrong-Current-Password!' }, 403); assert.equal((await env.database.query('SELECT 1 FROM saas_families WHERE id=$1', [targetId])).rowCount, 1);
         await Q.fillSaas(page, { name: renamed, currentPassword: PASSWORD }); await page.setViewport({ width: 320, height: 568 }); await Q.audit(page, 'small-delete-family-confirmation'); await page.setViewport({ width: 390, height: 844 });
         await saasSubmit('DELETE', '/api/families/' + targetId, { name: renamed, currentPassword: PASSWORD });
-        assert.equal((await env.pool.query('SELECT 1 FROM saas_families WHERE id=$1', [targetId])).rowCount, 0); assert.equal((await env.pool.query('SELECT 1 FROM saas_memberships WHERE family_id=$1', [targetId])).rowCount, 0);
+        assert.equal((await env.database.query('SELECT 1 FROM saas_families WHERE id=$1', [targetId])).rowCount, 0); assert.equal((await env.database.query('SELECT 1 FROM saas_memberships WHERE family_id=$1', [targetId])).rowCount, 0);
         await Q.account(page); await click(page, Q.sa('delete-account')); await saasSubmit('POST', '/api/auth/delete-account', { email: parentEmail, currentPassword: PASSWORD }); await Q.waitView(page, 'login'); await Q.shot(page, 'owner-family-and-account-deleted');
       });
-      assert.equal((await env.pool.query('SELECT 1 FROM saas_users WHERE id=$1', [parentId])).rowCount, 0); assert.deepEqual((await env.pool.query('SELECT state FROM saas_families WHERE id=$1', [survivorId])).rows[0].state, survivorState);
+      assert.equal((await env.database.query('SELECT 1 FROM saas_users WHERE id=$1', [parentId])).rowCount, 0); assert.deepEqual((await env.database.query('SELECT state FROM saas_families WHERE id=$1', [survivorId])).rows[0].state, survivorState);
       page = originalPage; familyId = survivorId; Q.active(page); await proof('unrelated family survives lifecycle deletion');
     });
     await Q.check('An authenticated unverified account can delete itself without verifying email first', async () => {
@@ -527,7 +553,7 @@ async function run() {
       await usingPage(pendingPage, null, async () => {
         await page.goto(env.origin, { waitUntil: 'load' }); await Q.waitView(page, 'login'); await click(page, Q.sa('register')); await Q.fillSaas(page, { email, password: PASSWORD, confirmPassword: PASSWORD }); await click(page, Q.submit); await Q.waitView(page, 'pending');
         await click(page, Q.sa('login')); await Q.login(page, email, PASSWORD); await Q.waitView(page, 'unverified'); const id = (await Q.status(page)).userId;
-        await click(page, Q.sa('delete-account')); await saasSubmit('POST', '/api/auth/delete-account', { email, currentPassword: PASSWORD }); await Q.waitView(page, 'login'); assert.equal((await env.pool.query('SELECT 1 FROM saas_users WHERE id=$1', [id])).rowCount, 0);
+        await click(page, Q.sa('delete-account')); await saasSubmit('POST', '/api/auth/delete-account', { email, currentPassword: PASSWORD }); await Q.waitView(page, 'login'); assert.equal((await env.database.query('SELECT 1 FROM saas_users WHERE id=$1', [id])).rowCount, 0);
       });
     });
   });

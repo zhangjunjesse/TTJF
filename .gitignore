@@ -8,6 +8,14 @@
 *.pem
 *.pfx
 *.p12
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
 
 # Installed dependencies and local caches
 node_modules/

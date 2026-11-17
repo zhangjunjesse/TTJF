@@ -2,14 +2,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const path = require('node:path');
 const M = require('../model.js');
 const { migrate } = require('../saas/store.cjs');
 const H = require('../saas/testing.cjs');
 
-test('real PG migration is concurrent/idempotent and family creation is atomic, empty and idempotent', async t => {
+test('real SQLite migration is queued/idempotent and family creation is atomic, empty and idempotent', async t => {
   const f = await H.fixture(t);
-  await Promise.all([migrate(f.pool), migrate(f.pool)]);
-  assert.deepEqual((await f.pool.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }]);
+  await Promise.all([migrate(f.database), migrate(f.database)]);
+  assert.deepEqual((await f.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }]);
   const user = await H.register(f, 'create@example.test'), second = await f.start();
   const payload = { name: '新家', childName: '小新', requestId: 'same-create' };
   const responses = await Promise.all([f.server, second].map(server => H.request(server, 'POST', '/api/families', payload, user)));
@@ -17,16 +18,16 @@ test('real PG migration is concurrent/idempotent and family creation is atomic, 
   assert.equal(responses[0].body.family.id, responses[1].body.family.id);
   const conflict = await H.request(second, 'POST', '/api/families', { ...payload, childName: '不能替换' }, user);
   assert.equal(conflict.body.code, 'REQUEST_ID_REUSED');
-  const rows = (await f.pool.query('SELECT * FROM saas_families')).rows;
+  const rows = (await f.database.query('SELECT * FROM saas_families')).rows;
   assert.equal(rows.length, 1);
   assert.deepEqual(M.totals(rows[0].state), { earned: 0, spent: 0, available: 0 });
   assert.equal(rows[0].state.farm, null); assert.equal(rows[0].state.childName, '小新');
   for (const key of ['tasks', 'points', 'pointItems', 'redemptions', 'rewards', 'requests', 'petPurchases', 'petCare', 'appliedActions']) { assert.deepEqual(rows[0].state[key], [], key); }
-  const members = (await f.pool.query('SELECT role FROM saas_memberships')).rows;
+  const members = (await f.database.query('SELECT role FROM saas_memberships')).rows;
   assert.deepEqual(members, [{ role: 'owner' }]);
 });
 
-test('real PG competing first setup and action retries across instances commit one receipt and one business effect', async t => {
+test('real SQLite competing setup and action retries across request handlers commit one receipt and one business effect', async t => {
   const f = await H.fixture(t), second = await f.start();
   const owner = await H.family(f, await H.register(f, 'atomic@example.test'));
   const setups = [{ id: 'setup-a', type: 'parent.setup', method: 'math' }, { id: 'setup-b', type: 'parent.setup', method: 'math' }];
@@ -38,8 +39,8 @@ test('real PG competing first setup and action retries across instances commit o
   assert.deepEqual(commands.map(r => r.status), [200, 200]);
   assert.equal(commands[0].body.revision, 3); assert.equal(commands[1].body.revision, 3);
   assert.equal(commands[0].body.state.points.length, 1);
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_action_receipts WHERE family_id=$1', [owner.familyId])).rows[0].n, 2);
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_parent_grants')).rows[0].n, 0);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_action_receipts WHERE family_id=$1', [owner.familyId])).rows[0].n, 2);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_parent_grants')).rows[0].n, 0);
   const left = H.credit('race-left', 2), right = H.credit('race-right', 3);
   const [leftGrant, rightGrant] = await Promise.all([H.grant(f, owner, left, 3), H.grant(f, owner, right, 3, second)]);
   const competing = await Promise.all([
@@ -54,41 +55,41 @@ test('real PG competing first setup and action retries across instances commit o
   assert.equal(snapshot.body.revision, 4); assert.equal(snapshot.body.state.points.length, 2);
 });
 
-test('real PostgreSQL transaction failure rolls back ledger, receipt and consumed grant, then retry succeeds', async t => {
+test('real SQLite transaction failure rolls back ledger, receipt and consumed grant, then retry succeeds', async t => {
   const f = await H.fixture(t);
   const owner = await H.family(f, await H.register(f, 'rollback@example.test'));
   await H.setup(f, owner);
   const action = H.credit('rollback-action'), token = await H.grant(f, owner, action);
-  const before = (await f.pool.query('SELECT state,parent,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
+  const before = (await f.database.query('SELECT state,parent,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
   // Real database fault at the last write, after the aggregate update. No SQL mock.
-  await f.pool.query(`CREATE FUNCTION v13_fail_receipt() RETURNS trigger LANGUAGE plpgsql AS $$
-    BEGIN RAISE EXCEPTION 'v13 injected persistence failure'; END $$;
-    CREATE TRIGGER v13_fail_receipt BEFORE INSERT ON saas_action_receipts FOR EACH ROW EXECUTE FUNCTION v13_fail_receipt()`);
+  await f.database.exec(`CREATE TRIGGER v13_fail_receipt BEFORE INSERT ON saas_action_receipts
+    BEGIN SELECT RAISE(ABORT, 'v13 injected persistence failure'); END`);
   const failed = await H.request(f.server, 'POST', '/api/action', { revision: 2, action, grant: token }, owner);
   assert.equal(failed.status, 503); assert.equal(failed.body.state, undefined);
-  const after = (await f.pool.query('SELECT state,parent,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
+  const after = (await f.database.query('SELECT state,parent,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
   assert.deepEqual(after, before);
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_parent_grants')).rows[0].n, 1);
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_action_receipts')).rows[0].n, 1);
-  await f.pool.query('DROP TRIGGER v13_fail_receipt ON saas_action_receipts; DROP FUNCTION v13_fail_receipt()');
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_parent_grants')).rows[0].n, 1);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_action_receipts')).rows[0].n, 1);
+  await f.database.exec('DROP TRIGGER v13_fail_receipt');
   const retried = await H.request(f.server, 'POST', '/api/action', { revision: 2, action, grant: token }, owner);
   assert.equal(retried.status, 200); assert.equal(M.totals(retried.body.state).earned, 5);
 });
 
-test('closeSaas releases its owned real PG pool, keeps supplied pools usable, and is idempotent', async t => {
+test('closeSaas closes its owned SQLite file, keeps the supplied database usable, and is idempotent', async t => {
   const f = await H.fixture(t);
-  const url = new URL(process.env.TEST_DATABASE_URL);
-  url.searchParams.set('options', '-c search_path=' + f.schema);
-  const owned = await require('../saas-server.cjs').createSaasServer({ databaseUrl: url.toString(), publicOrigin: H.ORIGIN,
+  const ownedPath = path.join(path.dirname(f.databasePath), 'owned.sqlite');
+  const owned = await require('../saas-server.cjs').createSaasServer({ databasePath: ownedPath, publicOrigin: H.ORIGIN,
     environment: 'test', mailer: { sendMail: async () => {} } });
-  assert.equal((await owned.store.pool.query('SELECT 1 AS value')).rows[0].value, 1);
-  await owned.closeSaas(); await owned.closeSaas();
-  await assert.rejects(owned.store.pool.query('SELECT 1'), /after calling end/);
+  try {
+    assert.equal((await owned.store.database.query('SELECT 1 AS value')).rows[0].value, 1);
+    await owned.closeSaas(); await owned.closeSaas();
+    await assert.rejects(owned.store.database.query('SELECT 1'), /closed/);
+  } finally { await owned.closeSaas(); }
   await f.server.closeSaas();
-  assert.equal((await f.pool.query('SELECT 1 AS value')).rows[0].value, 1);
+  assert.equal((await f.database.query('SELECT 1 AS value')).rows[0].value, 1);
 });
 
-test('real PG scoped counters isolate families and outsider requests never wait for foreign family row locks', async t => {
+test('SQLite scoped counters isolate families and queued outsider requests return no family data', async t => {
   const f = await H.fixture(t);
   const a = await H.family(f, await H.register(f, 'a@example.test'), 'A');
   const b = await H.family(f, await H.register(f, 'b@example.test'), 'B');
@@ -101,12 +102,30 @@ test('real PG scoped counters isolate families and outsider requests never wait 
   }
   assert.equal((await H.request(second, 'POST', '/api/parent/challenge', { revision: 2, action: H.credit('locked') }, a)).status, 429);
   assert.equal((await H.request(second, 'POST', '/api/parent/challenge', { revision: 2, action: H.credit('allowed') }, b)).status, 200);
-  const blocker = await f.pool.connect();
+  let unlock, entered;
+  const held = new Promise(resolve => { unlock = resolve; });
+  const started = new Promise(resolve => { entered = resolve; });
+  const blocker = f.database.transaction(async client => {
+    await client.query('SELECT id FROM saas_families WHERE id=$1', [b.familyId]);
+    entered(); await held;
+  });
+  await started;
   try {
-    await blocker.query('BEGIN'); await blocker.query('SELECT id FROM saas_families WHERE id=$1 FOR UPDATE', [b.familyId]);
-    const forbidden = await H.request(f.server, 'GET', '/api/state', undefined, { ...a, familyId: b.familyId });
+    // One process owns the file: all database access waits for its transaction,
+    // including requests for other families, then rechecks authorization.
+    let queryFinished = false, requestFinished = false;
+    const queued = f.database.query('SELECT 1').then(() => { queryFinished = true; });
+    const received = new Promise(resolve => { second.once('request', resolve); });
+    const request = H.request(second, 'GET', '/api/state', undefined, { ...a, familyId: b.familyId })
+      .then(response => { requestFinished = true; return response; });
+    await received;
+    await new Promise(setImmediate);
+    assert.equal(queryFinished, false);
+    assert.equal(requestFinished, false);
+    unlock(); await blocker; await queued;
+    const forbidden = await request;
     assert.equal(forbidden.status, 403); assert.equal(forbidden.body.state, undefined);
-  } finally { await blocker.query('ROLLBACK'); blocker.release(); }
+  } finally { unlock(); await blocker; }
   const missing = await H.request(f.server, 'GET', '/api/state', undefined, { ...a, familyId: crypto.randomUUID() });
   assert.equal(missing.status, 403); assert.equal(missing.body.state, undefined);
 });

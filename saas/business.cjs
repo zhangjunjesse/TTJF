@@ -114,7 +114,7 @@ function createBusiness({ store, auth, now, assistant }) {
       await rate(client, who, family, 'verify', 30);
       await failuresAllowed(client, family);
       const hash = typeof body.challengeId === 'string' && S.TOKEN.test(body.challengeId) ? S.digest(body.challengeId) : '';
-      const entry = (await client.query(`SELECT * FROM saas_parent_challenges WHERE token_hash=$1 AND family_id=$2 AND user_id=$3 AND session_hash=$4 FOR UPDATE`,
+      const entry = (await client.query(`SELECT * FROM saas_parent_challenges WHERE token_hash=$1 AND family_id=$2 AND user_id=$3 AND session_hash=$4`,
         [hash, family.id, who.user.id, who.session.token_hash])).rows[0];
       if (!entry || +entry.expires_at <= +at()) {
         if (entry) { await client.query('DELETE FROM saas_parent_challenges WHERE token_hash=$1', [hash]); }
@@ -165,7 +165,7 @@ function createBusiness({ store, auth, now, assistant }) {
         if (!family.parent.configured) { return setupRequired(family); }
         if (!body.grant) { return error(403, 'PARENT_REQUIRED', '此操作需要家长验证'); }
         grantHash = typeof body.grant === 'string' && S.TOKEN.test(body.grant) ? S.digest(body.grant) : '';
-        const grant = (await client.query(`SELECT * FROM saas_parent_grants WHERE token_hash=$1 AND family_id=$2 AND user_id=$3 AND session_hash=$4 FOR UPDATE`,
+        const grant = (await client.query(`SELECT * FROM saas_parent_grants WHERE token_hash=$1 AND family_id=$2 AND user_id=$3 AND session_hash=$4`,
           [grantHash, family.id, who.user.id, who.session.token_hash])).rows[0];
         if (grant && +grant.expires_at <= +at()) {
           await client.query('DELETE FROM saas_parent_grants WHERE token_hash=$1', [grantHash]);
@@ -221,7 +221,7 @@ function createBusiness({ store, auth, now, assistant }) {
     } catch (_) { output = error(503, 'ASSISTANT_UNAVAILABLE', '暂时无法理解这句话，请重试或手动填写'); }
     finally {
       clearTimeout(timer);
-      await store.pool.query('DELETE FROM saas_assistant_leases WHERE id=$1', [leaseId]);
+      await store.database.query('DELETE FROM saas_assistant_leases WHERE id=$1', [leaseId]);
     }
     // Never return delayed family-derived AI data to a revoked session/member.
     return run(ctx, async () => output);

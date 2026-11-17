@@ -48,10 +48,10 @@ test('private legacy import requires verified target owner, is dry-run by defaul
   assert.equal(dryRun.mode,'dry-run');
   assert.equal(dryRun.sourceRevision,12);
   assert.deepEqual((await request(f.server,'GET','/api/state',undefined,owner)).body,before);
-  assert.equal((await f.pool.query('SELECT count(*) FROM saas_family_imports')).rows[0].count,'0');
+  assert.equal((await f.database.query('SELECT count(*) AS count FROM saas_family_imports')).rows[0].count,0);
   const done = await importFamily(f.server.store,{...options,apply:true});
   assert.equal(done.targetRevision,12);
-  const row = (await f.pool.query('SELECT state,parent,revision FROM saas_families WHERE id=$1',[owner.familyId])).rows[0];
+  const row = (await f.database.query('SELECT state,parent,revision FROM saas_families WHERE id=$1',[owner.familyId])).rows[0];
   assert.deepEqual(row.state,legacy.envelope.state);
   assert.deepEqual(row.parent,legacy.envelope.parent);
   assert.equal(Number(row.revision),12);
@@ -73,15 +73,14 @@ test('import rollback leaves empty target, receipts and import audit unchanged',
   const f = await fixture(t);
   const owner = await family(f,await register(f,'rollback-import@example.test'));
   const legacy = legacyFile(temporary(t),new Date(f.clock.value));
-  await f.pool.query("CREATE FUNCTION fail_private_import() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'injected receipt failure'; END $$");
-  await f.pool.query('CREATE TRIGGER reject_private_import BEFORE INSERT ON saas_action_receipts FOR EACH ROW EXECUTE FUNCTION fail_private_import()');
+  await f.database.exec("CREATE TRIGGER reject_private_import BEFORE INSERT ON saas_action_receipts BEGIN SELECT RAISE(ABORT, 'injected receipt failure'); END");
   await assert.rejects(importFamily(f.server.store,{source:legacy.source,familyId:owner.familyId,ownerEmail:owner.email,apply:true}),/injected receipt failure/);
   const state = (await request(f.server,'GET','/api/state',undefined,owner)).body;
   assert.equal(state.revision,1);
   assert.equal(M.totals(state.state).earned,0);
   assert.equal(state.parent.configured,false);
-  assert.equal((await f.pool.query('SELECT count(*) FROM saas_action_receipts')).rows[0].count,'0');
-  assert.equal((await f.pool.query('SELECT count(*) FROM saas_family_imports')).rows[0].count,'0');
+  assert.equal((await f.database.query('SELECT count(*) AS count FROM saas_action_receipts')).rows[0].count,0);
+  assert.equal((await f.database.query('SELECT count(*) AS count FROM saas_family_imports')).rows[0].count,0);
 });
 
 test('private family backup restores to another empty owned family and refuses overwrite', async t => {
@@ -127,16 +126,13 @@ test('import validates private policy and bumps a revision-one source before exp
   assert.equal(state.state.childName,'原称呼');
 });
 
-test('operator CLI backs up, validates, restores and refuses overwrite using a disposable PostgreSQL schema', async t => {
+test('operator CLI backs up, validates, restores and refuses overwrite using a temporary SQLite database', async t => {
   const f = await fixture(t);
   const owner = await family(f,await register(f,'cli-owner@example.test'),'CLI原家庭');
   const target = await family(f,owner,'CLI恢复目标');
   const stranger = await register(f,'cli-other@example.test');
   const dir = temporary(t), legacy = legacyFile(dir,new Date(f.clock.value));
   const backup = path.join(dir,'cli-family-backup.json');
-  const connection = new URL(process.env.TEST_DATABASE_URL);
-  assert.match(f.schema,/^v14_test_[0-9]+_[a-f0-9]{16}$/);
-  connection.searchParams.set('options','-c search_path=' + f.schema);
   let attempt = 0;
   async function cli(args, expected = 0) {
     const prefix = path.join(dir,'cli-' + (++attempt));
@@ -145,21 +141,20 @@ test('operator CLI backs up, validates, restores and refuses overwrite using a d
     try {
       code = await new Promise((resolve,reject) => {
         const child = spawn(process.execPath,[path.resolve(__dirname,'../tools/saas-data.cjs'),...args],{
-          env:{...process.env,DATABASE_URL:connection.href},stdio:['ignore',out,err],timeout:20000
+          env:{...process.env,DATABASE_URL:'',TEST_DATABASE_URL:'',SQLITE_FILE:f.databasePath},stdio:['ignore',out,err],timeout:20000
         });
         child.once('error',reject); child.once('close',resolve);
       });
     } finally { fs.closeSync(out); fs.closeSync(err); }
     const stdout = fs.readFileSync(prefix+'.out','utf8'), stderr = fs.readFileSync(prefix+'.err','utf8');
     assert.equal(code,expected,stderr);
-    assert.equal(stdout.includes(connection.password)||stderr.includes(connection.password),false,'CLI output must not disclose credentials');
     return expected === 0 ? JSON.parse(stdout) : stderr;
   }
   const importing = ['import','--source',legacy.source,'--family',owner.familyId,'--owner',owner.email];
   const dry = await cli(importing);
   assert.equal(dry.mode,'dry-run');
-  assert.equal(Number((await f.pool.query('SELECT revision FROM saas_families WHERE id=$1',[owner.familyId])).rows[0].revision),1);
-  assert.equal((await f.pool.query('SELECT count(*) FROM saas_family_imports')).rows[0].count,'0');
+  assert.equal(Number((await f.database.query('SELECT revision FROM saas_families WHERE id=$1',[owner.familyId])).rows[0].revision),1);
+  assert.equal((await f.database.query('SELECT count(*) AS count FROM saas_family_imports')).rows[0].count,0);
   const imported = await cli([...importing,'--apply']);
   assert.equal(imported.mode,'applied');
   const saved = await cli(['backup','--family',owner.familyId,'--owner',owner.email,'--output',backup]);
@@ -174,7 +169,7 @@ test('operator CLI backs up, validates, restores and refuses overwrite using a d
   const restore = ['import','--source',backup,'--family',target.familyId,'--owner',target.email];
   assert.equal((await cli(restore)).mode,'dry-run');
   assert.equal((await cli([...restore,'--apply'])).mode,'applied');
-  const restored = (await f.pool.query('SELECT state,parent,revision FROM saas_families WHERE id=$1',[target.familyId])).rows[0];
+  const restored = (await f.database.query('SELECT state,parent,revision FROM saas_families WHERE id=$1',[target.familyId])).rows[0];
   assert.deepEqual(restored.state,legacy.envelope.state);
   assert.deepEqual(restored.parent,legacy.envelope.parent);
   assert.equal(Number(restored.revision),legacy.envelope.revision);
