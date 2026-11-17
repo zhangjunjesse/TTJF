@@ -231,10 +231,18 @@ export function mount(element, initialOptions = {}) {
     navigation.viewHeight = viewHeight;
     viewCamera.lookAt(cameraTarget); viewCamera.updateProjectionMatrix(); viewCamera.updateMatrixWorld(true);
   }
-  function cameraState() { return { zoom: station ? 1 : navigation.zoom, target: { x: cameraTarget.x, y: cameraTarget.y, z: cameraTarget.z }, yaw: navigation.yaw, viewHeight: navigation.viewHeight, projection: viewCamera?.isPerspectiveCamera ? 'perspective' : 'orthographic', viewInsets: { ...options.viewInsets }, canPan: canPan() }; }
+  function cameraState() { return { zoom: station ? 1 : navigation.zoom, target: { x: cameraTarget.x, y: cameraTarget.y, z: cameraTarget.z }, yaw: navigation.yaw, viewHeight: navigation.viewHeight, projection: viewCamera?.isPerspectiveCamera ? 'perspective' : 'orthographic', viewInsets: { ...options.viewInsets }, canPan: canPan(), navigation: { x: navigation.x, z: navigation.z, zoom: navigation.zoom, focus: navigation.focus ? { ...navigation.focus } : null } }; }
   function camera(action = {}) {
     if (disposed) return cameraState();
     if (station) { fitCamera(); draw(performance.now()); request(); return cameraState(); }
+    if (action.restore && typeof action.restore === 'object') {
+      const saved = action.restore;
+      navigation.x = Number.isFinite(saved.x) ? clamp(saved.x, -14, 14) : 0;
+      navigation.z = Number.isFinite(saved.z) ? clamp(saved.z, -15, 15) : 0;
+      navigation.zoom = Number.isFinite(saved.zoom) ? clamp(saved.zoom, .62, 2.5) : 1;
+      const focused = targets.find(t => t.userData.target.type === saved.focus?.type && t.userData.target.id === saved.focus?.id);
+      navigation.focus = focused ? { type: focused.userData.target.type, id: focused.userData.target.id } : null;
+    }
     if (action.reset) { navigation.x = 0; navigation.z = 0; navigation.zoom = 1; navigation.focus = null; }
     if (Number.isFinite(action.zoomBy) && action.zoomBy > 0) navigation.zoom = clamp(navigation.zoom * action.zoomBy, .62, 2.5);
     if (Number.isFinite(action.panX)) navigation.x = clamp(navigation.x + action.panX, -14, 14);

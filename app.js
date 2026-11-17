@@ -1028,7 +1028,7 @@
     if (window.FamilyWorldUI) {
       var scenePet = currentPet();
       var showsFarm = ui.view === 'points' && !ui.auth && (!ui.form || ui.form.kind === 'farm');
-      if (Farm && !showsFarm) Farm.dispose();
+      if (Farm && !showsFarm) Farm.releaseScene();
       if (ui.form && ui.form.kind === 'petConfig') scenePet = { kind: ui.form.data.kind || scenePet.kind, name: scenePet.name };
       window.FamilyWorldUI.business({ view: ui.view, kind: ui.form && ui.form.kind, auth: !!ui.auth, farm: Farm && Farm.status(), pet: scenePet, growth: growthInfo() });
       if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();

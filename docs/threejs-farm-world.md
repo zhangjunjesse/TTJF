@@ -24,7 +24,7 @@
 - `world-ui.js` 依据业务表单或账号视图选择地点，提供场景状态、窄屏/侧栏遮挡测量与生命周期管理。它不发网络请求，不写业务状态或浏览器存储。
 - `farm-world.css` 最后加载，统一木色边框、奶油纸面、草绿色按钮和金色重点。桌面并排呈现场景与操作区，窄屏把场景置于面板上方。
 - 输入、列表、按钮和对话框使用语义化 HTML，保留键盘输入、读屏、焦点与触控。装饰场景不会进入对话框的 Tab 顺序；Three.js 不可用时操作仍可继续。
-- 账号页面只展示匿名场景。退出或切换家庭时销毁场景并失效旧回调，不能沿用上一个家庭的伙伴或投影。功能地点之间复用 renderer；跨越可操作农场与功能地点时释放旧实例，全站最多保留一个 WebGL 实例。
+- 账号页面只展示匿名场景。退出或切换家庭时销毁场景并失效旧回调，不能沿用上一个家庭的伙伴或投影。功能地点之间复用 renderer；跨越可操作农场与功能地点时释放旧实例，全站最多保留一个 WebGL 实例。普通页面跳转在内存中保留农场的昼夜与镜头选择，家庭边界清理时一并清空。
 - 系统减少动画偏好、后台暂停、页面恢复和窗口变化均传到 renderer。移动设备真实 GPU、Safari 与实体 iPad 仍需对应环境验收。
 
 ## 构建与验证
@@ -33,4 +33,16 @@
 
 新增宿主回归入口为 `node --test test/world-ui.test.cjs`，场景消费链为 `node test/world-browser.cjs`。后者使用独立的合成 HTTP 家庭夹具，与 SaaS SQLite 回归分别报告，不能相互替代。
 
-本次精确验证结果与环境限制将在交付时记录于 `docs/threejs-verification.md`；执行中的日志与恢复记录位于工作树的私有 `data/threejs-refactor/`。
+浏览器通过 `WORLD_TEST_CASE` 每次运行一个短组，缺省为 `points`。完整组列表为 `points`、`rewards`、`reminders`、`companion`、`settings`、`voice`、`lifecycle`、`fallback`、`layout-320`、`layout-390`、`layout-1440`；每组单独记录 checks、source hashes、截图与失败，不能把缺省一组称为全套通过。`TEST_ARTIFACT_DIR` 可指定本轮输出目录。
+
+本次精确验证结果与环境限制见 [验证记录](threejs-verification.md)；执行中的日志与恢复记录位于工作树的私有 `data/threejs-refactor/`。
+
+## 界面预览
+
+以下均为本轮真实 Edge 截图，使用独立合成测试家庭。
+
+![桌面积分工坊](threejs-preview/points-desktop.png)
+
+![手机设置](threejs-preview/settings-phone.png)
+
+![手机登录](threejs-preview/login-phone.png)

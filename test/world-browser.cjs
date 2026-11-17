@@ -203,6 +203,36 @@ const scenarios = {
       await page.waitForFunction(() => !window.FamilyWorldUI.diagnostics().renderer.paused);
       await home(); assert.equal((await page.evaluate(() => window.FamilyWorldUI.diagnostics())).renderer, null);
     });
+    await check('farm night and keyboard/zoom navigation survive releasing the renderer during a station round trip', async () => {
+      await click(a('farm-open')); await form('farm');
+      await page.waitForFunction(() => window.FamilyDemo.getUI().farmRender.renderer && window.FamilyDemo.getUI().farmRender.renderer.ready);
+      const start = await page.evaluate(() => window.FamilyDemo.getUI().farmRender.renderer.camera.navigation);
+      await page.focus('.sheet canvas.family-farm-canvas');
+      await page.keyboard.press('ArrowRight'); await page.keyboard.press('ArrowDown');
+      await click(a('farm-zoom-in'));
+      const moved = await page.evaluate(() => {
+        const camera = window.FamilyDemo.getUI().farmRender.renderer.camera.navigation;
+        return { x: camera.x, z: camera.z, zoom: camera.zoom };
+      });
+      assert.ok(moved.x > start.x && moved.z > start.z && moved.zoom > start.zoom, 'real keyboard and zoom controls change the farm view');
+      await click(a('farm-lighting'));
+      await page.waitForFunction(() => window.FamilyDemo.getUI().farmRender.renderer.lighting === 'night');
+      const previous = await page.evaluate(() => window.FamilyDemo.getUI().farmRender.renderer.id);
+      await route('farm', 'night-before-navigation'); await home();
+      await open('add-points', 'behaviorPicker', 'points', 'station-after-night'); await home();
+      await page.waitForFunction(() => {
+        const scene = window.FamilyDemo.getUI().farmRender.renderer;
+        return scene && scene.ready && scene.lighting === 'night';
+      });
+      const restored = await page.evaluate(() => window.FamilyDemo.getUI().farmRender.renderer.id);
+      assert.notEqual(restored, previous, 'the old WebGL resource was released while the lighting preference survived');
+      const restoredView = await page.evaluate(() => {
+        const camera = window.FamilyDemo.getUI().farmRender.renderer.camera.navigation;
+        return { x: camera.x, z: camera.z, zoom: camera.zoom };
+      });
+      assert.deepEqual(restoredView, moved, 'the user pan and zoom choices survive the renderer handoff');
+      await route('farm', 'night-restored');
+    });
   }
 };
 
@@ -229,23 +259,23 @@ async function run() {
   let deadline;
   try {
     const task = async () => {
-    browser = await B.launch();
-    let state = M.createSeed(new Date(B.FIXTURE_TIME));
-    state = M.apply(state, { id: 'world-fixture-start', type: 'farm.start' }, new Date(B.FIXTURE_TIME));
-    state = M.apply(state, { id: 'world-fixture-request', type: 'redemption.request', rewardId: 'reward-pencil' }, new Date(B.FIXTURE_TIME));
-    env = await B.createEnvironment(browser, { state, assistantService: { status: () => ({ mode: 'local', label: 'Presentation fixture' }),
-      interpret: async () => ({ mode: 'local', kind: 'action', action: { type: 'task.ack', taskId: 'task-reading' } }) } });
-    const width = CASE.startsWith('layout-') ? Number(CASE.slice(7)) : 1440;
-    page = await env.newPage({ width, height: width === 320 ? 568 : width === 390 ? 844 : 1000 });
-    page.setDefaultTimeout(7000);
-    await page.evaluateOnNewDocument(blockWebGL => {
-      window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined;
-      if (blockWebGL) {
-        const native = HTMLCanvasElement.prototype.getContext;
-        HTMLCanvasElement.prototype.getContext = function (kind, ...args) { return /webgl/i.test(kind) ? null : native.call(this, kind, ...args); };
-      }
-    }, CASE === 'fallback');
-    const initial = state;
+      browser = await B.launch();
+      let state = M.createSeed(new Date(B.FIXTURE_TIME));
+      state = M.apply(state, { id: 'world-fixture-start', type: 'farm.start' }, new Date(B.FIXTURE_TIME));
+      state = M.apply(state, { id: 'world-fixture-request', type: 'redemption.request', rewardId: 'reward-pencil' }, new Date(B.FIXTURE_TIME));
+      env = await B.createEnvironment(browser, { state, assistantService: { status: () => ({ mode: 'local', label: 'Presentation fixture' }),
+        interpret: async () => ({ mode: 'local', kind: 'action', action: { type: 'task.ack', taskId: 'task-reading' } }) } });
+      const width = CASE.startsWith('layout-') ? Number(CASE.slice(7)) : 1440;
+      page = await env.newPage({ width, height: width === 320 ? 568 : width === 390 ? 844 : 1000 });
+      page.setDefaultTimeout(7000);
+      await page.evaluateOnNewDocument(blockWebGL => {
+        window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined;
+        if (blockWebGL) {
+          const native = HTMLCanvasElement.prototype.getContext;
+          HTMLCanvasElement.prototype.getContext = function (kind, ...args) { return /webgl/i.test(kind) ? null : native.call(this, kind, ...args); };
+        }
+      }, CASE === 'fallback');
+      const initial = state;
       await env.load(page);
       if (CASE.startsWith('layout-')) await runLayout(width);
       else if (CASE === 'fallback') await runFallback();
