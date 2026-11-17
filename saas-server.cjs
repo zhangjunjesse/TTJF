@@ -79,6 +79,9 @@ function within(file, directory) {
   return relative !== '' && relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative);
 }
 async function createSaasServer(options = {}) {
+  if (options.databaseUrl !== undefined || options.pool !== undefined) {
+    throw new Error('PostgreSQL databaseUrl/pool options are no longer supported. Select an explicit SQLite databasePath; existing PostgreSQL data is not migrated automatically.');
+  }
   const environment = options.environment || process.env.NODE_ENV || 'development', production = environment === 'production';
   const publicOrigin = configuredOrigin(options.publicOrigin || process.env.PUBLIC_ORIGIN, production);
   const now = options.now || (() => new Date());
@@ -92,7 +95,7 @@ async function createSaasServer(options = {}) {
   const maintenanceOptions = maintenanceConfig(options);
   const mail = createMailer({ ...options, environment, publicOrigin });
   let store;
-  try { store = await createStore({ databaseUrl: options.databaseUrl, pool: options.pool, migrate: options.migrate }); }
+  try { store = await createStore({ databasePath: options.databasePath, database: options.database, migrate: options.migrate }); }
   catch (error) { mail.close(); throw error; }
   const cookieName = production ? '__Host-ttjf_session' : 'ttjf_session';
   const reportError = typeof options.onError === 'function' ? options.onError : code => console.error('[SaaS] ' + code);
@@ -135,7 +138,7 @@ async function createSaasServer(options = {}) {
   }
   async function route(ctx, body) {
     const p = ctx.pathname;
-    if (p === '/api/health') { requireMethod(ctx, ['GET']); await store.pool.query('SELECT 1'); return { body: { ok: true } }; }
+    if (p === '/api/health') { requireMethod(ctx, ['GET']); await store.database.query('SELECT 1'); return { body: { ok: true } }; }
     if (p === '/api/session') { requireMethod(ctx, ['GET']); return auth.session(ctx); }
     if (p.startsWith('/api/auth/')) {
       requireMethod(ctx, ['POST']);
@@ -249,10 +252,16 @@ if (require.main === module) {
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     console.error('SAAS_PORT must be 1–65535'); process.exitCode = 1;
   } else {
-    createSaasServer().then(server => {
+    const development = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+    // Local startup needs no database service or configuration file. Production
+    // still requires explicit HTTPS origin and SMTP settings.
+    createSaasServer({
+      publicOrigin: process.env.PUBLIC_ORIGIN || (development ? 'http://127.0.0.1:' + port : undefined),
+      devMailDir: process.env.DEV_MAIL_DIR || (development ? path.join(__dirname, 'data', 'saas-mail') : undefined)
+    }).then(server => {
       server.on('error', async () => { console.error('SaaS listener failed'); process.exitCode = 1; await server.closeSaas(); });
       server.listen(port, host, () => console.log('SaaS listening on ' + host + ':' + port));
       for (const signal of ['SIGINT', 'SIGTERM']) { process.once(signal, () => { server.closeSaas().catch(() => { process.exitCode = 1; }); }); }
-    }).catch(error => { console.error('SaaS startup failed: ' + error.message); process.exitCode = 1; });
+    }).catch(error => { console.error('SaaS startup failed: ' + error.message.replace(/postgres(?:ql)?:\/\/[^\s]+/g, '[database URL redacted]')); process.exitCode = 1; });
   }
 }

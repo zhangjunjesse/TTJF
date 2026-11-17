@@ -7,6 +7,7 @@ const { parseArgs } = require('node:util');
 const M = require('../model.js');
 const S = require('../saas/security.cjs');
 const { createStore } = require('../saas/store.cjs');
+const { resolveDatabasePath } = require('../saas/sqlite.cjs');
 const isObject = value => value && typeof value === 'object' && !Array.isArray(value);
 function requireValue(condition, message) { if (!condition) throw new Error(message); }
 function validateEnvelope(value) {
@@ -50,12 +51,12 @@ function readEnvelope(file) {
 async function ownedFamily(client, familyId, ownerEmail) {
   requireValue(S.UUID.test(familyId), 'A valid explicit target family ID is required.');
   const email = S.email(ownerEmail);
-  const user = (await client.query('SELECT id,verified_at FROM saas_users WHERE email=$1 FOR SHARE',[email])).rows[0];
+  const user = (await client.query('SELECT id,verified_at FROM saas_users WHERE email=$1',[email])).rows[0];
   requireValue(user && user.verified_at, 'Target owner must be an existing verified account.');
   const precheck = await client.query("SELECT 1 FROM saas_memberships WHERE family_id=$1 AND user_id=$2 AND role='owner'",[familyId,user.id]);
   requireValue(precheck.rowCount === 1, 'The supplied account does not own the target family.');
-  const family = (await client.query('SELECT * FROM saas_families WHERE id=$1 FOR UPDATE',[familyId])).rows[0];
-  const member = (await client.query("SELECT role FROM saas_memberships WHERE family_id=$1 AND user_id=$2 FOR SHARE",[familyId,user.id])).rows[0];
+  const family = (await client.query('SELECT * FROM saas_families WHERE id=$1',[familyId])).rows[0];
+  const member = (await client.query("SELECT role FROM saas_memberships WHERE family_id=$1 AND user_id=$2",[familyId,user.id])).rows[0];
   requireValue(family && member && member.role === 'owner', 'Target family ownership changed; nothing was imported.');
   return family;
 }
@@ -90,22 +91,9 @@ async function importFamily(store, {source, familyId, ownerEmail, apply = false,
     return result;
   });
 }
-function assertPrivateDestination(target) {
-  const project = fs.realpathSync(path.resolve(__dirname, '..'));
-  function within(value, parent) {
-    const relative = path.relative(parent, value);
-    return relative === '' || (relative !== '..' && !relative.startsWith('..' + path.sep) && !path.isAbsolute(relative));
-  }
-  requireValue(!within(target,project) || within(target,path.join(project,'data')), 'Backups inside the repository must be under private data/, never assets or source files.');
-  let ancestor = path.dirname(target);
-  while (!fs.existsSync(ancestor)) ancestor = path.dirname(ancestor);
-  const actual = path.resolve(fs.realpathSync(ancestor),path.relative(ancestor,target));
-  requireValue(!within(actual,project) || within(actual,path.join(project,'data')), 'Backup destination resolves to a public or tracked repository directory.');
-}
 async function backupFamily(store, {familyId, ownerEmail, output}) {
   requireValue(typeof output === 'string' && output.trim(), 'An explicit private backup destination is required.');
-  const target = path.resolve(output);
-  assertPrivateDestination(target);
+  const target = resolveDatabasePath(output);
   requireValue(!fs.existsSync(target), 'Backup destination already exists; refusing to overwrite.');
   const envelope = await store.transaction(async client => {
     const family = await ownedFamily(client,familyId,ownerEmail);
@@ -123,7 +111,7 @@ async function backupFamily(store, {familyId, ownerEmail, output}) {
 async function main() {
   const {positionals,values} = parseArgs({allowPositionals:true,options:{source:{type:'string'},family:{type:'string'},owner:{type:'string'},output:{type:'string'},apply:{type:'boolean',default:false},help:{type:'boolean'}}});
   if (values.help) {
-    console.log('Private operator commands (database credentials come from DATABASE_URL):\n  import --source FILE --family UUID --owner EMAIL [--apply]\n  backup --family UUID --owner EMAIL --output PRIVATE_FILE\nImport is a dry-run by default and never overwrites an existing family.');
+    console.log('Private family operator commands (SQLite path comes from SQLITE_FILE):\n  import --source FILE --family UUID --owner EMAIL [--apply]\n  backup --family UUID --owner EMAIL --output PRIVATE_FILE\nImport is a dry-run by default and never overwrites an existing family. Database must already exist.');
     return;
   }
   requireValue(positionals.length === 1 && ['import','backup'].includes(positionals[0]), 'Choose import or backup; use --help for syntax.');

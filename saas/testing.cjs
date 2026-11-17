@@ -1,10 +1,13 @@
 'use strict';
-// Real PostgreSQL fixtures only. Each test gets a fresh, disposable schema in
-// TEST_DATABASE_URL, never the development database or legacy data directory.
+// Real SQLite fixtures only. Each test owns a fresh temporary database file,
+// never the development database or a legacy family record.
 const assert = require('node:assert/strict');
 const crypto = require('node:crypto');
+const fs = require('node:fs');
 const http = require('node:http');
-const { Pool } = require('pg');
+const os = require('node:os');
+const path = require('node:path');
+const { createDatabase } = require('./sqlite.cjs');
 const { createSaasServer } = require('../saas-server.cjs');
 const ORIGIN = 'http://127.0.0.1:4980';
 const PASSWORD = 'Family-test-password-13';
@@ -34,33 +37,42 @@ function request(server, method, pathname, body, user, options = {}) {
   });
 }
 async function fixture(t, overrides = {}) {
-  const connectionString = process.env.TEST_DATABASE_URL;
-  assert.ok(connectionString, 'Real PostgreSQL required: set TEST_DATABASE_URL (no mock or skipped substitute)');
-  const schema = 'v14_test_' + process.pid + '_' + crypto.randomBytes(8).toString('hex');
-  const control = new Pool({ connectionString, max: 2 });
-  await control.query('CREATE SCHEMA "' + schema + '"');
-  const pools = [], servers = [], mail = [];
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ttjf-saas-test-'));
+  const databasePath = path.join(directory, 'test.sqlite');
+  const databases = [], servers = [], mail = [];
+  t.after(async () => {
+    try {
+      for (const server of servers) { await server.closeSaas(); }
+    } finally {
+      try { for (const database of databases) { await database.close(); } }
+      finally {
+        assert.equal(path.dirname(directory), path.resolve(os.tmpdir()));
+        assert.match(path.basename(directory), /^ttjf-saas-test-[A-Za-z0-9]+$/);
+        assert.equal(fs.realpathSync(directory), directory);
+        fs.rmSync(directory, { recursive: true, force: true });
+        assert.equal(fs.existsSync(directory), false, 'temporary SQLite fixture was removed');
+      }
+    }
+  });
+  const database = await createDatabase({ databasePath });
+  databases.push(database);
   const clock = { value: Date.parse('2026-11-16T14:30:00.000Z') };
   const options = { publicOrigin: ORIGIN, environment: 'test', now: () => new Date(clock.value),
     mailer: { sendMail: async message => { mail.push(message); } }, onError() {},
     assistantService: { status: () => ({ mode: 'local', label: '指令演示' }), interpret: async () => ({ kind: 'clarify', question: '请补充具体内容' }) }, ...overrides };
   async function start(extra = {}) {
-    const pool = new Pool({ connectionString, options: '-c search_path=' + schema, max: 6 });
-    pools.push(pool);
-    const server = await createSaasServer({ ...options, ...extra, pool });
+    const server = await createSaasServer({ ...options, database, ...extra });
     servers.push(server);
     await new Promise((resolve, reject) => { server.once('error', reject); server.listen(0, '127.0.0.1', resolve); });
     return server;
   }
-  t.after(async () => {
-    for (const server of servers) { await server.closeSaas(); }
-    for (const pool of pools) { await pool.end(); }
-    assert.match(schema, /^v14_test_[0-9]+_[a-f0-9]{16}$/);
-    await control.query('DROP SCHEMA "' + schema + '" CASCADE');
-    await control.end();
-  });
+  async function openDatabase() {
+    const connection = await createDatabase({ databasePath, mustExist: true });
+    databases.push(connection);
+    return connection;
+  }
   const server = await start();
-  return { server, pool: pools[0], mail, clock, start, schema };
+  return { server, database, databasePath, mail, clock, start, openDatabase };
 }
 function mailToken(f, email, purpose) {
   const message = f.mail.filter(m => m.to === email && m.text.includes('/#' + purpose + '=')).at(-1);

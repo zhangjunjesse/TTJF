@@ -5,7 +5,7 @@ const M = require('../model.js');
 const H = require('../saas/testing.cjs');
 const S = require('../saas/security.cjs');
 
-test('real PG all business endpoints, replays and conflicts are tenant-authorized before returning data', async t => {
+test('real SQLite all business endpoints, replays and conflicts are tenant-authorized before returning data', async t => {
   const f = await H.fixture(t), second = await f.start();
   const a = await H.family(f, await H.register(f, 'tenant-a@example.test'), 'A', 'A孩子');
   const b = await H.family(f, await H.register(f, 'tenant-b@example.test'), 'B', 'B孩子');
@@ -39,11 +39,11 @@ test('real PG all business endpoints, replays and conflicts are tenant-authorize
   assert.equal(altered.body.code, 'ACTION_ID_REUSED');
   const secret = JSON.stringify((await H.request(f.server, 'GET', '/api/state', undefined, a)).body);
   for (const key of ['salt', 'hash', 'receipt', H.PIN]) { assert.ok(!secret.includes('"' + key + '"')); }
-  const privateReceipt = (await f.pool.query("SELECT receipt FROM saas_action_receipts WHERE family_id=$1 AND action_id='setup'", [a.familyId])).rows[0].receipt;
+  const privateReceipt = (await f.database.query("SELECT receipt FROM saas_action_receipts WHERE family_id=$1 AND action_id='setup'", [a.familyId])).rows[0].receipt;
   assert.equal(privateReceipt.algorithm, 'scrypt'); assert.equal(privateReceipt.n, 32768);
 });
 
-test('real PG challenges and grants bind family, user, session, full action and revision across instances', async t => {
+test('real SQLite challenges and grants bind family, user, session, full action and revision across request handlers', async t => {
   const f = await H.fixture(t), second = await f.start();
   const owner = await H.family(f, await H.register(f, 'grants-owner@example.test'));
   const parent = await H.invite(f, owner, await H.register(f, 'grants-parent@example.test'));
@@ -70,7 +70,7 @@ test('real PG challenges and grants bind family, user, session, full action and 
   assert.equal((await H.request(second, 'POST', '/api/action', { revision: 3, action: later, grant: token }, owner)).body.code, 'GRANT_EXPIRED');
 });
 
-test('real PG invitations are owner-only, email-bound, expiring, revocable and consumed atomically once', async t => {
+test('real SQLite invitations are owner-only, email-bound, expiring, revocable and consumed atomically once', async t => {
   const f = await H.fixture(t), second = await f.start();
   const owner = await H.family(f, await H.register(f, 'invite-owner@example.test'));
   const target = await H.register(f, 'target@example.test'), wrong = await H.register(f, 'wrong@example.test');
@@ -97,7 +97,7 @@ test('real PG invitations are owner-only, email-bound, expiring, revocable and c
   assert.equal(pending.status, 200);
   const removed = await H.request(second, 'DELETE', '/api/families/' + owner.familyId + '/members/' + target.userId, {}, owner);
   assert.equal(removed.status, 200);
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_parent_grants WHERE user_id=$1', [target.userId])).rows[0].n, 0);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_parent_grants WHERE user_id=$1', [target.userId])).rows[0].n, 0);
   for (const [path, body] of [['/api/action', { revision: 1, action, grant }], ['/api/action', { revision: 3, action: unusedAction, grant: unusedGrant }], ['/api/parent/verify', { challengeId: pending.body.challengeId, answer: '1' }]]) {
     const denied = await H.request(second, 'POST', path, body, parent);
     assert.equal(denied.body.code, 'FAMILY_FORBIDDEN'); assert.equal(denied.body.state, undefined);
@@ -114,6 +114,28 @@ test('real PG invitations are owner-only, email-bound, expiring, revocable and c
   const listed = await H.request(second, 'GET', url, undefined, owner);
   assert.equal(listed.status, 200); assert.ok(listed.body.invitations.some(i => i.status === 'expired'));
   assert.ok(!JSON.stringify(listed.body).includes(expiredToken));
+});
+
+test('UUID case variants identify the same family, invitation and member through HTTP', async t => {
+  const f = await H.fixture(t), second = await f.start();
+  const owner = await H.family(f, await H.register(f, 'uuid-owner@example.test'));
+  const target = await H.register(f, 'uuid-parent@example.test');
+  const upperOwner = { ...owner, familyId: owner.familyId.toUpperCase() };
+  const route = '/api/families/' + upperOwner.familyId;
+  const lowerState = await H.request(f.server, 'GET', '/api/state', undefined, owner);
+  const upperState = await H.request(second, 'GET', '/api/state', undefined, upperOwner);
+  assert.equal(upperState.status, 200); assert.deepEqual(upperState.body, lowerState.body);
+  const members = await H.request(second, 'GET', route + '/members', undefined, upperOwner);
+  assert.equal(members.status, 200); assert.equal(members.body.members[0].userId, owner.userId);
+  const sent = await H.request(second, 'POST', route + '/invitations', { email: target.email }, upperOwner);
+  assert.equal(sent.status, 200);
+  const oldToken = H.mailToken(f, target.email, 'invite');
+  assert.equal((await H.request(f.server, 'DELETE', route + '/invitations/' + sent.body.invitation.id.toUpperCase(), {}, upperOwner)).status, 200);
+  assert.equal((await H.request(f.server, 'POST', '/api/invitations/accept', { token: oldToken }, target)).body.code, 'INVITATION_INVALID');
+  const parent = await H.invite(f, owner, target);
+  const removed = await H.request(second, 'DELETE', route + '/members/' + parent.userId.toUpperCase(), {}, upperOwner);
+  assert.equal(removed.status, 200);
+  assert.equal((await H.request(f.server, 'GET', '/api/state', undefined, parent)).body.code, 'FAMILY_FORBIDDEN');
 });
 
 test('delayed assistant output is re-authorized after member removal and never returns stale family data', async t => {
@@ -161,7 +183,7 @@ test('real HTTP business loop keeps farm welcome gift, eight-hour crop timing an
   assert.equal((await apply({ id: 'forged-plant', type: 'farm.plant', cropId: 'carrot', points: 900 })).status, 400);
 });
 
-test('assistant concurrency leases are shared across instances, family scoped and recover after worker expiry', async t => {
+test('assistant concurrency leases are shared across request handlers, family scoped and recover after lease expiry', async t => {
   let entered;
   const bothEntered = new Promise(resolve => { entered = resolve; });
   const releases = [];
@@ -178,19 +200,19 @@ test('assistant concurrency leases are shared across instances, family scoped an
   try {
     assert.equal((await H.request(second, 'POST', '/api/assistant', { text: 'third' }, a)).status, 429);
     assert.equal((await H.request(second, 'POST', '/api/assistant', { text: 'other family' }, b)).status, 200);
-    assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_assistant_leases')).rows[0].n, 2);
+    assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_assistant_leases')).rows[0].n, 2);
   } finally { for (const release of releases) { release({ kind: 'clarify', question: 'done' }); } }
   assert.deepEqual((await Promise.all(pending)).map(r => r.status), [200, 200]);
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_assistant_leases')).rows[0].n, 0);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_assistant_leases')).rows[0].n, 0);
   const sessionHash = S.digest(a.cookie.split('=')[1]);
   for (let i = 0; i < 2; i++) {
-    await f.pool.query('INSERT INTO saas_assistant_leases(id,family_id,user_id,session_hash,expires_at) VALUES($1,$2,$3,$4,$5)',
+    await f.database.query('INSERT INTO saas_assistant_leases(id,family_id,user_id,session_hash,expires_at) VALUES($1,$2,$3,$4,$5)',
       [require('node:crypto').randomUUID(), a.familyId, a.userId, sessionHash, new Date(f.clock.value + 30000)]);
   }
   assert.equal((await H.request(second, 'POST', '/api/assistant', { text: 'crashed workers' }, a)).status, 429);
   f.clock.value += 30001;
   assert.equal((await H.request(second, 'POST', '/api/assistant', { text: 'recovered' }, a)).status, 200);
-  assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_assistant_leases')).rows[0].n, 0);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_assistant_leases')).rows[0].n, 0);
 });
 
 test('PIN-changing challenges, grants and receipts never introduce a fast PIN fingerprint', async t => {
@@ -200,16 +222,16 @@ test('PIN-changing challenges, grants and receipts never introduce a fast PIN fi
   const action = { id: 'new-pin', type: 'parent.configure', method: 'pin', pin: '135790', confirmPin: '135790' };
   const challenge = await H.request(f.server, 'POST', '/api/parent/challenge', { revision: 2, action }, owner);
   assert.equal(challenge.status, 200);
-  const storedChallenge = (await f.pool.query('SELECT action_receipt FROM saas_parent_challenges')).rows[0].action_receipt;
+  const storedChallenge = (await f.database.query('SELECT action_receipt FROM saas_parent_challenges')).rows[0].action_receipt;
   assert.equal(storedChallenge.algorithm, 'scrypt'); assert.equal(storedChallenge.n, 32768);
   assert.ok(!JSON.stringify(storedChallenge).includes(action.pin));
   const verify = await H.request(f.server, 'POST', '/api/parent/verify', { challengeId: challenge.body.challengeId, answer: H.PIN }, owner);
   assert.equal(verify.status, 200);
-  const storedGrant = (await f.pool.query('SELECT action_receipt FROM saas_parent_grants')).rows[0].action_receipt;
+  const storedGrant = (await f.database.query('SELECT action_receipt FROM saas_parent_grants')).rows[0].action_receipt;
   assert.deepEqual(storedGrant, storedChallenge);
   assert.equal((await H.request(f.server, 'POST', '/api/action', { revision: 2, action, grant: verify.body.grant }, owner)).status, 200);
   assert.equal((await H.request(f.server, 'POST', '/api/action', { revision: 2, action }, owner)).status, 200);
-  const receipt = (await f.pool.query("SELECT receipt FROM saas_action_receipts WHERE action_id='new-pin'")).rows[0].receipt;
+  const receipt = (await f.database.query("SELECT receipt FROM saas_action_receipts WHERE action_id='new-pin'")).rows[0].receipt;
   assert.equal(receipt.algorithm, 'scrypt'); assert.notEqual(receipt.salt, storedChallenge.salt);
 });
 

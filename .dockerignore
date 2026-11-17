@@ -26,6 +26,7 @@
 !saas/migrations/*.sql
 !tools/
 !tools/saas-data.cjs
+!tools/saas-db.cjs
 !assets/
 !assets/**
 saas/testing.cjs

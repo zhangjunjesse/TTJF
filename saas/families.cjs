@@ -12,7 +12,7 @@ function createFamilies({ store, auth, mail, now, publicOrigin }) {
     if (typeof body.requestId !== 'string' || !S.ID.test(body.requestId)) { S.fail(400, 'VALIDATION_ERROR', '请提供创建请求标识'); }
     await auth.limit(ctx, 'create-family', 30);
     return store.transaction(async client => {
-      const who = await auth.identity(client, ctx, { verified: true, userLock: true });
+      const who = await auth.identity(client, ctx, { verified: true });
       const digest = S.digest(S.canonical({ name, childName }));
       const prior = (await client.query('SELECT * FROM saas_family_requests WHERE user_id=$1 AND request_id=$2', [who.user.id, body.requestId])).rows[0];
       if (prior) {
@@ -22,7 +22,7 @@ function createFamilies({ store, auth, mail, now, publicOrigin }) {
       }
       const id = crypto.randomUUID(), sampled = at();
       const state = M.createEmptyFamily({ childName }, sampled);
-      await client.query(`INSERT INTO saas_families(id,name,state,created_at,updated_at) VALUES($1,$2,$3,$4,$4)`, [id, name, state, sampled]);
+      await client.query(`INSERT INTO saas_families(id,name,state,owner_user_id,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$5)`, [id, name, state, who.user.id, sampled]);
       await client.query("INSERT INTO saas_memberships(family_id,user_id,role,created_at) VALUES($1,$2,'owner',$3)", [id, who.user.id, sampled]);
       await client.query('INSERT INTO saas_family_requests(user_id,request_id,digest,family_id) VALUES($1,$2,$3,$4)', [who.user.id, body.requestId, digest, id]);
       return { status: 200, body: { family: { id, name, role: 'owner' } } };
@@ -63,7 +63,7 @@ function createFamilies({ store, auth, mail, now, publicOrigin }) {
     });
     try { await mail.send(emailMessage(email, 'invite', raw, publicOrigin)); }
     catch (_) {
-      await store.pool.query('UPDATE saas_invitations SET revoked_at=$2 WHERE id=$1 AND consumed_at IS NULL', [result.body.invitation.id, at()]);
+      await store.database.query('UPDATE saas_invitations SET revoked_at=$2 WHERE id=$1 AND consumed_at IS NULL', [result.body.invitation.id, at()]);
       S.fail(503, 'MAIL_UNAVAILABLE', '邀请邮件暂未发出，请稍后重试');
     }
     // A slow SMTP call must not return family information after removal/logout.
@@ -87,19 +87,14 @@ function createFamilies({ store, auth, mail, now, publicOrigin }) {
     await auth.limit(ctx, 'accept-invite', 30);
     if (typeof body.token !== 'string' || !S.TOKEN.test(body.token)) { S.fail(400, 'INVITATION_INVALID', '邀请无效或已使用'); }
     return store.transaction(async client => {
-      const who = await auth.identity(client, ctx, { verified: true, userLock: true });
+      const who = await auth.identity(client, ctx, { verified: true });
       const hash = S.digest(body.token);
-      const lookup = (await client.query('SELECT family_id,email,expires_at,consumed_at,revoked_at FROM saas_invitations WHERE token_hash=$1', [hash])).rows[0];
-      // The token and email must authorize this family before its row is locked;
-      // repeat the check after taking that lock to cover revoke/delete races.
-      if (!lookup || lookup.email !== who.user.email || lookup.revoked_at || lookup.consumed_at || +lookup.expires_at <= +at()) {
+      const entry = (await client.query('SELECT * FROM saas_invitations WHERE token_hash=$1', [hash])).rows[0];
+      if (!entry || entry.revoked_at || entry.consumed_at || +entry.expires_at <= +at() || entry.email !== who.user.email) {
         S.fail(400, 'INVITATION_INVALID', '邀请无效或已使用');
       }
-      const family = (await client.query('SELECT id,name FROM saas_families WHERE id=$1 FOR UPDATE', [lookup.family_id])).rows[0];
-      const entry = (await client.query('SELECT * FROM saas_invitations WHERE token_hash=$1 FOR UPDATE', [hash])).rows[0];
-      if (!family || !entry || entry.revoked_at || entry.consumed_at || +entry.expires_at <= +at() || entry.email !== who.user.email) {
-        S.fail(400, 'INVITATION_INVALID', '邀请无效、已过期，或不属于当前邮箱');
-      }
+      const family = (await client.query('SELECT id,name FROM saas_families WHERE id=$1', [entry.family_id])).rows[0];
+      if (!family) { S.fail(400, 'INVITATION_INVALID', '邀请无效或已使用'); }
       const existing = await client.query('SELECT 1 FROM saas_memberships WHERE family_id=$1 AND user_id=$2', [family.id, who.user.id]);
       if (existing.rowCount) { S.fail(400, 'ALREADY_MEMBER', '你已是家庭成员'); }
       await client.query("INSERT INTO saas_memberships(family_id,user_id,role,created_at) VALUES($1,$2,'parent',$3)", [family.id, who.user.id, at()]);

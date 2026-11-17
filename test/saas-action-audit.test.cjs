@@ -1,15 +1,16 @@
 'use strict';
-// Independent audit of the real HTTP -> authorization -> PostgreSQL consumer.
-// Uses only the existing disposable-schema fixture and synthetic accounts.
-// Run: node --env-file=.env.saas.test --test --test-reporter=spec test/saas-action-audit.test.cjs
+// Independent audit of the real HTTP -> authorization -> SQLite consumer.
+// Uses only a disposable local database file and synthetic accounts.
+// Run: node --test --test-reporter=spec test/saas-action-audit.test.cjs
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const ROOT = path.resolve(__dirname, '..');
-const OUTPUT = path.join(ROOT, 'artifacts', 'v14-action-audit.json');
-const COMMAND = 'node --env-file=.env.saas.test --test --test-reporter=spec test/saas-action-audit.test.cjs';
+const OUTPUT_DIRECTORY = path.resolve(process.env.TEST_ARTIFACT_DIR || path.join(ROOT, 'artifacts'));
+const OUTPUT = path.join(OUTPUT_DIRECTORY, 'v15-action-audit.json');
+const COMMAND = 'node --test --test-reporter=spec test/saas-action-audit.test.cjs';
 const EXPECTED_TYPES = [
   'farm.animalCare', 'farm.exchange', 'farm.harvest', 'farm.place', 'farm.plant', 'farm.start',
   'parent.configure', 'parent.setup', 'pet.buy', 'pet.care', 'pet.configure', 'pet.scene',
@@ -44,7 +45,7 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
     replayCommand: COMMAND,
     invocation: { executable: process.execPath, execArgv: process.execArgv, argv: process.argv },
     nodeVersion: process.version,
-    scope: 'Real local HTTP and PostgreSQL; disposable schema; synthetic users only.',
+    scope: 'Real local HTTP and SQLite; disposable database file; synthetic users only.',
     provenance: 'Persisted from the independent 27-type / 98-variant inline audit, then rerun as this test.',
     result: 'running',
     sourceHashes: initialSourceHashes,
@@ -59,7 +60,7 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
   };
   try {
     const f = await H.fixture(t);
-    report.databaseSchema = f.schema;
+    report.databasePath = f.databasePath;
     report.httpAddress = { host: '127.0.0.1', port: f.server.address().port };
     report.clockStart = new Date(f.clock.value).toISOString();
     const owner = await H.family(f, await H.register(f, 'audit-full-owner@example.test'));
@@ -110,12 +111,12 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
       assert.equal(altered.status, 400);
       assert.equal(altered.body.code, 'ACTION_ID_REUSED', label + ': changed receipt payload');
       entry.checks.push('same action ID with altered content rejected');
-      const row = (await f.pool.query('SELECT state,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
+      const row = (await f.database.query('SELECT state,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
       assert.deepEqual(row.state, state, label + ': persisted state');
       assert.equal(Number(row.revision), revision, label + ': persisted revision');
-      entry.checks.push('PostgreSQL state and revision exactly match accepted response');
+      entry.checks.push('SQLite state and revision exactly match accepted response');
       if (protectedAction) {
-        assert.equal((await f.pool.query('SELECT count(*)::int AS n FROM saas_parent_grants WHERE family_id=$1',
+        assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_parent_grants WHERE family_id=$1',
           [owner.familyId])).rows[0].n, 0, label + ': grant consumed');
         entry.checks.push('one-use grant consumed after commit');
       }
@@ -212,7 +213,7 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
     assert.deepEqual([...seen].sort(), EXPECTED_TYPES);
     assert.equal(counter, 98);
     assert.equal(protectedSeen.size, 12);
-    const receiptCount = (await f.pool.query('SELECT count(*)::int AS n FROM saas_action_receipts WHERE family_id=$1',
+    const receiptCount = (await f.database.query('SELECT count(*) AS n FROM saas_action_receipts WHERE family_id=$1',
       [owner.familyId])).rows[0].n;
     assert.equal(receiptCount, counter);
     const otherState = (await H.request(f.server, 'GET', '/api/state', undefined, outsider)).body;
@@ -236,10 +237,11 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
     report.finishedAt = new Date().toISOString();
     report.finalSourceHashes = sourceHashes();
     report.sourceStable = JSON.stringify(report.sourceHashes) === JSON.stringify(report.finalSourceHashes);
-    // This is the only evidence file owned by this test. No v13 artifact is read
-    // or overwritten. A later rerun intentionally replaces this current result.
+    // Historical action-audit evidence is preserved. Repeated runs replace
+    // only this version's result, optionally under a caller-supplied directory.
+    fs.mkdirSync(OUTPUT_DIRECTORY, { recursive: true });
     fs.writeFileSync(OUTPUT, JSON.stringify(report, null, 2) + '\n');
-    console.log(JSON.stringify({ result: report.result, output: 'artifacts/v14-action-audit.json',
+    console.log(JSON.stringify({ result: report.result, output: OUTPUT,
       sourceStable: report.sourceStable, ...report.summary }));
   }
 });
