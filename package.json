@@ -10,13 +10,15 @@
     "db:init": "node tools/saas-local.cjs init",
     "saas:data": "node --env-file-if-exists=.env.saas.local tools/saas-data.cjs",
     "build:farm": "node tools/build-farm-scene.mjs",
-    "test": "node --test test/model.test.cjs test/server.test.cjs test/assistant.test.cjs test/pet.test.cjs test/farm-model.test.cjs test/farm-server.test.cjs test/farm-ui.test.cjs test/v15-client.test.cjs test/saas-model.test.cjs test/saas-calendar.test.cjs test/saas-client.test.cjs",
+    "test": "node --test test/model.test.cjs test/server.test.cjs test/assistant.test.cjs test/pet.test.cjs test/farm-model.test.cjs test/farm-server.test.cjs test/farm-ui.test.cjs test/v15-client.test.cjs test/saas-model.test.cjs test/saas-calendar.test.cjs test/saas-client.test.cjs test/world-ui.test.cjs",
     "test:saas": "node --test test/sqlite-store.test.cjs test/saas-startup.test.cjs test/saas-initial-account.test.cjs test/saas-auth.test.cjs test/saas-store.test.cjs test/saas-server.test.cjs test/saas-data.test.cjs test/saas-db.test.cjs test/saas-lifecycle.test.cjs test/saas-maintenance.test.cjs test/saas-action-audit.test.cjs",
     "test:browser": "node test/saas-browser.cjs",
     "test:browser:full": "node test/saas-full-browser.cjs",
     "test:farm-renderer": "node farm/verify-v12.cjs",
     "db:backup": "node --env-file-if-exists=.env.saas.local tools/saas-db.cjs backup",
-    "db:restore": "node tools/saas-db.cjs restore"
+    "db:restore": "node tools/saas-db.cjs restore",
+    "test:world": "node --test test/world-ui.test.cjs",
+    "test:world:browser": "node test/world-browser.cjs"
   },
   "engines": {
     "node": ">=22.17"

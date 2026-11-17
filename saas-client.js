@@ -279,6 +279,7 @@
     else if (view === 'confirm' && confirmation) { title = confirmation.kind === 'member' ? '移除成员' : '撤销邀请'; body = '<p class="saas-identity">' + esc(confirmation.email) + '</p>' + button('confirm-remove', title, true) + button('members', '返回'); }
     document.body.className = 'saas-screen';
     app.innerHTML = '<main id="main" class="saas-main" tabindex="-1"><section class="saas-card" aria-labelledby="saas-title"><p class="saas-brand">小小向前</p><h1 id="saas-title" tabindex="-1">' + title + '</h1><p id="saas-status" class="saas-short-status" role="status" aria-live="polite">' + esc(message) + '</p><div class="saas-content">' + body + '</div><div class="saas-footer">' + footer + '</div></section></main>';
+    if (root.FamilyWorldUI) root.FamilyWorldUI.account(view);
     var main = document.getElementById('main'); if (main) main.scrollTop = scroll;
     var target = focusId && document.getElementById(focusId);
     if (!target || target.disabled) target = document.getElementById('saas-title');
