@@ -98,6 +98,37 @@ function farmUI(state, now = START, formData = { view: 'care' }) {
   return { farm, context: c, paint, renders: () => renders, html: () => html, toasts };
 }
 
+function farmSceneUI() {
+  const state = startFarm(), scenes = [], attached = new Set();
+  const context = { ready: true, state, now: START, familyDay: M.dateKey(START), local: true, connected: true,
+    view: 'points', form: { kind: 'farm', data: { view: 'care' } }, pet: state.pet, growth: M.growth(state), reducedMotion: true };
+  const initialView = () => ({ x: 0, z: 0, zoom: 1, focus: null });
+  const target = { firstChild: null, closest: () => true,
+    getAttribute: name => name === 'data-farm-scene' ? context.form ? 'expanded' : 'home' : null,
+    getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 800 }),
+    insertBefore(surface) { attached.add(surface); surface.parentNode = target; },
+    removeChild(surface) { attached.delete(surface); surface.parentNode = null; } };
+  const document = { hidden: false, addEventListener() {}, createElement: () => ({}), querySelector: () => null,
+    querySelectorAll: selector => selector === '[data-farm-scene]' ? [target] : [] };
+  const window = { FamilyModel: M, addEventListener() {}, FamilyFarmScene: { mount(surface, options) {
+    let view = initialView();
+    const scene = { options, disposed: false, paused: false,
+      update(next) { this.options = next; }, pause(value) { this.paused = value; }, resize() {},
+      dispose() { this.disposed = true; },
+      camera(action = {}) { if (action.restore) view = copy(action.restore); return { navigation: copy(view) }; },
+      focus(value) { view.focus = copy(value); },
+      diagnostics() { return { lighting: this.options.lighting, camera: { navigation: copy(view) } }; },
+      ready() { this.options.onStatus({ ready: true }); },
+      userView(value) { view = copy(value); }
+    };
+    scenes.push(scene); return scene;
+  } } };
+  vm.runInNewContext(FARM_SOURCE, { window, document }, { filename: 'farm-scene-ui.js' });
+  const farm = window.FamilyFarmUI;
+  farm.setup({ context: () => context, render: () => farm.afterRender() });
+  return { farm, context, scenes, attached, initialView };
+}
+
 function harvestRace() {
   let state = startFarm();
   state = M.apply(state, { id: 'ui-plant-strawberry', type: 'farm.plant', cropId: 'strawberry', plotIds: ['p2'] }, START);
@@ -272,4 +303,83 @@ test('farm display projections and panel navigation never alter stored domain st
     assert.ok(html.length > 0);
   }
   assert.equal(JSON.stringify(state), original);
+});
+
+test('a business station releases the farm renderer while preserving night and the exact navigation on return', () => {
+  const ui = farmSceneUI(), original = JSON.stringify(ui.context.state);
+  ui.farm.afterRender(); const first = ui.scenes[0]; first.ready();
+  ui.farm.handle('farm-lighting');
+  const chosen = { x: 4.25, z: -3.75, zoom: 1.8, focus: { type: 'plot', id: 'p2' } };
+  first.userView(chosen);
+  const staleStatus = first.options.onStatus;
+  ui.context.form = { kind: 'points', data: {} }; ui.farm.releaseScene(); ui.farm.afterRender();
+  assert.equal(first.disposed, true); assert.equal(ui.attached.size, 0);
+  assert.equal(ui.farm.diagnostics().renderer, null);
+  ui.context.form = { kind: 'farm', data: { view: 'care' } }; ui.farm.afterRender();
+  const returned = ui.scenes[1]; returned.ready();
+  assert.equal(ui.attached.size, 1);
+  assert.equal(ui.farm.diagnostics().renderer.lighting, 'night');
+  assert.deepEqual(copy(ui.farm.diagnostics().renderer.camera.navigation), chosen,
+    'restoring the same panel must not replace a user view with its default focus');
+  staleStatus({ error: 'late released renderer failure' });
+  assert.equal(ui.farm.diagnostics().sceneState, 'ready');
+  assert.equal(JSON.stringify(ui.context.state), original, 'view choices never modify family state');
+});
+
+test('releasing a replacement before models are ready retains the pending navigation snapshot', () => {
+  const ui = farmSceneUI(); ui.farm.afterRender(); ui.scenes[0].ready();
+  const chosen = { x: -2.5, z: 6.5, zoom: 1.4, focus: { type: 'pet', id: 'pet' } };
+  ui.scenes[0].userView(chosen); ui.farm.releaseScene();
+  ui.farm.afterRender(); const loading = ui.scenes[1];
+  ui.farm.releaseScene(); assert.equal(loading.disposed, true);
+  ui.farm.afterRender(); ui.scenes[2].ready();
+  assert.deepEqual(copy(ui.farm.diagnostics().renderer.camera.navigation), chosen);
+  assert.equal(ui.attached.size, 1);
+});
+
+test('leaving first-load details before models are ready retains the requested detail focus on return', () => {
+  for (const [data, expected] of [
+    [{ view: 'care' }, { type: 'pet', id: 'pet' }],
+    [{ view: 'animal', animalId: 'chicken' }, { type: 'animal', id: 'chicken' }],
+    [{ view: 'plot', plotId: 'p2' }, { type: 'plot', id: 'p2' }]
+  ]) {
+    const ui = farmSceneUI(); ui.context.form.data = data;
+    ui.farm.afterRender(); const firstLoad = ui.scenes[0];
+    ui.context.form = { kind: 'points', data: {} }; ui.farm.releaseScene(); ui.farm.afterRender();
+    assert.equal(firstLoad.disposed, true);
+    ui.context.form = { kind: 'farm', data }; ui.farm.afterRender(); ui.scenes[1].ready();
+    assert.deepEqual(copy(ui.farm.diagnostics().renderer.camera.navigation.focus), expected, data.view);
+    assert.equal(ui.attached.size, 1);
+  }
+});
+
+test('a pending new detail focus takes precedence over an older navigation snapshot after repeated loading releases', () => {
+  const ui = farmSceneUI(); ui.farm.afterRender(); ui.scenes[0].ready();
+  ui.scenes[0].userView({ x: -2, z: 4, zoom: 1.7, focus: { type: 'pet', id: 'pet' } });
+  ui.farm.releaseScene();
+  ui.context.form = { kind: 'farm', data: { view: 'plot', plotId: 'p3' } }; ui.farm.afterRender();
+  ui.farm.releaseScene(); ui.farm.afterRender(); ui.scenes[2].ready();
+  const view = copy(ui.farm.diagnostics().renderer.camera.navigation);
+  assert.deepEqual(view.focus, { type: 'plot', id: 'p3' });
+  assert.equal(view.zoom, 1.7, 'the new detail focus does not discard the prior zoom');
+  assert.equal(ui.attached.size, 1);
+});
+
+test('context loss after a ready scene does not discard the last user navigation when leaving', () => {
+  const ui = farmSceneUI(); ui.farm.afterRender(); const first = ui.scenes[0]; first.ready();
+  const chosen = { x: 1.5, z: -6.25, zoom: 1.6, focus: { type: 'animal', id: 'chicken' } };
+  first.userView(chosen); first.options.onStatus({ error: 'FARM_CONTEXT_LOST', webgl: false });
+  ui.farm.releaseScene(); ui.farm.afterRender(); ui.scenes[1].ready();
+  assert.deepEqual(copy(ui.farm.diagnostics().renderer.camera.navigation), chosen);
+});
+
+test('a family boundary clears both a released navigation snapshot and its night preference', () => {
+  const ui = farmSceneUI(); ui.farm.afterRender(); ui.scenes[0].ready();
+  ui.farm.handle('farm-lighting');
+  ui.scenes[0].userView({ x: 8, z: -4, zoom: 2, focus: { type: 'plot', id: 'p3' } });
+  ui.farm.releaseScene(); ui.farm.dispose();
+  ui.context.form = null; ui.farm.afterRender(); ui.scenes[1].ready();
+  const next = ui.farm.diagnostics().renderer;
+  assert.equal(next.lighting, 'day');
+  assert.deepEqual(copy(next.camera.navigation), ui.initialView());
 });

@@ -16,13 +16,17 @@
 - SaaS 不在浏览器持久化业务数据或凭据；上海家庭日期和作物实际生长时长属于不同时间规则。
 - 当前需求与范围以 `docs/sqlite-migration.md`、`docs/saas-completion.md` 和各业务设计决定为准。后者中的 PG 运行方案与历史验收由 SQLite 决定覆盖。
 - `farm/` 是 3D 场景源，`farm-scene.js` 是生成产物。存储改动不重建无关视觉资源。旧 `export/` 与历史 `artifacts/` 不代表当前 SaaS 交付。
+- `world-ui.js` 按业务表单/账号视图切换 Three.js 功能地点，`farm/world-stations.js` 定义地点实物，`farm-world.css` 统一全站呈现。功能场景不写业务数据；账号只使用匿名投影。农场与功能地点同时最多保留一个 WebGL 实例，家庭边界清理时释放视图状态。
 
 ## 验证入口
 
 - `npm test`：领域、旧服务、客户端、家庭日期回归，包含真实 Edge/Chrome 的客户端用例。
 - `npm run test:saas`：真实临时 SQLite 文件、账号/家庭/业务/生命周期/清理及备份恢复。
+- `test/saas-package.test.cjs` 已纳入 `test:saas`：验证 Docker 显式 COPY 和默认拒绝清单包含 HTML 资源，并通过真实 SaaS HTTP 检查临时打包静态根；不等于实际镜像构建。
 - `npm run test:browser`、`npm run test:browser:full`：真实 SaaS 浏览器消费链；需要 Edge/Chrome，可通过 `BROWSER_PATH` 指定。
 - `npm run build:farm`、`npm run test:farm-renderer`：场景源码实质变化时使用；不要把旧 renderer 的检查结果冒充当前 SaaS 验证。
+- `npm run test:world`：场景宿主路由、匿名投影、生命周期与降级回归；已纳入 `npm test`。`npm run test:world:browser` 默认运行 points 组，通过 `WORLD_TEST_CASE` 选择各独立短组，范围见 `docs/threejs-farm-world.md`。组件 renderer 支持 `TEST_CASE_PATTERN` 分组及 `TEST_ARTIFACT_DIR`，未选择项明确报告，不覆盖历史图像。
+- `npm run test:world:contrast`：真实控件渐变、交互状态和禁用状态；`npm run test:farm-context:browser`：真实 WebGL 丢失/恢复，`FARM_CONTEXT_CASE` 分别选 `switching`（默认）、`loading-first`、`restoring-first`、`dispose`。各组独立执行并落盘。
 - `TEST_ARTIFACT_DIR` 可把本轮证据写到独立目录；避免覆盖历史验收。详细范围和本次已知失败基线见 `docs/sqlite-verification.md`。
 - 截至接手检查，远端未配置 GitHub Actions。具体 PR 的检查状态需另外核实，不能把本地通过称作 CI 通过。
 

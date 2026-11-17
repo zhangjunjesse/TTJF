@@ -24,7 +24,7 @@ const SCRIPT = FULL ? 'test/saas-full-browser.cjs' : 'test/saas-browser.cjs';
 const OUT = path.join(process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(ROOT, 'artifacts'), EVIDENCE_VERSION + (FULL ? '-full-browser' : '-browser'), RUN);
 const SOURCES = ['package.json', 'docs/saas-design.md', 'saas-server.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/auth.cjs', 'saas/families.cjs', 'saas/business.cjs', 'saas/mail.cjs', 'saas/migrations/001-initial.sql', 'saas-client.js', 'saas.css', 'app.js', 'model.js', 'styles.css', 'index.html', 'runtime.js', 'farm-ui.js', 'farm-scene.js', 'test/saas-browser.cjs', 'test/saas-full-browser.cjs', 'test/browser.cjs', 'assistant.js', 'assistant-service.cjs', 'saas/lifecycle.cjs', 'saas/network.cjs', 'saas/maintenance.cjs', 'saas/migrations/002-lifecycle.sql', 'package-lock.json', 'docs/saas-completion.md'];
 const sha = file => crypto.createHash('sha256').update(fs.readFileSync(path.resolve(ROOT, file))).digest('hex');
-SOURCES.push('saas/sqlite.cjs', 'tools/saas-db.cjs');
+SOURCES.push('saas/sqlite.cjs', 'tools/saas-db.cjs', 'world-ui.js', 'farm-world.css', 'farm/scene.js', 'farm/world-stations.js');
 const hashes = () => Object.fromEntries(SOURCES.filter(file => fs.existsSync(path.join(ROOT, file))).map(file => [file, sha(file)]));
 const cleanError = value => String(value).replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, '[database URL redacted]').replace(/#(verify|reset|invite)=[^\s"']+/g, '#$1=[token redacted]');
 const report = {
@@ -164,7 +164,19 @@ async function assertCleared(page, forbidden = []) {
   assert.equal(await snapshot(page), null, 'Family state must be absent outside an authorized scope');
   const dom = await page.$eval('body', node => node.textContent);
   for (const marker of forbidden) assert.ok(!dom.includes(marker), 'Old family marker leaked: ' + marker);
-  assert.equal(await page.$$eval('canvas.family-farm-canvas', nodes => nodes.length), 0, 'No stale farm renderer');
+  const scenes = await page.evaluate(() => ({
+    family: window.FamilyFarmUI && window.FamilyFarmUI.diagnostics().renderer,
+    instances: window.FamilyFarmScene ? window.FamilyFarmScene.diagnostics().instances : [],
+    outsidePublicStage: Array.from(document.querySelectorAll('canvas.family-farm-canvas')).filter(node => !node.closest('#world-stage')).length,
+    publicRoute: window.FamilyWorldUI && window.FamilyWorldUI.diagnostics().route
+  }));
+  assert.equal(scenes.family, null, 'Private family renderer must be disposed');
+  assert.equal(scenes.outsidePublicStage, 0, 'No family canvas survives outside the anonymous stage');
+  assert.ok(scenes.instances.length <= 1, 'At most one anonymous renderer');
+  for (const instance of scenes.instances) {
+    assert.equal(instance.presentation, scenes.publicRoute, 'Only the current account illustration may remain');
+    assert.notEqual(instance.presentation, 'farm', 'Interactive family projection must not survive');
+  }
 }
 function assertEmpty(state, childName) {
   assert.equal(state.childName, childName);

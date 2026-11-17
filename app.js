@@ -28,6 +28,7 @@
     if (wakeLock) { var oldLock = wakeLock; wakeLock = null; try { var release = oldLock.release(); if (release && release.catch) release.catch(function () {}); } catch (e) {} }
     ['complete', 'points', 'redeem'].forEach(function (name) { var audio = document.getElementById('sound-' + name); if (audio) { try { audio.pause(); audio.currentTime = 0; } catch (e) {} } });
     if (Farm) Farm.dispose();
+    if (window.FamilyWorldUI) window.FamilyWorldUI.reset();
     state = null; revision = 0; parentRevision = -1; connected = false; serverReached = false;
     syncBusy = false; pending = false; retryTx = null; setupTx = null; privateConfig = null; drafts = {}; reminderSound = '';
     familyDay = null; serverTime = 0; serverReceived = 0; assistantSequence++; avatarSequence++; ui = freshUI();
@@ -628,7 +629,8 @@
       chrome = grid.getBoundingClientRect().top - sheetEl.getBoundingClientRect().top + body.scrollTop + (parseFloat(bodyStyle.paddingBottom) || 0) + (parseFloat(sheetStyle.paddingBottom) || 0);
       footerHeight = Math.max(parseFloat(footerStyle.minHeight) || 0, 48 + (parseFloat(footerStyle.paddingTop) || 0) + (parseFloat(footerStyle.paddingBottom) || 0) + 1);
     }
-    var available = Math.min(740, viewportHeight - 12) - chrome;
+    var sheetHeight = sheetEl && sheetEl.getBoundingClientRect ? sheetEl.getBoundingClientRect().height : 0;
+    var available = Math.min(740, viewportHeight - 12, sheetHeight || 740) - chrome;
     var rows = Math.max(1, Math.floor((available + gap) / (rowHeight + gap)));
     if (items.length > rows * columns) rows = Math.max(1, Math.floor((available - footerHeight + gap) / (rowHeight + gap)));
     var pageSize = rows * columns, pages = Math.max(1, Math.ceil(items.length / pageSize));
@@ -1022,7 +1024,16 @@
     if (ui.form && ui.form.kind === 'homeInbox' && !ui.auth) focusInbox();
     else if (ui.form && ['points', 'behaviorPicker', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) { restorePlayFocus(key); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll; if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} } }
     else if (oldSheet && !ui.form && !ui.auth && ui.homeFocus) restorePlayFocus(ui.homeFocus);
-    refreshPetPurchase(); fitViewport(); if (Farm) Farm.afterRender();
+    refreshPetPurchase(); fitViewport();
+    if (window.FamilyWorldUI) {
+      var scenePet = currentPet();
+      var showsFarm = ui.view === 'points' && !ui.auth && (!ui.form || ui.form.kind === 'farm');
+      if (Farm && !showsFarm) Farm.releaseScene();
+      if (ui.form && ui.form.kind === 'petConfig') scenePet = { kind: ui.form.data.kind || scenePet.kind, name: scenePet.name };
+      window.FamilyWorldUI.business({ view: ui.view, kind: ui.form && ui.form.kind, auth: !!ui.auth, farm: Farm && Farm.status(), pet: scenePet, growth: growthInfo() });
+      if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();
+    }
+    if (Farm) Farm.afterRender();
   }
   function makeAction(f, v) {
     if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: v.reason.trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return action; }

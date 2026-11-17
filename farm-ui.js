@@ -1,7 +1,7 @@
 /* Farm interface. ES5; domain decisions stay in FamilyModel and the server. */
 (function (root) {
   'use strict';
-  var host, controller = null, surface = null, sceneState = 'loading', sceneError = '', tickKey = '', activeMode = '', visible = false, focusKey = '', pendingFocus = null, lighting = 'day', sceneEpoch = 0;
+  var host, controller = null, surface = null, sceneState = 'loading', sceneError = '', sceneWasReady = false, tickKey = '', activeMode = '', visible = false, focusKey = '', pendingFocus = null, lighting = 'day', sceneEpoch = 0, navigationSnapshot = null, restoreNavigation = false;
   var CROP_NAMES = { carrot: '萝卜', strawberry: '草莓', sunflower: '向日葵' };
   var SLOT_NAMES = { fence: '围栏', path: '小路', entry: '门口', center: '院子中央', edge: '院子边缘', house: '小屋' };
   function e(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -175,8 +175,9 @@
     else if (d.view === 'care' || d.view === 'collection') pendingFocus = { type: 'pet', id: 'pet' };
   }
   function showSceneStatus(info) {
-    if (info.ready) { sceneState = 'ready'; sceneError = ''; }
+    if (info.ready) { sceneState = 'ready'; sceneError = ''; sceneWasReady = true; }
     else if (info.error || info.webgl === false) { sceneState = 'unavailable'; sceneError = info.error || '3D画面暂不可用'; }
+    if (sceneState === 'ready' && controller && controller.camera && restoreNavigation && navigationSnapshot) { restoreNavigation = false; controller.camera({ restore: navigationSnapshot }); navigationSnapshot = null; }
     if (sceneState === 'ready' && controller && controller.focus && pendingFocus) { var focus = pendingFocus; pendingFocus = null; controller.focus(focus); }
     var controls = document.querySelectorAll('.farm-camera-button');
     for (var j = 0; j < controls.length; j++) controls[j].disabled = sceneState !== 'ready';
@@ -202,15 +203,26 @@
       else if (controller) controller.update(opts);
       if (controller) { controller.pause(document.hidden); controller.resize(); }
       else if (!root.FamilyFarmScene) showSceneStatus({ webgl: false, error: '场景文件未加载' });
-    } catch (err) { if (controller) controller.dispose(); controller = null; showSceneStatus({ webgl: false, error: err.message }); }
+    } catch (err) { if (controller) controller.dispose(); controller = null; sceneWasReady = false; showSceneStatus({ webgl: false, error: err.message }); }
     activeMode = mode; showSceneStatus({ ready: sceneState === 'ready' }); tickKey = timingKey(status());
   }
   function timingKey(s) { var c = context(); return JSON.stringify([s.initialized, c.familyDay, s.animals.map(function (a) { return [a.id, a.caredToday, a.careCount]; }), s.plots.map(function (p) { return [p.status, Math.ceil((p.remainingMs || 0) / 60000)]; }), c.connected, c.pending, c.retry && c.retry.uncertain]); }
   function tick() { if (!scopeReady() || !root.FamilyModel.farmStatus) return; var c = context(); if (c.view !== 'points' || c.auth || (c.form && c.form.kind !== 'farm')) return; var next = timingKey(status()); if (next !== tickKey) { tickKey = next; host.render(); } }
   function react(kind, target) { if (controller) controller.react(kind, target); }
   function complete(action) { if (/^farm\./.test(action.type)) { var s = status(); if (action.type === 'farm.harvest') { if (s.lastHarvest && s.lastHarvest.id === action.id) { var crops = s.lastHarvest.crops; host.toast(Object.keys(CROP_NAMES).filter(function (id) { return crops[id]; }).map(function (id) { return CROP_NAMES[id] + ' +' + crops[id]; }).join(' · ')); } else host.toast('收获结果已同步到背包'); } react(action.type === 'farm.harvest' ? 'harvest' : action.type === 'farm.animalCare' ? 'care' : 'celebrate', action.animalId); } }
-  function dispose() { sceneEpoch++; if (controller) controller.dispose(); controller = null; if (surface && surface.parentNode) surface.parentNode.removeChild(surface); surface = null; visible = false; activeMode = ''; sceneState = 'loading'; sceneError = ''; tickKey = ''; focusKey = ''; pendingFocus = null; lighting = 'day'; }
-  root.FamilyFarmUI = { setup: function (adapter) { host = adapter; }, home: home, panel: panel, handle: handle, beforeRender: beforeRender, afterRender: afterRender, tick: tick, react: react, complete: complete, dispose: dispose, status: status, diagnostics: function () { return { visible: visible, mode: activeMode, sceneState: sceneState, sceneError: sceneError, renderer: controller && controller.diagnostics ? controller.diagnostics() : null }; } };
+  function releaseScene() {
+    // A business station needs the single WebGL slot, but it is still the same
+    // family session. Keep user view choices until the family boundary clears.
+    if (controller && sceneWasReady && !restoreNavigation && controller.diagnostics) { var view = controller.diagnostics().camera; if (view && view.navigation) navigationSnapshot = copy(view.navigation); }
+    sceneEpoch++; if (controller) controller.dispose(); controller = null;
+    if (surface && surface.parentNode) surface.parentNode.removeChild(surface);
+    // A queued detail focus has not been shown yet. Keep it with focusKey;
+    // prepareFocus replaces both when the user chooses a different view.
+    surface = null; visible = false; activeMode = ''; sceneState = 'loading'; sceneError = ''; sceneWasReady = false; tickKey = '';
+    restoreNavigation = !!navigationSnapshot;
+  }
+  function dispose() { releaseScene(); navigationSnapshot = null; restoreNavigation = false; focusKey = ''; pendingFocus = null; lighting = 'day'; }
+  root.FamilyFarmUI = { setup: function (adapter) { host = adapter; }, home: home, panel: panel, handle: handle, beforeRender: beforeRender, afterRender: afterRender, tick: tick, react: react, complete: complete, releaseScene: releaseScene, dispose: dispose, status: status, diagnostics: function () { return { visible: visible, mode: activeMode, sceneState: sceneState, sceneError: sceneError, renderer: controller && controller.diagnostics ? controller.diagnostics() : null }; } };
   document.addEventListener('visibilitychange', function () { if (controller) controller.pause(document.hidden || !visible || !scopeReady()); });
   root.addEventListener('pagehide', function () { if (controller) controller.pause(true); });
   root.addEventListener('pageshow', function () { if (host) afterRender(); });

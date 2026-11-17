@@ -1,0 +1,744 @@
+@charset "UTF-8";
+/* Shared presentation for the farm village. Loaded after the existing component styles. */
+:root {
+  --farm-ink: #493b2c;
+  --farm-muted: #78694f;
+  --farm-paper: #fff9eb;
+  --farm-paper-deep: #f3e8cf;
+  --farm-border: #d7be8e;
+  --farm-wood: #987148;
+  --farm-wood-dark: #705131;
+  --farm-sage: #597747;
+  --farm-sage-soft: #e7edd7;
+  --farm-ochre: #b88530;
+  --farm-shadow: 0 4px 0 rgba(133, 95, 48, .22), 0 16px 44px rgba(70, 62, 31, .13);
+  --farm-small-shadow: inset 0 1px 0 #fffdf5, 0 2px 0 rgba(139, 102, 53, .19);
+  --action-primary: #57753f;
+  --action-on-primary: #fffdf3;
+  --action-secondary: #eee2c5;
+  --action-secondary-ink: #665132;
+  --action-tool: #705c3e;
+  --action-danger: #a34838;
+  --action-danger-soft: #f9e9de;
+  --action-disabled: #e4ddca;
+  --action-disabled-ink: #79715e;
+  --action-focus: #966210;
+  --world-gutter: clamp(16px, 2.4vw, 36px);
+  --world-panel-width: clamp(360px, 44vw, 620px);
+  --world-mobile-scene: min(28vh, 240px);
+}
+
+body {
+  color: var(--farm-ink);
+  background: #e5e8cc;
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
+button, input, select, textarea { color: inherit; }
+button, a, input, select, textarea, summary { scroll-margin: 20px; }
+button { transition: background-color .16s, border-color .16s, box-shadow .16s, filter .16s; }
+button:enabled:not([aria-busy="true"]):active { filter: brightness(.96); }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--action-focus);
+  outline-offset: 3px;
+}
+button:disabled:not([aria-busy="true"]) { border-color: #d1c7b0; }
+input::placeholder, textarea::placeholder { color: #928268; opacity: 1; }
+::selection { color: #3f4e2b; background: #e5d89b; }
+.skip-link { border: 1px solid var(--farm-wood); background: var(--farm-paper); box-shadow: var(--farm-shadow); }
+#app { z-index: 10; }
+
+/* The world stays decorative. Dialog backdrops still own the dismiss click target. */
+#world-stage {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 18% 2%, #fff5d3 0, transparent 44%), linear-gradient(#dfe9cb 0%, #d2dfbd 54%, #b9c89c 100%);
+}
+#world-stage[hidden], .world-scene-fallback[hidden] { display: none !important; }
+.world-stage-surface, .world-stage-shade { position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; }
+.world-stage-surface canvas { display: block; width: 100%; height: 100%; }
+.world-stage-shade {
+  background: linear-gradient(90deg, transparent 38%, rgba(240, 233, 207, .12) 60%, rgba(237, 230, 206, .5));
+}
+.world-caption {
+  position: absolute;
+  z-index: 2;
+  bottom: max(36px, 6vh);
+  left: var(--world-gutter);
+  width: 400px;
+  max-width: calc(100% - var(--world-panel-width) - var(--world-gutter) * 3);
+  padding: 19px 23px 21px;
+  border: 1px solid rgba(172, 138, 83, .65);
+  border-radius: 8px 24px 24px 24px;
+  background: linear-gradient(120deg, rgba(255, 250, 230, .96), rgba(255, 246, 220, .86));
+  box-shadow: 0 3px 0 rgba(133, 100, 54, .22), 0 8px 30px rgba(73, 78, 39, .1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.world-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 7px;
+  color: #79633c;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: .16em;
+}
+.world-eyebrow::before {
+  content: "";
+  width: 14px;
+  height: 9px;
+  flex: 0 0 auto;
+  border: 1px solid #6b854d;
+  border-radius: 1px 9px 1px 9px;
+  background: #aabd7c;
+  transform: rotate(-20deg);
+}
+.world-caption h2 {
+  color: #544126;
+  font-size: clamp(25px, 2.6vw, 38px);
+  line-height: 1.25;
+  font-weight: 750;
+  letter-spacing: -.04em;
+  text-wrap: balance;
+}
+.world-caption p { margin-top: 10px; color: #796a4f; font-size: 13px; line-height: 1.85; text-wrap: pretty; }
+.world-scene-fallback {
+  position: absolute;
+  z-index: 3;
+  top: 38%;
+  left: var(--world-gutter);
+  right: calc(var(--world-panel-width) + var(--world-gutter) * 2);
+  width: fit-content;
+  max-width: calc(100% - var(--world-panel-width) - var(--world-gutter) * 3);
+  margin-inline: auto;
+  padding: 13px 18px;
+  border: 1px solid #cfbb8c;
+  border-radius: 18px;
+  background: rgba(255, 249, 231, .95);
+  color: #725e3d;
+  box-shadow: var(--farm-small-shadow);
+  font-size: 13px;
+  line-height: 1.7;
+  text-align: center;
+}
+#world-stage[data-scene-state="unavailable"] .world-stage-surface {
+  background: radial-gradient(ellipse 70% 36% at 24% 102%, #8eaa6a 0 65%, transparent 65.5%), radial-gradient(ellipse 55% 34% at 64% 100%, #a8bd7e 0 65%, transparent 65.5%);
+}
+
+/* App chrome uses the same paper, timber and sage hierarchy as the 3D village. */
+.app-shell { background: linear-gradient(145deg, #f6efdb, #eee4cb); }
+.app-header {
+  border-bottom: 1px solid rgba(165, 130, 76, .24);
+  background: linear-gradient(#fff9e9, #f6ecd6);
+  color: var(--farm-ink);
+  box-shadow: 0 2px 0 rgba(167, 128, 67, .07);
+}
+.brand-mark, .view-reminders .brand-mark {
+  border: 1px solid #cdb37d;
+  color: #8a692e;
+  background: linear-gradient(#fbebbe, #edcf8f);
+  box-shadow: inset 0 1px 0 #fff9df;
+}
+.date-label, .child-profile-copy > small { color: var(--farm-muted); }
+.connection-state { color: #95612b; }
+.child-avatar { border-color: #fff9e8; box-shadow: 0 0 0 1px #b99560; }
+.avatar-initial { color: #715327; background: linear-gradient(135deg, #f6d698, #dfb66b); }
+.home-header .header-tools .icon-button, .header-tools .icon-button, .view-reminders .header-tools .icon-button {
+  border: 1px solid #dbc494;
+  background: linear-gradient(#fff9e9, #f0e2c3);
+  box-shadow: var(--farm-small-shadow);
+}
+.home-inbox-button { border: 1px solid #dec080; color: #856124; background: linear-gradient(#fff0c6, #f7e1a6); box-shadow: var(--farm-small-shadow); }
+.home-profile:focus-visible { outline-offset: -3px; }
+.bottom-nav {
+  border-top: 1px solid #cdb383;
+  background: linear-gradient(#fff8e5, #edddba);
+  box-shadow: 0 -3px 14px rgba(103, 76, 38, .06);
+}
+.nav-item { border: 1px solid transparent; color: #7a684b; }
+.nav-item.active {
+  border-color: #b2b984;
+  color: #4c6839;
+  background: linear-gradient(#f0f2d9, #dfe5bc);
+  box-shadow: inset 0 1px 0 #ffffef, 0 2px 0 rgba(102, 120, 61, .16);
+}
+.voice-entry { border-color: #d0b67f; background: linear-gradient(#fff6df, #eed9ad); color: #76592f; box-shadow: var(--farm-small-shadow); }
+.btn, .farm-tool, .companion-interact {
+  border: 1px solid #ccb785;
+  color: var(--action-secondary-ink);
+  background: linear-gradient(#fff6de, #efdfb9);
+  box-shadow: var(--farm-small-shadow);
+  font-weight: 650;
+}
+.btn.primary, .btn.reminder-primary, .farm-tool-primary, .icon-button.nav-add {
+  border: 1px solid #4b6737;
+  color: var(--action-on-primary);
+  /* The lightest stop also supports normal-size labels after hover brightening. */
+  background: linear-gradient(var(--action-primary), #415d2c);
+  box-shadow: inset 0 1px 0 rgba(218, 235, 166, .65), 0 3px 0 rgba(61, 91, 40, .24);
+}
+.farm-tool-primary:enabled b { background: rgba(0, 0, 0, .16); }
+.btn.outline { border-color: #d5c096; color: #715c39; background: #fffbef; box-shadow: inset 0 1px 0 #fff; }
+.btn.danger { border-color: #ddb29c; color: #9d4635; background: #faeade; box-shadow: inset 0 1px 0 #fff6ed; }
+.btn.danger-primary { border-color: #8d3f30; background: linear-gradient(#a04b39, #8d3f30); box-shadow: inset 0 1px 0 #d8947b, 0 3px 0 rgba(126, 51, 35, .2); }
+.text-button, .icon-button { color: #79603b; }
+.text-button.danger { color: #9d4635; }
+.icon-button.nav-add { border-radius: 14px; }
+.text-button:enabled:hover, .menu-row:enabled:hover, .manage-row:enabled:hover { background-color: #f5ebd5; }
+.btn:enabled:hover, .farm-tool:enabled:hover { filter: brightness(1.025); }
+
+/* Home keeps its measured grid and farm viewport; only its surfaces change. */
+.interaction-home .credit-card {
+  border: 1px solid #c7a363;
+  background: radial-gradient(ellipse at 100% 0, #fff5d5, transparent 65%), linear-gradient(135deg, #f8e7bc, #edcf8d);
+  box-shadow: inset 0 1px 0 #fff9e5, 0 3px 0 rgba(142, 102, 44, .17);
+}
+.credit-label { color: #806333; }
+.credit-score > strong { color: #684b29; }
+.credit-rewards { border-color: #caa76b; color: #7c592b; background: linear-gradient(#fff9e9, #f7e8c7); }
+.companion-card, .home-wide .companion-card {
+  border-color: #acb581;
+  background: linear-gradient(#f4f3da, #e9ebc8);
+  box-shadow: inset 0 1px 0 #ffffef, 0 3px 0 rgba(108, 119, 58, .18);
+}
+.farm-home-stage { border: 1px solid #a8b17e; background: #dae5ba; box-shadow: inset 0 2px 4px rgba(91, 102, 46, .1); }
+.pet-name { color: #5c532f; }
+.pet-level { color: #6c7547; }
+.companion-heading > .text-button { border: 1px solid #c6c595; color: #66703b; background: #fffbe5; box-shadow: var(--farm-small-shadow); }
+.growth-track { background: #d7dcb5; }
+.growth-track > div { background: linear-gradient(90deg, #9fb466, #6e9144); }
+.farm-scene-caption > span { border: 1px solid rgba(192, 178, 129, .7); color: #5d683e; background: rgba(255, 250, 227, .94); }
+.farm-scene-caption .farm-weather .icon { color: #b48631; }
+.interaction-home .behavior-card {
+  border: 1px solid #d9c69a;
+  background: linear-gradient(125deg, #fffdf0, #fcf2d9);
+  box-shadow: var(--farm-small-shadow);
+}
+.interaction-home .behavior-card > strong { color: #5a783c; }
+.home-wide .behavior-symbol, .home-wide .behavior-symbol-1 { border: 1px solid #c7cd9d; color: #72864e; background: #e9eccc; }
+.home-wide .behavior-symbol-2 { border-color: #e0bf79; color: #a17b2e; background: #f9e9b7; }
+.home-wide .behavior-symbol-3 { border-color: #ddb3a0; color: #ab7156; background: #f7e0cc; }
+.empty-behaviors { border-color: #c9b785; color: #88734b; background: rgba(255, 250, 232, .6); }
+
+/* Side panels share a framed title bar, fixed actions, and an independent scroll area. */
+.sheet:not(.farm-game-sheet) {
+  border: 1px solid #b79761;
+  background: linear-gradient(150deg, #fff8e8, #f2e8d0);
+  box-shadow: var(--farm-shadow);
+}
+.sheet:not(.farm-game-sheet) > .sheet-grip { width: 36px; height: 3px; background: #c5ad7d; }
+.sheet:not(.farm-game-sheet) > .sheet-header {
+  min-height: 76px;
+  padding: 9px 16px 12px;
+  border-bottom: 1px solid #d8c296;
+  background: linear-gradient(#fffaeb, #f4e8c9);
+  box-shadow: 0 2px 0 rgba(166, 125, 60, .05);
+}
+.sheet:not(.farm-game-sheet) .sheet-heading { padding-inline: 12px; }
+.sheet:not(.farm-game-sheet) .sheet-header h2 { color: #5f482a; font-size: 21px; font-weight: 750; }
+.sheet:not(.farm-game-sheet) .sheet-header p { color: #8a7552; font-size: 11px; }
+.sheet:not(.farm-game-sheet) .sheet-header .icon-button:not(.nav-add) {
+  border: 1px solid #dac596;
+  border-radius: 14px;
+  color: #7c6441;
+  background: #fff9e8;
+  box-shadow: var(--farm-small-shadow);
+}
+.sheet-body { scrollbar-width: thin; scrollbar-color: #c9b184 transparent; }
+.sheet:not(.farm-game-sheet) .sheet-body { padding: 22px 26px 28px; padding-bottom: calc(28px + env(safe-area-inset-bottom)); }
+.sheet:not(.farm-game-sheet) .sheet-footer {
+  gap: 10px;
+  padding: 15px 26px 18px;
+  padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  border-top: 1px solid #ddcba6;
+  background: #f8efd9;
+}
+.sheet-footer > .btn + .btn { margin-left: 0; }
+.sheet:not(.farm-game-sheet) .sheet-save { min-width: 72px; padding-inline: 15px; }
+.field {
+  padding: 11px 14px 5px;
+  border: 1px solid #dfcfad;
+  border-radius: 14px;
+  background: #fffdf5;
+  box-shadow: inset 0 1px 0 #fff;
+}
+.field > span { color: #88724e; font-weight: 600; }
+.field input, .field select, .field textarea { color: #4d402e; border-radius: 8px; scroll-margin: 20px; }
+.field input:focus, .field select:focus, .field textarea:focus { outline-offset: 1px; }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"], .field textarea[aria-invalid="true"] { background: #fff4e8; }
+.field-pair { gap: 0; background: #dac9a4; border: 1px solid #dfcfad; }
+.field-pair > .field { border: 0; }
+.field-pair > .field + .field { border-left: 1px solid #e4d7b9; }
+.field-group { border: 1px solid #dfcfad; background: #fffdf5; }
+.field-group > .field, .field-group > .field-pair { border: 0; }
+.field-group > .field + .field, .field-group > .field + .field-pair, .field-group > .field-pair + .field { border-top-color: #e9ddc3; }
+.form-error { border-left-color: #ae5640; color: #994632; background: #f9e6d7; }
+.sheet-form > .form-error { margin-inline: 26px; }
+.filter-tabs, .day-tabs, .history-tabs, .pet-tabs, .form-type-toggle, .date-shortcuts {
+  border: 1px solid #d6c195;
+  background: #eadbb8;
+  box-shadow: inset 0 1px 3px rgba(116, 84, 34, .06);
+}
+.filter-tab, .day-tab, .mode-tab { color: #88704a; }
+.filter-tab.active, .day-tab.active, .mode-tab.active {
+  color: #586c37;
+  background: linear-gradient(#fffef0, #fbf2d6);
+  box-shadow: inset 0 1px 0 #fff, 0 2px 4px rgba(123, 92, 37, .1);
+}
+.template-toggle { color: #766142; }
+.template-toggle input { accent-color: #6e8749; }
+.template-duplicate, .availability-note, .request-strip, .inbox-task, .reminder-banner {
+  border: 1px solid #dfbf7d;
+  background: linear-gradient(120deg, #fff6da, #f6e5b8);
+  color: #82632f;
+}
+.availability-note { line-height: 1.7; }
+.request-strip, .inbox-task, .reminder-banner { box-shadow: inset 0 1px 0 #fffbe9, 0 2px 0 rgba(155, 116, 47, .09); }
+.status-label { color: #916b2d; }
+.inbox-task > p, .request-copy small, .reminder-banner-copy small { color: #8b7144; }
+.entry-summary, .redemption-math, .authorization-summary, .ledger-summary, .pet-resource-summary, .pet-buy-item {
+  border: 1px solid #c9cca1;
+  color: #5b6338;
+  background: linear-gradient(130deg, #f0f1d7, #e3e7c3);
+  box-shadow: inset 0 1px 0 #ffffef;
+}
+.entry-summary > strong, .redeem-preview > strong, .record-number, .rewards-sheet-heading strong { color: #5d783e; }
+.redemption-math > div span, .redemption-math > span { color: #81825a; }
+.redemption-math b { color: #61753f; }
+.ledger-summary b { color: #566e37; font-variant-numeric: tabular-nums; }
+.record-row { border-bottom-color: #decba5; }
+.record-row p, .record-row small { color: #89734f; }
+.record-number small { color: inherit; }
+.manage-list, .menu-group, .farm-collection-links { border: 1px solid #deccab; background: #fffaf0; box-shadow: inset 0 1px 0 #fff; }
+.manage-row, .menu-row { border-bottom-color: #e8dbc0; }
+.manage-row small, .menu-row small, .sync-status { color: #8a7653; }
+.manage-row > .icon, .menu-row > .icon { color: #a4936c; }
+.menu-symbol { border: 1px solid #c9cb9d; color: #7e8951; background: #eef0d8; }
+.menu-group + .menu-group { margin-top: 14px; }
+.empty-state, .picker-empty p { color: #8b7c5b; }
+.empty-state {
+  margin-block: 12px;
+  padding: 38px 20px;
+  border: 1px dashed #d9c79f;
+  border-radius: 18px;
+  background: rgba(255, 252, 239, .55);
+}
+.value-list > div { border-bottom-color: #decfac; }
+.value-list dt, .status-line, .template-save-preview { color: #83704c; }
+.math-question { padding: 22px 0 28px; color: #745a30; font-variant-numeric: tabular-nums; letter-spacing: .04em; }
+.profile-photo-preview { border-color: #d1b47d; background: #fff1cc; box-shadow: inset 0 1px 0 #fff9e9; }
+.profile-photo-editor > p { color: #8d7956; }
+
+/* Reward and companion collections look like shelves in the same village. */
+.reward-card, .pet-supply-card, .pet-scene-card, .journey-step {
+  border: 1px solid #ddcba4;
+  border-radius: 17px;
+  background: #fffbef;
+  box-shadow: inset 0 1px 0 #fff;
+}
+.reward-symbol { border: 1px solid #cace9e; color: #7d8b50; background: #ecf0d2; }
+.reward-symbol.weekend { border-color: #e4c388; color: #ab7b35; background: #faebbf; }
+.reward-symbol.outing { border-color: #c0cbae; color: #6d8162; background: #e7efdc; }
+.reward-cost { color: #668046; }
+.reward-rule, .rewards-sheet-heading p, .pet-supply-card p, .pet-buy-item p, .pet-resource-summary small { color: #8a7854; }
+.reward-card > .icon { color: #ab9770; }
+.sheet .rewards-grid { display: flex; flex-direction: column; flex-wrap: nowrap; margin: 0; }
+.sheet .reward-card { flex-wrap: nowrap; width: 100%; min-height: 96px; margin: 0 0 10px; padding: 16px; }
+.sheet .reward-info { flex: 1; margin: 0 10px 0 14px; }
+.sheet .reward-info > strong { min-width: 0; font-size: 16px; }
+.sheet .reward-card > .reward-symbol { width: 52px; height: 52px; border-radius: 15px; }
+.scene-badge { border-color: #d5b773; color: #9d7931; background: #fff0c1; }
+.pet-scene-card.locked { background: #f0ebda; }
+.pet-scene-card.locked .scene-badge { border-color: #d1c9ad; color: #9c9477; background: #e9e4d4; }
+.pet-daily-marks > span { border-color: #d4c8a4; color: #88794f; background: #fff8e4; }
+.pet-daily-marks [data-completed="true"] { border-color: #afbc85; color: #657d43; background: #e6edcb; }
+.pet-choice { border-color: #d4c299; background: #fff8e4; }
+.pet-choice.selected { border-color: #7e9554; background: #eaf0d2; }
+.pet-choice small, .journey-step span, .journey-step small { color: #8b7953; }
+.journey-step.current { border-color: #b0bd83; background: #edf0d4; }
+.journey-badge { color: #788c4d; background: #e6ebc7; }
+.journey-badge .icon { color: inherit; }
+.context-ai { border: 1px solid #d5c095; background: #ece3ca; box-shadow: inset 0 1px 0 #fff5db; }
+.context-ai-heading > strong { color: #867044; }
+.context-ai-heading > span { border: 1px solid #d6c49a; color: #88784e; background: #f7efd9; }
+.context-ai .field { border: 0; box-shadow: none; }
+.context-ai .field > span, .context-ai-status, .context-voice-status { color: #8a7751; }
+.context-ai textarea { border-color: #d2bd8b; background: #fffbef; }
+.voice-start { border-color: #b4bf87; color: #687e41; background: linear-gradient(#f3f2d8, #e0e8ba); }
+.voice-box p { color: #8a7751; }
+.assistant-answer { border-color: #c2c99b; color: #60723e; background: #edf1d7; }
+.picker-search input { border: 1px solid #d8c39a; background: #fffaf0; color: #5f4d32; }
+.picker-grid .behavior-card { border: 1px solid #dfcda6; background: #fffaf0; box-shadow: var(--farm-small-shadow); }
+.picker-grid .behavior-symbol { border: 1px solid #cbd1a1; color: #829456; background: #eaf0d2; }
+.picker-grid .behavior-card > strong { color: #657d43; }
+.picker-page-label { color: #88744d; }
+.picker-page-label input { border: 1px solid #d8c39a; color: #725b35; background: #fffaf0; }
+.behavior-picker-body { flex: 1 1 auto; min-height: 0; padding: 20px 26px 14px; }
+.picker-footer { border-top: 1px solid #dfcba3; padding: 10px 26px; background: #f6ebd2; }
+.picker-footer > .icon-button { color: #7d7444; }
+.sheet .picker-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* Reminders are a paper noticeboard with the same sage completion action. */
+.view-reminders { background: #e2e5c9; }
+.reminders-screen { max-width: none; padding: 10px 26px 28px; }
+.reminder-heading { margin: 8px 0 20px; }
+.reminder-heading h2 { color: #674e2e; font-size: 29px; letter-spacing: -.03em; }
+.reminder-heading p, .list-footnote { color: #8a7651; }
+.reminder-heading > .icon-button { border-radius: 14px; }
+.reminder-toolbar .day-tab { min-width: 58px; padding-inline: 13px; }
+.reminder-toolbar > .text-button { color: #8e713e; }
+.events-label { color: #7f693f; }
+.task-row {
+  border: 1px solid #ddcaa2;
+  background: #fffaf0;
+  box-shadow: inset 0 1px 0 #fff, 0 2px 0 rgba(143, 108, 50, .06);
+}
+.task-time { color: #9a793f; }
+.task-time small, .task-copy p, .task-copy .task-note, .task-copy small { color: #8c7b59; }
+.task-open > .icon { color: #af9c75; }
+.task-complete { border-color: #c7c79b; color: #92986c; background: #f4f3de; box-shadow: inset 0 1px 0 #fff; }
+.task-row.is-done { border-color: #cdd0a9; background: #e9edda; }
+.task-row.is-done .task-copy strong { color: #8b8c70; }
+.task-complete.done, .task-row.is-done .task-complete { border-color: #a8b67c; color: #688243; background: #dfe9c5; }
+.advance-events { border-top-color: #d9c69d; }
+.advance-events h3 { color: #806237; }
+.advance-events .section-heading > small, .completed-list summary { color: #8b7851; }
+.reminder-banner { margin: 12px 26px; padding: 13px; }
+.reminder-banner-copy > .icon { color: #a47f35; }
+.reminder-banner-copy strong { color: #755a32; }
+.reminder-banner-actions { gap: 6px; }
+.reminder-banner-actions .btn + .btn { margin-left: 0; }
+
+/* Account and family pages use the same side panel and control system. */
+.saas-main { display: flex; align-items: flex-start; justify-content: flex-end; padding: var(--world-gutter); }
+.saas-card {
+  position: relative;
+  flex: 0 0 var(--world-panel-width);
+  width: var(--world-panel-width);
+  max-width: none;
+  margin: auto 0;
+  padding: clamp(25px, 3vw, 42px);
+  border: 1px solid #b79761;
+  border-radius: 28px 12px 28px 28px;
+  background: linear-gradient(150deg, #fffaf0, #f3e7cb);
+  box-shadow: var(--farm-shadow), inset 0 1px 0 #fffdf6;
+}
+.saas-card::before {
+  content: "";
+  position: absolute;
+  left: 32px;
+  top: -4px;
+  width: 64px;
+  height: 6px;
+  border: 1px solid #b18c50;
+  border-radius: 4px;
+  background: #d9b570;
+  box-shadow: inset 0 1px 0 #f9dda4;
+}
+.saas-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #907449; font-size: 12px; font-weight: 650; letter-spacing: .1em; }
+.saas-brand::before { content: ""; width: 8px; height: 8px; border: 1px solid #b3924a; border-radius: 3px; background: #e8c675; transform: rotate(-12deg); }
+.saas-card h1 { color: #5d482d; font-size: clamp(25px, 2.4vw, 32px); font-weight: 750; letter-spacing: -.035em; }
+.saas-card h2 { color: #7d633d; }
+.saas-short-status { color: #90774e; font-size: 14px; line-height: 1.75; }
+.saas-short-status:empty { min-height: 0; margin: 13px 0; }
+.saas-identity { padding: 12px 14px; border: 1px solid #dcc69c; border-radius: 12px; background: #f8edce; color: #887049; }
+.saas-content form { gap: 16px; }
+.saas-content .field { gap: 6px; padding: 0; border: 0; background: transparent; box-shadow: none; }
+.saas-content .field > span { color: #8b744e; font-size: 13px; }
+.saas-content .field input, .saas-content .field select {
+  min-height: 54px;
+  padding: 13px 15px;
+  border: 1px solid #d4bc8a;
+  border-radius: 13px;
+  color: #5a472e;
+  background: #fffdf4;
+  box-shadow: inset 0 2px 3px rgba(127, 97, 47, .03), 0 1px 0 #fff;
+}
+.saas-content form > .btn.primary { margin-top: 6px; min-height: 54px; }
+.saas-footer { gap: 10px; padding-top: 21px; margin-top: 24px; border-top: 1px solid #e1cc9f; }
+.saas-footer:empty { display: none; }
+.saas-footer .btn { font-size: 14px; }
+.saas-menu { gap: 10px; }
+.saas-menu > .btn { justify-content: flex-start; min-height: 54px; padding-inline: 17px; }
+.saas-list li { padding-block: 17px; border-bottom-color: #dfcda7; }
+.saas-list small { color: #8e7851; font-size: 13px; }
+.saas-list .btn { max-width: 45%; padding-inline: 13px; font-size: 14px; }
+.saas-actions { gap: 10px; }
+
+/* Loading, reconnecting and renderer fallback all remain readable without WebGL. */
+.loading-screen {
+  width: min(420px, calc(100% - 36px));
+  margin: min(28vh, 220px) auto 0;
+  padding: 35px 25px;
+  border: 1px solid #c5a570;
+  border-radius: 24px;
+  background: linear-gradient(#fff9e5, #f3e4bf);
+  color: #725834;
+  box-shadow: var(--farm-shadow);
+}
+.loading-mark { font-size: 27px; color: #79602f; }
+.loading-screen p { color: #927d52; }
+.toast { border: 1px solid #8c754c; border-radius: 15px; color: #fff7df; background: #635333; box-shadow: 0 4px 0 rgba(60, 47, 24, .16), 0 10px 30px rgba(60, 47, 24, .14); }
+.farm-scene-fallback { color: #6c784b; background: linear-gradient(140deg, #e7edc9, #cbdca9); }
+.farm-scene-fallback strong { color: #5f6b3e; }
+.farm-scene-fallback p { color: #79835c; }
+.farm-retry, .farm-error { border-color: #dcb778; color: #886537; background: #fff0ca; }
+
+/* Farm HUD preserves the renderer's existing camera and viewport measurements. */
+.farm-game-sheet { background: #b4c88b; }
+.farm-game-sheet .sheet-heading, .farm-game-sheet .sheet-header .icon-button, .farm-game-sheet .farm-home-link {
+  border-color: #9d7947;
+  color: #775b34;
+  background: linear-gradient(#fffae9, #f3e4bb);
+  box-shadow: inset 0 1px 0 #fffdf2, 0 3px 0 #a7834c, 0 7px 14px rgba(89, 70, 30, .09);
+}
+.farm-game-sheet > .farm-tabs, .farm-game-sheet .farm-plots, .farm-game-sheet > .farm-toolbar { border-color: #9f7b44; background: #d6b47b; box-shadow: inset 0 1px 0 #edcd95, 0 3px 0 #9e7a44; }
+.farm-game-sheet .farm-tab.active { color: #6b7c41; background: linear-gradient(#fffbea, #f8eac7); }
+.farm-game-sheet .farm-tool { border-color: #b8975d; color: #7b5e33; background: linear-gradient(#fffae9, #f2dfb1); }
+.farm-game-sheet .farm-tool-primary { border-color: #4b6737; color: var(--action-on-primary); background: linear-gradient(var(--action-primary), #415d2c); }
+.farm-game-sheet .farm-camera-button { border-color: #92703c; color: #7f5e2b; background: linear-gradient(#f8e2ac, #d9b574); box-shadow: inset 0 1px 0 #ffedc3, 0 3px 0 #9f7c43; }
+.farm-game-sheet > .farm-focus-panel { border-color: #aa8751; background: linear-gradient(#fff9e8, #f5e9ca); box-shadow: inset 0 1px 0 #fff, 0 4px 0 #a5824b, 0 12px 28px rgba(74, 61, 28, .15); scrollbar-width: thin; scrollbar-color: #c8ae79 transparent; }
+.farm-world-status { border-color: #c3a76e; color: #6e5934; background: rgba(255, 248, 222, .96); }
+.farm-game-sheet .farm-plot { border-color: #c4a877; background: linear-gradient(#fff9e9, #f7eac8); }
+.farm-game-sheet .farm-plot.ready { border-color: #9ead65; background: linear-gradient(#f3f5d9, #e1e9b1); }
+.farm-catalog-item, .farm-seed, .farm-animal-row, .farm-companion-care { border-color: #dfca9e; background: #fffaf0; }
+.farm-catalog-art, .farm-detail-art { background: linear-gradient(140deg, #e9edcf, #dce5b8); }
+.farm-catalog-copy > strong, .farm-animal-row strong, .farm-seed strong { color: #697444; }
+.farm-seed.selected { border-color: #91a45d; background: #edf2d4; }
+.farm-tabs { border: 1px solid #d1bd8b; background: #eaddb9; }
+.farm-tab { color: #8a7247; }
+.farm-tab.active { color: #667a3f; background: #fffae9; }
+.farm-note, .farm-intro p, .farm-companion-care p { color: #8a7b55; }
+.farm-crop-count { border-color: #d9c28f; background: #fff6dc; }
+.farm-album-card { border-color: #c3c596; background: #ecf0d4; }
+.farm-album-card.achieved { border-color: #d4be7c; background: #fff1c5; }
+.farm-link + .farm-link { border-top-color: #eadabb; }
+
+/* Wide screens reserve a quiet left stage and a usable, consistently aligned panel. */
+@media (min-width: 701px) and (orientation: landscape) {
+  body[data-world-route]:not([data-world-route="farm"]) .app-shell { background: transparent; }
+  body[data-world-route]:not([data-world-route="farm"]).sheet-open .app-shell { visibility: hidden; }
+  body[data-world-route]:not([data-world-route="farm"]) .sheet-overlay {
+    align-items: center;
+    justify-content: flex-end;
+    padding: var(--world-gutter);
+  }
+  body[data-world-route]:not([data-world-route="farm"]) .sheet-backdrop { background: transparent; }
+  body[data-world-route]:not([data-world-route="farm"]) .sheet {
+    width: var(--world-panel-width);
+    max-width: none;
+    height: calc(var(--app-height, 100vh) - var(--world-gutter) * 2);
+    max-height: calc(var(--app-height, 100vh) - var(--world-gutter) * 2);
+    margin: 0;
+    border-radius: 26px 12px 26px 26px;
+  }
+  body[data-world-route]:not([data-world-route="farm"]) .sheet-grip { display: none; }
+  body[data-world-route="reminders"]:not(.sheet-open) .app-shell {
+    position: absolute;
+    inset: var(--world-gutter) var(--world-gutter) var(--world-gutter) auto;
+    width: var(--world-panel-width);
+    height: calc(var(--app-height, 100vh) - var(--world-gutter) * 2);
+    border: 1px solid #b79761;
+    border-radius: 26px 12px 26px 26px;
+    background: linear-gradient(150deg, #fff8e8, #f2e8d0);
+    box-shadow: var(--farm-shadow);
+  }
+  body[data-world-route="reminders"] .app-header { min-height: 78px; padding: 13px 22px; }
+  body[data-world-route="reminders"] .bottom-nav { padding: 10px 18px; }
+  body[data-world-route="reminders"] .nav-item { flex-direction: row; min-height: 48px; padding: 8px 12px; font-size: 14px; }
+  body[data-world-route="reminders"] .nav-item .icon { margin-right: 6px; }
+  body[data-world-route="reminders"] .voice-entry { min-width: 92px; min-height: 48px; margin-left: 10px; padding: 8px 10px; font-size: 14px; }
+  body[data-world-route="reminders"] .reminder-banner { display: block; }
+  body[data-world-route="reminders"] .reminder-banner-actions { margin-top: 10px; }
+  body[data-world-route="reminders"] .reminder-banner-actions .btn { flex: 1; }
+  .sheet .farm-catalog { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sheet .farm-seed { min-height: 145px; }
+  .sheet .farm-seed .farm-art { width: 64px; height: 64px; }
+}
+
+/* Portrait is a window onto the village above a scrollable sheet. */
+@media (max-width: 700px), (orientation: portrait) {
+  :root { --world-gutter: 14px; --world-panel-width: calc(100vw - 28px); }
+  .world-stage-shade { background: linear-gradient(transparent 8%, rgba(242, 234, 208, .12) 28%, #efe6ce 65%); }
+  .world-caption {
+    top: calc(12px + env(safe-area-inset-top));
+    left: 16px;
+    bottom: auto;
+    width: auto;
+    max-width: calc(100% - 32px);
+    padding: 10px 14px 12px;
+    border-radius: 7px 18px 18px 18px;
+    background: rgba(255, 249, 228, .92);
+    box-shadow: 0 2px 0 rgba(144, 107, 48, .2), 0 7px 18px rgba(79, 83, 39, .07);
+  }
+  .world-eyebrow { margin-bottom: 3px; font-size: 10px; letter-spacing: .1em; }
+  .world-caption h2 { font-size: clamp(20px, 5vw, 27px); line-height: 1.3; }
+  .world-caption p { display: none; }
+  .world-scene-fallback {
+    top: calc(var(--world-mobile-scene) * .64);
+    left: 16px;
+    right: 16px;
+    max-width: calc(100% - 32px);
+    padding: 7px 12px;
+    border-radius: 11px;
+    font-size: 11px;
+  }
+  body[data-world-route]:not([data-world-route="farm"]) .app-shell { background: transparent; }
+  body[data-world-route]:not([data-world-route="farm"]).sheet-open .app-shell { visibility: hidden; }
+  body[data-world-route]:not([data-world-route="farm"]) .sheet-overlay { align-items: flex-end; padding: 0; }
+  body[data-world-route]:not([data-world-route="farm"]) .sheet-backdrop { background: transparent; }
+  body[data-world-route]:not([data-world-route="farm"]) .sheet {
+    width: 100%;
+    max-width: 100%;
+    height: calc(var(--app-height, 100vh) - var(--world-mobile-scene));
+    max-height: calc(var(--app-height, 100vh) - var(--world-mobile-scene));
+    margin: 0;
+    border-radius: 24px 24px 0 0;
+    border-bottom: 0;
+    box-shadow: 0 -5px 28px rgba(104, 85, 40, .12), inset 0 1px 0 #fffcf0;
+  }
+  .sheet:not(.farm-game-sheet) > .sheet-header { min-height: 66px; padding: 5px 10px 9px; }
+  .sheet:not(.farm-game-sheet) .sheet-heading { padding-inline: 9px; }
+  .sheet:not(.farm-game-sheet) .sheet-header h2 { font-size: 19px; }
+  .sheet:not(.farm-game-sheet) .sheet-body { padding: 17px 18px 22px; padding-bottom: calc(22px + env(safe-area-inset-bottom)); }
+  .sheet:not(.farm-game-sheet) .sheet-footer { padding: 12px 18px; padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
+  .sheet-form > .form-error { margin-inline: 18px; }
+  .sheet:not(.farm-game-sheet) .sheet-save { padding-inline: 12px; }
+  .behavior-picker-body { padding: 16px 18px 12px; }
+  .picker-footer { padding: 10px 18px; }
+  .saas-main { display: block; padding: var(--world-mobile-scene) 0 0; padding-bottom: 0; }
+  .saas-card {
+    width: 100%;
+    min-height: calc(var(--app-height, 100vh) - var(--world-mobile-scene));
+    max-width: none;
+    margin: 0;
+    padding: 25px 24px;
+    padding-bottom: calc(25px + env(safe-area-inset-bottom));
+    border-bottom: 0;
+    border-radius: 26px 26px 0 0;
+    box-shadow: 0 -5px 28px rgba(104, 85, 40, .12), inset 0 1px 0 #fffcf0;
+  }
+  .saas-card::before { top: 10px; left: calc(50% - 17px); width: 34px; height: 3px; border: 0; border-radius: 4px; background: #cfb88a; box-shadow: none; }
+  .saas-brand { margin-top: 3px; margin-bottom: 9px; }
+  .saas-card h1 { font-size: 27px; }
+  .saas-short-status:empty { margin-block: 11px; }
+  .saas-footer { margin-top: 23px; }
+  body[data-world-route="reminders"]:not(.sheet-open) .app-shell {
+    position: absolute;
+    top: var(--world-mobile-scene);
+    width: 100%;
+    height: calc(var(--app-height, 100vh) - var(--world-mobile-scene));
+    border: 1px solid #c0a06a;
+    border-bottom: 0;
+    border-radius: 24px 24px 0 0;
+    background: linear-gradient(150deg, #fff8e8, #f2e8d0);
+    box-shadow: 0 -5px 24px rgba(93, 80, 39, .1);
+  }
+  body[data-world-route="reminders"] .app-header { min-height: 69px; padding: 10px 17px; }
+  body[data-world-route="reminders"] .reminders-screen { padding: 8px 17px 24px; }
+  body[data-world-route="reminders"] .bottom-nav { gap: 8px; min-height: 68px; padding: 8px 13px; padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  body[data-world-route="reminders"] .main-tabs { flex: 2; }
+  body[data-world-route="reminders"] .nav-item { flex-direction: row; min-height: 48px; padding: 6px 8px; font-size: 14px; }
+  body[data-world-route="reminders"] .nav-item .icon { width: 20px; height: 20px; margin: 0 5px 0 0; }
+  body[data-world-route="reminders"] .voice-entry { flex: 1; min-width: 0; min-height: 48px; margin-left: 0; padding: 6px 8px; font-size: 14px; }
+  .reminder-banner { margin: 10px 17px; }
+  .reminder-heading { margin-top: 3px; }
+  .reminder-heading h2 { font-size: 25px; }
+  .reminder-toolbar .day-tab { min-width: 48px; padding-inline: 10px; }
+  .reminder-toolbar .day-tab small { display: none; }
+  .farm-toolbar { gap: 5px; }
+  .farm-tool { padding-inline: 3px; }
+  .farm-game-sheet .farm-plots { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .farm-game-sheet .farm-plot { min-width: 0; min-height: 68px; }
+  .sheet .reward-card { padding: 13px; }
+  .sheet .reward-info { margin-left: 11px; }
+  .context-ai-input { flex-wrap: wrap; }
+  .context-ai-input > .field { flex-basis: 160px; }
+  .context-ai-actions { margin-left: auto; }
+}
+
+/* Tablet portrait has space for a wider paper margin without losing the scene. */
+@media (min-width: 701px) and (orientation: portrait) {
+  :root { --world-mobile-scene: min(30vh, 330px); }
+  .world-caption { top: 28px; left: 30px; padding: 16px 21px; }
+  .world-eyebrow { font-size: 11px; }
+  .world-caption h2 { font-size: 30px; }
+  .world-caption p { display: block; margin-top: 7px; }
+  .saas-card { padding: 34px max(36px, calc((100% - 540px) / 2)); padding-bottom: calc(34px + env(safe-area-inset-bottom)); }
+  .sheet:not(.farm-game-sheet) .sheet-body, .behavior-picker-body { padding-inline: max(28px, calc((100% - 590px) / 2)); }
+  body[data-world-route="reminders"] .reminders-screen { max-width: 660px; width: 100%; margin-inline: auto; padding-inline: 28px; }
+  .sheet .picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 380px) {
+  .saas-card { padding-inline: 19px; }
+  .saas-card h1 { font-size: 25px; }
+  .saas-footer { gap: 8px; }
+  .saas-footer .btn { padding-inline: 11px; }
+  .sheet:not(.farm-game-sheet) > .sheet-header { padding-inline: 8px; }
+  .sheet:not(.farm-game-sheet) .sheet-heading { padding-inline: 7px; }
+  .sheet:not(.farm-game-sheet) .sheet-header h2 { font-size: 17px; }
+  .sheet:not(.farm-game-sheet) .sheet-body { padding-inline: 13px; }
+  .sheet:not(.farm-game-sheet) .sheet-footer { padding-inline: 13px; }
+  .sheet .reward-card { padding: 11px; }
+  .sheet .reward-card > .reward-symbol { width: 44px; height: 44px; border-radius: 13px; }
+  .sheet .reward-info { display: block; margin-inline: 10px 0; }
+  .sheet .reward-info > strong { font-size: 15px; }
+  .sheet .reward-cost { display: block; margin: 3px 0 0; font-size: 20px; }
+  .sheet .reward-rule { margin-top: 2px; font-size: 11px; }
+  .sheet .picker-grid { gap: 7px; }
+  .picker-grid .behavior-card { grid-template-columns: 22px minmax(0, 1fr); column-gap: 6px; padding-inline: 9px; }
+  .picker-grid .behavior-symbol { width: 23px; height: 25px; }
+  .picker-grid .behavior-copy b { font-size: 13px; }
+  .farm-game-sheet > .farm-yard-tray { left: 8px; right: 8px; }
+  .farm-game-sheet .farm-plots { gap: 1px; padding: 2px; }
+  .farm-game-sheet .farm-plot { min-width: 0; }
+  .farm-home-card .farm-tool { font-size: 11px; gap: 3px; }
+  .farm-home-card .farm-tool-art { width: 23px; height: 23px; }
+  .redemption-math { padding-inline: 7px; }
+  .redemption-math b { font-size: 23px; }
+  .pet-scene-card { grid-template-columns: 30px minmax(0, 1fr) auto; gap: 7px; padding-inline: 10px; }
+  .pet-scene-card .scene-badge { width: 30px; height: 36px; }
+  .pet-scene-card h3 { font-size: 14px; }
+  .pet-scene-card .btn { min-width: 60px; font-size: 13px; }
+}
+
+/* A small visual viewport usually means a software keyboard or a short landscape. */
+@media (max-height: 620px) {
+  :root { --world-gutter: 12px; --world-mobile-scene: 104px; }
+  .world-caption { padding: 11px 16px; bottom: 22px; }
+  .world-caption h2 { font-size: 25px; }
+  .world-caption p { display: none; }
+  .saas-card { padding-top: 25px; padding-bottom: 25px; }
+  .sheet:not(.farm-game-sheet) > .sheet-header { min-height: 60px; padding-top: 5px; padding-bottom: 7px; }
+  .sheet:not(.farm-game-sheet) .sheet-body { padding-top: 14px; }
+  .sheet:not(.farm-game-sheet) .sheet-footer { padding-top: 10px; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+}
+@media (max-height: 620px) and (max-width: 700px), (max-height: 620px) and (orientation: portrait) {
+  .world-caption { top: calc(8px + env(safe-area-inset-top)); bottom: auto; padding: 8px 12px; }
+  .world-caption h2 { font-size: 19px; }
+  .world-eyebrow { font-size: 9px; margin-bottom: 2px; }
+  .world-scene-fallback { top: 75px; padding: 3px 9px; font-size: 10px; }
+  body[data-world-route="reminders"] .app-header { min-height: 58px; padding-block: 5px; }
+  body[data-world-route="reminders"] .bottom-nav { min-height: 60px; padding-top: 5px; padding-bottom: calc(5px + env(safe-area-inset-bottom)); }
+}
+@media (max-height: 430px) and (max-width: 700px), (max-height: 430px) and (orientation: portrait) {
+  :root { --world-mobile-scene: 64px; }
+  .world-caption { padding-block: 7px; }
+  .world-eyebrow { display: none; }
+  .world-scene-fallback { top: 36px; left: auto; right: 12px; max-width: 54%; padding: 1px 7px; font-size: 9px; }
+  .world-caption h2 { font-size: 18px; }
+  .sheet:not(.farm-game-sheet) > .sheet-grip { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  .btn, .farm-tool, .task-complete, .nav-item, .voice-entry, .sheet, .saas-card, .app-header, .bottom-nav { border: 1px solid ButtonText; box-shadow: none; }
+  .nav-item.active, .day-tab.active, .filter-tab.active, .mode-tab.active { outline: 2px solid Highlight; outline-offset: -3px; }
+}

@@ -7,13 +7,14 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { pathToFileURL } = require('node:url');
 const B = require('../test/browser.cjs');
-const ROOT = path.resolve(__dirname, '..'), OUT = path.join(__dirname, 'verification');
+const ROOT = path.resolve(__dirname, '..'), OUT = process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(__dirname, 'verification');
+const CASE_PATTERN = process.env.TEST_CASE_PATTERN ? new RegExp(process.env.TEST_CASE_PATTERN) : null;
 const EVIDENCE_TAG = process.env.V12_EVIDENCE_TAG || '';
 assert.match(EVIDENCE_TAG, /^[a-z0-9-]*$/);
 const PREFIX = 'v12' + (EVIDENCE_TAG ? '-' + EVIDENCE_TAG : '');
 const FORCE_WEBGL1 = process.env.V12_WEBGL1 === '1';
-const fixtureURL = pathToFileURL(path.join(OUT, 'v12-fixture.html')).href;
-const sha = file => crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex');
+const fixtureURL = pathToFileURL(path.join(__dirname, 'verification', 'v12-fixture.html')).href;
+const sha = file => crypto.createHash('sha256').update(fs.readFileSync(path.resolve(ROOT, file))).digest('hex');
 const sourceHashes = () => Object.fromEntries(['farm-scene.js', 'farm/scene.js', 'farm/garden.js', 'farm/companions.js', 'farm/primitives.js', 'farm/models.js', 'farm/verify-v12.cjs', 'farm/verification/v12-fixture.html'].filter(file => fs.existsSync(path.join(ROOT, file))).map(file => [file, sha(file)]));
 const report = { evidenceTag: EVIDENCE_TAG || 'untagged', startedAt: new Date().toISOString(), sourceHashes: sourceHashes(), checks: [], scenes: [], screenshots: [], errors: [], network: [], visualStatus: 'pending-image-review', boundaries: ['Desktop headless Edge with emulated viewport/touch; no physical iPad/Safari claim.', 'Isolated component fixture with example data, not the live family app.', 'Mechanical checks and diagnostic flags do not establish visual parity. Review actual captured images against artifacts/v12-reference.', 'Day/night are visual modes only. Their rendered light and material changes require image review, not only a diagnostics string.'] };
 let browser, page;
@@ -24,12 +25,20 @@ async function viewCanvas() { const handle = await canvas(); await handle.evalua
 async function rect() { return page.$eval('canvas.family-farm-canvas', node => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }); }
 async function capture(name) {
   await viewCanvas(); await B.delay(150);
-  const handle = await canvas(), file = 'farm/verification/' + PREFIX + '-' + name + '.png';
-  await handle.screenshot({ path: path.join(ROOT, file) }); await handle.dispose();
-  const diagnostics = await diag(); report.scenes.push({ name, diagnostics }); report.screenshots.push({ file, sha256: sha(file) });
+  const handle = await canvas(), screenshotPath = path.join(OUT, PREFIX + '-' + name + '.png');
+  // On Windows a cross-volume relative() result is already absolute. Keep the
+  // actual output path for I/O; the relative-or-absolute file is report metadata.
+  await handle.screenshot({ path: screenshotPath }); await handle.dispose();
+  const diagnostics = await diag(); report.scenes.push({ name, diagnostics });
+  report.screenshots.push({ file: path.relative(ROOT, screenshotPath), sha256: sha(screenshotPath) });
 }
 async function click(id) { await B.click(page, '#' + id); await ready(); }
-async function check(label, fn) { await fn(); report.checks.push({ label, result: 'passed' }); console.log('PASS ' + label); }
+async function check(label, fn) {
+  if (CASE_PATTERN && !CASE_PATTERN.test(label)) { (report.skipped ||= []).push(label); return; }
+  await fn(); report.checks.push({ label, result: 'passed' });
+  fs.writeFileSync(path.join(OUT, PREFIX + '-component-results.json'), JSON.stringify(report, null, 2) + '\n');
+  console.log('PASS ' + label);
+}
 async function open(options, viewport) {
   await page.setViewport(viewport); await page.goto(fixtureURL + '?' + new URLSearchParams({ ...options, ...(FORCE_WEBGL1 ? { webgl1: '1' } : {}) }), { waitUntil: 'load' }); await ready();
 }
@@ -88,6 +97,7 @@ async function run() {
       const reset = (await diag()).camera; assert.ok(Math.abs(reset.zoom - baseline.zoom) < .001); assert.deepEqual(reset.target, baseline.target);
     });
     await check('An actual plot click still selects correctly after camera browsing', async () => {
+      await click('mode-expanded'); await click('camera-reset');
       await viewCanvas(); const target = await visibleTarget('plot'); assert.ok(target);
       await page.mouse.click(target.center.x, target.center.y);
       const selected = await page.evaluate(() => picks.at(-1)); assert.equal(selected.type, 'plot'); assert.equal(selected.id, target.id);
@@ -120,6 +130,7 @@ async function run() {
         await click('kind-capybara'); await capture('phone-' + width + '-capybara-expanded');
       });
     }
+    assert.ok(report.checks.length, 'TEST_CASE_PATTERN did not select any component checks');
     assert.deepEqual(report.errors, []); assert.deepEqual(report.network, []);
   } catch (error) {
     report.failure = error.stack; process.exitCode = 1; console.error(error);
