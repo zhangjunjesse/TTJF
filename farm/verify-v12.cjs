@@ -14,7 +14,7 @@ assert.match(EVIDENCE_TAG, /^[a-z0-9-]*$/);
 const PREFIX = 'v12' + (EVIDENCE_TAG ? '-' + EVIDENCE_TAG : '');
 const FORCE_WEBGL1 = process.env.V12_WEBGL1 === '1';
 const fixtureURL = pathToFileURL(path.join(__dirname, 'verification', 'v12-fixture.html')).href;
-const sha = file => crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex');
+const sha = file => crypto.createHash('sha256').update(fs.readFileSync(path.resolve(ROOT, file))).digest('hex');
 const sourceHashes = () => Object.fromEntries(['farm-scene.js', 'farm/scene.js', 'farm/garden.js', 'farm/companions.js', 'farm/primitives.js', 'farm/models.js', 'farm/verify-v12.cjs', 'farm/verification/v12-fixture.html'].filter(file => fs.existsSync(path.join(ROOT, file))).map(file => [file, sha(file)]));
 const report = { evidenceTag: EVIDENCE_TAG || 'untagged', startedAt: new Date().toISOString(), sourceHashes: sourceHashes(), checks: [], scenes: [], screenshots: [], errors: [], network: [], visualStatus: 'pending-image-review', boundaries: ['Desktop headless Edge with emulated viewport/touch; no physical iPad/Safari claim.', 'Isolated component fixture with example data, not the live family app.', 'Mechanical checks and diagnostic flags do not establish visual parity. Review actual captured images against artifacts/v12-reference.', 'Day/night are visual modes only. Their rendered light and material changes require image review, not only a diagnostics string.'] };
 let browser, page;
@@ -25,9 +25,12 @@ async function viewCanvas() { const handle = await canvas(); await handle.evalua
 async function rect() { return page.$eval('canvas.family-farm-canvas', node => { const r = node.getBoundingClientRect(); return { x: r.x, y: r.y, width: r.width, height: r.height }; }); }
 async function capture(name) {
   await viewCanvas(); await B.delay(150);
-  const handle = await canvas(), file = path.relative(ROOT, path.join(OUT, PREFIX + '-' + name + '.png'));
-  await handle.screenshot({ path: path.join(ROOT, file) }); await handle.dispose();
-  const diagnostics = await diag(); report.scenes.push({ name, diagnostics }); report.screenshots.push({ file, sha256: sha(file) });
+  const handle = await canvas(), screenshotPath = path.join(OUT, PREFIX + '-' + name + '.png');
+  // On Windows a cross-volume relative() result is already absolute. Keep the
+  // actual output path for I/O; the relative-or-absolute file is report metadata.
+  await handle.screenshot({ path: screenshotPath }); await handle.dispose();
+  const diagnostics = await diag(); report.scenes.push({ name, diagnostics });
+  report.screenshots.push({ file: path.relative(ROOT, screenshotPath), sha256: sha(screenshotPath) });
 }
 async function click(id) { await B.click(page, '#' + id); await ready(); }
 async function check(label, fn) {

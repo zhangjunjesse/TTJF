@@ -177,12 +177,14 @@ input::placeholder, textarea::placeholder { color: #928268; opacity: 1; }
 .btn.primary, .btn.reminder-primary, .farm-tool-primary, .icon-button.nav-add {
   border: 1px solid #4b6737;
   color: var(--action-on-primary);
-  background: linear-gradient(#7b9756, #58783e);
+  /* The lightest stop also supports normal-size labels after hover brightening. */
+  background: linear-gradient(var(--action-primary), #415d2c);
   box-shadow: inset 0 1px 0 rgba(218, 235, 166, .65), 0 3px 0 rgba(61, 91, 40, .24);
 }
+.farm-tool-primary:enabled b { background: rgba(0, 0, 0, .16); }
 .btn.outline { border-color: #d5c096; color: #715c39; background: #fffbef; box-shadow: inset 0 1px 0 #fff; }
 .btn.danger { border-color: #ddb29c; color: #9d4635; background: #faeade; box-shadow: inset 0 1px 0 #fff6ed; }
-.btn.danger-primary { border-color: #8d3f30; background: linear-gradient(#bb6851, #a04b39); box-shadow: inset 0 1px 0 #d8947b, 0 3px 0 rgba(126, 51, 35, .2); }
+.btn.danger-primary { border-color: #8d3f30; background: linear-gradient(#a04b39, #8d3f30); box-shadow: inset 0 1px 0 #d8947b, 0 3px 0 rgba(126, 51, 35, .2); }
 .text-button, .icon-button { color: #79603b; }
 .text-button.danger { color: #9d4635; }
 .icon-button.nav-add { border-radius: 14px; }
@@ -497,7 +499,7 @@ input::placeholder, textarea::placeholder { color: #928268; opacity: 1; }
 .farm-game-sheet > .farm-tabs, .farm-game-sheet .farm-plots, .farm-game-sheet > .farm-toolbar { border-color: #9f7b44; background: #d6b47b; box-shadow: inset 0 1px 0 #edcd95, 0 3px 0 #9e7a44; }
 .farm-game-sheet .farm-tab.active { color: #6b7c41; background: linear-gradient(#fffbea, #f8eac7); }
 .farm-game-sheet .farm-tool { border-color: #b8975d; color: #7b5e33; background: linear-gradient(#fffae9, #f2dfb1); }
-.farm-game-sheet .farm-tool-primary { border-color: #5e7a39; color: #fffae8; background: linear-gradient(#95ac61, #718d48); }
+.farm-game-sheet .farm-tool-primary { border-color: #4b6737; color: var(--action-on-primary); background: linear-gradient(var(--action-primary), #415d2c); }
 .farm-game-sheet .farm-camera-button { border-color: #92703c; color: #7f5e2b; background: linear-gradient(#f8e2ac, #d9b574); box-shadow: inset 0 1px 0 #ffedc3, 0 3px 0 #9f7c43; }
 .farm-game-sheet > .farm-focus-panel { border-color: #aa8751; background: linear-gradient(#fff9e8, #f5e9ca); box-shadow: inset 0 1px 0 #fff, 0 4px 0 #a5824b, 0 12px 28px rgba(74, 61, 28, .15); scrollbar-width: thin; scrollbar-color: #c8ae79 transparent; }
 .farm-world-status { border-color: #c3a76e; color: #6e5934; background: rgba(255, 248, 222, .96); }

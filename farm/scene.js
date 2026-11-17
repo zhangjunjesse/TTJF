@@ -63,6 +63,18 @@ export function mount(element, initialOptions = {}) {
     active = controller; raf = requestAnimationFrame(tick);
   }
   function fail(code, cause) { ready = false; error = code + (cause?.message ? ': ' + String(cause.message).slice(0, 180) : ''); stop(); emit(); }
+  function prepareScene() {
+    if (disposed) return;
+    try {
+      // Updates can arrive while models load or WebGL is lost. Reconcile the
+      // latest options before the host is told that this scene is ready again.
+      if (models && !contextLost) {
+        rebuild(); applyLighting(); resize();
+        ready = !contextLost && !error;
+      }
+      emit(); request();
+    } catch (cause) { fail('FARM_SCENE_FAILED', cause); }
+  }
   function screenBounds(box, matrix) {
     if (!viewCamera || !canvas || !box || box.isEmpty()) return null;
     const r = canvas.getBoundingClientRect(), b = box.clone(); if (matrix) b.applyMatrix4(matrix);
@@ -373,7 +385,7 @@ export function mount(element, initialOptions = {}) {
     fillLight = new THREE.DirectionalLight(0xb7d3df, .25); fillLight.position.set(8, 5, -8); scene.add(fillLight);
     element.appendChild(canvas);
     listen(canvas, 'webglcontextlost', event => { event.preventDefault(); contextLost = true; ready = false; error = 'FARM_CONTEXT_LOST'; stop(); emit(); });
-    listen(canvas, 'webglcontextrestored', () => { if (disposed) return; contextLost = false; error = null; ready = !!models; lastFrame = 0; renderer.shadowMap.needsUpdate = true; emit(); resize(); request(); });
+    listen(canvas, 'webglcontextrestored', () => { if (disposed) return; contextLost = false; error = null; lastFrame = 0; renderer.shadowMap.needsUpdate = true; prepareScene(); });
     listen(document, 'visibilitychange', () => { if (document.hidden) stop(); else { lastFrame = 0; resize(); request(); } });
     listen(canvas, 'pointerdown', event => {
       if (!event.isPrimary || (event.button !== undefined && event.button !== 0)) { if (pointer) pointer.cancelled = true; return; }
@@ -408,7 +420,7 @@ export function mount(element, initialOptions = {}) {
     resize(); emit();
     loadModels().then(result => {
       if (disposed) { result.dispose(); return; } models = result;
-      try { rebuild(); ready = !contextLost; error = contextLost ? 'FARM_CONTEXT_LOST' : null; emit(); resize(); request(); } catch (cause) { fail('FARM_SCENE_FAILED', cause); }
+      prepareScene();
     }).catch(cause => { if (!disposed) fail('FARM_ASSET_FAILED', cause); });
   } catch (cause) { canvas?.remove(); renderer?.dispose(); renderer = null; fail('FARM_WEBGL_UNAVAILABLE', cause); }
   return controller;

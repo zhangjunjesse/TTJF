@@ -1,5 +1,7 @@
 # Three.js 全站农场改造验证
 
+以下保留首次提交 `4fc7214` 的验证记录。审查后的四项修复、真实失败复现和最新定向验证见 [PR #3 审查修复验证](threejs-pr3-fixes.md)。
+
 执行日期：2026-11-17。分支 `codex/threejs-farm-world` 已 rebase 到当日再次 fetch 确认的 `origin/main`：`26757f04539ea06c95bcdc73e3b6b8b31ae11abc`。原工作目录中的账号与邮件配置修改未被带入此分支。
 
 ## 环境和证据

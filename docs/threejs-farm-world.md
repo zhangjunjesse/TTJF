@@ -37,9 +37,11 @@
 
 本次精确验证结果与环境限制见 [验证记录](threejs-verification.md)；执行中的日志与恢复记录位于工作树的私有 `data/threejs-refactor/`。
 
+PR 审查修复的打包、WebGL 恢复、按钮对比度和跨盘截图回归见 [后续验证](threejs-pr3-fixes.md)。`test:world:contrast` 和分组的 `test:farm-context:browser` 为可重复入口；打包检查纳入 `test:saas`。
+
 ## 界面预览
 
-以下均为本轮真实 Edge 截图，使用独立合成测试家庭。
+以下均为审查修复后更新的真实 Edge 截图，业务页使用独立合成测试家庭，登录页为临时 SaaS 服务的匿名页面。
 
 ![桌面积分工坊](threejs-preview/points-desktop.png)
 

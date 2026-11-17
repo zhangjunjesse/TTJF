@@ -19,6 +19,8 @@
 !farm-ui.js
 !farm.css
 !farm-scene.js
+!world-ui.js
+!farm-world.css
 !manifest.webmanifest
 !saas/
 !saas/*.cjs

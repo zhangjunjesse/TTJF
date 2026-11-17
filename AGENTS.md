@@ -22,9 +22,11 @@
 
 - `npm test`：领域、旧服务、客户端、家庭日期回归，包含真实 Edge/Chrome 的客户端用例。
 - `npm run test:saas`：真实临时 SQLite 文件、账号/家庭/业务/生命周期/清理及备份恢复。
+- `test/saas-package.test.cjs` 已纳入 `test:saas`：验证 Docker 显式 COPY 和默认拒绝清单包含 HTML 资源，并通过真实 SaaS HTTP 检查临时打包静态根；不等于实际镜像构建。
 - `npm run test:browser`、`npm run test:browser:full`：真实 SaaS 浏览器消费链；需要 Edge/Chrome，可通过 `BROWSER_PATH` 指定。
 - `npm run build:farm`、`npm run test:farm-renderer`：场景源码实质变化时使用；不要把旧 renderer 的检查结果冒充当前 SaaS 验证。
 - `npm run test:world`：场景宿主路由、匿名投影、生命周期与降级回归；已纳入 `npm test`。`npm run test:world:browser` 默认运行 points 组，通过 `WORLD_TEST_CASE` 选择各独立短组，范围见 `docs/threejs-farm-world.md`。组件 renderer 支持 `TEST_CASE_PATTERN` 分组及 `TEST_ARTIFACT_DIR`，未选择项明确报告，不覆盖历史图像。
+- `npm run test:world:contrast`：真实控件渐变、交互状态和禁用状态；`npm run test:farm-context:browser`：真实 WebGL 丢失/恢复，`FARM_CONTEXT_CASE` 分别选 `switching`（默认）、`loading-first`、`restoring-first`、`dispose`。各组独立执行并落盘。
 - `TEST_ARTIFACT_DIR` 可把本轮证据写到独立目录；避免覆盖历史验收。详细范围和本次已知失败基线见 `docs/sqlite-verification.md`。
 - 截至接手检查，远端未配置 GitHub Actions。具体 PR 的检查状态需另外核实，不能把本地通过称作 CI 通过。
 
