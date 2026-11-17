@@ -1,0 +1,1380 @@
+
+> little-steps-family-dashboard@0.14.0 test
+> node --test test/model.test.cjs test/server.test.cjs test/assistant.test.cjs test/pet.test.cjs test/farm-model.test.cjs test/farm-server.test.cjs test/farm-ui.test.cjs test/v14-client.test.cjs test/saas-model.test.cjs test/saas-calendar.test.cjs test/saas-client.test.cjs
+
+TAP version 13
+# Subtest: spoken date and half-hour become a precise editable draft without state changes
+ok 1 - spoken date and half-hour become a precise editable draft without state changes
+  ---
+  duration_ms: 12.4849
+  type: 'test'
+  ...
+# Subtest: evening and future reminders use correct time and event domain
+ok 2 - evening and future reminders use correct time and event domain
+  ---
+  duration_ms: 10.7588
+  type: 'test'
+  ...
+# Subtest: missing or invalid dates and times ask instead of inventing a schedule
+ok 3 - missing or invalid dates and times ask instead of inventing a schedule
+  ---
+  duration_ms: 2.1919
+  type: 'test'
+  ...
+# Subtest: a time-only correction keeps the original reminder day and identity
+ok 4 - a time-only correction keeps the original reminder day and identity
+  ---
+  duration_ms: 2.1086
+  type: 'test'
+  ...
+# Subtest: points drafts keep concrete reasons and reject absent, decimal or negative amounts
+ok 5 - points drafts keep concrete reasons and reject absent, decimal or negative amounts
+  ---
+  duration_ms: 2.9378
+  type: 'test'
+  ...
+# Subtest: gift creation maps an explicit category and price
+ok 6 - gift creation maps an explicit category and price
+  ---
+  duration_ms: 1.0054
+  type: 'test'
+  ...
+# Subtest: queries use real balances and never echo an invented AI answer
+ok 7 - queries use real balances and never echo an invented AI answer
+  ---
+  duration_ms: 1.5265
+  type: 'test'
+  ...
+# Subtest: model cannot return a grant, configure the parent, or perform a final redemption
+ok 8 - model cannot return a grant, configure the parent, or perform a final redemption
+  ---
+  duration_ms: 1.197
+  type: 'test'
+  ...
+# Subtest: pet supplies reduce assistant balance and gift eligibility without exposing care ledgers
+ok 9 - pet supplies reduce assistant balance and gift eligibility without exposing care ledgers
+  ---
+  duration_ms: 52.0493
+  type: 'test'
+  ...
+# Subtest: verification assistance and multiple independent commands are not auto-executed
+ok 10 - verification assistance and multiple independent commands are not auto-executed
+  ---
+  duration_ms: 0.8109
+  type: 'test'
+  ...
+# Subtest: unconfigured AI performs no network request and explicitly labels the local demonstration
+ok 11 - unconfigured AI performs no network request and explicitly labels the local demonstration
+  ---
+  duration_ms: 1.0546
+  type: 'test'
+  ...
+# Subtest: configured adapter submits minimal context, validates a mocked provider response, and never mutates state
+ok 12 - configured adapter submits minimal context, validates a mocked provider response, and never mutates state
+  ---
+  duration_ms: 1.7511
+  type: 'test'
+  ...
+# Subtest: configured provider failure is explicit, keeps input actionable, and does not expose errors or secrets
+ok 13 - configured provider failure is explicit, keeps input actionable, and does not expose errors or secrets
+  ---
+  duration_ms: 0.7075
+  type: 'test'
+  ...
+# Subtest: verification requests never reach a configured cloud provider
+ok 14 - verification requests never reach a configured cloud provider
+  ---
+  duration_ms: 0.3429
+  type: 'test'
+  ...
+# Subtest: provider timeout and oversized output fail without returning an action
+ok 15 - provider timeout and oversized output fail without returning an action
+  ---
+  duration_ms: 40.7495
+  type: 'test'
+  ...
+# Subtest: in-form points context accepts a concrete reason and one amount without changing the ledger
+ok 16 - in-form points context accepts a concrete reason and one amount without changing the ledger
+  ---
+  duration_ms: 2.0152
+  type: 'test'
+  ...
+# Subtest: template management drafts create, change points, rename, disable, re-enable and preserve history
+ok 17 - template management drafts create, change points, rename, disable, re-enable and preserve history
+  ---
+  duration_ms: 28.3953
+  type: 'test'
+  ...
+# Subtest: template management needs an unambiguous target and never turns into an award
+ok 18 - template management needs an unambiguous target and never turns into an award
+  ---
+  duration_ms: 2.5932
+  type: 'test'
+  ...
+# Subtest: normalization enforces input context, selected target and domain checks even on id collision
+ok 19 - normalization enforces input context, selected target and domain checks even on id collision
+  ---
+  duration_ms: 0.9727
+  type: 'test'
+  ...
+# Subtest: configured management sends disabled templates and selected context but excludes photos and unrelated data
+ok 20 - configured management sends disabled templates and selected context but excludes photos and unrelated data
+  ---
+  duration_ms: 1.9425
+  type: 'test'
+  ...
+# Subtest: provider draft cannot cross from template management into a real award
+ok 21 - provider draft cannot cross from template management into a real award
+  ---
+  duration_ms: 0.7613
+  type: 'test'
+  ...
+# Subtest: farm status is a pure ES5 UMD projection and normalization never creates operations
+ok 22 - farm status is a pure ES5 UMD projection and normalization never creates operations
+  ---
+  duration_ms: 43.1652
+  type: 'test'
+  ...
+# Subtest: explicit start grants one tagged mature carrot plot without fictional planting or ownership
+ok 23 - explicit start grants one tagged mature carrot plot without fictional planting or ownership
+  ---
+  duration_ms: 20.9955
+  type: 'test'
+  ...
+# Subtest: maximum public action IDs retain distinct persistent planting batches
+ok 24 - maximum public action IDs retain distinct persistent planting batches
+  ---
+  duration_ms: 3.9774
+  type: 'test'
+  ...
+# Subtest: all farm thresholds use cumulative earnings even after the available balance is spent
+ok 25 - all farm thresholds use cumulative earnings even after the available balance is spent
+  ---
+  duration_ms: 7.4232
+  type: 'test'
+  ...
+# Subtest: planting free seeds respects locks, occupied plots and all three eight-hour recipes
+ok 26 - planting free seeds respects locks, occupied plots and all three eight-hour recipes
+  ---
+  duration_ms: 10.4394
+  type: 'test'
+  ...
+# Subtest: the exact eight-hour boundary and server downtime derive readiness without modifying storage
+ok 27 - the exact eight-hour boundary and server downtime derive readiness without modifying storage
+  ---
+  duration_ms: 5.6097
+  type: 'test'
+  ...
+# Subtest: bulk and selected harvests only consume ready batches once and report the exact varieties
+ok 28 - bulk and selected harvests only consume ready batches once and report the exact varieties
+  ---
+  duration_ms: 4.0501
+  type: 'test'
+  ...
+# Subtest: invalid plot selections and caller-supplied economics fail without partial effects
+ok 29 - invalid plot selections and caller-supplied economics fail without partial effects
+  ---
+  duration_ms: 57.4346
+  type: 'test'
+  ...
+# Subtest: every non-start farm action requires explicit initialization
+ok 30 - every non-start farm action requires explicit initialization
+  ---
+  duration_ms: 11.6104
+  type: 'test'
+  ...
+# Subtest: inventory overflow rejects the entire harvest including the welcome claim
+ok 31 - inventory overflow rejects the entire harvest including the welcome claim
+  ---
+  duration_ms: 1.6991
+  type: 'test'
+  ...
+# Subtest: welcome crops can buy one flowerpot and ownership does not automatically place or re-buy it
+ok 32 - welcome crops can buy one flowerpot and ownership does not automatically place or re-buy it
+  ---
+  duration_ms: 2.5992
+  type: 'test'
+  ...
+# Subtest: exchange checks every crop, ownership and unlock before atomic material deductions
+ok 33 - exchange checks every crop, ownership and unlock before atomic material deductions
+  ---
+  duration_ms: 5.3253
+  type: 'test'
+  ...
+# Subtest: house upgrades require the prior level and consume fixed materials without extra buildings
+ok 34 - house upgrades require the prior level and consume fixed materials without extra buildings
+  ---
+  duration_ms: 3.1789
+  type: 'test'
+  ...
+# Subtest: decorations can be exchanged once and freely swapped or put away only in their own slot
+ok 35 - decorations can be exchanged once and freely swapped or put away only in their own slot
+  ---
+  duration_ms: 9.1683
+  type: 'test'
+  ...
+# Subtest: each animal counts only its first daily interaction; cards and reactions persist without streaks
+ok 36 - each animal counts only its first daily interaction; cards and reactions persist without streaks
+  ---
+  duration_ms: 55.9874
+  type: 'test'
+  ...
+# Subtest: animal projections use the supplied server family day even on a device with another date
+ok 37 - animal projections use the supplied server family day even on a device with another date
+  ---
+  duration_ms: 1.8878
+  type: 'test'
+  ...
+# Subtest: farm mode preserves old care records and exploration including the original daily bonus
+ok 38 - farm mode preserves old care records and exploration including the original daily bonus
+  ---
+  duration_ms: 11.9953
+  type: 'test'
+  ...
+# Subtest: already-earned exploration badges, paid stock and free quota stay unchanged until start
+ok 39 - already-earned exploration badges, paid stock and free quota stay unchanged until start
+  ---
+  duration_ms: 3.7629
+  type: 'test'
+  ...
+# Subtest: farm projections do not leak mutable crop, inventory, cost, ownership or placement references
+ok 40 - farm projections do not leak mutable crop, inventory, cost, ownership or placement references
+  ---
+  duration_ms: 1.051
+  type: 'test'
+  ...
+# Subtest: malformed persisted farms fail closed instead of repairing rewards or erasing old history
+ok 41 - malformed persisted farms fail closed instead of repairing rewards or erasing old history
+  ---
+  duration_ms: 6.1062
+  type: 'test'
+  ...
+# Subtest: snapshots expose one server time sample and only the three farm static entry files
+ok 42 - snapshots expose one server time sample and only the three farm static entry files
+  ---
+  duration_ms: 2487.2234
+  type: 'test'
+  ...
+# Subtest: all six farm actions work publicly without setup and never change the points ledger
+ok 43 - all six farm actions work publicly without setup and never change the points ledger
+  ---
+  duration_ms: 1118.0522
+  type: 'test'
+  ...
+# Subtest: simultaneous starts and welcome harvests commit once and exact retries survive a restart
+ok 44 - simultaneous starts and welcome harvests commit once and exact retries survive a restart
+  ---
+  duration_ms: 801.7162
+  type: 'test'
+  ...
+# Subtest: two different devices cannot harvest the same batch or debit the same materials twice
+ok 45 - two different devices cannot harvest the same batch or debit the same materials twice
+  ---
+  duration_ms: 1043.2468
+  type: 'test'
+  ...
+# Subtest: eight-hour readiness uses server time across downtime and persists planting, placement and care
+ok 46 - eight-hour readiness uses server time across downtime and persists planting, placement and care
+  ---
+  duration_ms: 1014.2043
+  type: 'test'
+  ...
+# Subtest: insufficient, locked and already-owned exchanges fail without any partial crop deduction
+ok 47 - insufficient, locked and already-owned exchanges fail without any partial crop deduction
+  ---
+  duration_ms: 597.7911
+  type: 'test'
+  ...
+# Subtest: different competing exchanges cannot spend one shared crop inventory twice
+ok 48 - different competing exchanges cannot spend one shared crop inventory twice
+  ---
+  duration_ms: 635.5655
+  type: 'test'
+  ...
+# Subtest: house upgrades require level two first and persist exactly one upgraded house
+ok 49 - house upgrades require level two first and persist exactly one upgraded house
+  ---
+  duration_ms: 1192.0764
+  type: 'test'
+  ...
+# Subtest: failed atomic save leaves materials, ownership and receipts untouched for a successful exact retry
+ok 50 - failed atomic save leaves materials, ownership and receipts untouched for a successful exact retry
+  ---
+  duration_ms: 1212.3344
+  type: 'test'
+  ...
+# Subtest: farm prefixes and payload fields cannot bypass the public whitelist or submit rewards and dates
+ok 51 - farm prefixes and payload fields cannot bypass the public whitelist or submit rewards and dates
+  ---
+  duration_ms: 1168.735
+  type: 'test'
+  ...
+# Subtest: animal care deduplicates across devices, natural midnight and repeated visits without streak resets
+ok 52 - animal care deduplicates across devices, natural midnight and repeated visits without streak resets
+  ---
+  duration_ms: 3539.2684
+  type: 'test'
+  ...
+# Subtest: legacy inventories and care survive migration; farm interactions stop new exploration and old purchases
+ok 53 - legacy inventories and care survive migration; farm interactions stop new exploration and old purchases
+  ---
+  duration_ms: 1080.2137
+  type: 'test'
+  ...
+# Subtest: a corrupt persisted farm fails closed and leaves the temporary original file intact
+ok 54 - a corrupt persisted farm fails closed and leaves the temporary original file intact
+  ---
+  duration_ms: 667.9556
+  type: 'test'
+  ...
+# Subtest: complete application and farm UI sources compile before installing VM hooks
+ok 55 - complete application and farm UI sources compile before installing VM hooks
+  ---
+  duration_ms: 6.8488
+  type: 'test'
+  ...
+# Subtest: same-revision older and identical clock samples cannot rewind time or re-anchor elapsed time
+ok 56 - same-revision older and identical clock samples cannot rewind time or re-anchor elapsed time
+  ---
+  duration_ms: 83.0887
+  type: 'test'
+  ...
+# Subtest: lower-revision snapshots cannot replace state, parent settings, clock, or family day
+ok 57 - lower-revision snapshots cannot replace state, parent settings, clock, or family day
+  ---
+  duration_ms: 3.8876
+  type: 'test'
+  ...
+# Subtest: a strictly newer same-revision clock sample advances the family day without a domain write
+ok 58 - a strictly newer same-revision clock sample advances the family day without a domain write
+  ---
+  duration_ms: 3.5717
+  type: 'test'
+  ...
+# Subtest: a higher revision retains authority to replace state and the server clock sample
+ok 59 - a higher revision retains authority to replace state and the server clock sample
+  ---
+  duration_ms: 2.9223
+  type: 'test'
+  ...
+# Subtest: shared farm time follows performance elapsed time rather than changes to the device wall clock
+ok 60 - shared farm time follows performance elapsed time rather than changes to the device wall clock
+  ---
+  duration_ms: 2.0273
+  type: 'test'
+  ...
+# Subtest: local care and animal panels refresh at midnight even without a growing crop
+ok 61 - local care and animal panels refresh at midnight even without a growing crop
+  ---
+  duration_ms: 49.0978
+  type: 'test'
+  ...
+# Subtest: a same-day animal care snapshot refreshes the panel without a crop or clock change
+ok 62 - a same-day animal care snapshot refreshes the panel without a crop or clock change
+  ---
+  duration_ms: 52.9661
+  type: 'test'
+  ...
+# Subtest: a matching harvest receipt reports its own exact crop yield
+ok 63 - a matching harvest receipt reports its own exact crop yield
+  ---
+  duration_ms: 8.7079
+  type: 'test'
+  ...
+# Subtest: reconciling a lost harvest response never reports another device's later crop receipt
+ok 64 - reconciling a lost harvest response never reports another device's later crop receipt
+  ---
+  duration_ms: 9.0779
+  type: 'test'
+  ...
+# Subtest: farm display projections and panel navigation never alter stored domain state
+ok 65 - farm display projections and panel navigation never alter stored domain state
+  ---
+  duration_ms: 5.0428
+  type: 'test'
+  ...
+# Subtest: seed is deterministic, fixed IDs and real ledgers total 128 / 40 / 88
+ok 66 - seed is deterministic, fixed IDs and real ledgers total 128 / 40 / 88
+  ---
+  duration_ms: 8.6064
+  type: 'test'
+  ...
+# Subtest: UMD publishes the same model APIs to a browser window
+ok 67 - UMD publishes the same model APIs to a browser window
+  ---
+  duration_ms: 35.5261
+  type: 'test'
+  ...
+# Subtest: date arithmetic handles leap days, month/year rollover and rejects impossible dates
+ok 68 - date arithmetic handles leap days, month/year rollover and rejects impossible dates
+  ---
+  duration_ms: 2.1259
+  type: 'test'
+  ...
+# Subtest: apply is pure and duplicate action IDs return the original object without effects
+ok 69 - apply is pure and duplicate action IDs return the original object without effects
+  ---
+  duration_ms: 21.3636
+  type: 'test'
+  ...
+# Subtest: task saves honor the three-day window and important events allow any non-past date
+ok 70 - task saves honor the three-day window and important events allow any non-past date
+  ---
+  duration_ms: 2.932
+  type: 'test'
+  ...
+# Subtest: task window follows natural dates across a year boundary
+ok 71 - task window follows natural dates across a year boundary
+  ---
+  duration_ms: 1.1038
+  type: 'test'
+  ...
+# Subtest: past tasks may keep their original date during edits, without moving to a new past date
+ok 72 - past tasks may keep their original date during edits, without moving to a new past date
+  ---
+  duration_ms: 5.4933
+  type: 'test'
+  ...
+# Subtest: toggle, soft delete and restore retain history and never award points
+ok 73 - toggle, soft delete and restore retain history and never award points
+  ---
+  duration_ms: 8.3849
+  type: 'test'
+  ...
+# Subtest: invalid task fields, unknown IDs and attempts to rewrite history are rejected or ignored
+ok 74 - invalid task fields, unknown IDs and attempts to rewrite history are rejected or ignored
+  ---
+  duration_ms: 15.4581
+  type: 'test'
+  ...
+# Subtest: points require positive integers and a reason, and support a custom behavior
+ok 75 - points require positive integers and a reason, and support a custom behavior
+  ---
+  duration_ms: 6.5342
+  type: 'test'
+  ...
+# Subtest: points only allow backdating within the current natural day
+ok 76 - points only allow backdating within the current natural day
+  ---
+  duration_ms: 2.6702
+  type: 'test'
+  ...
+# Subtest: point-item changes leave historical names and points intact; disabled items cannot be used
+ok 77 - point-item changes leave historical names and points intact; disabled items cannot be used
+  ---
+  duration_ms: 33.5309
+  type: 'test'
+  ...
+# Subtest: availability combines weekend and month-end categories while daily is always open
+ok 78 - availability combines weekend and month-end categories while daily is always open
+  ---
+  duration_ms: 2.1191
+  type: 'test'
+  ...
+# Subtest: month-end length handles February and leap years
+ok 79 - month-end length handles February and leap years
+  ---
+  duration_ms: 1.0904
+  type: 'test'
+  ...
+# Subtest: redemption snapshots cost and name, never decreases earned, and rejects insufficient balance
+ok 80 - redemption snapshots cost and name, never decreases earned, and rejects insufficient balance
+  ---
+  duration_ms: 16.6452
+  type: 'test'
+  ...
+# Subtest: exact balance may be spent down to zero; retries and repeated redemptions cannot overdraft
+ok 81 - exact balance may be spent down to zero; retries and repeated redemptions cannot overdraft
+  ---
+  duration_ms: 6.8791
+  type: 'test'
+  ...
+# Subtest: settings and catalog changes validate values, preserve history and support new entries
+ok 82 - settings and catalog changes validate values, preserve history and support new entries
+  ---
+  duration_ms: 4.9369
+  type: 'test'
+  ...
+# Subtest: missing historical timestamps and non-string optional IDs are rejected
+ok 83 - missing historical timestamps and non-string optional IDs are rejected
+  ---
+  duration_ms: 2.3892
+  type: 'test'
+  ...
+# Subtest: malformed state, arithmetic overflow and malformed actions fail before mutating input
+ok 84 - malformed state, arithmetic overflow and malformed actions fail before mutating input
+  ---
+  duration_ms: 1.8197
+  type: 'test'
+  ...
+# Subtest: legacy v1 state normalizes new request and reminder fields without changing ledgers or input
+ok 85 - legacy v1 state normalizes new request and reminder fields without changing ledgers or input
+  ---
+  duration_ms: 1.9094
+  type: 'test'
+  ...
+# Subtest: redemption requests keep exactly one pending request and never debit the ledger
+ok 86 - redemption requests keep exactly one pending request and never debit the ledger
+  ---
+  duration_ms: 2.2561
+  type: 'test'
+  ...
+# Subtest: cancelled and already approved requests cannot be approved again
+ok 87 - cancelled and already approved requests cannot be approved again
+  ---
+  duration_ms: 5.6005
+  type: 'test'
+  ...
+# Subtest: approval requires explicit current price and preserves the original request snapshot
+ok 88 - approval requires explicit current price and preserves the original request snapshot
+  ---
+  duration_ms: 3.0917
+  type: 'test'
+  ...
+# Subtest: approval rechecks enabled status, category dates and the live balance
+ok 89 - approval rechecks enabled status, category dates and the live balance
+  ---
+  duration_ms: 5.9032
+  type: 'test'
+  ...
+# Subtest: month-end approvals have no added monthly quota and keep cumulative earnings unchanged
+ok 90 - month-end approvals have no added monthly quota and keep cumulative earnings unchanged
+  ---
+  duration_ms: 2.8196
+  type: 'test'
+  ...
+# Subtest: acknowledge and ten-minute snooze preserve the task and never change points
+ok 91 - acknowledge and ten-minute snooze preserve the task and never change points
+  ---
+  duration_ms: 3.3013
+  type: 'test'
+  ...
+# Subtest: rescheduling resets reminder fields while title and note edits preserve acknowledgement
+ok 92 - rescheduling resets reminder fields while title and note edits preserve acknowledgement
+  ---
+  duration_ms: 3.4059
+  type: 'test'
+  ...
+# Subtest: reminder actions reject non-ten-minute delays and completed or deleted tasks
+ok 93 - reminder actions reject non-ten-minute delays and completed or deleted tasks
+  ---
+  duration_ms: 5.9577
+  type: 'test'
+  ...
+# Subtest: stored reason presets do not invent an explicit reason for a new credit
+ok 94 - stored reason presets do not invent an explicit reason for a new credit
+  ---
+  duration_ms: 2.0153
+  type: 'test'
+  ...
+# Subtest: invalid request states and invalid reminder timestamps fail closed
+ok 95 - invalid request states and invalid reminder timestamps fail closed
+  ---
+  duration_ms: 1.6062
+  type: 'test'
+  ...
+# Subtest: growth derives all five thresholds and later stars from cumulative earned points
+ok 96 - growth derives all five thresholds and later stars from cumulative earned points
+  ---
+  duration_ms: 57.6691
+  type: 'test'
+  ...
+# Subtest: growth stays finite and within safe integers at the ledger maximum
+ok 97 - growth stays finite and within safe integers at the ledger maximum
+  ---
+  duration_ms: 1.0302
+  type: 'test'
+  ...
+# Subtest: redemption, completion, appearance and claimed interaction values cannot change growth
+ok 98 - redemption, completion, appearance and claimed interaction values cannot change growth
+  ---
+  duration_ms: 16.0774
+  type: 'test'
+  ...
+# Subtest: profile updates change only child fields, preserve avatar on rename and allow removal
+ok 99 - profile updates change only child fields, preserve avatar on rename and allow removal
+  ---
+  duration_ms: 5.0792
+  type: 'test'
+  ...
+# Subtest: profile validation accepts JPEG PNG and WebP raster data URLs and preserves them through normalize
+ok 100 - profile validation accepts JPEG PNG and WebP raster data URLs and preserves them through normalize
+  ---
+  duration_ms: 4.2301
+  type: 'test'
+  ...
+# Subtest: profile validation rejects active formats, remote URLs, mismatched markers, bad base64 and oversize data
+ok 101 - profile validation rejects active formats, remote URLs, mismatched markers, bad base64 and oversize data
+  ---
+  duration_ms: 14.9015
+  type: 'test'
+  ...
+# Subtest: pet configuration validates kind and nickname while normalization preserves saved choices
+ok 102 - pet configuration validates kind and nickname while normalization preserves saved choices
+  ---
+  duration_ms: 9.9422
+  type: 'test'
+  ...
+# Subtest: frequent items rank by committed entry count rather than point value or recency first
+ok 103 - frequent items rank by committed entry count rather than point value or recency first
+  ---
+  duration_ms: 0.9931
+  type: 'test'
+  ...
+# Subtest: equal counts use the latest timestamp across the ledger, then original configuration order
+ok 104 - equal counts use the latest timestamp across the ledger, then original configuration order
+  ---
+  duration_ms: 0.6682
+  type: 'test'
+  ...
+# Subtest: no history preserves configuration order for zero, one and many enabled items
+ok 105 - no history preserves configuration order for zero, one and many enabled items
+  ---
+  duration_ms: 2.4861
+  type: 'test'
+  ...
+# Subtest: frequency belongs to itemId and excludes custom names, missing IDs and removed templates
+ok 106 - frequency belongs to itemId and excludes custom names, missing IDs and removed templates
+  ---
+  duration_ms: 0.3804
+  type: 'test'
+  ...
+# Subtest: renaming keeps the same historical usage and disabling excludes it without changing history
+ok 107 - renaming keeps the same historical usage and disabling excludes it without changing history
+  ---
+  duration_ms: 1.6397
+  type: 'test'
+  ...
+# Subtest: the rolling 30-day window includes both exact endpoints and excludes one millisecond outside
+ok 108 - the rolling 30-day window includes both exact endpoints and excludes one millisecond outside
+  ---
+  duration_ms: 0.7946
+  type: 'test'
+  ...
+# Subtest: discarded previews and invalid drafts do not count, and an idempotent successful credit counts once
+ok 109 - discarded previews and invalid drafts do not count, and an idempotent successful credit counts once
+  ---
+  duration_ms: 111.3783
+  type: 'test'
+  ...
+# Subtest: ranking is read-only and recomputes the supplied window without mutable counters or cache
+ok 110 - ranking is read-only and recomputes the supplied window without mutable counters or cache
+  ---
+  duration_ms: 2.0125
+  type: 'test'
+  ...
+# Subtest: legacy pet fields normalize without fictitious care or growth and expose an isolated catalog
+ok 111 - legacy pet fields normalize without fictitious care or growth and expose an isolated catalog
+  ---
+  duration_ms: 1.4397
+  type: 'test'
+  ...
+# Subtest: three distinct free cares unlock the first scene once and restore quota only on a new family day
+ok 112 - three distinct free cares unlock the first scene once and restore quota only on a new family day
+  ---
+  duration_ms: 6
+  type: 'test'
+  ...
+# Subtest: purchases spend the fixed total price, share the gift balance and never buy growth or exploration
+ok 113 - purchases spend the fixed total price, share the gift balance and never buy growth or exploration
+  ---
+  duration_ms: 7.5019
+  type: 'test'
+  ...
+# Subtest: historical purchase prices remain readable while new buys require the current fixed price
+ok 114 - historical purchase prices remain readable while new buys require the current fixed price
+  ---
+  duration_ms: 1.6608
+  type: 'test'
+  ...
+# Subtest: pending gifts reserve no balance and both kinds of spending recheck the same remaining points
+ok 115 - pending gifts reserve no balance and both kinds of spending recheck the same remaining points
+  ---
+  duration_ms: 6.0386
+  type: 'test'
+  ...
+# Subtest: care consumes only its explicit source and repeated kinds cannot repeat a daily bonus
+ok 116 - care consumes only its explicit source and repeated kinds cannot repeat a daily bonus
+  ---
+  duration_ms: 7.9328
+  type: 'test'
+  ...
+# Subtest: exploration deterministically unlocks all six scenes and keeps them across dates and pet changes
+ok 117 - exploration deterministically unlocks all six scenes and keeps them across dates and pet changes
+  ---
+  duration_ms: 191.0708
+  type: 'test'
+  ...
+# Subtest: resource actions reject client dates, counters, unknown sources and extra purchase fields
+ok 118 - resource actions reject client dates, counters, unknown sources and extra purchase fields
+  ---
+  duration_ms: 5.4773
+  type: 'test'
+  ...
+# Subtest: malformed persisted care, inventory, spending and locked scenes fail without normalization repairs
+ok 119 - malformed persisted care, inventory, spending and locked scenes fail without normalization repairs
+  ---
+  duration_ms: 3.2178
+  type: 'test'
+  ...
+# Subtest: one custom credit atomically creates a deterministic template without overwriting an equal name
+ok 120 - one custom credit atomically creates a deterministic template without overwriting an equal name
+  ---
+  duration_ms: 1.0514
+  type: 'test'
+  ...
+# Subtest: invalid or colliding atomic-template credits leave neither a template nor a ledger entry
+ok 121 - invalid or colliding atomic-template credits leave neither a template nor a ledger entry
+  ---
+  duration_ms: 2.7871
+  type: 'test'
+  ...
+# Subtest: UMD and item API work without DOM, timers or mutable module state
+ok 122 - UMD and item API work without DOM, timers or mutable module state
+  ---
+  duration_ms: 45.9804
+  type: 'test'
+  ...
+# Subtest: renderer retains the ES5 syntax/API fence
+ok 123 - renderer retains the ES5 syntax/API fence
+  ---
+  duration_ms: 0.9114
+  type: 'test'
+  ...
+# Subtest: all 1960 framing/kind/stage/scene/reaction/motion combinations are complete local SVGs
+ok 124 - all 1960 framing/kind/stage/scene/reaction/motion combinations are complete local SVGs
+  ---
+  duration_ms: 1770.2348
+  type: 'test'
+  ...
+# Subtest: stages, scenes and reactions change geometry beyond metadata and gradient IDs
+ok 125 - stages, scenes and reactions change geometry beyond metadata and gradient IDs
+  ---
+  duration_ms: 24.8368
+  type: 'test'
+  ...
+# Subtest: untrusted names and option strings cannot introduce markup or resource URLs
+ok 126 - untrusted names and option strings cannot introduce markup or resource URLs
+  ---
+  duration_ms: 1.0009
+  type: 'test'
+  ...
+# Subtest: option defaults and legacy reactions preserve the public rendering contract
+ok 127 - option defaults and legacy reactions preserve the public rendering contract
+  ---
+  duration_ms: 3.6994
+  type: 'test'
+  ...
+# Subtest: optional instance IDs provide deterministic, separate local paint namespaces
+ok 128 - optional instance IDs provide deterministic, separate local paint namespaces
+  ---
+  duration_ms: 1.4818
+  type: 'test'
+  ...
+# Subtest: measured bodies exclude equipment, egg fragments, terrain and reaction props
+ok 129 - measured bodies exclude equipment, egg fragments, terrain and reaction props
+  ---
+  duration_ms: 22.8507
+  type: 'test'
+  ...
+# Subtest: reduced motion retains the contact art and stops bodies, visors and all effect descendants
+ok 130 - reduced motion retains the contact art and stops bodies, visors and all effect descendants
+  ---
+  duration_ms: 4.3873
+  type: 'test'
+  ...
+# Subtest: inventory icons share safe local art for all three real items
+ok 131 - inventory icons share safe local art for all three real items
+  ---
+  duration_ms: 1.3966
+  type: 'test'
+  ...
+# Subtest: CSS remains namespaced and has no imports, URLs or expensive filter effects
+ok 132 - CSS remains namespaced and has no imports, URLs or expensive filter effects
+  ---
+  duration_ms: 0.6436
+  type: 'test'
+  ...
+# Shanghai business calendar verified on Asia/Shanghai
+# Shanghai business calendar verified on America/Los_Angeles
+# Shanghai business calendar verified on UTC
+# Shanghai business calendar verified on Pacific/Apia
+# Subtest: family calendar, UI preflight and elapsed-time rules on Asia/Shanghai
+ok 133 - family calendar, UI preflight and elapsed-time rules on Asia/Shanghai
+  ---
+  duration_ms: 1538.5718
+  type: 'test'
+  ...
+# Subtest: family calendar, UI preflight and elapsed-time rules on America/Los_Angeles
+ok 134 - family calendar, UI preflight and elapsed-time rules on America/Los_Angeles
+  ---
+  duration_ms: 1019.236
+  type: 'test'
+  ...
+# Subtest: family calendar, UI preflight and elapsed-time rules on UTC
+ok 135 - family calendar, UI preflight and elapsed-time rules on UTC
+  ---
+  duration_ms: 795.593
+  type: 'test'
+  ...
+# Subtest: family calendar, UI preflight and elapsed-time rules on Pacific/Apia
+ok 136 - family calendar, UI preflight and elapsed-time rules on Pacific/Apia
+  ---
+  duration_ms: 1071.1498
+  type: 'test'
+  ...
+# Subtest: v13 auth-first bootstrap never reads origin business caches or creates a seed, even when storage throws
+ok 137 - v13 auth-first bootstrap never reads origin business caches or creates a seed, even when storage throws
+  ---
+  duration_ms: 64.3702
+  type: 'test'
+  ...
+# Subtest: v13 registration waits for email, unverified login cannot load or create a family, fragments require explicit POST
+ok 138 - v13 registration waits for email, unverified login cannot load or create a family, fragments require explicit POST
+  ---
+  duration_ms: 14.6408
+  type: 'test'
+  ...
+# Subtest: v13 empty-account create retries use one requestId and never initialize local data
+ok 139 - v13 empty-account create retries use one requestId and never initialize local data
+  ---
+  duration_ms: 2.6107
+  type: 'test'
+  ...
+# Subtest: v13 every business request has scope headers and all late success, conflict, 401 and timeout effects are ignored
+ok 140 - v13 every business request has scope headers and all late success, conflict, 401 and timeout effects are ignored
+  ---
+  duration_ms: 228.8524
+  type: 'test'
+  ...
+# Subtest: v13 actual action conflict and old state response cannot mutate new family revision, locks or feedback
+ok 141 - v13 actual action conflict and old state response cannot mutate new family revision, locks or feedback
+  ---
+  duration_ms: 24.7667
+  type: 'test'
+  ...
+# Subtest: v13 current auth/membership failures erase state and foreign envelopes never reach app callbacks
+ok 142 - v13 current auth/membership failures erase state and foreign envelopes never reach app callbacks
+  ---
+  duration_ms: 113.1269
+  type: 'test'
+  ...
+# Subtest: v13 late assistant/avatar and wake-lock results cannot affect another family, and resources are stopped
+ok 143 - v13 late assistant/avatar and wake-lock results cannot affect another family, and resources are stopped
+  ---
+  duration_ms: 39.9349
+  type: 'test'
+  ...
+# Subtest: v13 visibility/pageshow and cross-tab changes hide content before session recheck; farm and inherited interval stay gated
+ok 144 - v13 visibility/pageshow and cross-tab changes hide content before session recheck; farm and inherited interval stay gated
+  ---
+  duration_ms: 11.6356
+  type: 'test'
+  ...
+# Subtest: v13 logout clears immediately, emits only opaque cross-tab signal and ignores old response
+ok 145 - v13 logout clears immediately, emits only opaque cross-tab signal and ignores old response
+  ---
+  duration_ms: 9.9661
+  type: 'test'
+  ...
+# Subtest: v13 runtime flag is explicit and legacy bootstrap still accepts its local cache without account module
+ok 146 - v13 runtime flag is explicit and legacy bootstrap still accepts its local cache without account module
+  ---
+  duration_ms: 35.278
+  type: 'test'
+  ...
+# Subtest: v14 same-session recovery restores ordinary drafts only after fresh state and preserves conflict confirmation
+ok 147 - v14 same-session recovery restores ordinary drafts only after fresh state and preserves conflict confirmation
+  ---
+  duration_ms: 21.0546
+  type: 'test'
+  ...
+# Subtest: v14 focus alone leaves input DOM intact and a same-scope cross-tab notification restores drafts
+ok 148 - v14 focus alone leaves input DOM intact and a same-scope cross-tab notification restores drafts
+  ---
+  duration_ms: 42.5331
+  type: 'test'
+  ...
+# Subtest: v14 a changed session, user, family membership, or role discards the sealed draft
+ok 149 - v14 a changed session, user, family membership, or role discards the sealed draft
+  ---
+  duration_ms: 101.4458
+  type: 'test'
+  ...
+# Subtest: v14 original photo input receives hidden picker results but cannot cross a session boundary
+ok 150 - v14 original photo input receives hidden picker results but cannot cross a session boundary
+  ---
+  duration_ms: 37.7553
+  type: 'test'
+  ...
+# Subtest: v14 removed targets return safely while disabled maintenance drafts remain editable
+ok 151 - v14 removed targets return safely while disabled maintenance drafts remain editable
+  ---
+  duration_ms: 78.7088
+  type: 'test'
+  ...
+# Subtest: v14 family lifecycle forms send canonical writes with CSRF and refresh session authority
+ok 152 - v14 family lifecycle forms send canonical writes with CSRF and refresh session authority
+  ---
+  duration_ms: 47.5547
+  type: 'test'
+  ...
+# Subtest: v14 SaaS calendar, reminders, points timestamps and midnight follow Shanghai calibrated time
+ok 153 - v14 SaaS calendar, reminders, points timestamps and midnight follow Shanghai calibrated time
+  ---
+  duration_ms: 10.698
+  type: 'test'
+  ...
+# Subtest: v14 only the nonprivate device sound boolean persists across refresh and logout stops playback
+ok 154 - v14 only the nonprivate device sound boolean persists across refresh and logout stops playback
+  ---
+  duration_ms: 38.8398
+  type: 'test'
+  ...
+# Subtest: v14 logout-start keeps other tabs and reloads masked until matching settled, with no duplicate signal effects
+ok 155 - v14 logout-start keeps other tabs and reloads masked until matching settled, with no duplicate signal effects
+  ---
+  duration_ms: 82.5185
+  type: 'test'
+  ...
+# Subtest: v14 failed or unknown logout remains locked and explicit retries fetch CSRF without restoring a family
+ok 156 - v14 failed or unknown logout remains locked and explicit retries fetch CSRF without restoring a family
+  ---
+  duration_ms: 45.0147
+  type: 'test'
+  ...
+# Subtest: v14 simultaneous logout converges on one live request and stale notifications cannot unlock it
+ok 157 - v14 simultaneous logout converges on one live request and stale notifications cannot unlock it
+  ---
+  duration_ms: 12.6878
+  type: 'test'
+  ...
+# Subtest: v14 BroadcastChannel logout lock still works when localStorage is blocked
+ok 158 - v14 BroadcastChannel logout lock still works when localStorage is blocked
+  ---
+  duration_ms: 14.4302
+  type: 'test'
+  ...
+# Subtest: SaaS new family contains only its supplied child and no fictitious activity
+ok 159 - SaaS new family contains only its supplied child and no fictitious activity
+  ---
+  duration_ms: 7.6642
+  type: 'test'
+  ...
+# Subtest: new family inputs cannot inject prior points or skip required identity
+ok 160 - new family inputs cannot inject prior points or skip required identity
+  ---
+  duration_ms: 0.6014
+  type: 'test'
+  ...
+# Subtest: independent new families start with their own once-only welcome farm
+ok 161 - independent new families start with their own once-only welcome farm
+  ---
+  duration_ms: 90.9899
+  type: 'test'
+  ...
+# Subtest: initial state and metadata expose only public fields, while one private envelope persists hashes
+ok 162 - initial state and metadata expose only public fields, while one private envelope persists hashes
+  ---
+  duration_ms: 1384.5361
+  type: 'test'
+  ...
+# Subtest: every non-public action fails without a real grant and cannot change the file
+ok 163 - every non-public action fails without a real grant and cannot change the file
+  ---
+  duration_ms: 895.5742
+  type: 'test'
+  ...
+# Subtest: the eight public actions work before parent setup without a grant and never award or spend points
+ok 164 - the eight public actions work before parent setup without a grant and never award or spend points
+  ---
+  duration_ms: 1382.2123
+  type: 'test'
+  ...
+# Subtest: verified actions increment revision durably and are visible to another reader
+ok 165 - verified actions increment revision durably and are visible to another reader
+  ---
+  duration_ms: 889.5771
+  type: 'test'
+  ...
+# Subtest: lost-response retries accept only the identical complete action, independent of key order or stale revision
+ok 166 - lost-response retries accept only the identical complete action, independent of key order or stale revision
+  ---
+  duration_ms: 781.0199
+  type: 'test'
+  ...
+# Subtest: a grant is bound to the full action including id, amount, reason, optional fields and revision
+ok 167 - a grant is bound to the full action including id, amount, reason, optional fields and revision
+  ---
+  duration_ms: 825.0158
+  type: 'test'
+  ...
+# Subtest: a successful verification cannot be replayed and its grant cannot authorize a second action
+ok 168 - a successful verification cannot be replayed and its grant cannot authorize a second action
+  ---
+  duration_ms: 1030.0145
+  type: 'test'
+  ...
+# Subtest: expired challenges and grants fail without writing, using the injectable clock
+ok 169 - expired challenges and grants fail without writing, using the injectable clock
+  ---
+  duration_ms: 1004.8523
+  type: 'test'
+  ...
+# Subtest: wrong-answer limits survive fresh challenges and forged forwarding headers
+ok 170 - wrong-answer limits survive fresh challenges and forged forwarding headers
+  ---
+  duration_ms: 1390.3595
+  type: 'test'
+  ...
+# Subtest: challenge creation is bounded even before verification
+ok 171 - challenge creation is bounded even before verification
+  ---
+  duration_ms: 764.5135
+  type: 'test'
+  ...
+# Subtest: parent configuration changes require the old method and persist no plaintext PIN or fast PIN receipt
+ok 172 - parent configuration changes require the old method and persist no plaintext PIN or fast PIN receipt
+  ---
+  duration_ms: 3147.7347
+  type: 'test'
+  ...
+# Subtest: math challenges use the saved method, reveal no answer and can authorize a method change only once
+ok 173 - math challenges use the saved method, reveal no answer and can authorize a method change only once
+  ---
+  duration_ms: 1281.3205
+  type: 'test'
+  ...
+# Subtest: stale challenges and grants require a fresh confirmation after another device writes
+ok 174 - stale challenges and grants require a fresh confirmation after another device writes
+  ---
+  duration_ms: 1136.6185
+  type: 'test'
+  ...
+# Subtest: simultaneous authorized redemptions cannot overspend or reuse the losing grant at a new revision
+ok 175 - simultaneous authorized redemptions cannot overspend or reuse the losing grant at a new revision
+  ---
+  duration_ms: 1145.3385
+  type: 'test'
+  ...
+# Subtest: the real request-to-approval API writes one redemption under concurrent parent confirmations
+ok 176 - the real request-to-approval API writes one redemption under concurrent parent confirmations
+  ---
+  duration_ms: 1122.2051
+  type: 'test'
+  ...
+# Subtest: restart retains exact-payload idempotency but never revives ephemeral grants
+ok 177 - restart retains exact-payload idempotency but never revives ephemeral grants
+  ---
+  duration_ms: 885.955
+  type: 'test'
+  ...
+# Subtest: old v1 files migrate without reseeding and unprovable legacy action IDs cannot be reused
+ok 178 - old v1 files migrate without reseeding and unprovable legacy action IDs cannot be reused
+  ---
+  duration_ms: 900.1313
+  type: 'test'
+  ...
+# Subtest: write failure keeps the old ledger, credential and grant so the exact action can retry atomically
+ok 179 - write failure keeps the old ledger, credential and grant so the exact action can retry atomically
+  ---
+  duration_ms: 1490.5444
+  type: 'test'
+  ...
+# Subtest: invalid sensitive drafts are rejected before challenge issuance without changing disk
+ok 180 - invalid sensitive drafts are rejected before challenge issuance without changing disk
+  ---
+  duration_ms: 507.7053
+  type: 'test'
+  ...
+# Subtest: corrupt state, credentials and receipts fail closed and preserve the original file
+ok 181 - corrupt state, credentials and receipts fail closed and preserve the original file
+  ---
+  duration_ms: 953.089
+  type: 'test'
+  ...
+# Subtest: same-origin enforcement covers action, challenge, verify and assistant, including CORS preflight
+ok 182 - same-origin enforcement covers action, challenge, verify and assistant, including CORS preflight
+  ---
+  duration_ms: 722.1113
+  type: 'test'
+  ...
+# Subtest: explicit publicOrigin supports a trusted HTTPS reverse proxy origin
+ok 183 - explicit publicOrigin supports a trusted HTTPS reverse proxy origin
+  ---
+  duration_ms: 668.1406
+  type: 'test'
+  ...
+# Subtest: all POST JSON bodies preserve syntax, content-type and streaming-size bounds
+ok 184 - all POST JSON bodies preserve syntax, content-type and streaming-size bounds
+  ---
+  duration_ms: 397.965
+  type: 'test'
+  ...
+# Subtest: static allowlist includes assistant and pet assets and denies private files and traversal
+ok 185 - static allowlist includes assistant and pet assets and denies private files and traversal
+  ---
+  duration_ms: 1828.8105
+  type: 'test'
+  ...
+# Subtest: assistant gets only a copied public state and can neither write a ledger nor create a grant
+ok 186 - assistant gets only a copied public state and can neither write a ledger nor create a grant
+  ---
+  duration_ms: 926.8815
+  type: 'test'
+  ...
+# Subtest: assistant failures disclose no provider credentials and leave the manual path usable
+ok 187 - assistant failures disclose no provider credentials and leave the manual path usable
+  ---
+  duration_ms: 966.6028
+  type: 'test'
+  ...
+# Subtest: assistant input and per-address minute budget are enforced without consulting the service
+ok 188 - assistant input and per-address minute budget are enforced without consulting the service
+  ---
+  duration_ms: 675.5649
+  type: 'test'
+  ...
+# Subtest: assistant has a family-wide concurrency ceiling of two and frees slots after completion
+ok 189 - assistant has a family-wide concurrency ceiling of two and frees slots after completion
+  ---
+  duration_ms: 886.758
+  type: 'test'
+  ...
+# Subtest: redemption conditions are rechecked at commit if the date changes after parent verification
+ok 190 - redemption conditions are rechecked at commit if the date changes after parent verification
+  ---
+  duration_ms: 617.4995
+  type: 'test'
+  ...
+# Subtest: a failed points commit does not consume its grant and a successful retry awards exactly once
+ok 191 - a failed points commit does not consume its grant and a successful retry awards exactly once
+  ---
+  duration_ms: 1369.1663
+  type: 'test'
+  ...
+# Subtest: a fresh family stays explicitly unconfigured without generating or logging a bootstrap PIN
+ok 192 - a fresh family stays explicitly unconfigured without generating or logging a bootstrap PIN
+  ---
+  duration_ms: 487.5708
+  type: 'test'
+  ...
+# Subtest: v3 migration adds only profile defaults while preserving the real name, requests, ledger, PIN and receipts
+ok 193 - v3 migration adds only profile defaults while preserving the real name, requests, ledger, PIN and receipts
+  ---
+  duration_ms: 1139.0392
+  type: 'test'
+  ...
+# Subtest: profile photos require a payload-bound parent grant and survive restart until explicitly removed
+ok 194 - profile photos require a payload-bound parent grant and survive restart until explicitly removed
+  ---
+  duration_ms: 748.162
+  type: 'test'
+  ...
+# Subtest: public pet configuration cannot alter a ledger, child profile, growth or verification settings
+ok 195 - public pet configuration cannot alter a ledger, child profile, growth or verification settings
+  ---
+  duration_ms: 564.9999
+  type: 'test'
+  ...
+# Subtest: the 256 KiB default accepts a large valid PNG avatar but still rejects oversized photos and requests
+ok 196 - the 256 KiB default accepts a large valid PNG avatar but still rejects oversized photos and requests
+  ---
+  duration_ms: 644.5304
+  type: 'test'
+  ...
+# Subtest: avatar validation rejects unsafe formats or invalid markers before issuing a parent challenge
+ok 197 - avatar validation rejects unsafe formats or invalid markers before issuing a parent challenge
+  ---
+  duration_ms: 376.8195
+  type: 'test'
+  ...
+# Subtest: assistant context and target are validated and forwarded without the saved photo or private state
+ok 198 - assistant context and target are validated and forwarded without the saved photo or private state
+  ---
+  duration_ms: 564.3917
+  type: 'test'
+  ...
+# Subtest: v5 migration adds empty pet ledgers without changing the profile, PIN, receipts or original history
+ok 199 - v5 migration adds empty pet ledgers without changing the profile, PIN, receipts or original history
+  ---
+  duration_ms: 628.3418
+  type: 'test'
+  ...
+# Subtest: pet purchases are parent-protected, bind the whole price and survive restart and exact retries
+ok 200 - pet purchases are parent-protected, bind the whole price and survive restart and exact retries
+  ---
+  duration_ms: 723.1003
+  type: 'test'
+  ...
+# Subtest: two devices cannot double-use the last free care and only the server family day restores it
+ok 201 - two devices cannot double-use the last free care and only the server family day restores it
+  ---
+  duration_ms: 562.899
+  type: 'test'
+  ...
+# Subtest: competing inventory uses cannot overspend or silently switch to the still-available free quota
+ok 202 - competing inventory uses cannot overspend or silently switch to the still-available free quota
+  ---
+  duration_ms: 602.1858
+  type: 'test'
+  ...
+# Subtest: simultaneous protected purchases share the exact gift balance and reject a fresh overdraft
+ok 203 - simultaneous protected purchases share the exact gift balance and reject a fresh overdraft
+  ---
+  duration_ms: 734.2891
+  type: 'test'
+  ...
+# Subtest: buying inventory invalidates a pending gift grant and fresh approval rechecks the shared balance
+ok 204 - buying inventory invalidates a pending gift grant and fresh approval rechecks the shared balance
+  ---
+  duration_ms: 502.9537
+  type: 'test'
+  ...
+# Subtest: invalid purchase prices, quantities, locked scenes and missing sources reject before writing
+ok 205 - invalid purchase prices, quantities, locked scenes and missing sources reject before writing
+  ---
+  duration_ms: 434.7294
+  type: 'test'
+  ...
+# Subtest: one parent authorization creates the custom credit and template atomically even under concurrent retries
+ok 206 - one parent authorization creates the custom credit and template atomically even under concurrent retries
+  ---
+  duration_ms: 761.6682
+  type: 'test'
+  ...
+# Subtest: a failed atomic-template file commit retains both old collections and its grant for one successful retry
+ok 207 - a failed atomic-template file commit retains both old collections and its grant for one successful retry
+  ---
+  duration_ms: 546.7108
+  type: 'test'
+  ...
+# Subtest: a stale template grant cannot leave a half-template after another device performs care
+ok 208 - a stale template grant cannot leave a half-template after another device performs care
+  ---
+  duration_ms: 675.3864
+  type: 'test'
+  ...
+# Subtest: v8 unconfigured sensitive writes and challenges require setup without accepting caller authority
+ok 209 - v8 unconfigured sensitive writes and challenges require setup without accepting caller authority
+  ---
+  duration_ms: 436.438
+  type: 'test'
+  ...
+# Subtest: v8 first PIN setup writes only configuration and a salted receipt, then ordinary authorization works after restart
+ok 210 - v8 first PIN setup writes only configuration and a salted receipt, then ordinary authorization works after restart
+  ---
+  duration_ms: 981.8331
+  type: 'test'
+  ...
+# Subtest: v8 invalid first setup drafts never write credentials, action IDs or receipts
+ok 211 - v8 invalid first setup drafts never write credentials, action IDs or receipts
+  ---
+  duration_ms: 508.4719
+  type: 'test'
+  ...
+# Subtest: v8 two different first setups race atomically and configured state cannot be overwritten by setup
+ok 212 - v8 two different first setups race atomically and configured state cannot be overwritten by setup
+  ---
+  duration_ms: 834.6275
+  type: 'test'
+  ...
+# Subtest: v8 concurrent identical setup retries commit once and reject changed PIN or confirmation under the same ID
+ok 213 - v8 concurrent identical setup retries commit once and reject changed PIN or confirmation under the same ID
+  ---
+  duration_ms: 788.3067
+  type: 'test'
+  ...
+# Subtest: v8 public progress can stale setup without closing it and the retry preserves that progress
+ok 214 - v8 public progress can stale setup without closing it and the retry preserves that progress
+  ---
+  duration_ms: 395.5846
+  type: 'test'
+  ...
+# Subtest: v8 first setup write failure retains unset state and permits the identical atomic retry
+ok 215 - v8 first setup write failure retains unset state and permits the identical atomic retry
+  ---
+  duration_ms: 763.8209
+  type: 'test'
+  ...
+# Subtest: v8 arithmetic can be the first method without a hidden PIN and a later PIN needs current arithmetic authorization
+ok 216 - v8 arithmetic can be the first method without a hidden PIN and a later PIN needs current arithmetic authorization
+  ---
+  duration_ms: 753.6226
+  type: 'test'
+  ...
+# Subtest: v8 changing a self-set PIN validates confirmation and still requires the currently configured PIN
+ok 217 - v8 changing a self-set PIN validates confirmation and still requires the currently configured PIN
+  ---
+  duration_ms: 1233.6891
+  type: 'test'
+  ...
+# Subtest: v8 legacy credentials without a configured flag remain closed, retain twelve-digit PIN support and ignore replacement deployment PINs
+ok 218 - v8 legacy credentials without a configured flag remain closed, retain twelve-digit PIN support and ignore replacement deployment PINs
+  ---
+  duration_ms: 961.7658
+  type: 'test'
+  ...
+# Subtest: v8 malformed configuration states cannot reopen setup and leave their original files untouched
+ok 219 - v8 malformed configuration states cannot reopen setup and leave their original files untouched
+  ---
+  duration_ms: 1493.4753
+  type: 'test'
+  ...
+# Subtest: C1 HTTP startup and failed sync block writes while retaining a usable draft
+ok 220 - C1 HTTP startup and failed sync block writes while retaining a usable draft
+  ---
+  duration_ms: 17055.1594
+  type: 'test'
+  ...
+# Subtest: C2 file mode still permits local public actions without any network request
+ok 221 - C2 file mode still permits local public actions without any network request
+  ---
+  duration_ms: 5253.0162
+  type: 'test'
+  ...
+# Subtest: C3 polling remains single-flight and releases the lock on success and timeout
+ok 222 - C3 polling remains single-flight and releases the lock on success and timeout
+  ---
+  duration_ms: 5527.6188
+  type: 'test'
+  ...
+# Subtest: C4 a delayed older GET cannot roll back a successful public POST in memory/storage
+ok 223 - C4 a delayed older GET cannot roll back a successful public POST in memory/storage
+  ---
+  duration_ms: 3923.7559
+  type: 'test'
+  ...
+# Subtest: C5 a synced gift-price change requires visible reconfirmation before a protected approval
+ok 224 - C5 a synced gift-price change requires visible reconfirmation before a protected approval
+  ---
+  duration_ms: 4259.2079
+  type: 'test'
+  ...
+# Subtest: C6 a committed response lost in transit is reconciled once and the next award is a new operation
+ok 225 - C6 a committed response lost in transit is reconciled once and the next award is a new operation
+  ---
+  duration_ms: 7222.065
+  type: 'test'
+  ...
+# Subtest: C8 a previously connected page visibly disconnects on failed/invalid polls and preserves drafts until recovery
+ok 226 - C8 a previously connected page visibly disconnects on failed/invalid polls and preserves drafts until recovery
+  ---
+  duration_ms: 8740.4435
+  type: 'test'
+  ...
+# Subtest: C7 an uncommitted conflict preserves the draft/id but renews revision-bound verification
+ok 227 - C7 an uncommitted conflict preserves the draft/id but renews revision-bound verification
+  ---
+  duration_ms: 5945.1398
+  type: 'test'
+  ...
+1..227
+# tests 227
+# suites 0
+# pass 227
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 71734.8631

@@ -24,3 +24,9 @@ __pycache__/
 # Actual family screenshots and migration/runtime records
 /artifacts/*live*
 /artifacts/*migration*
+
+# SaaS anonymous login only; no account, family or credential content
+!/artifacts/v13-live-preview.json
+!/artifacts/v13-live-login.png
+!/artifacts/v14-live-preview.json
+!/artifacts/v14-live-login.png

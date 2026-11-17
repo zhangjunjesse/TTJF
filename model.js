@@ -32,6 +32,37 @@
     { id: 'aurora', name: '极光山巅', threshold: 56 }
   ];
 
+  var FARM_DURATION_MS = 8 * 60 * 60 * 1000;
+  var FARM_CROPS = [
+    { id: 'carrot', name: '萝卜', threshold: 0, durationMs: FARM_DURATION_MS, yield: 3 },
+    { id: 'strawberry', name: '草莓', threshold: 30, durationMs: FARM_DURATION_MS, yield: 3 },
+    { id: 'sunflower', name: '向日葵', threshold: 250, durationMs: FARM_DURATION_MS, yield: 3 }
+  ];
+  var FARM_PLOT_THRESHOLDS = [0, 0, 30, 100, 250, 500];
+  var FARM_SLOTS = ['fence', 'path', 'entry', 'center', 'edge'];
+  var FARM_CATALOG = [
+    { id: 'fence', name: '基础木围栏', threshold: 0, cost: {}, slot: 'fence' },
+    { id: 'path', name: '门前小路', threshold: 0, cost: {}, slot: 'path' },
+    { id: 'flowerpot', name: '小花盆', threshold: 0, cost: { carrot: 3 }, slot: 'entry' },
+    { id: 'picnic', name: '野餐垫', threshold: 30, cost: { carrot: 6, strawberry: 3 }, slot: 'center' },
+    { id: 'rabbitstatue', name: '兔形摆件', threshold: 100, cost: { carrot: 6, strawberry: 6 }, slot: 'center' },
+    { id: 'mailbox', name: '彩色邮箱', threshold: 100, cost: { carrot: 9, strawberry: 9 }, slot: 'entry' },
+    { id: 'trellis', name: '花架', threshold: 250, cost: { carrot: 6, sunflower: 9 }, slot: 'edge' },
+    { id: 'windmill', name: '星光风车', threshold: 500, cost: { carrot: 12, strawberry: 6, sunflower: 12 }, slot: 'edge' },
+    { id: 'house2', name: '二级小屋', threshold: 100, cost: { carrot: 12, strawberry: 12 }, slot: 'house', level: 2 },
+    { id: 'house3', name: '三级小屋', threshold: 500, cost: { carrot: 24, strawberry: 24, sunflower: 24 }, slot: 'house', level: 3 }
+  ];
+  var FARM_ANIMALS = [
+    { id: 'chicken', name: '小鸡', threshold: 0 },
+    { id: 'rabbit', name: '兔子', threshold: 100 }
+  ];
+  var FARM_UNLOCKS = [
+    { threshold: 30, name: '草莓、第三块田和野餐垫', plotLimit: 3 },
+    { threshold: 100, name: '兔子、第四块田和二级小屋建设资格', plotLimit: 4 },
+    { threshold: 250, name: '向日葵、第五块田和花架', plotLimit: 5 },
+    { threshold: 500, name: '第六块田、星光风车和三级小屋建设资格', plotLimit: 6 }
+  ];
+
   function fail(message) { throw new Error(message); }
   function object(value, label) {
     if (!value || typeof value !== 'object' || Array.isArray(value)) { fail(label + '格式无效'); }
@@ -134,18 +165,53 @@
     }
     return result;
   }
-  function dateKey(value) {
-    var date;
-    var year;
-    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) { parseKey(value); return value; }
-    date = asDate(value);
-    year = date.getFullYear();
-    if (year < 1 || year > 9999) { fail('日期年份超出范围'); }
-    return ('0000' + year).slice(-4) + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+  function calendarZone(zone) {
+    if (zone !== undefined && zone !== 'Asia/Shanghai') { fail('家庭时区无效'); }
+    return zone === 'Asia/Shanghai';
   }
-  function addDays(value, days) {
-    var date = parseKey(value);
+  function calendarKey(value) {
+    var match = typeof value === 'string' && /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    var date = new Date(0);
+    if (!match || +match[1] < 1) { fail('日期必须为有效的 YYYY-MM-DD'); }
+    date.setUTCHours(12, 0, 0, 0);
+    date.setUTCFullYear(+match[1], +match[2] - 1, +match[3]);
+    if (date.getUTCFullYear() !== +match[1] || date.getUTCMonth() !== +match[2] - 1 || date.getUTCDate() !== +match[3]) { fail('日期不存在'); }
+    return date;
+  }
+  function calendarTimestamp(key, clockValue, zone) {
+    var fixed = calendarZone(zone);
+    calendarKey(key);
+    if (!time(clockValue)) { fail('请填写时间'); }
+    return asDate(key + 'T' + clockValue + ':00' + (fixed ? '+08:00' : '')).toISOString();
+  }
+  function calendarParts(value, zone) {
+    var fixed = calendarZone(zone);
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) { value = calendarTimestamp(value, '00:00', zone); }
+    var date = asDate(value);
+    if (fixed) { date = new Date(date.getTime() + 8 * 60 * 60 * 1000); }
+    var prefix = fixed ? 'getUTC' : 'get';
+    var year = date[prefix + 'FullYear']();
+    if (year < 1 || year > 9999) { fail('日期年份超出范围'); }
+    var parts = { year: year, month: date[prefix + 'Month']() + 1, day: date[prefix + 'Date'](),
+      weekday: date[prefix + 'Day'](), hour: date[prefix + 'Hours'](), minute: date[prefix + 'Minutes'](),
+      second: date[prefix + 'Seconds'](), millisecond: date[prefix + 'Milliseconds']() };
+    parts.date = ('0000' + year).slice(-4) + '-' + pad(parts.month) + '-' + pad(parts.day);
+    parts.time = pad(parts.hour) + ':' + pad(parts.minute);
+    return parts;
+  }
+  function dateKey(value, zone) {
+    var fixed = calendarZone(zone);
+    if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      if (fixed) { calendarKey(value); } else { parseKey(value); }
+      return value;
+    }
+    return calendarParts(value, zone).date;
+  }
+  function addDays(value, days, zone) {
+    var fixed = calendarZone(zone);
+    var date = fixed ? calendarKey(value) : parseKey(value);
     integer(days, '天数', -MAX_INTEGER);
+    if (fixed) { date.setUTCDate(date.getUTCDate() + days); return dateKey(date, zone); }
     date.setDate(date.getDate() + days);
     return dateKey(date);
   }
@@ -178,6 +244,119 @@
       if (seen[rows[i].id]) { fail(label + '标识重复'); }
       seen[rows[i].id] = true;
       validate(rows[i]);
+    }
+  }
+  function farmInitialized(state) { return !!(state.farm && state.farm.initialized); }
+  function farmBatchId(value) {
+    // Prefix plus plot suffix must still fit when the public action ID is 200 characters.
+    if (typeof value !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9_.:-]{0,209}$/.test(value)) { fail('农场批次标识无效'); }
+    return value;
+  }
+  function cropAmounts(source) {
+    return { carrot: source && source.carrot || 0, strawberry: source && source.strawberry || 0,
+      sunflower: source && source.sunflower || 0 };
+  }
+  function validateCropAmounts(value) {
+    object(value, '作物库存');
+    if (Object.keys(value).length !== FARM_CROPS.length) { fail('作物库存种类无效'); }
+    FARM_CROPS.forEach(function (crop) { integer(value[crop.id], '作物库存', 0); });
+  }
+  function emptyPlot(plotId) {
+    return { id: plotId, cropId: null, batchId: null, plantedAt: null, readyAt: null, welcomeGift: false };
+  }
+  function newFarm(actionId, at) {
+    var batchId = farmBatchId('welcome-' + actionId);
+    var plots = FARM_PLOT_THRESHOLDS.map(function (_, index) { return emptyPlot('p' + (index + 1)); });
+    plots[0] = { id: 'p1', cropId: 'carrot', batchId: batchId, plantedAt: null, readyAt: at, welcomeGift: true };
+    return { version: 1, initialized: true, startedAt: at,
+      welcomeGift: { batchId: batchId, grantedAt: at, harvestedAt: null },
+      plots: plots, inventory: cropAmounts(), owned: ['fence', 'path'],
+      placements: { fence: 'fence', path: 'path', entry: null, center: null, edge: null },
+      houseLevel: 1, animalCare: [], lastHarvest: null };
+  }
+  function validFarm(farm) {
+    if (farm === undefined || farm === null) { return; }
+    object(farm, '农场');
+    if (farm.version !== 1 || farm.initialized !== true) { fail('农场版本或开启记录无效'); }
+    storedTimestamp(farm.startedAt);
+    object(farm.welcomeGift, '欢迎礼记录');
+    farmBatchId(farm.welcomeGift.batchId);
+    if (storedTimestamp(farm.welcomeGift.grantedAt) !== farm.startedAt) { fail('欢迎礼发放时间无效'); }
+    if (farm.welcomeGift.harvestedAt !== null) { storedTimestamp(farm.welcomeGift.harvestedAt); }
+    if (!Array.isArray(farm.plots) || farm.plots.length !== 6) { fail('农场田地记录无效'); }
+    var batches = Object.create(null);
+    var gifts = 0;
+    validateRows(farm.plots, '田地', function (plot) {
+      var crop;
+      if (plot.id !== 'p' + (farm.plots.indexOf(plot) + 1)) { fail('田地位置无效'); }
+      bool(plot.welcomeGift, '欢迎礼田地');
+      if (plot.cropId === null) {
+        if (plot.batchId !== null || plot.plantedAt !== null || plot.readyAt !== null || plot.welcomeGift) { fail('空田种植记录无效'); }
+        return;
+      }
+      crop = find(FARM_CROPS, plot.cropId);
+      if (!crop) { fail('田地作物不存在'); }
+      farmBatchId(plot.batchId);
+      if (batches[plot.batchId]) { fail('种植批次重复'); }
+      batches[plot.batchId] = true;
+      storedTimestamp(plot.readyAt);
+      if (plot.welcomeGift) {
+        gifts += 1;
+        if (plot.id !== 'p1' || plot.cropId !== 'carrot' || plot.plantedAt !== null ||
+            plot.batchId !== farm.welcomeGift.batchId || plot.readyAt !== farm.startedAt || farm.welcomeGift.harvestedAt !== null) {
+          fail('欢迎礼田地记录无效');
+        }
+      } else {
+        if (plot.batchId === farm.welcomeGift.batchId ||
+            asDate(storedTimestamp(plot.plantedAt)).getTime() + crop.durationMs !== asDate(plot.readyAt).getTime()) {
+          fail('作物成熟时间或种植批次无效');
+        }
+      }
+    });
+    if (gifts !== (farm.welcomeGift.harvestedAt === null ? 1 : 0)) { fail('欢迎礼领取记录无效'); }
+    validateCropAmounts(farm.inventory);
+    if (!Array.isArray(farm.owned)) { fail('已拥有物品格式无效'); }
+    var owned = Object.create(null);
+    farm.owned.forEach(function (itemId) {
+      if (!find(FARM_CATALOG, itemId) || owned[itemId]) { fail('已拥有物品无效或重复'); }
+      owned[itemId] = true;
+    });
+    if (!owned.fence || !owned.path) { fail('缺少基础农场物品'); }
+    integer(farm.houseLevel, '房屋级别', 1, 3);
+    if (!!owned.house2 !== (farm.houseLevel >= 2) || !!owned.house3 !== (farm.houseLevel === 3)) { fail('房屋升级记录无效'); }
+    object(farm.placements, '小院布置');
+    if (Object.keys(farm.placements).length !== FARM_SLOTS.length) { fail('布置位置无效'); }
+    FARM_SLOTS.forEach(function (slot) {
+      var itemId = farm.placements[slot];
+      var item = find(FARM_CATALOG, itemId);
+      if (itemId !== null && (!item || item.slot !== slot || !owned[itemId])) { fail('布置物品不存在、未拥有或位置不符'); }
+    });
+    var cared = Object.create(null);
+    validateRows(farm.animalCare, '动物照料记录', function (row) {
+      if (!find(FARM_ANIMALS, row.animalId)) { fail('农场动物不存在'); }
+      member(row.care, ['feed', 'pet'], '动物照料种类');
+      parseKey(row.day);
+      storedTimestamp(row.at);
+      var key = row.animalId + ':' + row.day;
+      if (cared[key]) { fail('动物每日照料记录重复'); }
+      cared[key] = true;
+    });
+    if (farm.lastHarvest !== null) {
+      var harvest = object(farm.lastHarvest, '收获结果');
+      id(harvest.id, '收获操作标识');
+      storedTimestamp(harvest.at);
+      validateCropAmounts(harvest.crops);
+      if (!Array.isArray(harvest.plotIds) || !Array.isArray(harvest.batchIds) || harvest.plotIds.length < 1 ||
+          harvest.plotIds.length > 6 || harvest.plotIds.length !== harvest.batchIds.length) { fail('收获批次记录无效'); }
+      var plots = Object.create(null);
+      var harvested = Object.create(null);
+      harvest.plotIds.forEach(function (plotId, index) {
+        if (!/^p[1-6]$/.test(plotId) || plots[plotId]) { fail('收获田地无效或重复'); }
+        plots[plotId] = true;
+        farmBatchId(harvest.batchIds[index]);
+        if (harvested[harvest.batchIds[index]] || batches[harvest.batchIds[index]]) { fail('收获批次重复或仍在田中'); }
+        harvested[harvest.batchIds[index]] = true;
+      });
     }
   }
   function validState(state) {
@@ -251,7 +430,12 @@
       if (row.itemId !== (row.source === 'inventory' ? PET_CATALOG[care].id : '')) { fail('照料道具记录无效'); }
       parseKey(row.day);
       storedTimestamp(row.at);
+      if (row.farmMode !== undefined) {
+        bool(row.farmMode, '农场照料标记');
+        if (row.farmMode && !farmInitialized(state)) { fail('农场照料缺少开启记录'); }
+      }
     });
+    validFarm(state.farm);
     var resources = petResources(state);
     var scene = find(PET_SCENES, state.petScene === undefined ? 'home' : state.petScene);
     if (!scene || scene.threshold > resources.exploration) { fail('当前场景不存在或尚未解锁'); }
@@ -309,15 +493,20 @@
   function petResources(state) {
     var inventory = { snack: 0, dew: 0, ball: 0 };
     var days = Object.create(null);
-    var exploration = (state.petCare || []).length;
+    var exploration = 0;
     (state.petPurchases || []).forEach(function (row) { inventory[row.itemId] += row.quantity; });
     (state.petCare || []).forEach(function (row) {
+      if (row.source === 'inventory') { inventory[row.itemId] -= 1; }
+      // Farm interactions consume explicitly selected old supplies, but never
+      // rewrite the archived exploration count or its three-kinds daily bonus.
+      if (row.farmMode) { return; }
+      exploration += 1;
       var day = days[row.day];
       if (!day) { day = { freeUsed: 0, kinds: Object.create(null) }; days[row.day] = day; }
       if (row.source === 'free') {
         day.freeUsed += 1;
         if (day.freeUsed > 3) { fail('每日免费照料记录超过3次'); }
-      } else { inventory[row.itemId] -= 1; }
+      }
       day.kinds[row.care] = true;
     });
     Object.keys(inventory).forEach(function (key) { integer(inventory[key], '道具库存', 0); });
@@ -326,9 +515,9 @@
     });
     return { inventory: inventory, days: days, exploration: integer(exploration, '探索进度', 0) };
   }
-  function petStatus(state, suppliedNow) {
+  function petStatus(state, suppliedNow, zone) {
     totals(state);
-    var familyDay = dateKey(suppliedNow);
+    var familyDay = dateKey(suppliedNow, zone);
     var resources = petResources(state);
     var today = resources.days[familyDay] || { freeUsed: 0, kinds: Object.create(null) };
     var caredToday = CARE_KINDS.filter(function (care) { return !!today.kinds[care]; });
@@ -340,12 +529,168 @@
       }
       return { id: scene.id, name: scene.name, threshold: scene.threshold, unlocked: unlocked };
     });
-    return { familyDay: familyDay,
+    return { familyDay: familyDay, farmMode: farmInitialized(state), freeUnlimited: farmInitialized(state), purchasesEnabled: !farmInitialized(state),
       catalog: PET_CATALOG.map(function (item) { return { id: item.id, name: item.name, care: item.care, points: item.points }; }),
       inventory: resources.inventory, freeLimit: 3, freeUsed: today.freeUsed, freeRemaining: 3 - today.freeUsed,
       caredToday: caredToday, dailyBonusEarned: caredToday.length === 3, exploration: resources.exploration,
       scenes: scenes, unlockedScenes: scenes.filter(function (scene) { return scene.unlocked; }).map(function (scene) { return scene.id; }),
       nextUnlock: nextUnlock, sceneId: state.petScene === undefined ? 'home' : state.petScene };
+  }
+  function farmStatus(state, suppliedNow, suppliedDay) {
+    var xp = totals(state).earned;
+    var current = asDate(suppliedNow);
+    var nowMs = current.getTime();
+    var familyDay = suppliedDay === undefined ? dateKey(current) : dateKey(parseKey(suppliedDay));
+    var initialized = farmInitialized(state);
+    var farm = initialized ? state.farm : null;
+    var inventory = cropAmounts(farm && farm.inventory);
+    var owned = farm ? farm.owned.slice() : [];
+    var houseLevel = farm ? farm.houseLevel : 0;
+    var readyCount = 0;
+    var emptyCount = 0;
+    var nextReadyAt = null;
+    var plotLimit = 0;
+    var nextUnlock = null;
+    var crops = FARM_CROPS.map(function (crop) {
+      return { id: crop.id, name: crop.name, threshold: crop.threshold, unlocked: xp >= crop.threshold,
+        durationMs: crop.durationMs, yield: crop.yield };
+    });
+    var plots = FARM_PLOT_THRESHOLDS.map(function (threshold, index) {
+      var plot = farm ? farm.plots[index] : emptyPlot('p' + (index + 1));
+      var unlocked = initialized && xp >= threshold;
+      var remainingMs = plot.readyAt === null ? 0 : Math.max(0, asDate(plot.readyAt).getTime() - nowMs);
+      var status = !unlocked ? 'locked' : (!plot.cropId ? 'empty' : (remainingMs === 0 ? 'ready' : 'growing'));
+      if (xp >= threshold) { plotLimit += 1; }
+      if (status === 'ready') { readyCount += 1; }
+      if (status === 'empty') { emptyCount += 1; }
+      if (status === 'growing' && (nextReadyAt === null || asDate(plot.readyAt).getTime() < asDate(nextReadyAt).getTime())) {
+        nextReadyAt = plot.readyAt;
+      }
+      return { id: plot.id, index: index, threshold: threshold, unlocked: unlocked, cropId: plot.cropId,
+        status: status, plantedAt: plot.plantedAt, readyAt: plot.readyAt, remainingMs: remainingMs,
+        batchId: plot.batchId, welcomeGift: plot.welcomeGift };
+    });
+    var catalog = FARM_CATALOG.map(function (item) {
+      var cost = cropAmounts(item.cost);
+      var missing = cropAmounts();
+      var shortage = [];
+      FARM_CROPS.forEach(function (crop) {
+        missing[crop.id] = Math.max(0, cost[crop.id] - inventory[crop.id]);
+        if (missing[crop.id]) { shortage.push(crop.name + '×' + missing[crop.id]); }
+      });
+      var isOwned = owned.indexOf(item.id) >= 0;
+      var unlocked = xp >= item.threshold;
+      var reason = !initialized ? '请先开启小院' : (isOwned ? '已经拥有' : (!unlocked ? '累计成长达到' + item.threshold + '后开放' :
+        (item.level && houseLevel !== item.level - 1 ? '请先建成' + (item.level - 1) + '级小屋' :
+          (shortage.length ? '还缺' + shortage.join('、') : ''))));
+      return { id: item.id, name: item.name, threshold: item.threshold, cost: cost, slot: item.slot,
+        owned: isOwned, unlocked: unlocked, canBuy: reason === '', missing: missing, reason: reason };
+    });
+    var placements = {};
+    FARM_SLOTS.forEach(function (slot) { placements[slot] = farm ? farm.placements[slot] : null; });
+    var animals = FARM_ANIMALS.map(function (animal) {
+      var records = farm ? farm.animalCare.filter(function (row) { return row.animalId === animal.id; }) : [];
+      var caredToday = records.some(function (row) { return row.day === familyDay; });
+      return { id: animal.id, name: animal.name, threshold: animal.threshold, unlocked: initialized && xp >= animal.threshold,
+        caredToday: caredToday, careCount: records.length, cardUnlocked: records.length >= 3, actionUnlocked: records.length >= 7,
+        cardAt: 3, actionAt: 7 };
+    });
+    FARM_UNLOCKS.forEach(function (unlock) {
+      if (!nextUnlock && xp < unlock.threshold) {
+        nextUnlock = { threshold: unlock.threshold, remaining: unlock.threshold - xp, name: unlock.name, plotLimit: unlock.plotLimit };
+      }
+    });
+    return { initialized: initialized, familyDay: familyDay, crops: crops, plots: plots, inventory: inventory,
+      catalog: catalog, owned: owned, placements: placements, houseLevel: houseLevel, animals: animals,
+      readyCount: readyCount, emptyCount: emptyCount, nextReadyAt: nextReadyAt, nextUnlock: nextUnlock, plotLimit: plotLimit,
+      welcomeGift: farm ? JSON.parse(JSON.stringify(farm.welcomeGift)) : null,
+      lastHarvest: farm && farm.lastHarvest ? JSON.parse(JSON.stringify(farm.lastHarvest)) : null };
+  }
+  function selectedFarmPlots(status, plotIds, desiredStatus) {
+    var selected = status.plots;
+    if (plotIds !== undefined) {
+      if (!Array.isArray(plotIds) || plotIds.length < 1 || plotIds.length > 6) { fail('请选择1至6块田地'); }
+      var seen = Object.create(null);
+      selected = plotIds.map(function (plotId) {
+        var plot = find(status.plots, plotId);
+        if (!plot || seen[plotId]) { fail('田地不存在或重复'); }
+        seen[plotId] = true;
+        if (!plot.unlocked) { fail('田地尚未解锁'); }
+        return plot;
+      });
+    }
+    return selected.filter(function (plot) { return plot.status === desiredStatus; });
+  }
+  function applyFarm(state, action, current, zone) {
+    var at = timestamp(current);
+    if (action.type === 'farm.start') {
+      actionFields(action, []);
+      if (farmInitialized(state)) { fail('小院已经开启，无需重复开启'); }
+      state.farm = newFarm(action.id, at);
+      return;
+    }
+    var fields = {
+      'farm.plant': ['cropId', 'plotIds'], 'farm.harvest': ['plotIds'], 'farm.exchange': ['itemId'],
+      'farm.place': ['slot', 'itemId'], 'farm.animalCare': ['animalId', 'care']
+    };
+    if (!own.call(fields, action.type)) { fail('不支持的农场操作'); }
+    actionFields(action, fields[action.type]);
+    if (!farmInitialized(state)) { fail('请先开启小院'); }
+    var status = farmStatus(state, current, dateKey(current, zone));
+    var farm = state.farm;
+    var selected;
+    var item;
+    if (action.type === 'farm.plant') {
+      var crop = find(status.crops, id(action.cropId, '作物标识'));
+      if (!crop) { fail('作物不存在'); }
+      if (!crop.unlocked) { fail('作物尚未解锁'); }
+      selected = selectedFarmPlots(status, action.plotIds, 'empty');
+      if (!selected.length) { fail('暂时没有可播种的空田'); }
+      selected.forEach(function (plot) {
+        farm.plots[plot.index] = { id: plot.id, cropId: crop.id, batchId: farmBatchId('plant-' + action.id + '-' + plot.id),
+          plantedAt: at, readyAt: timestamp(current.getTime() + crop.durationMs), welcomeGift: false };
+      });
+    } else if (action.type === 'farm.harvest') {
+      selected = selectedFarmPlots(status, action.plotIds, 'ready');
+      if (!selected.length) { fail('暂时没有成熟的作物'); }
+      var harvest = { id: action.id, at: at, crops: cropAmounts(), plotIds: [], batchIds: [] };
+      selected.forEach(function (plot) {
+        var crop = find(FARM_CROPS, plot.cropId);
+        harvest.crops[crop.id] += crop.yield;
+        harvest.plotIds.push(plot.id);
+        harvest.batchIds.push(plot.batchId);
+        if (plot.welcomeGift) { farm.welcomeGift.harvestedAt = at; }
+        farm.plots[plot.index] = emptyPlot(plot.id);
+      });
+      FARM_CROPS.forEach(function (crop) {
+        farm.inventory[crop.id] = integer(farm.inventory[crop.id] + harvest.crops[crop.id], '作物库存', 0);
+      });
+      farm.lastHarvest = harvest;
+    } else if (action.type === 'farm.exchange') {
+      item = find(status.catalog, id(action.itemId, '物品标识'));
+      if (!item) { fail('兑换物品不存在'); }
+      if (!item.canBuy) { fail(item.reason); }
+      FARM_CROPS.forEach(function (crop) { farm.inventory[crop.id] -= item.cost[crop.id]; });
+      farm.owned.push(item.id);
+      if (item.slot === 'house') { farm.houseLevel = find(FARM_CATALOG, item.id).level; }
+    } else if (action.type === 'farm.place') {
+      var slot = member(action.slot, FARM_SLOTS, '布置位置');
+      if (action.itemId !== null) {
+        item = find(FARM_CATALOG, id(action.itemId, '物品标识'));
+        if (!item || item.slot !== slot) { fail('物品与布置位置不符'); }
+        if (farm.owned.indexOf(item.id) < 0) { fail('尚未拥有这个物品'); }
+      }
+      farm.placements[slot] = action.itemId;
+    } else if (action.type === 'farm.animalCare') {
+      var animal = find(status.animals, id(action.animalId, '动物标识'));
+      if (!animal) { fail('农场动物不存在'); }
+      if (!animal.unlocked) { fail('动物尚未解锁'); }
+      var care = member(action.care, ['feed', 'pet'], '动物照料种类');
+      if (!animal.caredToday) {
+        farm.animalCare.push({ id: action.id, animalId: animal.id,
+          care: care, day: status.familyDay, at: at });
+      }
+    }
   }
   function actionFields(action, allowed) {
     Object.keys(action).forEach(function (key) {
@@ -402,18 +747,18 @@
       previousAt: previousAt, nextAt: nextAt, remaining: nextAt - xp,
       progress: (xp - previousAt) / (nextAt - previousAt), stars: stars };
   }
-  function availability(state, rewardId, now) {
+  function availability(state, rewardId, now, zone) {
     var balance = totals(state);
     var reward = find(state.rewards, rewardId);
-    var date = asDate(now);
-    var last = parseKey(dateKey(date));
+    var parts = calendarParts(now, zone);
+    var last = calendarKey(parts.date);
     if (!reward) { return { allowed: false, reason: '奖励不存在' }; }
     if (!reward.enabled) { return { allowed: false, reason: '奖励已停用' }; }
-    if (reward.category === 'weekend' && date.getDay() !== 0 && date.getDay() !== 6) {
+    if (reward.category === 'weekend' && parts.weekday !== 0 && parts.weekday !== 6) {
       return { allowed: false, reason: '周末美食仅周六、周日可兑换' };
     }
-    last.setMonth(last.getMonth() + 1, 0);
-    if (reward.category === 'outing' && date.getDate() < last.getDate() - state.settings.monthEndDays + 1) {
+    last.setUTCMonth(last.getUTCMonth() + 1, 0);
+    if (reward.category === 'outing' && parts.day < last.getUTCDate() - state.settings.monthEndDays + 1) {
       return { allowed: false, reason: '月度出游在每月最后' + state.settings.monthEndDays + '天可兑换' };
     }
     if (balance.available < reward.points) {
@@ -430,6 +775,7 @@
     if (next.petPurchases === undefined) { next.petPurchases = []; }
     if (next.petCare === undefined) { next.petCare = []; }
     if (next.petScene === undefined) { next.petScene = 'home'; }
+    if (next.farm === undefined) { next.farm = null; }
     next.tasks.forEach(function (task) {
       if (task.ackAt === undefined) { task.ackAt = ''; }
       if (task.snoozeUntil === undefined) { task.snoozeUntil = ''; }
@@ -437,7 +783,7 @@
     next.pointItems.forEach(function (item) { if (item.reason === undefined) { item.reason = ''; } });
     return next;
   }
-  function apply(state, action, now) {
+  function apply(state, action, now, zone) {
     var current;
     var today;
     var next;
@@ -453,11 +799,13 @@
     totals(state);
     if (state.appliedActions.indexOf(action.id) >= 0) { return state; }
     current = asDate(now);
-    today = dateKey(current);
+    today = dateKey(current, zone);
     at = timestamp(current);
     next = normalize(state);
 
-    if (action.type === 'profile.update') {
+    if (typeof action.type === 'string' && action.type.indexOf('farm.') === 0) {
+      applyFarm(next, action, current, zone);
+    } else if (action.type === 'profile.update') {
       next.childName = text(field(action, next, 'childName'), '孩子名字', true, 40);
       next.childAvatar = avatar(field(action, next, 'childAvatar'));
     } else if (action.type === 'pet.configure') {
@@ -465,6 +813,7 @@
         name: text(action.name, '伙伴昵称', true, 40) };
     } else if (action.type === 'pet.buy') {
       actionFields(action, ['itemId', 'quantity', 'expectedPoints']);
+      if (farmInitialized(next)) { fail('小院已开启，已停止购买旧照料道具'); }
       previous = find(PET_CATALOG, id(action.itemId, '道具标识'));
       if (!previous) { fail('道具不存在'); }
       var quantity = integer(action.quantity, '购买数量', 1, 10);
@@ -479,10 +828,12 @@
       var source = member(action.source, ['free', 'inventory'], '照料来源');
       previous = PET_CATALOG[CARE_KINDS.indexOf(key)];
       permission = petStatus(next, today);
-      if (source === 'free' && permission.freeRemaining < 1) { fail('今日免费照料已用完，请重新查看资源'); }
+      if (source === 'free' && !permission.freeUnlimited && permission.freeRemaining < 1) { fail('今日免费照料已用完，请重新查看资源'); }
       if (source === 'inventory' && permission.inventory[previous.id] < 1) { fail('对应道具库存不足，请先补给'); }
-      next.petCare.push({ id: id('care-' + action.id, '照料记录标识'), care: key, source: source,
-        itemId: source === 'inventory' ? previous.id : '', day: today, at: at });
+      record = { id: id('care-' + action.id, '照料记录标识'), care: key, source: source,
+        itemId: source === 'inventory' ? previous.id : '', day: today, at: at };
+      if (farmInitialized(next)) { record.farmMode = true; }
+      next.petCare.push(record);
       var exploration = petResources(next).exploration;
       PET_SCENES.forEach(function (scene) {
         if (scene.threshold > permission.exploration && scene.threshold <= exploration) { next.petScene = scene.id; }
@@ -514,7 +865,7 @@
       parseKey(record.date);
       if (!(previous && previous.date < today && record.date === previous.date && record.type === previous.type)) {
         if (record.date < today) { fail('不能新建或移动到过去日期'); }
-        if (record.type === 'task' && record.date > addDays(today, 2)) { fail('近期待办只能安排今天、明天或后天'); }
+        if (record.type === 'task' && record.date > addDays(today, 2, zone)) { fail('近期待办只能安排今天、明天或后天'); }
       }
       if (record.type === 'task') { record.remindDays = 0; }
       if (previous && (record.type !== previous.type || record.date !== previous.date ||
@@ -548,7 +899,7 @@
       if (previous && !previous.enabled) { fail('加分项已停用'); }
       if (action.at !== undefined) {
         record = asDate(action.at);
-        if (dateKey(record) !== today || record.getTime() > current.getTime()) { fail('加分时间只能为今天且不能晚于当前时间'); }
+        if (dateKey(record, zone) !== today || record.getTime() > current.getTime()) { fail('加分时间只能为今天且不能晚于当前时间'); }
         at = timestamp(record);
       }
       if (action.saveAsTemplate !== undefined) { bool(action.saveAsTemplate, '同时存为常用'); }
@@ -569,7 +920,7 @@
       next.points.push(record);
     } else if (action.type === 'redemption.request') {
       key = id(action.rewardId, '奖励标识');
-      permission = availability(next, key, current);
+      permission = availability(next, key, current, zone);
       if (!permission.allowed) { fail(permission.reason); }
       previous = find(next.rewards, key);
       request = null;
@@ -600,7 +951,7 @@
         integer(action.expectedPoints, '确认分值', 1);
         if (action.expectedPoints !== previous.points) { fail('礼品价格已变化，请按最新分值重新确认'); }
       }
-      permission = availability(next, key, current);
+      permission = availability(next, key, current, zone);
       if (!permission.allowed) { fail(permission.reason); }
       record = {
         id: id('redeem-' + action.id, '兑换记录标识'), rewardId: previous.id,
@@ -650,6 +1001,30 @@
     totals(next);
     return next;
   }
+  function createEmptyFamily(details, now) {
+    object(details, '家庭资料');
+    Object.keys(details).forEach(function (key) { if (key !== 'childName') { fail('家庭资料字段无效'); } });
+    asDate(now);
+    return {
+      version: 1,
+      childName: text(details.childName, '孩子名字', true, 40),
+      childAvatar: '',
+      pet: { kind: 'plant', name: '芽芽' },
+      tasks: [],
+      pointItems: [],
+      rewards: [],
+      points: [],
+      redemptions: [],
+      requests: [],
+      petPurchases: [],
+      petCare: [],
+      petScene: 'home',
+      farm: null,
+      settings: { monthEndDays: 3, preferredReward: '' },
+      appliedActions: []
+    };
+  }
+
   function createSeed(now) {
     var current = asDate(now);
     var today = dateKey(current);
@@ -708,11 +1083,12 @@
       petPurchases: [],
       petCare: [],
       petScene: 'home',
+      farm: null,
       settings: { monthEndDays: 3, preferredReward: 'reward-trip' },
       appliedActions: []
     };
   }
 
-  return { createSeed: createSeed, dateKey: dateKey, addDays: addDays, totals: totals,
-    availability: availability, apply: apply, normalize: normalize, growth: growth, frequentPointItems: frequentPointItems, petStatus: petStatus, growthStages: growthStages };
+  return { createSeed: createSeed, createEmptyFamily: createEmptyFamily, dateKey: dateKey, addDays: addDays, calendarParts: calendarParts, calendarTimestamp: calendarTimestamp, totals: totals,
+    availability: availability, apply: apply, normalize: normalize, growth: growth, frequentPointItems: frequentPointItems, petStatus: petStatus, growthStages: growthStages, farmStatus: farmStatus };
 }));

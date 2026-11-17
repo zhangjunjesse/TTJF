@@ -1,0 +1,75 @@
+{
+  "command": "node test/v11-browser.cjs",
+  "requested": [
+    "lost-response"
+  ],
+  "startedAt": "2026-11-16T07:48:04.691Z",
+  "sourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "f77bde58774a356f9a7d93c08528425dad4e8f2e52c43498a95c0c1267fac0f4",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "28d16fb81916004577cbafeb0ca5a65586570545c03cc1147174e456d41ed9f5",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "51e3105624a676b5cb7ba2d32c6aae2a772f23cf6b59efa154efefbe9c6b1586",
+    "test/v11-browser.cjs": "44610c9a93871b71d2fa20e1e53145e5034ebb967d823dce24ca9c3e4b0eedb8"
+  },
+  "fixture": "Temporary createEnvironment server on an ephemeral loopback port and a separate browser context. All rich inventory is constructed by Model.apply. No live service or live family data is used.",
+  "boundaries": [
+    "Headless Microsoft Edge/Chromium; viewport and touch emulation do not prove Safari or iPad mini 4 hardware compatibility.",
+    "Eight-hour maturity and family-day boundaries use controlled client/server clocks, not eight hours of wall-clock waiting.",
+    "Short renderer diagnostics measure this desktop run only; no 10-minute A8/device soak, audible output, OS keyboard, or native touch claim.",
+    "Buttons are activated with real mouse/touch input after DOM hit-testing; production actions and state are never invoked or changed via page.evaluate."
+  ],
+  "groups": [
+    {
+      "name": "lost-response",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "f77bde58774a356f9a7d93c08528425dad4e8f2e52c43498a95c0c1267fac0f4",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "28d16fb81916004577cbafeb0ca5a65586570545c03cc1147174e456d41ed9f5",
+        "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+        "farm-scene.js": "51e3105624a676b5cb7ba2d32c6aae2a772f23cf6b59efa154efefbe9c6b1586",
+        "test/v11-browser.cjs": "44610c9a93871b71d2fa20e1e53145e5034ebb967d823dce24ca9c3e4b0eedb8"
+      },
+      "sourceStable": true
+    }
+  ],
+  "checks": [
+    {
+      "group": "lost-response",
+      "label": "A committed harvest with its response lost shows no fake local success, then polling reconciles that same receipt once",
+      "result": "passed"
+    }
+  ],
+  "layouts": [],
+  "renderer": [],
+  "screenshots": [
+    {
+      "file": "artifacts/v11-harvest-response-lost.png",
+      "sha256": "66d2b0a7f8035edbde26e270ef112f9a30ea83371d9dee91ffd8e33c6aac41ca"
+    }
+  ],
+  "errors": [],
+  "skipped": [],
+  "finishedAt": "2026-11-16T07:48:14.514Z",
+  "finalSourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "f77bde58774a356f9a7d93c08528425dad4e8f2e52c43498a95c0c1267fac0f4",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "28d16fb81916004577cbafeb0ca5a65586570545c03cc1147174e456d41ed9f5",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "51e3105624a676b5cb7ba2d32c6aae2a772f23cf6b59efa154efefbe9c6b1586",
+    "test/v11-browser.cjs": "44610c9a93871b71d2fa20e1e53145e5034ebb967d823dce24ca9c3e4b0eedb8"
+  },
+  "sourceStable": true,
+  "passed": 1,
+  "failed": 0
+}

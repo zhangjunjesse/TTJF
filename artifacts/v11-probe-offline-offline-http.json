@@ -1,0 +1,111 @@
+{
+  "command": "node test/v11-browser.cjs",
+  "requested": [
+    "offline",
+    "offline-http"
+  ],
+  "startedAt": "2026-11-16T07:58:58.573Z",
+  "sourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "354274ed4a66aeeda3b5915c5e3750b8c5231f24c30e5d8b1545a7170c5f8267",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "55c4c516390ac0a5a91904755aaf61526cdbf82ff318cf64b2492c439a5afb09",
+    "test/v11-browser.cjs": "167e607b7f0e10800c1685628f43bf253635a00e02bfae6983dad1d3b74f9f32"
+  },
+  "fixture": "Temporary createEnvironment server on an ephemeral loopback port and a separate browser context. All rich inventory is constructed by Model.apply. No live service or live family data is used.",
+  "boundaries": [
+    "Headless Microsoft Edge/Chromium; viewport and touch emulation do not prove Safari or iPad mini 4 hardware compatibility.",
+    "Eight-hour maturity and family-day boundaries use controlled client/server clocks, not eight hours of wall-clock waiting.",
+    "Short renderer diagnostics measure this desktop run only; no 10-minute A8/device soak, audible output, OS keyboard, or native touch claim.",
+    "Buttons are activated with real mouse/touch input after DOM hit-testing; production actions and state are never invoked or changed via page.evaluate."
+  ],
+  "groups": [
+    {
+      "name": "offline",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "354274ed4a66aeeda3b5915c5e3750b8c5231f24c30e5d8b1545a7170c5f8267",
+        "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+        "farm-scene.js": "55c4c516390ac0a5a91904755aaf61526cdbf82ff318cf64b2492c439a5afb09",
+        "test/v11-browser.cjs": "167e607b7f0e10800c1685628f43bf253635a00e02bfae6983dad1d3b74f9f32"
+      },
+      "sourceStable": true
+    },
+    {
+      "name": "offline-http",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "354274ed4a66aeeda3b5915c5e3750b8c5231f24c30e5d8b1545a7170c5f8267",
+        "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+        "farm-scene.js": "55c4c516390ac0a5a91904755aaf61526cdbf82ff318cf64b2492c439a5afb09",
+        "test/v11-browser.cjs": "167e607b7f0e10800c1685628f43bf253635a00e02bfae6983dad1d3b74f9f32"
+      },
+      "sourceStable": true
+    }
+  ],
+  "checks": [
+    {
+      "group": "offline",
+      "label": "Final self-contained export actually renders and performs the farm loop without any network request",
+      "result": "passed"
+    },
+    {
+      "group": "offline",
+      "label": "An open offline animal panel refreshes itself across local midnight and permits one new daily care",
+      "result": "passed"
+    },
+    {
+      "group": "offline-http",
+      "label": "The exported HTML served over HTTP still stays explicitly local, persists the farm loop and sends no XHR/assets",
+      "result": "passed"
+    }
+  ],
+  "layouts": [],
+  "renderer": [],
+  "screenshots": [
+    {
+      "file": "artifacts/v11-offline-local-eight-hour-loop.png",
+      "sha256": "1931617ef7eebbfd61d16c2300a4946d6628bc8ee9f375577d8405782bed4d1c"
+    },
+    {
+      "file": "artifacts/v11-offline-animal-midnight.png",
+      "sha256": "9542cd9fe7680eea0ba1c4ad70e4b95a611aefd0b04cfd7c7c17b20e694d00a6"
+    },
+    {
+      "file": "artifacts/v11-offline-http-local-loop.png",
+      "sha256": "594a0eac5632f939c87278eeb159f3970ee1309f283bbb85d4a475e29c329313"
+    }
+  ],
+  "errors": [],
+  "skipped": [],
+  "exportHash": "46f76c9ca1edced0b78b560ed4603e256a521dc02a419dff33058e3d23d75e60",
+  "finishedAt": "2026-11-16T07:59:14.879Z",
+  "finalSourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "354274ed4a66aeeda3b5915c5e3750b8c5231f24c30e5d8b1545a7170c5f8267",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "55c4c516390ac0a5a91904755aaf61526cdbf82ff318cf64b2492c439a5afb09",
+    "test/v11-browser.cjs": "167e607b7f0e10800c1685628f43bf253635a00e02bfae6983dad1d3b74f9f32"
+  },
+  "sourceStable": true,
+  "passed": 2,
+  "failed": 0
+}

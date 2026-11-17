@@ -1,0 +1,26 @@
+services:
+  postgres:
+    image: postgres:16-alpine@sha256:81e77a4833487b8132fe4b00bedd39dc3f74b8641e387f19312a48f7de218c2e
+    container_name: ttjf-saas-pg-v13
+    labels:
+      com.ttjf.project: family-dashboard
+      com.ttjf.purpose: saas-local-development
+    env_file:
+      - .env.saas.postgres
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - saas_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: "no"
+
+volumes:
+  saas_pgdata:
+    name: ttjf-saas-pgdata-v13
+    labels:
+      com.ttjf.project: family-dashboard
+      com.ttjf.purpose: saas-local-development

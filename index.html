@@ -9,12 +9,15 @@
   <meta name="mobile-web-app-capable" content="yes">
   <link rel="manifest" href="manifest.webmanifest">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="description" content="家庭积分与提醒">
+  <meta name="application-version" content="0.12.0">
+  <meta name="description" content="家庭积分、伙伴小农场与提醒">
   <title>小小向前 · 积分与提醒</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="assets/app-icon.png">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="pet.css">
+  <link rel="stylesheet" href="farm.css">
+  <link rel="stylesheet" href="saas.css">
 </head>
 <body>
   <a class="skip-link" href="#main">跳到主要内容</a>
@@ -24,9 +27,13 @@
   <audio id="sound-points" preload="none" src="assets/points.wav"></audio>
   <audio id="sound-redeem" preload="none" src="assets/redeem.wav"></audio>
   <noscript>JavaScript 未开启</noscript>
+  <script src="runtime.js"></script>
+  <script src="saas-client.js"></script>
   <script src="model.js"></script>
   <script src="assistant.js"></script>
   <script src="pet.js"></script>
+  <script src="farm-scene.js"></script>
+  <script src="farm-ui.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

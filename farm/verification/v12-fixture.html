@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>v12场景隔离审阅夹具</title>
+<style>*{box-sizing:border-box}body{margin:0;font:14px system-ui;background:#f0ede5;color:#28392b}#caption{height:40px;display:flex;align-items:center;padding:0 12px}#farm{overflow:hidden;position:relative;margin:0 auto}nav{display:flex;gap:6px;flex-wrap:wrap;padding:8px}button{font:inherit;min-width:48px;min-height:48px;padding:8px 12px;cursor:pointer}#feedback{padding:8px;min-height:32px}</style></head>
+<body><div id="caption">v12隔离渲染夹具 · 示例数据，不写家庭存档</div><div id="farm"></div><nav>
+<button id="kind-plant">植物伙伴</button><button id="kind-capybara">水豚</button><button id="stage-1">成长1</button><button id="stage-3">成长3</button><button id="stage-5">成长5</button><button id="mode-home">近景</button><button id="mode-expanded">展开</button><button id="lighting-day">日间</button><button id="lighting-night">夜间</button><button id="zoom-in">放大</button><button id="zoom-out">缩小</button><button id="camera-reset">回中</button><button id="react">互动</button><button id="pause">暂停</button><button id="resume">恢复</button><button id="reduced">静态</button><button id="motion">动态</button>
+</nav><div id="feedback"></div>
+<script src="../../farm-scene.js"></script>
+<script>
+(function () {
+  const query = new URLSearchParams(location.search), host = document.getElementById('farm');
+  if (query.get('webgl1') === '1') {
+    const nativeGetContext = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function(type, ...args) {
+      return type === 'webgl2' ? null : nativeGetContext.call(this, type, ...args);
+    };
+  }
+  host.style.width = Math.min(innerWidth, Number(query.get('width')) || 650) + 'px';
+  host.style.height = (Number(query.get('height')) || 470) + 'px';
+  const now = Date.now();
+  const farm = { initialized: true, houseLevel: 3, plotLimit: 6,
+    crops: [{id:'carrot',unlocked:true},{id:'strawberry',unlocked:true},{id:'sunflower',unlocked:true}],
+    plots: Array.from({length:6}, (_, i) => ({id:'p'+(i+1),index:i,unlocked:true,cropId:['carrot','strawberry','sunflower'][i%3],status:i<3?'ready':'growing',remainingMs:i<3?0:i===3?7*3600000:3*3600000,plantedAt:new Date(now-(i<3?9:i===3?1:5)*3600000).toISOString(),readyAt:new Date(now+(i<3?-1:i===3?7:3)*3600000).toISOString()})),
+    inventory:{carrot:12,strawberry:8,sunflower:8}, placements:{entry:'mailbox',center:'picnic',edge:'windmill',fence:'fence',path:'path'},
+    animals:[{id:'chicken',unlocked:true,caredToday:false,actionUnlocked:true},{id:'rabbit',unlocked:true,caredToday:true,actionUnlocked:true}] };
+  window.picks = []; window.statuses = [];
+  window.sceneOptions = {mode:query.get('mode')||'home',lighting:query.get('lighting')||'day',farm,pet:{kind:query.get('kind')||'plant',name:'芽芽'},growth:{stage:Number(query.get('stage'))||3,stars:1,xp:500},reducedMotion:false,onSelect:target=>{window.picks.push(target);document.getElementById('feedback').textContent=JSON.stringify(target)},onStatus:status=>window.statuses.push(status)};
+  window.controller = FamilyFarmScene.mount(host, window.sceneOptions);
+  const bind = (id, action) => document.getElementById(id).addEventListener('click', action);
+  for (const kind of ['plant','capybara']) bind('kind-'+kind,()=>{sceneOptions.pet.kind=kind;controller.update(sceneOptions)});
+  for (const stage of [1,3,5]) bind('stage-'+stage,()=>{sceneOptions.growth.stage=stage;controller.update(sceneOptions)});
+  for (const mode of ['home','expanded']) bind('mode-'+mode,()=>{sceneOptions.mode=mode;controller.update(sceneOptions)});
+  for (const lighting of ['day','night']) bind('lighting-'+lighting,()=>{sceneOptions.lighting=lighting;controller.update(sceneOptions)});
+  bind('zoom-in',()=>controller.camera({zoomBy:1.15})); bind('zoom-out',()=>controller.camera({zoomBy:1/1.15})); bind('camera-reset',()=>controller.camera({reset:true}));
+  bind('react',()=>controller.react('harvest')); bind('pause',()=>controller.pause(true)); bind('resume',()=>controller.pause(false));
+  bind('reduced',()=>{sceneOptions.reducedMotion=true;controller.update(sceneOptions)}); bind('motion',()=>{sceneOptions.reducedMotion=false;controller.update(sceneOptions)});
+})();
+</script></body></html>

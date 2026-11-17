@@ -1,0 +1,483 @@
+{
+  "fixture": "Original character-only Three.js fixture; no live service, family state or imported character assets.",
+  "pass": "04",
+  "sourceHashes": {
+    "farm/companions.js": "97c6677b3185fbb9d204ec6538838ddd9e5808fb2cf52a48b0f70230f185d255",
+    "farm/companion-sculpt.js": "9a9366b82c82fbd0d7a5e845a57c1f512486a38d6203f7731b97f0d379e538b3"
+  },
+  "screenshots": [
+    "v12-companion-04-plant-5-three-quarter.png",
+    "v12-companion-04-capybara-5-three-quarter.png",
+    "v12-companion-04-plant-5-profile.png",
+    "v12-companion-04-capybara-5-profile.png",
+    "v12-companion-04-plant-5-back.png",
+    "v12-companion-04-capybara-5-back.png"
+  ],
+  "models": [
+    {
+      "kind": "plant",
+      "stage": 5,
+      "meshes": 9,
+      "transparent": 0,
+      "vertices": 15876,
+      "anatomyVertexCount": 2700,
+      "anatomy": {
+        "min": [
+          -0.8995356099181904,
+          0.054999999701976776,
+          -0.5
+        ],
+        "max": [
+          0.8869105732065703,
+          2.5850000166893006,
+          0.8800000143051148
+        ],
+        "height": 2.530000016987324
+      },
+      "visual": {
+        "min": [
+          -1.4906368263333465,
+          0.054999999701976776,
+          -1.3296943378448487
+        ],
+        "max": [
+          1.527079701423645,
+          2.9843453550338745,
+          0.9145130705833435
+        ]
+      },
+      "finite": true,
+      "eyes": [
+        {
+          "world": [
+            -0.39,
+            2.185,
+            0.03
+          ],
+          "scaleY": 1
+        },
+        {
+          "world": [
+            0.39,
+            2.185,
+            0.03
+          ],
+          "scaleY": 1
+        }
+      ],
+      "limbs": [
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        },
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "capybara",
+      "stage": 5,
+      "meshes": 9,
+      "transparent": 1,
+      "vertices": 22721,
+      "anatomyVertexCount": 3120,
+      "anatomy": {
+        "min": [
+          -0.8099999940395355,
+          0.04500000178813934,
+          -0.5699999928474426
+        ],
+        "max": [
+          0.8099999940395355,
+          2.709999976158142,
+          1.04
+        ],
+        "height": 2.664999974370003
+      },
+      "visual": {
+        "min": [
+          -0.9823567271232605,
+          0.04500000178813934,
+          -0.8899999856948853
+        ],
+        "max": [
+          0.9823567271232605,
+          2.97,
+          1.28
+        ]
+      },
+      "finite": true,
+      "eyes": [
+        {
+          "world": [
+            -0.466,
+            2.18,
+            0.05
+          ],
+          "scaleY": 1
+        },
+        {
+          "world": [
+            0.466,
+            2.18,
+            0.05
+          ],
+          "scaleY": 1
+        }
+      ],
+      "limbs": [
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        },
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "plant",
+      "stage": 5,
+      "meshes": 9,
+      "transparent": 0,
+      "vertices": 15876,
+      "anatomyVertexCount": 2700,
+      "anatomy": {
+        "min": [
+          -0.8995356099181904,
+          0.054999999701976776,
+          -0.5
+        ],
+        "max": [
+          0.8869105732065703,
+          2.5850000166893006,
+          0.8800000143051148
+        ],
+        "height": 2.530000016987324
+      },
+      "visual": {
+        "min": [
+          -1.4906368263333465,
+          0.054999999701976776,
+          -1.3296943378448487
+        ],
+        "max": [
+          1.527079701423645,
+          2.9843453550338745,
+          0.9145130705833435
+        ]
+      },
+      "finite": true,
+      "eyes": [
+        {
+          "world": [
+            -0.39,
+            2.185,
+            0.03
+          ],
+          "scaleY": 1
+        },
+        {
+          "world": [
+            0.39,
+            2.185,
+            0.03
+          ],
+          "scaleY": 1
+        }
+      ],
+      "limbs": [
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        },
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "capybara",
+      "stage": 5,
+      "meshes": 9,
+      "transparent": 1,
+      "vertices": 22721,
+      "anatomyVertexCount": 3120,
+      "anatomy": {
+        "min": [
+          -0.8099999940395355,
+          0.04500000178813934,
+          -0.5699999928474426
+        ],
+        "max": [
+          0.8099999940395355,
+          2.709999976158142,
+          1.04
+        ],
+        "height": 2.664999974370003
+      },
+      "visual": {
+        "min": [
+          -0.9823567271232605,
+          0.04500000178813934,
+          -0.8899999856948853
+        ],
+        "max": [
+          0.9823567271232605,
+          2.97,
+          1.28
+        ]
+      },
+      "finite": true,
+      "eyes": [
+        {
+          "world": [
+            -0.466,
+            2.18,
+            0.05
+          ],
+          "scaleY": 1
+        },
+        {
+          "world": [
+            0.466,
+            2.18,
+            0.05
+          ],
+          "scaleY": 1
+        }
+      ],
+      "limbs": [
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        },
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "plant",
+      "stage": 5,
+      "meshes": 9,
+      "transparent": 0,
+      "vertices": 15876,
+      "anatomyVertexCount": 2700,
+      "anatomy": {
+        "min": [
+          -0.8995356099181904,
+          0.054999999701976776,
+          -0.5
+        ],
+        "max": [
+          0.8869105732065703,
+          2.5850000166893006,
+          0.8800000143051148
+        ],
+        "height": 2.530000016987324
+      },
+      "visual": {
+        "min": [
+          -1.4906368263333465,
+          0.054999999701976776,
+          -1.3296943378448487
+        ],
+        "max": [
+          1.527079701423645,
+          2.9843453550338745,
+          0.9145130705833435
+        ]
+      },
+      "finite": true,
+      "eyes": [
+        {
+          "world": [
+            -0.39,
+            2.185,
+            0.03
+          ],
+          "scaleY": 1
+        },
+        {
+          "world": [
+            0.39,
+            2.185,
+            0.03
+          ],
+          "scaleY": 1
+        }
+      ],
+      "limbs": [
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        },
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "capybara",
+      "stage": 5,
+      "meshes": 9,
+      "transparent": 1,
+      "vertices": 22721,
+      "anatomyVertexCount": 3120,
+      "anatomy": {
+        "min": [
+          -0.8099999940395355,
+          0.04500000178813934,
+          -0.5699999928474426
+        ],
+        "max": [
+          0.8099999940395355,
+          2.709999976158142,
+          1.04
+        ],
+        "height": 2.664999974370003
+      },
+      "visual": {
+        "min": [
+          -0.9823567271232605,
+          0.04500000178813934,
+          -0.8899999856948853
+        ],
+        "max": [
+          0.9823567271232605,
+          2.97,
+          1.28
+        ]
+      },
+      "finite": true,
+      "eyes": [
+        {
+          "world": [
+            -0.466,
+            2.18,
+            0.05
+          ],
+          "scaleY": 1
+        },
+        {
+          "world": [
+            0.466,
+            2.18,
+            0.05
+          ],
+          "scaleY": 1
+        }
+      ],
+      "limbs": [
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        },
+        {
+          "rotation": [
+            0,
+            0,
+            0,
+            "XYZ"
+          ]
+        }
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "shot": "plant-5-three-quarter",
+      "realClosedGeometry": true,
+      "finiteAnatomy": true,
+      "blink": true,
+      "harvestMotion": true
+    },
+    {
+      "shot": "capybara-5-three-quarter",
+      "realClosedGeometry": true,
+      "finiteAnatomy": true,
+      "blink": true,
+      "harvestMotion": true
+    },
+    {
+      "shot": "plant-5-profile",
+      "realClosedGeometry": true,
+      "finiteAnatomy": true,
+      "blink": true,
+      "harvestMotion": true
+    },
+    {
+      "shot": "capybara-5-profile",
+      "realClosedGeometry": true,
+      "finiteAnatomy": true,
+      "blink": true,
+      "harvestMotion": true
+    },
+    {
+      "shot": "plant-5-back",
+      "realClosedGeometry": true,
+      "finiteAnatomy": true,
+      "blink": true,
+      "harvestMotion": true
+    },
+    {
+      "shot": "capybara-5-back",
+      "realClosedGeometry": true,
+      "finiteAnatomy": true,
+      "blink": true,
+      "harvestMotion": true
+    }
+  ],
+  "errors": []
+}

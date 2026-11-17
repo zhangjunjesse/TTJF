@@ -15,9 +15,10 @@ const MIME = {
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json; charset=utf-8'
 };
-const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/manifest.webmanifest']);
+const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js', '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/runtime.js', '/saas-client.js', '/saas.css']);
 const ASSET_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.ogg']);
-const PUBLIC_ACTIONS = new Set(['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene']);
+const PUBLIC_ACTIONS = new Set(['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene',
+  'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare']);
 const ACTION_ID = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$/;
 const CHALLENGE_MS = 120000;
 const GRANT_MS = 60000;
@@ -150,7 +151,11 @@ function createServer(options = {}) {
   const rates = new Map();
   let assistantInFlight = 0;
   const publicParent = () => ({ configured: current.parent.configured, method: current.parent.method });
-  const snapshot = () => ({ revision: current.revision, state: current.state, familyDay: FamilyModel.dateKey(now()), parent: publicParent() });
+  const snapshot = () => {
+    const serverTime = new Date(now());
+    return { revision: current.revision, state: current.state, serverNow: serverTime.toISOString(),
+      familyDay: FamilyModel.dateKey(serverTime), parent: publicParent() };
+  };
   const clock = () => new Date(now()).getTime();
   function respond(response, status, value, extraHeaders) {
     response.writeHead(status, Object.assign({

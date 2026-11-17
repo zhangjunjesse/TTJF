@@ -1,0 +1,44 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.saas
+      args:
+        NODE_IMAGE: ${SAAS_NODE_IMAGE:-node:22-alpine}
+    image: ttjf-saas:0.14.0
+    init: true
+    restart: unless-stopped
+    env_file:
+      - ${SAAS_ENV_FILE:-.env.saas.production}
+    environment:
+      NODE_ENV: production
+      SAAS_HOST: 0.0.0.0
+      SAAS_PORT: "4180"
+      SAAS_TRUSTED_PROXIES: ${SAAS_PROXY_ADDRESS:-172.30.80.1}
+    ports:
+      - "127.0.0.1:${SAAS_PUBLISHED_PORT:-4180}:4180"
+    networks:
+      app_private: {}
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 512m
+    stop_grace_period: 30s
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4180/api/health',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+networks:
+  app_private:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${SAAS_BRIDGE_SUBNET:-172.30.80.0/28}
+          gateway: ${SAAS_PROXY_ADDRESS:-172.30.80.1}

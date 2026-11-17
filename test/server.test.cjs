@@ -109,7 +109,7 @@ function mathAnswer(challengeBody) {
   assert.ok(match, 'a randomly generated addition question is displayed');
   return String(Number(match[1]) + Number(match[2]));
 }
-function publicSnapshot(envelope) { return { revision: envelope.revision, state: envelope.state, familyDay: Model.dateKey(NOW), parent: { configured: envelope.parent.configured, method: envelope.parent.method } }; }
+function publicSnapshot(envelope) { return { revision: envelope.revision, state: envelope.state, serverNow: NOW.toISOString(), familyDay: Model.dateKey(NOW), parent: { configured: envelope.parent.configured, method: envelope.parent.method } }; }
 
 test('initial state and metadata expose only public fields, while one private envelope persists hashes', async t => {
   const f = await fixture(t);
@@ -392,7 +392,7 @@ test('restart retains exact-payload idempotency but never revives ephemeral gran
   const restarted = createServer(Object.assign({}, f.config, { now: () => new Date(2027, 0, 1, 12) }));
   t.after(() => close(restarted));
   await listen(restarted);
-  const restartedSnapshot = Object.assign({}, first.body, { familyDay: '2027-01-01' });
+  const restartedSnapshot = Object.assign({}, first.body, { familyDay: '2027-01-01', serverNow: new Date(2027, 0, 1, 12).toISOString() });
   assert.deepEqual((await state(restarted)).body, restartedSnapshot);
   const duplicate = await post(restarted, '/api/action', { revision: 1, action: credit('persisted') });
   assert.deepEqual(duplicate.body, restartedSnapshot);

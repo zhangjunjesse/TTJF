@@ -30,7 +30,9 @@ PRESERVED = {
     'export/little-steps-v9.html': '73fbbfdcb1770209f57644d2754a8f26404842a730750f3d11463aa957ab26e5',
     'export/little-steps-v9.zip': '3f25ec30c03af2f7629a62c7050aebe450d00f74460675887d90ea371a253e73',
     'export/little-steps-v9.1.html': 'e38737cf720385286fcda72b2c6c9c879ac1a9b6469aa23acb823348db9f710c',
-    'export/little-steps-v9.1.zip': '3d9c4b755ebd7a4834ca00ea0148215e10584e4e7429a1d2fa2759eec2e9db38'
+    'export/little-steps-v9.1.zip': '3d9c4b755ebd7a4834ca00ea0148215e10584e4e7429a1d2fa2759eec2e9db38',
+    'export/little-steps-v11.html': '46f76c9ca1edced0b78b560ed4603e256a521dc02a419dff33058e3d23d75e60',
+    'export/little-steps-v11.zip': '6a998a279b49add6e31db7c92511aa82120be8d3790e5e20014105c0824e56dc'
 }
 
 
@@ -107,11 +109,11 @@ def audit(require_history=False):
         errors.append('Offline mode flag is missing')
     if '<script src=' in html or '<link rel="stylesheet"' in html:
         errors.append('Standalone HTML still loads external code')
-    for name in ('model.js', 'assistant.js', 'pet.js', 'app.js'):
+    for name in ('model.js', 'assistant.js', 'pet.js', 'farm-scene.js', 'farm-ui.js', 'app.js'):
         source = (ROOT / name).read_text(encoding='utf-8').replace('</script', '<\\/script')
         if ('<script>' + source + '</script>') not in html:
             errors.append('Inline JavaScript differs: ' + name)
-    for name in ('styles.css', 'pet.css'):
+    for name in ('styles.css', 'pet.css', 'farm.css'):
         if ('<style>' + (ROOT / name).read_text(encoding='utf-8') + '</style>') not in html:
             errors.append('Inline stylesheet differs: ' + name)
     result['passed'] = not errors

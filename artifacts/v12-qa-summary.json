@@ -1,0 +1,468 @@
+{
+  "scope": "Independent v12 QA; aggregated coverage is not a claim that the original full run had no failures.",
+  "browser": {
+    "uniqueGroups": 18,
+    "uniqueChecks": 41,
+    "uniqueLayoutSamples": 21,
+    "groups": [
+      {
+        "name": "loop",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "plots",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "exchange",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "insufficient",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "care",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "sync",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "lost-response",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "cross-harvest",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "clock-sample",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "business",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "layout",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-fixed-probe-layout-visual.json",
+        "sourceStable": true
+      },
+      {
+        "name": "renderer",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "camera",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "visual",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-fixed-probe-layout-visual.json",
+        "sourceStable": true
+      },
+      {
+        "name": "touch",
+        "result": "passed",
+        "evidence": "artifacts/v12-final-results.json",
+        "sourceStable": true
+      },
+      {
+        "name": "offline",
+        "result": "passed",
+        "evidence": "artifacts/v12-probe-offline-offline-http-live.json",
+        "sourceStable": true
+      },
+      {
+        "name": "offline-http",
+        "result": "passed",
+        "evidence": "artifacts/v12-probe-offline-offline-http-live.json",
+        "sourceStable": true
+      },
+      {
+        "name": "live",
+        "result": "passed",
+        "evidence": "artifacts/v12-probe-offline-offline-http-live.json",
+        "sourceStable": true
+      }
+    ],
+    "checks": [
+      {
+        "group": "loop",
+        "label": "First-use home shows a live 3D preview and opens without PIN at inherited 128 growth",
+        "result": "passed"
+      },
+      {
+        "group": "loop",
+        "label": "Harvest welcome carrots → exchange flowerpot → place at entry is an actual UI loop with unchanged ledger",
+        "result": "passed"
+      },
+      {
+        "group": "loop",
+        "label": "Reload keeps one welcome gift and original family history; free batch planting fills only four empty unlocked plots",
+        "result": "passed"
+      },
+      {
+        "group": "loop",
+        "label": "Server clock 8h−1ms rejects maturity; a closed/reopened page at 8h harvests exactly 12 once without automatic replant",
+        "result": "passed"
+      },
+      {
+        "group": "plots",
+        "label": "Individual plot selection preserves other plots; watering is free and does not accelerate readiness",
+        "result": "passed"
+      },
+      {
+        "group": "exchange",
+        "label": "House3 requires House2; insufficient and already-owned items cannot spend inventory",
+        "result": "passed"
+      },
+      {
+        "group": "exchange",
+        "label": "All six decorations exchange once; placement/replacement/removal retains ownership and upgrades the same house to levels 2/3",
+        "result": "passed"
+      },
+      {
+        "group": "insufficient",
+        "label": "Insufficient materials and growth gates expose clear reasons and never partially debit",
+        "result": "passed"
+      },
+      {
+        "group": "care",
+        "label": "Unlimited free partner care changes neither XP, inventory, nor archived exploration",
+        "result": "passed"
+      },
+      {
+        "group": "care",
+        "label": "Each animal counts one care per family day; gaps keep cumulative progress and unlock at 3/7",
+        "result": "passed"
+      },
+      {
+        "group": "sync",
+        "label": "Two pages racing the same welcome harvest converge to exactly three carrots and one receipt",
+        "result": "passed"
+      },
+      {
+        "group": "sync",
+        "label": "Disconnected shared exchange cannot grant ownership or spend locally; reconnect permits one actual exchange",
+        "result": "passed"
+      },
+      {
+        "group": "lost-response",
+        "label": "A committed harvest with its response lost shows no fake local success, then polling reconciles that same receipt once",
+        "result": "passed"
+      },
+      {
+        "group": "cross-harvest",
+        "label": "A lost carrot receipt is never presented as device B's later strawberry harvest",
+        "result": "passed"
+      },
+      {
+        "group": "clock-sample",
+        "label": "A delayed older server clock sample at the same revision never moves growing crops backward",
+        "result": "passed"
+      },
+      {
+        "group": "business",
+        "label": "Real award still requires operation-bound PIN; wrong PIN leaves both ledger and farm unchanged, 500 XP unlocks 6 plots",
+        "result": "passed"
+      },
+      {
+        "group": "business",
+        "label": "Gift request is public; approval requires fresh PIN and spends only family available points",
+        "result": "passed"
+      },
+      {
+        "group": "business",
+        "label": "Reminder creation remains protected; public completion never changes farm or awards points",
+        "result": "passed"
+      },
+      {
+        "group": "business",
+        "label": "Switching original partner preserves the shared farm and welcome receipt",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "desktop first-use home: 48px targets, unoccluded core entries, no document scroll",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "ipad-landscape first-use home: 48px targets, unoccluded core entries, no document scroll",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "ipad-portrait first-use home: 48px targets, unoccluded core entries, no document scroll",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "phone first-use home: 48px targets, unoccluded core entries, no document scroll",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "small-phone first-use home: 48px targets, unoccluded core entries, no document scroll",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "desktop initialized home and full-yard controls remain reachable at 48px",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "ipad-landscape initialized home and full-yard controls remain reachable at 48px",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "ipad-portrait initialized home and full-yard controls remain reachable at 48px",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "phone initialized home and full-yard controls remain reachable at 48px",
+        "result": "passed"
+      },
+      {
+        "group": "renderer",
+        "label": "Normal WebGL renders; home and expanded yard retain exactly the same canvas",
+        "result": "passed"
+      },
+      {
+        "group": "renderer",
+        "label": "A projected plot target responds to a real canvas click",
+        "result": "passed"
+      },
+      {
+        "group": "renderer",
+        "label": "Leaving for reminders pauses rendering and returning resumes without growing resources",
+        "result": "passed"
+      },
+      {
+        "group": "camera",
+        "label": "Expanded camera supports actual drag, wheel zoom and visible reset without writing farm state",
+        "result": "passed"
+      },
+      {
+        "group": "camera",
+        "label": "390px touch drag and zoom buttons browse the scene without accidental selection",
+        "result": "passed"
+      },
+      {
+        "group": "camera",
+        "label": "320x568 yard exposes four 48px camera controls above the plot tray and accepts real taps",
+        "result": "passed"
+      },
+      {
+        "group": "visual",
+        "label": "Record actual app composition for both companions at desktop and two phone widths",
+        "result": "passed"
+      },
+      {
+        "group": "touch",
+        "label": "Emulated touchscreen can start, harvest, choose seed and plant without mouse-only handlers",
+        "result": "passed"
+      },
+      {
+        "group": "layout",
+        "label": "small-phone initialized home and full-yard controls remain reachable at 48px",
+        "result": "passed"
+      },
+      {
+        "group": "offline",
+        "label": "Final self-contained export actually renders and performs the farm loop without any network request",
+        "result": "passed"
+      },
+      {
+        "group": "offline",
+        "label": "An open offline animal panel refreshes itself across local midnight and permits one new daily care",
+        "result": "passed"
+      },
+      {
+        "group": "offline-http",
+        "label": "The exported HTML served over HTTP still stays explicitly local, persists the farm loop and sends no XHR/assets",
+        "result": "passed"
+      },
+      {
+        "group": "live",
+        "label": "The actual 4178 entry serves current farm resources and renders with every write blocked",
+        "result": "passed"
+      }
+    ],
+    "allFinalGroupsPassed": true,
+    "allRunSourcesStable": true
+  },
+  "originalFailure": {
+    "report": "artifacts/v12-final-results.json",
+    "group": "layout",
+    "bodyHeight": 80.07842011695303,
+    "minimum": 100,
+    "resolvedBy": "artifacts/v12-final-fixed-probe-layout-visual.json",
+    "finalBodyHeight": 104.06390738486695
+  },
+  "rendering": {
+    "defaultContext": {
+      "report": "farm/verification/v12-component-results.json",
+      "checks": 10,
+      "sourceStable": true,
+      "bundle": "c4d489607022315d59e1032a9e848b9d55ba93c9b361be02948043c6db96a55c",
+      "resourceBaseline": {
+        "geometries": 39,
+        "textures": 4,
+        "programs": 7
+      },
+      "resourceSamples": [
+        {
+          "cycles": 2,
+          "memory": {
+            "geometries": 39,
+            "textures": 4,
+            "programs": 7
+          }
+        },
+        {
+          "cycles": 4,
+          "memory": {
+            "geometries": 39,
+            "textures": 4,
+            "programs": 7
+          }
+        },
+        {
+          "cycles": 6,
+          "memory": {
+            "geometries": 39,
+            "textures": 4,
+            "programs": 7
+          }
+        }
+      ]
+    },
+    "webgl1": {
+      "report": "farm/verification/v12-webgl1-component-results.json",
+      "version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+      "checks": 10,
+      "sourceStable": true,
+      "bundle": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de",
+      "resourceBaseline": {
+        "geometries": 39,
+        "textures": 4,
+        "programs": 7
+      },
+      "resourceSamples": [
+        {
+          "cycles": 2,
+          "memory": {
+            "geometries": 39,
+            "textures": 4,
+            "programs": 7
+          }
+        },
+        {
+          "cycles": 4,
+          "memory": {
+            "geometries": 39,
+            "textures": 4,
+            "programs": 7
+          }
+        },
+        {
+          "cycles": 6,
+          "memory": {
+            "geometries": 39,
+            "textures": 4,
+            "programs": 7
+          }
+        }
+      ],
+      "errors": 0,
+      "networkRequests": 0
+    }
+  },
+  "finalProductionHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+    "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+    "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+    "farm-scene.js": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de"
+  },
+  "offline": {
+    "report": "artifacts/v12-offline-results.json",
+    "groups": 2,
+    "checks": 3,
+    "exportHash": "407b9cf1e94c44fd6f7b1098b04b002c380e5cbe58e29885d5d750eb3a1e94f3"
+  },
+  "liveReadOnly": {
+    "url": "http://127.0.0.1:4178",
+    "requestsWereGuarded": true,
+    "nonReadRequests": 0,
+    "resources": [
+      {
+        "file": "app.js",
+        "status": 200,
+        "bytes": 141011,
+        "sha256": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661"
+      },
+      {
+        "file": "farm-ui.js",
+        "status": 200,
+        "bytes": 35393,
+        "sha256": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57"
+      },
+      {
+        "file": "farm.css",
+        "status": 200,
+        "bytes": 25666,
+        "sha256": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a"
+      },
+      {
+        "file": "farm-scene.js",
+        "status": 200,
+        "bytes": 2735892,
+        "sha256": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de"
+      }
+    ]
+  },
+  "evidenceCompatibility": "The full browser run used e9d390; b0b152 only adjusts home framing for hosts shorter than 180px. Layout/visual, both offline modes, read-only live entry, and forced WebGL1 component coverage were rerun on b0b152. Earlier passed business/sync groups are retained, not presented as a second full run.",
+  "visualReview": "artifacts/v12-visual-review.md",
+  "boundaries": [
+    "Desktop Edge with emulated viewports/touch and a real software WebGL1 context; no physical iPad/Safari/A8 verification.",
+    "Controlled eight-hour/midnight clocks, not eight real hours or a ten-minute A8 soak.",
+    "Night palette remains darker/greener than the reference blue-grey night. Visual review is not pixel-parity certification."
+  ]
+}

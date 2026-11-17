@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>农场场景 · 独立合成夹具</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#f6f2e8;font:16px system-ui;color:#405448}main{width:min(960px,100vw);margin:22px auto}header{padding:12px 18px}h1{font-size:20px;margin:0 0 6px}p{font-size:14px;margin:0}#farm{width:100%;height:580px;border-radius:24px;overflow:hidden;box-shadow:0 12px 35px #5e725220}nav{display:flex;gap:10px;padding:12px}button{padding:12px 18px;font:inherit;min-height:48px;border:1px solid #d1d8c3;border-radius:12px;background:#fff}#status{padding:0 14px;font-size:13px}@media(max-width:600px){main{margin:0}#farm{height:480px;border-radius:12px}header{padding:10px}nav{flex-wrap:wrap}}</style>
+</head><body><main><header><h1>伙伴的小院</h1><p>独立渲染验证 · 示例数据，不写入家庭存档</p></header><div id="farm"></div><nav><button id="mode">近景 / 全院</button><button id="pet">切换伙伴</button><button id="react">收获回应</button></nav><p id="status"></p></main>
+<script src="../farm-scene.js"></script><script>
+const query=new URLSearchParams(location.search);const host=document.getElementById('farm');if(query.has('width'))host.style.width=query.get('width')+'px';if(query.has('height'))host.style.height=query.get('height')+'px';
+const farm={initialized:true,houseLevel:3,plotLimit:6,crops:[{id:'carrot',unlocked:true},{id:'strawberry',unlocked:true},{id:'sunflower',unlocked:true}],plots:Array.from({length:6},(_,i)=>({id:'p'+(i+1),index:i,unlocked:true,cropId:['carrot','strawberry','sunflower'][i%3],status:i<3?'ready':i===5?'empty':'growing',plantedAt:new Date(Date.now()-3600000*(i===3?1:5)).toISOString(),readyAt:new Date(Date.now()+3600000*(i===3?7:3)).toISOString()})),inventory:{carrot:12,strawberry:8,sunflower:8},placements:{entry:'flowerpot',center:'picnic',edge:'trellis',fence:'fence',path:'path'},animals:[{id:'chicken',unlocked:true,caredToday:false,actionUnlocked:true},{id:'rabbit',unlocked:true,caredToday:true,actionUnlocked:true}]};
+window.fixture=farm;window.picks=[];window.statuses=[];
+window.sceneOptions={mode:query.get('mode')||'home',farm,pet:{kind:query.get('kind')||'plant',name:'芽芽'},growth:{stage:Number(query.get('stage'))||5,stars:1,xp:750},reducedMotion:query.has('still'),onSelect:x=>{picks.push(x);document.getElementById('status').textContent=JSON.stringify(x)},onStatus:x=>{statuses.push(x);document.getElementById('status').textContent=x.error||''}};
+window.controller=FamilyFarmScene.mount(host,sceneOptions);
+document.getElementById('mode').onclick=()=>{sceneOptions.mode=sceneOptions.mode==='home'?'expanded':'home';controller.update(sceneOptions)};
+document.getElementById('pet').onclick=()=>{sceneOptions.pet.kind=sceneOptions.pet.kind==='plant'?'capybara':'plant';controller.update(sceneOptions)};
+document.getElementById('react').onclick=()=>controller.react('harvest');
+</script></body></html>

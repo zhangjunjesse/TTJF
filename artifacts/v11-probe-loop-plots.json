@@ -1,0 +1,117 @@
+{
+  "command": "node test/v11-browser.cjs",
+  "requested": [
+    "loop",
+    "plots"
+  ],
+  "startedAt": "2026-11-16T07:41:57.461Z",
+  "sourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "f77bde58774a356f9a7d93c08528425dad4e8f2e52c43498a95c0c1267fac0f4",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "28d16fb81916004577cbafeb0ca5a65586570545c03cc1147174e456d41ed9f5",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "1b0ee6739d111bbdf3affb90556da4a08457d0d887af2f3258810f65c3d4c537",
+    "test/v11-browser.cjs": "577c44ed4e880abfb2d8de3b8262231cb0fc50a2852ab28139a5f6ff42cdf76e"
+  },
+  "fixture": "Temporary createEnvironment server on an ephemeral loopback port and a separate browser context. All rich inventory is constructed by Model.apply. No live service or live family data is used.",
+  "boundaries": [
+    "Headless Microsoft Edge/Chromium; viewport and touch emulation do not prove Safari or iPad mini 4 hardware compatibility.",
+    "Eight-hour maturity and family-day boundaries use controlled client/server clocks, not eight hours of wall-clock waiting.",
+    "Short renderer diagnostics measure this desktop run only; no 10-minute A8/device soak, audible output, OS keyboard, or native touch claim.",
+    "Buttons are activated with real mouse/touch input after DOM hit-testing; production actions and state are never invoked or changed via page.evaluate."
+  ],
+  "groups": [
+    {
+      "name": "loop",
+      "result": "failed",
+      "check": "Server clock 8h−1ms rejects maturity; a closed/reopened page at 8h harvests exactly 12 once without automatic replant",
+      "message": "Expected values to be strictly equal:\n\n4 !== 0\n",
+      "stack": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n4 !== 0\n\n    at C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v11-browser.cjs:223:12\n    at async check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v11-browser.cjs:53:9)\n    at async mainLoop (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v11-browser.cjs:221:3)\n    at async group (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v11-browser.cjs:72:5)\n    at async run (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v11-browser.cjs:537:5)",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "f77bde58774a356f9a7d93c08528425dad4e8f2e52c43498a95c0c1267fac0f4",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "28d16fb81916004577cbafeb0ca5a65586570545c03cc1147174e456d41ed9f5",
+        "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+        "farm-scene.js": "1b0ee6739d111bbdf3affb90556da4a08457d0d887af2f3258810f65c3d4c537",
+        "test/v11-browser.cjs": "577c44ed4e880abfb2d8de3b8262231cb0fc50a2852ab28139a5f6ff42cdf76e"
+      }
+    },
+    {
+      "name": "plots",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "f77bde58774a356f9a7d93c08528425dad4e8f2e52c43498a95c0c1267fac0f4",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "28d16fb81916004577cbafeb0ca5a65586570545c03cc1147174e456d41ed9f5",
+        "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+        "farm-scene.js": "1b0ee6739d111bbdf3affb90556da4a08457d0d887af2f3258810f65c3d4c537",
+        "test/v11-browser.cjs": "577c44ed4e880abfb2d8de3b8262231cb0fc50a2852ab28139a5f6ff42cdf76e"
+      },
+      "sourceStable": true
+    }
+  ],
+  "checks": [
+    {
+      "group": "loop",
+      "label": "First-use home shows a live 3D preview and opens without PIN at inherited 128 growth",
+      "result": "passed"
+    },
+    {
+      "group": "loop",
+      "label": "Harvest welcome carrots → exchange flowerpot → place at entry is an actual UI loop with unchanged ledger",
+      "result": "passed"
+    },
+    {
+      "group": "loop",
+      "label": "Reload keeps one welcome gift and original family history; free batch planting fills only four empty unlocked plots",
+      "result": "passed"
+    },
+    {
+      "group": "plots",
+      "label": "Individual plot selection preserves other plots; watering is free and does not accelerate readiness",
+      "result": "passed"
+    }
+  ],
+  "layouts": [],
+  "renderer": [],
+  "screenshots": [
+    {
+      "file": "artifacts/v11-loop-first-flowerpot.png",
+      "sha256": "c208ec216174be1e1bb24c9f2a3d2d7247555bbd3b45d8e4c1ff1c36289e8a6b"
+    },
+    {
+      "file": "artifacts/v11-loop-failure.png",
+      "sha256": "8a89a6cdbcda4639e924949879b123c958443da70a328117daef8cec6c085c09"
+    },
+    {
+      "file": "artifacts/v11-individual-carrot-harvest.png",
+      "sha256": "60b41e7be17cf746def860db0f279a3782396bcfc62700b5272402487795a6df"
+    }
+  ],
+  "errors": [],
+  "skipped": [],
+  "finishedAt": "2026-11-16T07:42:25.314Z",
+  "finalSourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "f77bde58774a356f9a7d93c08528425dad4e8f2e52c43498a95c0c1267fac0f4",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "28d16fb81916004577cbafeb0ca5a65586570545c03cc1147174e456d41ed9f5",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "1b0ee6739d111bbdf3affb90556da4a08457d0d887af2f3258810f65c3d4c537",
+    "test/v11-browser.cjs": "577c44ed4e880abfb2d8de3b8262231cb0fc50a2852ab28139a5f6ff42cdf76e"
+  },
+  "sourceStable": true,
+  "passed": 1,
+  "failed": 1
+}

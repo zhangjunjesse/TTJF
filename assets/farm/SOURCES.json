@@ -1,0 +1,243 @@
+{
+  "repository": "https://github.com/KrasimirKralev/harvest-hollow",
+  "revision": "9b23e1a1fe2b19e117a3005efce21417052ded97",
+  "retrieved": "2026-11-16",
+  "verification": "Each local GLB's Git blob hash was compared with the recursive GitHub tree at the fixed revision and matched.",
+  "license": "CC0-1.0 source-pack declaration plus MIT-authored procedural geometry, composition, processing and render references; both legal notices retained",
+  "files": [
+    {
+      "file": "models/carrot.glb",
+      "source": "public/assets/models/crops/carrot.glb",
+      "bytes": 36608,
+      "gitBlob": "7293a89f265bd9b945ac379798e9943fcd453226",
+      "sha256": "dc853a32beac729185e5a29c633f5586c5f0e4177addbced998fb1bcf22c0d9b",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream CC0 source-pack declaration retained with MIT processing/generation notice"
+    },
+    {
+      "file": "models/strawberry.glb",
+      "source": "public/assets/models/crops/strawberry.glb",
+      "bytes": 40200,
+      "gitBlob": "711a65fda40906bc42fa30897caa07dbe32e4635",
+      "sha256": "c90e82420b10af65aab4c9750234c5dc044d0e024431d6514a496af2018db8f6",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream CC0 source-pack declaration retained with MIT processing/generation notice"
+    },
+    {
+      "file": "models/sunflower.glb",
+      "source": "public/assets/models/crops/sunflower.glb",
+      "bytes": 39824,
+      "gitBlob": "b0e1c0b953615f5d8b8aef9bf8d36d1d2d3fb739",
+      "sha256": "9188604a9bf4fc037ef2bbb264f824e98f6ba97bd025351925bbfacca52c2e5f",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream CC0 source-pack declaration retained with MIT processing/generation notice"
+    },
+    {
+      "file": "models/chicken.glb",
+      "source": "public/assets/models/animals/chicken.glb",
+      "bytes": 35324,
+      "gitBlob": "636c692afcf6456934edd6aa9f5d95ae15273da0",
+      "sha256": "5d63066bfeea6525e27a7147a8fd1c7300f76b28528e794e38a03596d1c054b5",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream CC0 source-pack declaration retained with MIT processing/generation notice"
+    },
+    {
+      "file": "models/rabbit.glb",
+      "source": "public/assets/models/animals/rabbit.glb",
+      "bytes": 25100,
+      "gitBlob": "7199a5af25b76e9b26fc2252c40c8ada70da17a5",
+      "sha256": "d11d8e7664f4360669ffd041c45b2f963b415120529154207b5bf8a6edcfa952",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream CC0 source-pack declaration retained with MIT processing/generation notice"
+    },
+    {
+      "file": "models/farmhouse-1.glb",
+      "source": "public/assets/models/buildings/farmhouse-1.glb",
+      "bytes": 111712,
+      "gitBlob": "549b3799a23325638ce93cdd9805b05e9f8e676d",
+      "sha256": "12bec7cc9db76a2fe916b227c4c239821b3d814ba598b29ef6a29aaf6b347b37",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream farmhouse/tier meshes with original pack attribution and authored procedural architecture",
+      "generatorReference": "tools/build-assets.mjs:7156"
+    },
+    {
+      "file": "models/farmhouse-2.glb",
+      "source": "public/assets/models/buildings/farmhouse-2.glb",
+      "bytes": 124660,
+      "gitBlob": "b3fa369d2ce24f4082a5f8219ec7b5f180508d85",
+      "sha256": "d34f912b35f1f2565e71a6a4f6fea7131bb73a0cebf2f39519f721773ff590fe",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream farmhouse/tier meshes with original pack attribution and authored procedural architecture",
+      "generatorReference": "tools/build-assets.mjs:7156"
+    },
+    {
+      "file": "models/farmhouse-3.glb",
+      "source": "public/assets/models/buildings/farmhouse-3.glb",
+      "bytes": 143776,
+      "gitBlob": "f9107c6d3986e95557952f18492a02c1f805e965",
+      "sha256": "3f769221b5d72b5901c27dcffa574a246445f3bba9c5255be0bb9bb5c16d9270",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Upstream farmhouse/tier meshes with original pack attribution and authored procedural architecture",
+      "generatorReference": "tools/build-assets.mjs:7156"
+    },
+    {
+      "file": "models/props.glb",
+      "source": "public/assets/models/props/props.glb",
+      "bytes": 182904,
+      "gitBlob": "bb1e1474b08775745ffafc6da60dd5783d140d2e",
+      "sha256": "301bc8d3ca9d85c1feb022956df35b56f52eafc241f745ae5c7dd378f234e378",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Mixed authored procedural forest/grass/reed/prop geometry",
+      "generatorReference": "tools/build-assets.mjs:3481-3525"
+    },
+    {
+      "file": "models/debris.glb",
+      "source": "public/assets/models/debris/debris.glb",
+      "bytes": 35496,
+      "gitBlob": "6243e5c26a341b0c008219a07be3c14949c7a2b2",
+      "sha256": "c234365ddb1161af91302b25a621bf31f46e3472a315933878798cbe8ae07df8",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Quaternius Ultimate Nature source meshes plus authored procedural weeds",
+      "generatorReference": "tools/build-assets.mjs:3442-3478"
+    },
+    {
+      "file": "models/apple_tree.glb",
+      "source": "public/assets/models/trees/apple_tree.glb",
+      "bytes": 174296,
+      "gitBlob": "d4491b9a1399b6f2729b2fc62247e06d819a5562",
+      "sha256": "d953280fc298d5cf12daa5c4546590131fe23b801ad6521be5832a35d68f3e48",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored fruitTree procedural geometry",
+      "generatorReference": "tools/build-assets.mjs:2005"
+    },
+    {
+      "file": "models/pine.glb",
+      "source": "public/assets/models/trees/pine.glb",
+      "bytes": 40628,
+      "gitBlob": "f0f53a019d4bdff7b7876b549e51c2c3426d4867",
+      "sha256": "0ce66b0b7c1689f83990d7f0a4f1cbbe68d65d8400a32b5670fe3d21705153ca",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored pineTree procedural geometry",
+      "generatorReference": "tools/build-assets.mjs:2111"
+    },
+    {
+      "file": "models/coop.glb",
+      "source": "public/assets/models/homes/coop.glb",
+      "bytes": 67244,
+      "gitBlob": "4424e4d2d733e8d07629216f61018cab6580cad1",
+      "sha256": "db653f7e0f47cd80fb757df30adb8180b5248721d35d6415807680177dcdb5ca",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Quaternius Ultimate Farm Buildings ChickenCoop plus authored yard, pen and trough",
+      "generatorReference": "tools/build-assets.mjs:2910-2918"
+    },
+    {
+      "file": "models/hutch.glb",
+      "source": "public/assets/models/homes/hutch.glb",
+      "bytes": 68384,
+      "gitBlob": "74535bf153ff640b6feb00ad088204e2e7dbde9c",
+      "sha256": "ac8ea73d07105f1e907fa5fc09f5463bdd031fc20f63fb8ff22513db322b2bc4",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored rabbitHutch procedural geometry",
+      "generatorReference": "tools/build-assets.mjs:7429-7463"
+    },
+    {
+      "file": "models/stone_well.glb",
+      "source": "public/assets/models/decor/stone_well.glb",
+      "bytes": 33900,
+      "gitBlob": "15d3d7743ebac7e5b5f3831f4bf515378efcd886",
+      "sha256": "01a6c4dee7e0fbf3c689d06f54daf60d3b8d76e05d32cc986666f73b2e8b42a8",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Quaternius Medieval Village Well plus authored flower additions",
+      "generatorReference": "tools/build-assets.mjs:3164"
+    },
+    {
+      "file": "models/hay_bales.glb",
+      "source": "public/assets/models/decor/hay_bales.glb",
+      "bytes": 6384,
+      "gitBlob": "185850e552039f06a31746b99fb31dc6159eb600",
+      "sha256": "f891350d4c9e065de84bf0923779d94c6e48ec80d1513ce64215a53c5d717287",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored hayBale procedural composition",
+      "generatorReference": "tools/build-assets.mjs:3110"
+    },
+    {
+      "file": "models/scarecrow.glb",
+      "source": "public/assets/models/decor/scarecrow.glb",
+      "bytes": 10732,
+      "gitBlob": "53aba55427f7971cf9e9a0dd064f17bd2e6f65c3",
+      "sha256": "00bf4e6c405c74c2368f233a398f8b0101a3f0104e584baa11b3409dc0da189e",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored scarecrow procedural geometry",
+      "generatorReference": "tools/build-assets.mjs:3069-3075"
+    },
+    {
+      "file": "models/flower_bed.glb",
+      "source": "public/assets/models/decor/flower_bed.glb",
+      "bytes": 9384,
+      "gitBlob": "a0ccb42dc05ae3d1b79c0816d834efbd98812b69",
+      "sha256": "a3004169ff8d87ed4655d82ab071e070ef9216a9fba4ddc48f18527d94fe19c6",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored flowerClump and flower-bed procedural geometry",
+      "generatorReference": "tools/build-assets.mjs:3078-3083"
+    },
+    {
+      "file": "models/wheelbarrow.glb",
+      "source": "public/assets/models/decor/wheelbarrow.glb",
+      "bytes": 10920,
+      "gitBlob": "10d5c3a90c8f5fd619a4d907661845e4d44b7ca8",
+      "sha256": "fbfa6811af2881c23f4545a3b83849a42ca00912e66a182910817dfa46d57f01",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored wheelbarrow procedural geometry",
+      "generatorReference": "tools/build-assets.mjs:3116-3126"
+    },
+    {
+      "file": "models/lantern.glb",
+      "source": "public/assets/models/decor/lantern.glb",
+      "bytes": 3404,
+      "gitBlob": "9772f71d9063f4affbef883a736bc47f35cf49cd",
+      "sha256": "e0a8d99f3b71afd4a1c9086d04b4feb64e4bef6d73a24bc57e3aacd51a5975d1",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Authored lantern procedural geometry",
+      "generatorReference": "tools/build-assets.mjs:3130-3131"
+    },
+    {
+      "file": "models/barn.glb",
+      "source": "public/assets/models/buildings/barn.glb",
+      "bytes": 330632,
+      "gitBlob": "ede248b36b46c8f417a4a6ba707ba7a0ae9e3c75",
+      "sha256": "85c5fa8cad7e3c791b95ace04c02438558b0712416f4032d8a000afe58cb5f5e",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Quaternius Ultimate Farm Buildings source plus authored composition",
+      "generatorReference": "tools/build-assets.mjs:2485-2531"
+    },
+    {
+      "file": "models/sunset_bench.glb",
+      "source": "public/assets/models/decor/sunset_bench.glb",
+      "bytes": 11092,
+      "gitBlob": "409de735ecdf107b4b75c1bae75de19e11128f01",
+      "sha256": "6b9cf4899ec5c01bbb111ee136dd5a4654e20cdbd9bcd5da25cdda166d854f78",
+      "license": "CC0-1.0 source-pack attribution and MIT upstream contributions retained",
+      "provenance": "Quaternius Medieval Village Bench_1 plus authored flowers and composition",
+      "generatorReference": "tools/build-assets.mjs:3106-3108"
+    }
+  ],
+  "renderReference": {
+    "path": "reference/",
+    "revision": "9b23e1a1fe2b19e117a3005efce21417052ded97",
+    "license": "MIT",
+    "adapted": [
+      "ground.js hash2/noise2 deterministic noise method"
+    ],
+    "inspected": [
+      "renderer.js",
+      "scene.js",
+      "ground.js",
+      "river.js",
+      "camera.js",
+      "land-features.js",
+      "assets.js",
+      "tools/build-assets.mjs (provenance only; never executed)"
+    ],
+    "execution": "No upstream tools, build scripts, package installation or servers were executed"
+  }
+}

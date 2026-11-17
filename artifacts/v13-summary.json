@@ -1,0 +1,95 @@
+{
+  "version": "0.13.0",
+  "at": "2026-11-16T15:02:42.095Z",
+  "result": "passed",
+  "core": {
+    "file": "artifacts/v13-core-tests.txt",
+    "tests": 211,
+    "pass": 211,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "sha256": "75fda1975530cdb8b4bd668ad8e43627c2cf3c447c25e08ae5858bb2c6ccfad8"
+  },
+  "postgres": {
+    "file": "artifacts/v13-saas-tests-final.txt",
+    "tests": 23,
+    "pass": 23,
+    "fail": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "sha256": "f6be09c83147ebda1fc94fd6723f167581a5ed039005c8619bc923c147ed8631"
+  },
+  "browser": {
+    "file": "artifacts/v13-browser/20261116143747298-33072/report.json",
+    "checks": 21,
+    "layouts": 20,
+    "screenshots": 32,
+    "pageErrors": 0,
+    "sourceStable": true,
+    "sha256": "fd70754a8e70e600b5685c6fcb62dfe17943aef4f28fd65abef0c61e56a39c03"
+  },
+  "livePreview": {
+    "file": "artifacts/v13-live-preview.json",
+    "url": "http://127.0.0.1:4180",
+    "assets": 7,
+    "protected": 6,
+    "writes": 0,
+    "pageErrors": 0,
+    "sha256": "5a71b52296880ce9a157c060f9e9037aa8119604887e32d27cd606bcd9dc284d"
+  },
+  "checkedLinks": 156,
+  "sourceHashes": {
+    "package.json": "1a3b2a82d1937a48792770f3ee9719aa96238ebf184e27fd22a75f3f91344fb2",
+    "docs/saas-design.md": "b49b8555729bc471c86ec603328058c6281bf9e843a415554a06e0eb687b55f6",
+    "saas-server.cjs": "63d0424c90f20d6ecc17db50aea4ccc4af7c322d143d6d5f410f97c6b460b310",
+    "saas/store.cjs": "798d956e56315df5dd8014ee1e9fef1a594cfbea5bd11c5af3a5489270b6fc55",
+    "saas/security.cjs": "720fc68bf46e8cbaa877fb64988edfb57b4efd4d97d060cf150627c1a9817a81",
+    "saas/auth.cjs": "3e64d4574eee007f2e4c8142cfe149d598e425f27bf8d596e4c91201289e0bc6",
+    "saas/families.cjs": "eba11d527fde80c4186b5a1a8e45ac832187ad69c0d1952b6e7d9019a3d693f1",
+    "saas/business.cjs": "97496603fe781524433957bd34ebc7fa159f67e0bc0b6f0b0c32d123e1cb90b2",
+    "saas/mail.cjs": "12a181dec05985884447ce0fc1c6021d5536967ae8de4eaa5459f1172caa25c6",
+    "saas/migrations/001-initial.sql": "87cd795ff183d87f2d0534110b12963591a9c9b1f342f2ef9b848af613d22fbc",
+    "saas-client.js": "86305a317861ffd54149ee497edf22ecd37a80d131c4434702a189c2641fb57a",
+    "saas.css": "eccf503dc99bea15880c91129e1346e79b3355b05cb2af300c61c3677147096c",
+    "app.js": "5cc01a9eac5a66ef2dba6ef5077ab3a8f193ec3ad558694893718d5a26449c6b",
+    "model.js": "b7b04edb15c94368e60897426c0a32dc80fe9a8c17b5f4942a328299a80c769a",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "87a79ea532e56f24190120de004046652b8afe8779d8bc5e907480a61bad5acf",
+    "runtime.js": "42e26a14ceef434323e330fe6c5f80c37a54bcec9fe3cdea6ca7b930d2433e8e",
+    "farm-ui.js": "910284a4be978a9206bf319c32782bda7bc61102899beb606db5d3e925eb521f",
+    "farm-scene.js": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de",
+    "test/saas-browser.cjs": "a6117e195ec634b5345f66d430ac1997fedc0a227718951f7d9017f0ac3780d4",
+    "tools/saas-local.cjs": "3c9b7c696fcec3d4159b4feca86219cb530d01bf30ec21f6f1b4e40cde72885e",
+    "tools/saas-data.cjs": "8b98b9beb78e6217245f5f6ead0e2156d871c155e849b357df947c5ded2261c6",
+    "tools/verify-saas-preview.cjs": "2ea4dae4439aa229704985159c5671015da5c3e037178acb3bdbf9bac028b8ac",
+    "tools/verify-saas-release.cjs": "7d5e3c8997b423d66bfee32b9c39a0e665dc6643d3cc81e7b44f2a9064267b3a",
+    "test/saas-data.test.cjs": "46b98f990525585a84c232e2c2f3d807ee091345221681c2f1a9897cfecec2ad",
+    "test/saas-model.test.cjs": "c824ef36b091df114ea662e16861fd0f5b96823716fe31f6b67dc4fa55975b0e",
+    "test/saas-client.test.cjs": "bf2799e4f5d0d526c5760129f2165261f4a34070b8d92205fb3736a03c8e0739",
+    "test/saas-auth.test.cjs": "55221cb862ae487007d766a1525f2becabedbaf40573d11685eb04fb208ad8fb",
+    "test/saas-store.test.cjs": "9085ef02a109d89ecb5f23b6da6909239ab1592f362fce6a6c320ad3655fe7a0",
+    "test/saas-server.test.cjs": "55c875d27a90713f9afe6f3954ae80c421561375f3f01e63ea05fa8d1bfae34a",
+    "package-lock.json": "810cdaf48de959808576a6bee661d7d82e20f4e5b9fa4ed4947ec75ba986fb03",
+    "compose.saas.yml": "c4559b8e189f5bdb19795d04037694770e2afcbaa49ce2c19db67ccaf3a0b1be",
+    "docs/saas-operations.md": "dfe738d0101a5bdc2fb4ad50cc9135eff96a77164fb44f6faed67ee45c439b72",
+    "README.md": "deb6a3dfc5d8a62763fdf3c60ad7eefe79a1333cd9bbd8f40245408ee1f8cd65"
+  },
+  "frozen": {
+    "farm-scene.js": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de",
+    "export/little-steps-demo.html": "407b9cf1e94c44fd6f7b1098b04b002c380e5cbe58e29885d5d750eb3a1e94f3"
+  },
+  "documentUpdatesAfterBrowserRun": [
+    "docs/saas-design.md"
+  ],
+  "unchangedHistoricalWhitespace": "Broad git diff --check flags six pre-existing generated whitespace lines in export/little-steps-demo.html. Its SHA256 matches the frozen pre-SaaS baseline; source check excludes only that unchanged file.",
+  "boundaries": [
+    "Local multi-family beta only; no public deployment/billing/commit/push.",
+    "No real legacy family file read, assigned or imported.",
+    "Real local SMTP protocol tested; external delivery and HTTPS deployment not tested.",
+    "Headless Edge viewport tests are not physical iPad/Safari or native BFCache/OS suspension tests.",
+    "8-hour maturity uses an injected server clock.",
+    "Page backgrounding clears unsubmitted drafts.",
+    "Full production-database backup/PITR procedures are documented, not executed on a production database."
+  ]
+}

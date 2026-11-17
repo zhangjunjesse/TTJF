@@ -1,0 +1,4388 @@
+{
+  "command": "node test/v12-browser.cjs",
+  "requested": [
+    "visual",
+    "camera"
+  ],
+  "startedAt": "2026-11-16T08:59:10.505Z",
+  "sourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "27fac8732c52de17ff341566cd4654af516d2a935e92c0f750ab1b2e79ba0df7",
+    "farm.css": "cd5f5fa331cc89952fa6de01603c1873bb2400143a9597a68824b1f57e40dc24",
+    "farm-scene.js": "6bd3748bcec3f58680c3183673748705713f257af88f08f98ca195ee8ec0f12f",
+    "test/v12-browser.cjs": "9400de06a75e7d13e1ee73bae49286db8d974e7327cd5f66e97f0f7d4ce9f2cd"
+  },
+  "fixture": "Temporary createEnvironment server on an ephemeral loopback port and a separate browser context. All rich inventory is constructed by Model.apply. No live service or live family data is used.",
+  "boundaries": [
+    "Headless Microsoft Edge/Chromium; viewport and touch emulation do not prove Safari or iPad mini 4 hardware compatibility.",
+    "Eight-hour maturity and family-day boundaries use controlled client/server clocks, not eight hours of wall-clock waiting.",
+    "Short renderer diagnostics measure this desktop run only; no 10-minute A8/device soak, audible output, OS keyboard, or native touch claim.",
+    "Buttons are activated with real mouse/touch input after DOM hit-testing; production actions and state are never invoked or changed via page.evaluate.",
+    "Mechanical checks do not establish visual parity with Harvest Hollow. Final judgement requires reading screenshots against the four reference images; see artifacts/v12-visual-review.md."
+  ],
+  "visualReview": {
+    "status": "pending-human-image-review",
+    "references": [
+      "artifacts/v12-reference/hero.png",
+      "artifacts/v12-reference/farm-day.png",
+      "artifacts/v12-reference/phone-farm.png",
+      "artifacts/v12-reference/night.png"
+    ]
+  },
+  "groups": [
+    {
+      "name": "camera",
+      "result": "failed",
+      "check": "390px touch drag and zoom buttons browse the scene without accidental selection",
+      "message": "Waiting for selector `button[data-action=\"farm-camera-reset\"]` failed",
+      "stack": "TimeoutError: Waiting for selector `button[data-action=\"farm-camera-reset\"]` failed\n    at CSSQueryHandler.waitFor (file:///C:/Users/Administrator/Desktop/dsh-workspace/space-1/family-dashboard/node_modules/puppeteer-core/lib/puppeteer/common/QueryHandler.js:211:46)\n    at async CdpFrame.waitForSelector (file:///C:/Users/Administrator/Desktop/dsh-workspace/space-1/family-dashboard/node_modules/puppeteer-core/lib/puppeteer/api/Frame.js:546:21)\n    at async CdpPage.waitForSelector (file:///C:/Users/Administrator/Desktop/dsh-workspace/space-1/family-dashboard/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:1487:20)\n    at async visibleHandle (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:122:3)\n    at async Object.click (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\browser.cjs:138:18)\n    at async C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v12-browser.cjs:658:5\n    at async check (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v12-browser.cjs:66:9)\n    at async cameraBrowsing (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v12-browser.cjs:656:3)\n    at async group (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v12-browser.cjs:85:5)\n    at async run (C:\\Users\\Administrator\\Desktop\\dsh-workspace\\space-1\\family-dashboard\\test\\v12-browser.cjs:840:5)",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "27fac8732c52de17ff341566cd4654af516d2a935e92c0f750ab1b2e79ba0df7",
+        "farm.css": "cd5f5fa331cc89952fa6de01603c1873bb2400143a9597a68824b1f57e40dc24",
+        "farm-scene.js": "6bd3748bcec3f58680c3183673748705713f257af88f08f98ca195ee8ec0f12f",
+        "test/v12-browser.cjs": "9400de06a75e7d13e1ee73bae49286db8d974e7327cd5f66e97f0f7d4ce9f2cd"
+      }
+    },
+    {
+      "name": "visual",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "27fac8732c52de17ff341566cd4654af516d2a935e92c0f750ab1b2e79ba0df7",
+        "farm.css": "cd5f5fa331cc89952fa6de01603c1873bb2400143a9597a68824b1f57e40dc24",
+        "farm-scene.js": "6bd3748bcec3f58680c3183673748705713f257af88f08f98ca195ee8ec0f12f",
+        "test/v12-browser.cjs": "9400de06a75e7d13e1ee73bae49286db8d974e7327cd5f66e97f0f7d4ce9f2cd"
+      },
+      "sourceStable": true
+    }
+  ],
+  "checks": [
+    {
+      "group": "camera",
+      "label": "Expanded camera supports actual drag, wheel zoom and visible reset without writing farm state",
+      "result": "passed"
+    },
+    {
+      "group": "visual",
+      "label": "Record actual app composition for both companions at desktop and two phone widths",
+      "result": "passed"
+    }
+  ],
+  "layouts": [
+    {
+      "label": "camera-desktop-reset",
+      "width": 1024,
+      "height": 768,
+      "scrollWidth": 1024,
+      "scrollHeight": 768,
+      "bodyScrollHeight": 768,
+      "scrollY": 0,
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 768,
+        "right": 1024,
+        "bottom": 768
+      },
+      "form": "farm",
+      "controls": [
+        {
+          "x": 16,
+          "y": 19.5,
+          "width": 48,
+          "height": 48,
+          "right": 64,
+          "bottom": 67.5,
+          "action": "form-close",
+          "id": "",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 896,
+          "y": 19.5,
+          "width": 112,
+          "height": 48,
+          "right": 1008,
+          "bottom": 67.5,
+          "action": "farm-home",
+          "id": "",
+          "label": "返回积分首页",
+          "disabled": false,
+          "font": 14,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 954,
+          "y": 307.1875,
+          "width": 52,
+          "height": 52,
+          "right": 1006,
+          "bottom": 359.1875,
+          "action": "farm-zoom-in",
+          "id": "",
+          "label": "放大农场",
+          "disabled": false,
+          "font": 32,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 954,
+          "y": 369.1875,
+          "width": 52,
+          "height": 52,
+          "right": 1006,
+          "bottom": 421.1875,
+          "action": "farm-zoom-out",
+          "id": "",
+          "label": "缩小农场",
+          "disabled": false,
+          "font": 32,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 954,
+          "y": 431.1875,
+          "width": 52,
+          "height": 52,
+          "right": 1006,
+          "bottom": 483.1875,
+          "action": "farm-camera-reset",
+          "id": "",
+          "label": "回到农场全景",
+          "disabled": false,
+          "font": 32,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 22,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 95.5,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "fields",
+          "label": "田地",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 99.5,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 173,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "animals",
+          "label": "动物",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 177,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 250.5,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "build",
+          "label": "布置",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 254.5,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 328,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "collection",
+          "label": "收藏",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 24,
+          "y": 664.5,
+          "width": 69.15625,
+          "height": 77.5,
+          "right": 93.15625,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p1",
+          "label": "1号田萝卜成熟啦",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 98.15625,
+          "y": 664.5,
+          "width": 69.171875,
+          "height": 77.5,
+          "right": 167.328125,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p2",
+          "label": "2号田萝卜成熟啦",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 172.328125,
+          "y": 664.5,
+          "width": 69.15625,
+          "height": 77.5,
+          "right": 241.484375,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p3",
+          "label": "3号田草莓约5小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 246.484375,
+          "y": 664.5,
+          "width": 69.171875,
+          "height": 77.5,
+          "right": 315.65625,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p4",
+          "label": "4号田草莓约5小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 320.65625,
+          "y": 664.5,
+          "width": 69.171875,
+          "height": 77.5,
+          "right": 389.828125,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p5",
+          "label": "5号田向日葵约8小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 394.828125,
+          "y": 664.5,
+          "width": 69.15625,
+          "height": 77.5,
+          "right": 463.984375,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p6",
+          "label": "6号田向日葵约8小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 652,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 734.5,
+          "bottom": 742,
+          "action": "farm-harvest",
+          "id": "",
+          "label": "收获所有成熟作物",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 740.5,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 823,
+          "bottom": 742,
+          "action": "farm-seeds",
+          "id": "",
+          "label": "选择作物并播种",
+          "disabled": true,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 829,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 911.5,
+          "bottom": 742,
+          "action": "farm-care",
+          "id": "",
+          "label": "照料伙伴和动物",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 917.5,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 1000,
+          "bottom": 742,
+          "action": "farm-tab",
+          "id": "build",
+          "label": "打开背包与建设",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        }
+      ],
+      "problems": []
+    }
+  ],
+  "renderer": [
+    {
+      "label": "visual-plant-desktop-home",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "home",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 0,
+        "frameCount": 30,
+        "dpr": 1,
+        "width": 579,
+        "height": 468,
+        "drawCalls": 28,
+        "triangles": 199482,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 4
+        },
+        "bodyScreenBounds": {
+          "x": 599.694791671953,
+          "y": 258.4370221929752,
+          "width": 166.9323403116448,
+          "height": 280.86432068441843,
+          "left": 599.694791671953,
+          "top": 258.4370221929752,
+          "right": 766.6271319835978,
+          "bottom": 539.3013428773936
+        },
+        "petScreenBounds": {
+          "x": 465.3338908312255,
+          "y": 195.47080111486733,
+          "width": 392.46232893731474,
+          "height": 392.8866524514101,
+          "left": 465.3338908312255,
+          "top": 195.47080111486733,
+          "right": 857.7962197685403,
+          "bottom": 588.3574535662774
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": 438.0876680895693,
+            "y": -10.455742830083125,
+            "width": 366.3986799197387,
+            "height": 351.22394903007495,
+            "left": 438.0876680895693,
+            "top": -10.455742830083125,
+            "right": 804.486348009308,
+            "bottom": 340.7682061999918,
+            "center": {
+              "x": 621.2870080494387,
+              "y": 165.15623168495435
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 927.4416046973469,
+            "y": 288.37246870756195,
+            "width": 257.21356273045865,
+            "height": 132.32099031844007,
+            "left": 927.4416046973469,
+            "top": 288.37246870756195,
+            "right": 1184.6551674278055,
+            "bottom": 420.693459026002,
+            "center": {
+              "x": 1056.0483860625761,
+              "y": 354.532963866782
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 1124.3487517298981,
+            "y": 296.7330837823689,
+            "width": 367.1963985333564,
+            "height": 145.55805911312626,
+            "left": 1124.3487517298981,
+            "top": 296.7330837823689,
+            "right": 1491.5451502632545,
+            "bottom": 442.29114289549517,
+            "center": {
+              "x": 1307.9469509965763,
+              "y": 369.51211333893207
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 1344.6887787641178,
+            "y": 306.1220267559759,
+            "width": 508.2422098829161,
+            "height": 161.4248424514373,
+            "left": 1344.6887787641178,
+            "top": 306.1220267559759,
+            "right": 1852.930988647034,
+            "bottom": 467.54686920741324,
+            "center": {
+              "x": 1598.8098837055759,
+              "y": 386.83444798169455
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 953.4976728079736,
+            "y": 341.6564049891771,
+            "width": 426.427829289894,
+            "height": 232.36675956619206,
+            "left": 953.4976728079736,
+            "top": 341.6564049891771,
+            "right": 1379.9255020978676,
+            "bottom": 574.0231645553691,
+            "center": {
+              "x": 1166.7115874529206,
+              "y": 457.8397847722731
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 1227.6978646131429,
+            "y": 357.67354427223654,
+            "width": 691.6502039102265,
+            "height": 270.8847842865125,
+            "left": 1227.6978646131429,
+            "top": 357.67354427223654,
+            "right": 1919.3480685233694,
+            "bottom": 628.558328558749,
+            "center": {
+              "x": 1573.5229665682562,
+              "y": 493.1159364154928
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 1548.0526589205194,
+            "y": 376.51648312800637,
+            "width": 1080.9195542814603,
+            "height": 322.4208444554831,
+            "left": 1548.0526589205194,
+            "top": 376.51648312800637,
+            "right": 2628.9722132019797,
+            "bottom": 698.9373275834895,
+            "center": {
+              "x": 2088.5124360612494,
+              "y": 537.7269053557479
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 712.1390177396335,
+            "y": 304.70868583607063,
+            "width": 100.51355893234825,
+            "height": 79.34606191897024,
+            "left": 712.1390177396335,
+            "top": 304.70868583607063,
+            "right": 812.6525766719817,
+            "bottom": 384.05474775504086,
+            "center": {
+              "x": 762.3957972058076,
+              "y": 344.38171679555575
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -663.5448289069748,
+            "y": 626.2766368258276,
+            "width": 755.8986803435625,
+            "height": 486.6487201058387,
+            "left": -663.5448289069748,
+            "top": 626.2766368258276,
+            "right": 92.35385143658777,
+            "bottom": 1112.9253569316663,
+            "center": {
+              "x": -285.5954887351935,
+              "y": 869.600996878747
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 2680.5301567531615,
+            "y": 346.8843100922875,
+            "width": 2746.6487171114222,
+            "height": 669.8239299567499,
+            "left": 2680.5301567531615,
+            "top": 346.8843100922875,
+            "right": 5427.178873864584,
+            "bottom": 1016.7082400490374,
+            "center": {
+              "x": 4053.8545153088726,
+              "y": 681.7962750706624
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 888.7435746056717,
+            "y": 237.816310131944,
+            "width": 126.86268661642305,
+            "height": 41.69476036123794,
+            "left": 888.7435746056717,
+            "top": 237.816310131944,
+            "right": 1015.6062612220948,
+            "bottom": 279.51107049318193,
+            "center": {
+              "x": 952.1749179138833,
+              "y": 258.66369031256295
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -88.90938073631884,
+            "y": 776.4941811875904,
+            "width": 738.107339059902,
+            "height": 882.3097978491999,
+            "left": -88.90938073631884,
+            "top": 776.4941811875904,
+            "right": 649.1979583235832,
+            "bottom": 1658.8039790367902,
+            "center": {
+              "x": 280.1442887936322,
+              "y": 1217.6490801121904
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": -3494.073527974556,
+            "y": -1737.0144561855313,
+            "width": 2459.2670929340816,
+            "height": 1410.8310683264451,
+            "left": -3494.073527974556,
+            "top": -1737.0144561855313,
+            "right": -1034.8064350404743,
+            "bottom": -326.1833878590862,
+            "center": {
+              "x": -2264.439981507515,
+              "y": -1031.5989220223087
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": 39.44516201073253,
+            "y": 320.1134375325713,
+            "width": 224.72738882699946,
+            "height": 145.1014567787738,
+            "left": 39.44516201073253,
+            "top": 320.1134375325713,
+            "right": 264.172550837732,
+            "bottom": 465.2148943113451,
+            "center": {
+              "x": 151.80885642423226,
+              "y": 392.6641659219582
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 519.6477780764992,
+            "y": 198.34123420459778,
+            "width": 294.1259229079367,
+            "height": 387.1727563139726,
+            "left": 519.6477780764992,
+            "top": 198.34123420459778,
+            "right": 813.7737009844359,
+            "bottom": 585.5139905185704,
+            "center": {
+              "x": 666.7107395304675,
+              "y": 391.92761236158407
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": -2.1225641025641027,
+            "y": 1.0383120069715976,
+            "z": 2.68
+          },
+          "yaw": 0.5,
+          "viewHeight": 3.2,
+          "projection": "perspective",
+          "viewInsets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "canPan": false
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-plant-desktop-expanded",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "expanded",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 26,
+        "frameCount": 72,
+        "dpr": 1,
+        "width": 1024,
+        "height": 768,
+        "drawCalls": 41,
+        "triangles": 214030,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 4
+        },
+        "bodyScreenBounds": {
+          "x": 313.7831149058241,
+          "y": 349.90248476359034,
+          "width": 49.47604094315437,
+          "height": 75.49124528300933,
+          "left": 313.7831149058241,
+          "top": 349.90248476359034,
+          "right": 363.2591558489785,
+          "bottom": 425.39373004659967
+        },
+        "petScreenBounds": {
+          "x": 284.41074531949357,
+          "y": 303.4920708215693,
+          "width": 117.0169688766432,
+          "height": 141.97217735050606,
+          "left": 284.41074531949357,
+          "top": 303.4920708215693,
+          "right": 401.4277141961368,
+          "bottom": 445.4642481720754
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": 271.9286491703426,
+            "y": -14.133936608224786,
+            "width": 252.36335943611346,
+            "height": 302.4142844249884,
+            "left": 271.9286491703426,
+            "top": -14.133936608224786,
+            "right": 524.2920086064561,
+            "bottom": 288.2803478167636,
+            "center": {
+              "x": 398.11032888839935,
+              "y": 137.0732056042694
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 478.34772794954586,
+            "y": 290.0707687803847,
+            "width": 121.18230851411477,
+            "height": 110.31067258267444,
+            "left": 478.34772794954586,
+            "top": 290.0707687803847,
+            "right": 599.5300364636606,
+            "bottom": 400.38144136305914,
+            "center": {
+              "x": 538.9388822066032,
+              "y": 345.2261050717219
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 568.2121822871201,
+            "y": 324.06935512077837,
+            "width": 121.18230851411465,
+            "height": 110.31067258267444,
+            "left": 568.2121822871201,
+            "top": 324.06935512077837,
+            "right": 689.3944908012347,
+            "bottom": 434.3800277034528,
+            "center": {
+              "x": 628.8033365441775,
+              "y": 379.2246914121156
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 658.0766366246942,
+            "y": 358.067941461172,
+            "width": 121.18230851411477,
+            "height": 110.31067258267439,
+            "left": 658.0766366246942,
+            "top": 358.067941461172,
+            "right": 779.2589451388089,
+            "bottom": 468.37861404384637,
+            "center": {
+              "x": 718.6677908817516,
+              "y": 413.22327775250915
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 425.16345486705296,
+            "y": 357.4909298696952,
+            "width": 121.18230851411471,
+            "height": 110.3106725826745,
+            "left": 425.16345486705296,
+            "top": 357.4909298696952,
+            "right": 546.3457633811677,
+            "bottom": 467.8016024523697,
+            "center": {
+              "x": 485.7546091241103,
+              "y": 412.6462661610325
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 515.0279092046271,
+            "y": 391.4895162100889,
+            "width": 121.18230851411477,
+            "height": 110.31067258267439,
+            "left": 515.0279092046271,
+            "top": 391.4895162100889,
+            "right": 636.2102177187419,
+            "bottom": 501.80018879276327,
+            "center": {
+              "x": 575.6190634616845,
+              "y": 446.64485250142604
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 604.8923635422012,
+            "y": 425.4881025504825,
+            "width": 121.18230851411488,
+            "height": 110.31067258267444,
+            "left": 604.8923635422012,
+            "top": 425.4881025504825,
+            "right": 726.0746720563161,
+            "bottom": 535.7987751331569,
+            "center": {
+              "x": 665.4835177992586,
+              "y": 480.6434388418197
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 391.01950526229723,
+            "y": 273.8716058618341,
+            "width": 63.688913516545426,
+            "height": 64.11307474962149,
+            "left": 391.01950526229723,
+            "top": 273.8716058618341,
+            "right": 454.70841877884266,
+            "bottom": 337.9846806114556,
+            "center": {
+              "x": 422.86396202056994,
+              "y": 305.9281432366448
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": 144.6880176380264,
+            "y": 419.73209766508535,
+            "width": 63.688913516545426,
+            "height": 64.11307474962155,
+            "left": 144.6880176380264,
+            "top": 419.73209766508535,
+            "right": 208.37693115457182,
+            "bottom": 483.8451724147069,
+            "center": {
+              "x": 176.5324743962991,
+              "y": 451.7886350398961
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 702.3545344007337,
+            "y": 488.6342352079573,
+            "width": 63.688913516545426,
+            "height": 99.5091459682069,
+            "left": 702.3545344007337,
+            "top": 488.6342352079573,
+            "right": 766.0434479172791,
+            "bottom": 588.1433811761642,
+            "center": {
+              "x": 734.1989911590064,
+              "y": 538.3888081920608
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 636.1723080852491,
+            "y": 114.0972621728467,
+            "width": 112.36549294939812,
+            "height": 82.52897568400134,
+            "left": 636.1723080852491,
+            "top": 114.0972621728467,
+            "right": 748.5378010346473,
+            "bottom": 196.62623785684804,
+            "center": {
+              "x": 692.3550545599483,
+              "y": 155.36175001484736
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": 237.95007857430926,
+            "y": 461.7500657714844,
+            "width": 63.688913516545426,
+            "height": 64.11307474962143,
+            "left": 237.95007857430926,
+            "top": 461.7500657714844,
+            "right": 301.6389920908547,
+            "bottom": 525.8631405211058,
+            "center": {
+              "x": 269.794535332582,
+              "y": 493.8066031462951
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": 493.9835711037531,
+            "y": 614.4411086729522,
+            "width": 57.66327532750472,
+            "height": 70.70330418877916,
+            "left": 493.9835711037531,
+            "top": 614.4411086729522,
+            "right": 551.6468464312578,
+            "bottom": 685.1444128617313,
+            "center": {
+              "x": 522.8152087675055,
+              "y": 649.7927607673417
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": 131.47614512457812,
+            "y": 282.0081900838889,
+            "width": 57.66327532750478,
+            "height": 70.70330418877916,
+            "left": 131.47614512457812,
+            "top": 282.0081900838889,
+            "right": 189.1394204520829,
+            "bottom": 352.71149427266806,
+            "center": {
+              "x": 160.3077827883305,
+              "y": 317.3598421782785
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 296.51701457445563,
+            "y": 317.1403307722011,
+            "width": 85.65237111661872,
+            "height": 124.67826564967464,
+            "left": 296.51701457445563,
+            "top": 317.1403307722011,
+            "right": 382.16938569107435,
+            "bottom": 441.8185964218757,
+            "center": {
+              "x": 339.343200132765,
+              "y": 379.4794635970384
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": 1.1,
+            "y": 0.45,
+            "z": 0.3
+          },
+          "yaw": 0.5,
+          "viewHeight": 18,
+          "projection": "orthographic",
+          "viewInsets": {
+            "top": 83,
+            "right": 0,
+            "bottom": 119.5,
+            "left": 0
+          },
+          "canPan": true
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-plant-phone-home",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "home",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 31,
+        "frameCount": 103,
+        "dpr": 1,
+        "width": 348,
+        "height": 413,
+        "drawCalls": 24,
+        "triangles": 193441,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 4
+        },
+        "bodyScreenBounds": {
+          "x": 120.04674509033447,
+          "y": 288.9253381456385,
+          "width": 147.7888094924877,
+          "height": 248.70569724545572,
+          "left": 120.04674509033447,
+          "top": 288.9253381456385,
+          "right": 267.83555458282217,
+          "bottom": 537.6310353910942
+        },
+        "petScreenBounds": {
+          "x": 4.714336232354299,
+          "y": 235.1228601749708,
+          "width": 348.0945863559557,
+          "height": 346.21063868299484,
+          "left": 4.714336232354299,
+          "top": 235.1228601749708,
+          "right": 352.80892258831,
+          "bottom": 581.3334988579657
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": -27.500480348660744,
+            "y": 51.0163376990364,
+            "width": 322.64750567854963,
+            "height": 310.50390659261865,
+            "left": -27.500480348660744,
+            "top": 51.0163376990364,
+            "right": 295.1470253298889,
+            "bottom": 361.52024429165505,
+            "center": {
+              "x": 133.82327249061407,
+              "y": 206.26829099534572
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 404.9986170995037,
+            "y": 315.21864038109464,
+            "width": 229.7792952845973,
+            "height": 117.11678655981751,
+            "left": 404.9986170995037,
+            "top": 315.21864038109464,
+            "right": 634.777912384101,
+            "bottom": 432.33542694091216,
+            "center": {
+              "x": 519.8882647418023,
+              "y": 373.77703366100343
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 579.3889990851181,
+            "y": 322.62360601697753,
+            "width": 327.6040941848752,
+            "height": 128.86420075170713,
+            "left": 579.3889990851181,
+            "top": 322.62360601697753,
+            "right": 906.9930932699933,
+            "bottom": 451.48780676868466,
+            "center": {
+              "x": 743.1910461775558,
+              "y": 387.0557063928311
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 774.5725793778385,
+            "y": 330.9411686558965,
+            "width": 453.1130613944964,
+            "height": 142.95178222003972,
+            "left": 774.5725793778385,
+            "top": 330.9411686558965,
+            "right": 1227.6856407723349,
+            "bottom": 473.8929508759362,
+            "center": {
+              "x": 1001.1291100750866,
+              "y": 402.41705976591635
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 429.93812749578115,
+            "y": 362.4380454796358,
+            "width": 382.6419393016845,
+            "height": 206.01884250864316,
+            "left": 429.93812749578115,
+            "top": 362.4380454796358,
+            "right": 812.5800667974656,
+            "bottom": 568.4568879882789,
+            "center": {
+              "x": 621.2590971466234,
+              "y": 465.44746673395736
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 673.0997988451469,
+            "y": 376.6442636406017,
+            "width": 619.4944457371924,
+            "height": 240.31264359910915,
+            "left": 673.0997988451469,
+            "top": 376.6442636406017,
+            "right": 1292.5942445823393,
+            "bottom": 616.9569072397109,
+            "center": {
+              "x": 982.8470217137431,
+              "y": 496.8005854401563
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 957.3029779728255,
+            "y": 393.363946045852,
+            "width": 967.5370513747563,
+            "height": 286.24980580548583,
+            "left": 957.3029779728255,
+            "top": 393.363946045852,
+            "right": 1924.8400293475818,
+            "bottom": 679.6137518513378,
+            "center": {
+              "x": 1441.0715036602037,
+              "y": 536.488848948595
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 215.24655349220785,
+            "y": 329.65756782528064,
+            "width": 88.49861239327709,
+            "height": 70.19124338183059,
+            "left": 215.24655349220785,
+            "top": 329.65756782528064,
+            "right": 303.74516588548494,
+            "bottom": 399.8488112071112,
+            "center": {
+              "x": 259.4958596888464,
+              "y": 364.7531895161959
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -990.9084526452198,
+            "y": 615.4286685280422,
+            "width": 666.0538980358317,
+            "height": 434.0687852662754,
+            "left": -990.9084526452198,
+            "top": 615.4286685280422,
+            "right": -324.8545546093881,
+            "bottom": 1049.4974537943176,
+            "center": {
+              "x": -657.8815036273039,
+              "y": 832.4630611611799
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 1968.5730644030057,
+            "y": 367.6490936328846,
+            "width": 2475.362831489603,
+            "height": 595.8033964011674,
+            "left": 1968.5730644030057,
+            "top": 367.6490936328846,
+            "right": 4443.935895892609,
+            "bottom": 963.4524900340521,
+            "center": {
+              "x": 3206.254480147807,
+              "y": 665.5507918334683
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 368.607233184299,
+            "y": 270.46289428752226,
+            "width": 112.4665136253343,
+            "height": 36.84337451525613,
+            "left": 368.607233184299,
+            "top": 270.46289428752226,
+            "right": 481.0737468096333,
+            "bottom": 307.3062688027784,
+            "center": {
+              "x": 424.84048999696614,
+              "y": 288.88458154515035
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -469.77486339420625,
+            "y": 749.6133624122145,
+            "width": 643.6810269050804,
+            "height": 791.5853698829047,
+            "left": -469.77486339420625,
+            "top": 749.6133624122145,
+            "right": 173.9061635108742,
+            "bottom": 1541.1987322951193,
+            "center": {
+              "x": -147.93434994166603,
+              "y": 1145.406047353667
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": -3489.763240289372,
+            "y": -1446.3544161213963,
+            "width": 2148.457657380497,
+            "height": 1221.6161279268886,
+            "left": -3489.763240289372,
+            "top": -1446.3544161213963,
+            "right": -1341.3055829088746,
+            "bottom": -224.73828819450773,
+            "center": {
+              "x": -2415.5344115991234,
+              "y": -835.546352157952
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -377.56533569403587,
+            "y": 343.3716596722095,
+            "width": 197.7240950990681,
+            "height": 128.45362293207262,
+            "left": -377.56533569403587,
+            "top": 343.3716596722095,
+            "right": -179.84124059496776,
+            "bottom": 471.8252826042821,
+            "center": {
+              "x": -278.7032881445018,
+              "y": 407.5984711382458
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 51.15175176883335,
+            "y": 235.69229250654794,
+            "width": 258.19608764101133,
+            "height": 342.98005745361604,
+            "left": 51.15175176883335,
+            "top": 235.69229250654794,
+            "right": 309.34783940984465,
+            "bottom": 578.672349960164,
+            "center": {
+              "x": 180.249795589339,
+              "y": 407.18232123335594
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": -2.2,
+            "y": 1.0383120069715976,
+            "z": 2.68
+          },
+          "yaw": 0.5,
+          "viewHeight": 3.2,
+          "projection": "perspective",
+          "viewInsets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "canPan": false
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-plant-phone-expanded",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "expanded",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 30,
+        "frameCount": 140,
+        "dpr": 1,
+        "width": 390,
+        "height": 844,
+        "drawCalls": 37,
+        "triangles": 211410,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 4
+        },
+        "bodyScreenBounds": {
+          "x": -22.83209768162039,
+          "y": 384.5282514849873,
+          "width": 54.37210749482071,
+          "height": 82.96173309747383,
+          "left": -22.83209768162039,
+          "top": 384.5282514849873,
+          "right": 31.540009813200317,
+          "bottom": 467.48998458246115
+        },
+        "petScreenBounds": {
+          "x": -55.51719315149087,
+          "y": 331.2000961455003,
+          "width": 130.29939375494698,
+          "height": 158.2914585252925,
+          "left": -55.51719315149087,
+          "top": 331.2000961455003,
+          "right": 74.7822006034561,
+          "bottom": 489.4915546707928
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": -68.82841158884227,
+            "y": -15.532607418413697,
+            "width": 277.33681688031226,
+            "height": 332.3406979878779,
+            "left": -68.82841158884227,
+            "top": -15.532607418413697,
+            "right": 208.50840529146998,
+            "bottom": 316.8080905694642,
+            "center": {
+              "x": 69.83999685131386,
+              "y": 150.63774157552524
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 158.017555194553,
+            "y": 318.7756886076102,
+            "width": 133.17430779415733,
+            "height": 121.226832890335,
+            "left": 158.017555194553,
+            "top": 318.7756886076102,
+            "right": 291.19186298871034,
+            "bottom": 440.0025214979452,
+            "center": {
+              "x": 224.60470909163166,
+              "y": 379.3891050527777
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 256.77484615928296,
+            "y": 356.1387183879387,
+            "width": 133.17430779415741,
+            "height": 121.22683289033495,
+            "left": 256.77484615928296,
+            "top": 356.1387183879387,
+            "right": 389.9491539534404,
+            "bottom": 477.36555127827364,
+            "center": {
+              "x": 323.3620000563617,
+              "y": 416.7521348331062
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 355.5321371240129,
+            "y": 393.5017481682671,
+            "width": 133.17430779415747,
+            "height": 121.22683289033489,
+            "left": 355.5321371240129,
+            "top": 393.5017481682671,
+            "right": 488.70644491817035,
+            "bottom": 514.728581058602,
+            "center": {
+              "x": 422.1192910210916,
+              "y": 454.11516461343456
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 99.57025508827172,
+            "y": 392.8676364713838,
+            "width": 133.1743077941574,
+            "height": 121.226832890335,
+            "left": 99.57025508827172,
+            "top": 392.8676364713838,
+            "right": 232.7445628824291,
+            "bottom": 514.0944693617188,
+            "center": {
+              "x": 166.1574089853504,
+              "y": 453.4810529165513
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 198.32754605300164,
+            "y": 430.23066625171225,
+            "width": 133.17430779415741,
+            "height": 121.22683289033489,
+            "left": 198.32754605300164,
+            "top": 430.23066625171225,
+            "right": 331.50185384715905,
+            "bottom": 551.4574991420471,
+            "center": {
+              "x": 264.9146999500804,
+              "y": 490.8440826968797
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 297.0848370177316,
+            "y": 467.5936960320406,
+            "width": 133.17430779415736,
+            "height": 121.226832890335,
+            "left": 297.0848370177316,
+            "top": 467.5936960320406,
+            "right": 430.259144811889,
+            "bottom": 588.8205289223756,
+            "center": {
+              "x": 363.6719909148103,
+              "y": 528.207112477208
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 62.04747713721206,
+            "y": 300.9734835252448,
+            "width": 69.99146224995354,
+            "height": 70.4575977717194,
+            "left": 62.04747713721206,
+            "top": 300.9734835252448,
+            "right": 132.0389393871656,
+            "bottom": 371.4310812969642,
+            "center": {
+              "x": 97.04320826218884,
+              "y": 336.2022824111045
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -208.66056394987723,
+            "y": 461.2680864965261,
+            "width": 69.99146224995357,
+            "height": 70.45759777171946,
+            "left": -208.66056394987723,
+            "top": 461.2680864965261,
+            "right": -138.66910169992366,
+            "bottom": 531.7256842682456,
+            "center": {
+              "x": -173.66483282490043,
+              "y": 496.4968853823858
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 404.1917018674729,
+            "y": 536.9886647337448,
+            "width": 69.99146224995354,
+            "height": 109.35640520464392,
+            "left": 404.1917018674729,
+            "top": 536.9886647337448,
+            "right": 474.18316411742643,
+            "bottom": 646.3450699383887,
+            "center": {
+              "x": 439.18743299244966,
+              "y": 591.6668673360668
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 331.46019273951856,
+            "y": 125.38813707536798,
+            "width": 123.48499485584904,
+            "height": 90.6959055693973,
+            "left": 331.46019273951856,
+            "top": 125.38813707536798,
+            "right": 454.9451875953676,
+            "bottom": 216.08404264476528,
+            "center": {
+              "x": 393.20269016744305,
+              "y": 170.7360898600666
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -106.1694449001081,
+            "y": 507.4440826967875,
+            "width": 69.9914622499536,
+            "height": 70.4575977717194,
+            "left": -106.1694449001081,
+            "top": 507.4440826967875,
+            "right": -36.177982650154505,
+            "bottom": 577.9016804685069,
+            "center": {
+              "x": -71.1737137751313,
+              "y": 542.6728815826473
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": 175.200695327562,
+            "y": 675.2451767187131,
+            "width": 63.36953694845576,
+            "height": 77.6999853324603,
+            "left": 175.200695327562,
+            "top": 675.2451767187131,
+            "right": 238.57023227601775,
+            "bottom": 752.9451620511734,
+            "center": {
+              "x": 206.88546380178985,
+              "y": 714.0951693849432
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -223.17986134746886,
+            "y": 309.9152505609404,
+            "width": 63.36953694845579,
+            "height": 77.69998533246041,
+            "left": -223.17986134746886,
+            "top": 309.9152505609404,
+            "right": -159.81032439901307,
+            "bottom": 387.61523589340084,
+            "center": {
+              "x": -191.49509287324096,
+              "y": 348.76524322717063
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": -41.80682252494724,
+            "y": 348.52400933820013,
+            "width": 94.12838700836748,
+            "height": 137.01621902125703,
+            "left": -41.80682252494724,
+            "top": 348.52400933820013,
+            "right": 52.32156448342024,
+            "bottom": 485.54022835945716,
+            "center": {
+              "x": 5.257370979236498,
+              "y": 417.03211884882865
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": 1.1,
+            "y": 0.45,
+            "z": 0.3
+          },
+          "yaw": 0.5,
+          "viewHeight": 18,
+          "projection": "orthographic",
+          "viewInsets": {
+            "top": 73,
+            "right": 0,
+            "bottom": 201.5,
+            "left": 0
+          },
+          "canPan": true
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-plant-small-phone-home",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "home",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 30,
+        "frameCount": 168,
+        "dpr": 1,
+        "width": 284,
+        "height": 237,
+        "drawCalls": 28,
+        "triangles": 199482,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 4
+        },
+        "bodyScreenBounds": {
+          "x": 112.02468906805531,
+          "y": 247.44010159426008,
+          "width": 84.56761732074783,
+          "height": 142.28132645249846,
+          "left": 112.02468906805531,
+          "top": 247.44010159426008,
+          "right": 196.59230638880314,
+          "bottom": 389.72142804675855
+        },
+        "petScreenBounds": {
+          "x": 43.88105231090853,
+          "y": 215.24949284622136,
+          "width": 199.03656463855384,
+          "height": 199.33059251355496,
+          "left": 43.88105231090853,
+          "top": 215.24949284622136,
+          "right": 242.91761694946237,
+          "bottom": 414.5800853597763
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": 29.898348143241414,
+            "y": 111.23460094982732,
+            "width": 185.5173768992124,
+            "height": 177.8954030914711,
+            "left": 29.898348143241414,
+            "top": 111.23460094982732,
+            "right": 215.4157250424538,
+            "bottom": 289.13000404129843,
+            "center": {
+              "x": 122.6570365928476,
+              "y": 200.18230249556288
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 277.7619027633795,
+            "y": 262.59261227632703,
+            "width": 130.42230429004172,
+            "height": 67.02860938386323,
+            "left": 277.7619027633795,
+            "top": 262.59261227632703,
+            "right": 408.18420705342123,
+            "bottom": 329.62122166019026,
+            "center": {
+              "x": 342.9730549084004,
+              "y": 296.10691696825864
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 377.5184073482948,
+            "y": 266.8280593912192,
+            "width": 186.16545911550145,
+            "height": 73.73578413423206,
+            "left": 377.5184073482948,
+            "top": 266.8280593912192,
+            "right": 563.6838664637962,
+            "bottom": 340.56384352545126,
+            "center": {
+              "x": 470.6011369060455,
+              "y": 303.69595145833523
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 489.14869524985556,
+            "y": 271.5845562280125,
+            "width": 257.65555824706666,
+            "height": 81.77579118135355,
+            "left": 489.14869524985556,
+            "top": 271.5845562280125,
+            "right": 746.8042534969222,
+            "bottom": 353.36034740936606,
+            "center": {
+              "x": 617.9764743733889,
+              "y": 312.47245181868925
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 291.06927958329027,
+            "y": 289.58748722602604,
+            "width": 216.32062566003117,
+            "height": 117.72801314977949,
+            "left": 291.06927958329027,
+            "top": 289.58748722602604,
+            "right": 507.38990524332144,
+            "bottom": 407.3155003758055,
+            "center": {
+              "x": 399.22959241330585,
+              "y": 348.4514938009158
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 430.00190436033483,
+            "y": 297.7028319559018,
+            "width": 350.79868927874566,
+            "height": 137.2512615516843,
+            "left": 430.00190436033483,
+            "top": 297.7028319559018,
+            "right": 780.8005936390805,
+            "bottom": 434.9540935075861,
+            "center": {
+              "x": 605.4012489997076,
+              "y": 366.3284627317439
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 592.3266664520714,
+            "y": 307.25032328754537,
+            "width": 548.1967655042891,
+            "height": 163.37584864089246,
+            "left": 592.3266664520714,
+            "top": 307.25032328754537,
+            "right": 1140.5234319563606,
+            "bottom": 470.6261719284378,
+            "center": {
+              "x": 866.4250492042161,
+              "y": 388.93824760799157
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 168.73936812862888,
+            "y": 270.8667382607563,
+            "width": 50.891961603359306,
+            "height": 40.19143464607674,
+            "left": 168.73936812862888,
+            "top": 270.8667382607563,
+            "right": 219.6313297319882,
+            "bottom": 311.058172906833,
+            "center": {
+              "x": 194.18534893030852,
+              "y": 290.9624555837946
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -527.5072728240987,
+            "y": 433.82634143646396,
+            "width": 382.7573729553033,
+            "height": 246.70734773924528,
+            "left": -527.5072728240987,
+            "top": 433.82634143646396,
+            "right": -144.74989986879535,
+            "bottom": 680.5336891757092,
+            "center": {
+              "x": -336.12858634644704,
+              "y": 557.1800153060866
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 1166.533401241222,
+            "y": 292.2691267606382,
+            "width": 1393.9319803190103,
+            "height": 339.47446151875795,
+            "left": 1166.533401241222,
+            "top": 292.2691267606382,
+            "right": 2560.4653815602323,
+            "bottom": 631.7435882793961,
+            "center": {
+              "x": 1863.4993914007273,
+              "y": 462.00635752001716
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 258.0350772624427,
+            "y": 236.9823478058205,
+            "width": 64.27718218356625,
+            "height": 21.117453012351064,
+            "left": 258.0350772624427,
+            "top": 236.9823478058205,
+            "right": 322.31225944600897,
+            "bottom": 258.09980081817156,
+            "center": {
+              "x": 290.1736683542258,
+              "y": 247.54107431199603
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -235.69572910951558,
+            "y": 509.9906539811311,
+            "width": 373.37125511583645,
+            "height": 447.54816411823333,
+            "left": -235.69572910951558,
+            "top": 509.9906539811311,
+            "right": 137.67552600632087,
+            "bottom": 957.5388180993644,
+            "center": {
+              "x": -49.01010155159736,
+              "y": 733.7647360402477
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": -1961.0257556762276,
+            "y": -761.5771228481365,
+            "width": 1244.1894356229295,
+            "height": 713.090059175256,
+            "left": -1961.0257556762276,
+            "top": -761.5771228481365,
+            "right": -716.8363200532981,
+            "bottom": -48.48706367288051,
+            "center": {
+              "x": -1338.9310378647629,
+              "y": -405.0320932605085
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -171.8890270213716,
+            "y": 278.67473701876935,
+            "width": 113.77584418541211,
+            "height": 73.50411466865222,
+            "left": -171.8890270213716,
+            "top": 278.67473701876935,
+            "right": -58.11318283595948,
+            "bottom": 352.17885168742157,
+            "center": {
+              "x": -115.00110492866554,
+              "y": 315.4267943530955
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 71.58586744406941,
+            "y": 216.99550698265298,
+            "width": 148.87777275257758,
+            "height": 196.14336760251464,
+            "left": 71.58586744406941,
+            "top": 216.99550698265298,
+            "right": 220.463640196647,
+            "bottom": 413.1388745851676,
+            "center": {
+              "x": 146.0247538203582,
+              "y": 315.0671907839103
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": -2.130337552742616,
+            "y": 1.0383120069715976,
+            "z": 2.68
+          },
+          "yaw": 0.5,
+          "viewHeight": 3.2,
+          "projection": "perspective",
+          "viewInsets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "canPan": false
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-plant-small-phone-expanded",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "expanded",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 31,
+        "frameCount": 207,
+        "dpr": 1,
+        "width": 320,
+        "height": 668,
+        "drawCalls": 38,
+        "triangles": 211654,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 4
+        },
+        "bodyScreenBounds": {
+          "x": -12.40739484753842,
+          "y": 304.34226539333116,
+          "width": 43.0338481120145,
+          "height": 65.66165605345088,
+          "left": -12.40739484753842,
+          "top": 304.34226539333116,
+          "right": 30.626453264476083,
+          "bottom": 370.00392144678204
+        },
+        "petScreenBounds": {
+          "x": -38.073981714737286,
+          "y": 263.34288403644416,
+          "width": 102.31412275174604,
+          "height": 124.0983593655983,
+          "left": -38.073981714737286,
+          "top": 263.34288403644416,
+          "right": 64.24014103700875,
+          "bottom": 387.44124340204246
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": -48.81206035704576,
+            "y": -12.29358027902885,
+            "width": 219.50354700953622,
+            "height": 263.037424473818,
+            "left": -48.81206035704576,
+            "top": -12.29358027902885,
+            "right": 170.69148665249045,
+            "bottom": 250.74384419478918,
+            "center": {
+              "x": 60.939713147722344,
+              "y": 119.22513195788017
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 130.72953420611543,
+            "y": 252.30113742877208,
+            "width": 105.40336209300605,
+            "height": 95.94730375680538,
+            "left": 130.72953420611543,
+            "top": 252.30113742877208,
+            "right": 236.13289629912148,
+            "bottom": 348.24844118557746,
+            "center": {
+              "x": 183.43121525261847,
+              "y": 300.2747893071748
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 208.89288771848464,
+            "y": 281.87282450609365,
+            "width": 105.40336209300602,
+            "height": 95.94730375680541,
+            "left": 208.89288771848464,
+            "top": 281.87282450609365,
+            "right": 314.29624981149067,
+            "bottom": 377.82012826289906,
+            "center": {
+              "x": 261.5945687649877,
+              "y": 329.8464763844963
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 287.0562412308538,
+            "y": 311.4445115834152,
+            "width": 105.40336209300614,
+            "height": 95.94730375680535,
+            "left": 287.0562412308538,
+            "top": 311.4445115834152,
+            "right": 392.45960332385994,
+            "bottom": 407.39181534022055,
+            "center": {
+              "x": 339.7579222773569,
+              "y": 359.41816346181787
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 84.47029668123876,
+            "y": 310.9426317095786,
+            "width": 105.40336209300607,
+            "height": 95.94730375680541,
+            "left": 84.47029668123876,
+            "top": 310.9426317095786,
+            "right": 189.87365877424483,
+            "bottom": 406.88993546638403,
+            "center": {
+              "x": 137.1719777277418,
+              "y": 358.9162835879813
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 162.63365019360793,
+            "y": 340.5143187869002,
+            "width": 105.40336209300608,
+            "height": 95.94730375680535,
+            "left": 162.63365019360793,
+            "top": 340.5143187869002,
+            "right": 268.037012286614,
+            "bottom": 436.4616225437056,
+            "center": {
+              "x": 215.33533124011097,
+              "y": 388.4879706653029
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 240.79700370597715,
+            "y": 370.0860058642217,
+            "width": 105.40336209300614,
+            "height": 95.94730375680541,
+            "left": 240.79700370597715,
+            "top": 370.0860058642217,
+            "right": 346.2003657989833,
+            "bottom": 466.0333096210271,
+            "center": {
+              "x": 293.49868475248024,
+              "y": 418.0596577426244
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 54.77217384793562,
+            "y": 238.21124051524112,
+            "width": 55.39608623574523,
+            "height": 55.765018141597864,
+            "left": 54.77217384793562,
+            "top": 238.21124051524112,
+            "right": 110.16826008368085,
+            "bottom": 293.976258656839,
+            "center": {
+              "x": 82.47021696580823,
+              "y": 266.0937495860401
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -159.48490132525825,
+            "y": 365.0794807816107,
+            "width": 55.396086235745216,
+            "height": 55.76501814159792,
+            "left": -159.48490132525825,
+            "top": 365.0794807816107,
+            "right": -104.08881508951303,
+            "bottom": 420.8444989232086,
+            "center": {
+              "x": -131.78685820738565,
+              "y": 392.96198985240966
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 325.5687877339715,
+            "y": 425.00998583192126,
+            "width": 55.3960862357452,
+            "height": 86.5522259202632,
+            "left": 325.5687877339715,
+            "top": 425.00998583192126,
+            "right": 380.9648739697167,
+            "bottom": 511.56221175218445,
+            "center": {
+              "x": 353.2668308518441,
+              "y": 468.2860987920528
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 268.00403880331567,
+            "y": 99.24084782742395,
+            "width": 97.73456938827854,
+            "height": 71.78301530848034,
+            "left": 268.00403880331567,
+            "top": 99.24084782742395,
+            "right": 365.7386081915942,
+            "bottom": 171.0238631359043,
+            "center": {
+              "x": 316.8713234974549,
+              "y": 135.13235548166412
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -78.3663379067206,
+            "y": 401.6263592908224,
+            "width": 55.39608623574523,
+            "height": 55.76501814159781,
+            "left": -78.3663379067206,
+            "top": 401.6263592908224,
+            "right": -22.970251670975372,
+            "bottom": 457.3913774324202,
+            "center": {
+              "x": -50.66829478884799,
+              "y": 429.5088683616213
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": 144.3294602829519,
+            "y": 534.4357559811615,
+            "width": 50.155036352569226,
+            "height": 61.4971447891985,
+            "left": 144.3294602829519,
+            "top": 534.4357559811615,
+            "right": 194.48449663552114,
+            "bottom": 595.93290077036,
+            "center": {
+              "x": 169.40697845923654,
+              "y": 565.1843283757607
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -170.97647793851797,
+            "y": 245.28837366671587,
+            "width": 50.155036352569255,
+            "height": 61.49714478919856,
+            "left": -170.97647793851797,
+            "top": 245.28837366671587,
+            "right": -120.82144158594872,
+            "bottom": 306.7855184559144,
+            "center": {
+              "x": -145.89895976223335,
+              "y": 276.0369460613151
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": -27.425305031593297,
+            "y": 275.84601686957075,
+            "width": 74.49971862747567,
+            "height": 108.44411647653993,
+            "left": -27.425305031593297,
+            "top": 275.84601686957075,
+            "right": 47.074413595882376,
+            "bottom": 384.2901333461107,
+            "center": {
+              "x": 9.82455428214454,
+              "y": 330.06807510784074
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": 1.1,
+            "y": 0.45,
+            "z": 0.3
+          },
+          "yaw": 0.5,
+          "viewHeight": 18,
+          "projection": "orthographic",
+          "viewInsets": {
+            "top": 71,
+            "right": 0,
+            "bottom": 216,
+            "left": 0
+          },
+          "canPan": true
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-capybara-desktop-home",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "home",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 16,
+        "frameCount": 318,
+        "dpr": 1,
+        "width": 579,
+        "height": 468,
+        "drawCalls": 28,
+        "triangles": 202648,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 6
+        },
+        "bodyScreenBounds": {
+          "x": 602.187634957276,
+          "y": 254.5513699319901,
+          "width": 163.34057372199004,
+          "height": 285.08428981736364,
+          "left": 602.187634957276,
+          "top": 254.5513699319901,
+          "right": 765.5282086792661,
+          "bottom": 539.6356597493537
+        },
+        "petScreenBounds": {
+          "x": 500.9167126252404,
+          "y": 213.79690671917496,
+          "width": 318.011809534612,
+          "height": 399.5253159303007,
+          "left": 500.9167126252404,
+          "top": 213.79690671917496,
+          "right": 818.9285221598524,
+          "bottom": 613.3222226494756
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": 443.0507700806988,
+            "y": 2.3078650789216795,
+            "width": 359.83743346914326,
+            "height": 342.9224430052908,
+            "left": 443.0507700806988,
+            "top": 2.3078650789216795,
+            "right": 802.888203549842,
+            "bottom": 345.2303080842125,
+            "center": {
+              "x": 622.9694868152704,
+              "y": 173.76908658156708
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 923.073735685047,
+            "y": 294.1278049733652,
+            "width": 248.621341876242,
+            "height": 130.75845672277836,
+            "left": 923.073735685047,
+            "top": 294.1278049733652,
+            "right": 1171.695077561289,
+            "bottom": 424.88626169614355,
+            "center": {
+              "x": 1047.3844066231682,
+              "y": 359.5070333347544
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 1115.827970346561,
+            "y": 302.64376246032646,
+            "width": 352.9550734350971,
+            "height": 143.56656318723412,
+            "left": 1115.827970346561,
+            "top": 302.64376246032646,
+            "right": 1468.783043781658,
+            "bottom": 446.2103256475606,
+            "center": {
+              "x": 1292.3055070641094,
+              "y": 374.4270440539435
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 1331.0385347175627,
+            "y": 312.1844071541607,
+            "width": 485.9494514081928,
+            "height": 158.8545489291934,
+            "left": 1331.0385347175627,
+            "top": 312.1844071541607,
+            "right": 1816.9879861257555,
+            "bottom": 471.0389560833541,
+            "center": {
+              "x": 1574.0132604216592,
+              "y": 391.6116816187574
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 946.9593023578768,
+            "y": 348.0765857292813,
+            "width": 404.5679388202184,
+            "height": 226.3858584262797,
+            "left": 946.9593023578768,
+            "top": 348.0765857292813,
+            "right": 1351.5272411780952,
+            "bottom": 574.462444155561,
+            "center": {
+              "x": 1149.243271767986,
+              "y": 461.26951494242115
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 1213.1915864733833,
+            "y": 364.1440050242023,
+            "width": 648.7807120543787,
+            "height": 262.51930157089026,
+            "left": 1213.1915864733833,
+            "top": 364.1440050242023,
+            "right": 1861.972298527762,
+            "bottom": 626.6633065950925,
+            "center": {
+              "x": 1537.5819425005725,
+              "y": 495.4036558096474
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 1522.9159753789402,
+            "y": 382.95861810456586,
+            "width": 1001.8820225142892,
+            "height": 310.3156084166293,
+            "left": 1522.9159753789402,
+            "top": 382.95861810456586,
+            "right": 2524.7979978932294,
+            "bottom": 693.2742265211951,
+            "center": {
+              "x": 2023.856986636085,
+              "y": 538.1164223128806
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 711.7901145833628,
+            "y": 310.08468928470984,
+            "width": 98.56199171153514,
+            "height": 78.3090127419947,
+            "left": 711.7901145833628,
+            "top": 310.08468928470984,
+            "right": 810.3521062948979,
+            "bottom": 388.39370202670455,
+            "center": {
+              "x": 761.0711104391303,
+              "y": 349.2391956557072
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -552.8862758575108,
+            "y": 624.0053872998881,
+            "width": 678.7285986640888,
+            "height": 445.80974644814637,
+            "left": -552.8862758575108,
+            "top": 624.0053872998881,
+            "right": 125.84232280657812,
+            "bottom": 1069.8151337480344,
+            "center": {
+              "x": -213.52197652546633,
+              "y": 846.9102605239613
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 2582.10348308827,
+            "y": 361.1016237904733,
+            "width": 2358.5988663263797,
+            "height": 622.7386619172257,
+            "left": 2582.10348308827,
+            "top": 361.1016237904733,
+            "right": 4940.70234941465,
+            "bottom": 983.8402857076991,
+            "center": {
+              "x": 3761.40291625146,
+              "y": 672.4709547490862
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 886.5951373594435,
+            "y": 241.73304060941257,
+            "width": 125.01844410958972,
+            "height": 41.53446147045429,
+            "left": 886.5951373594435,
+            "top": 241.73304060941257,
+            "right": 1011.6135814690332,
+            "bottom": 283.26750207986686,
+            "center": {
+              "x": 949.1043594142384,
+              "y": 262.5002713446397
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": 6.3911128016637235,
+            "y": 762.8380225370956,
+            "width": 646.1246040246526,
+            "height": 764.8733108788383,
+            "left": 6.3911128016637235,
+            "top": 762.8380225370956,
+            "right": 652.5157168263163,
+            "bottom": 1527.711333415934,
+            "center": {
+              "x": 329.45341481399,
+              "y": 1145.2746779765148
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": -4401.978315979064,
+            "y": -2240.265853637424,
+            "width": 3223.879437938347,
+            "height": 1844.8860677535367,
+            "left": -4401.978315979064,
+            "top": -2240.265853637424,
+            "right": -1178.0988780407167,
+            "bottom": -395.37978588388717,
+            "center": {
+              "x": -2790.0385970098905,
+              "y": -1317.8228197606554
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": 59.21327192405795,
+            "y": 326.93782375901696,
+            "width": 215.8648224794805,
+            "height": 141.82007830557353,
+            "left": 59.21327192405795,
+            "top": 326.93782375901696,
+            "right": 275.07809440353844,
+            "bottom": 468.7579020645905,
+            "center": {
+              "x": 167.1456831637982,
+              "y": 397.84786291180376
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 527.427969921514,
+            "y": 211.37466846732025,
+            "width": 282.10686906363935,
+            "height": 374.12970185139363,
+            "left": 527.427969921514,
+            "top": 211.37466846732025,
+            "right": 809.5348389851533,
+            "bottom": 585.5043703187139,
+            "center": {
+              "x": 668.4814044533337,
+              "y": 398.43951939301706
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": -2.1225641025641027,
+            "y": 1.093715989481449,
+            "z": 2.68
+          },
+          "yaw": 0.5,
+          "viewHeight": 3.308275830252417,
+          "projection": "perspective",
+          "viewInsets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "canPan": false
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-capybara-desktop-expanded",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "expanded",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 32,
+        "frameCount": 357,
+        "dpr": 1,
+        "width": 1024,
+        "height": 768,
+        "drawCalls": 41,
+        "triangles": 217196,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 6
+        },
+        "bodyScreenBounds": {
+          "x": 313.547421807458,
+          "y": 345.7980565946696,
+          "width": 49.2150171135321,
+          "height": 79.12168845527907,
+          "left": 313.547421807458,
+          "top": 345.7980565946696,
+          "right": 362.7624389209901,
+          "bottom": 424.9197450499487
+        },
+        "petScreenBounds": {
+          "x": 289.9541779820213,
+          "y": 317.6108568892292,
+          "width": 95.2602618171594,
+          "height": 132.22343860589132,
+          "left": 289.9541779820213,
+          "top": 317.6108568892292,
+          "right": 385.2144397991807,
+          "bottom": 449.8342954951205
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": 271.9286491703426,
+            "y": -14.133936608224786,
+            "width": 252.36335943611346,
+            "height": 302.4142844249884,
+            "left": 271.9286491703426,
+            "top": -14.133936608224786,
+            "right": 524.2920086064561,
+            "bottom": 288.2803478167636,
+            "center": {
+              "x": 398.11032888839935,
+              "y": 137.0732056042694
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 478.34772794954586,
+            "y": 290.0707687803847,
+            "width": 121.18230851411477,
+            "height": 110.31067258267444,
+            "left": 478.34772794954586,
+            "top": 290.0707687803847,
+            "right": 599.5300364636606,
+            "bottom": 400.38144136305914,
+            "center": {
+              "x": 538.9388822066032,
+              "y": 345.2261050717219
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 568.2121822871201,
+            "y": 324.06935512077837,
+            "width": 121.18230851411465,
+            "height": 110.31067258267444,
+            "left": 568.2121822871201,
+            "top": 324.06935512077837,
+            "right": 689.3944908012347,
+            "bottom": 434.3800277034528,
+            "center": {
+              "x": 628.8033365441775,
+              "y": 379.2246914121156
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 658.0766366246942,
+            "y": 358.067941461172,
+            "width": 121.18230851411477,
+            "height": 110.31067258267439,
+            "left": 658.0766366246942,
+            "top": 358.067941461172,
+            "right": 779.2589451388089,
+            "bottom": 468.37861404384637,
+            "center": {
+              "x": 718.6677908817516,
+              "y": 413.22327775250915
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 425.16345486705296,
+            "y": 357.4909298696952,
+            "width": 121.18230851411471,
+            "height": 110.3106725826745,
+            "left": 425.16345486705296,
+            "top": 357.4909298696952,
+            "right": 546.3457633811677,
+            "bottom": 467.8016024523697,
+            "center": {
+              "x": 485.7546091241103,
+              "y": 412.6462661610325
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 515.0279092046271,
+            "y": 391.4895162100889,
+            "width": 121.18230851411477,
+            "height": 110.31067258267439,
+            "left": 515.0279092046271,
+            "top": 391.4895162100889,
+            "right": 636.2102177187419,
+            "bottom": 501.80018879276327,
+            "center": {
+              "x": 575.6190634616845,
+              "y": 446.64485250142604
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 604.8923635422012,
+            "y": 425.4881025504825,
+            "width": 121.18230851411488,
+            "height": 110.31067258267444,
+            "left": 604.8923635422012,
+            "top": 425.4881025504825,
+            "right": 726.0746720563161,
+            "bottom": 535.7987751331569,
+            "center": {
+              "x": 665.4835177992586,
+              "y": 480.6434388418197
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 391.01950526229723,
+            "y": 273.8716058618341,
+            "width": 63.688913516545426,
+            "height": 64.11307474962149,
+            "left": 391.01950526229723,
+            "top": 273.8716058618341,
+            "right": 454.70841877884266,
+            "bottom": 337.9846806114556,
+            "center": {
+              "x": 422.86396202056994,
+              "y": 305.9281432366448
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": 144.6880176380264,
+            "y": 419.73209766508535,
+            "width": 63.688913516545426,
+            "height": 64.11307474962155,
+            "left": 144.6880176380264,
+            "top": 419.73209766508535,
+            "right": 208.37693115457182,
+            "bottom": 483.8451724147069,
+            "center": {
+              "x": 176.5324743962991,
+              "y": 451.7886350398961
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 702.3545344007337,
+            "y": 488.6342352079573,
+            "width": 63.688913516545426,
+            "height": 99.5091459682069,
+            "left": 702.3545344007337,
+            "top": 488.6342352079573,
+            "right": 766.0434479172791,
+            "bottom": 588.1433811761642,
+            "center": {
+              "x": 734.1989911590064,
+              "y": 538.3888081920608
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 636.1723080852491,
+            "y": 114.0972621728467,
+            "width": 112.36549294939812,
+            "height": 82.52897568400134,
+            "left": 636.1723080852491,
+            "top": 114.0972621728467,
+            "right": 748.5378010346473,
+            "bottom": 196.62623785684804,
+            "center": {
+              "x": 692.3550545599483,
+              "y": 155.36175001484736
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": 237.95007857430926,
+            "y": 461.7500657714844,
+            "width": 63.688913516545426,
+            "height": 64.11307474962143,
+            "left": 237.95007857430926,
+            "top": 461.7500657714844,
+            "right": 301.6389920908547,
+            "bottom": 525.8631405211058,
+            "center": {
+              "x": 269.794535332582,
+              "y": 493.8066031462951
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": 493.9835711037531,
+            "y": 614.4411086729522,
+            "width": 57.66327532750472,
+            "height": 70.70330418877916,
+            "left": 493.9835711037531,
+            "top": 614.4411086729522,
+            "right": 551.6468464312578,
+            "bottom": 685.1444128617313,
+            "center": {
+              "x": 522.8152087675055,
+              "y": 649.7927607673417
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": 131.47614512457812,
+            "y": 282.0081900838889,
+            "width": 57.66327532750478,
+            "height": 70.70330418877916,
+            "left": 131.47614512457812,
+            "top": 282.0081900838889,
+            "right": 189.1394204520829,
+            "bottom": 352.71149427266806,
+            "center": {
+              "x": 160.3077827883305,
+              "y": 317.3598421782785
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 296.51701457445563,
+            "y": 317.1403307722011,
+            "width": 85.65237111661872,
+            "height": 124.67826564967464,
+            "left": 296.51701457445563,
+            "top": 317.1403307722011,
+            "right": 382.16938569107435,
+            "bottom": 441.8185964218757,
+            "center": {
+              "x": 339.343200132765,
+              "y": 379.4794635970384
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": 1.1,
+            "y": 0.45,
+            "z": 0.3
+          },
+          "yaw": 0.5,
+          "viewHeight": 18,
+          "projection": "orthographic",
+          "viewInsets": {
+            "top": 83,
+            "right": 0,
+            "bottom": 119.5,
+            "left": 0
+          },
+          "canPan": true
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-capybara-phone-home",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "home",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 31,
+        "frameCount": 388,
+        "dpr": 1,
+        "width": 348,
+        "height": 413,
+        "drawCalls": 24,
+        "triangles": 196607,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 6
+        },
+        "bodyScreenBounds": {
+          "x": 121.79943091534379,
+          "y": 285.4781264944022,
+          "width": 144.5821434888491,
+          "height": 252.3974105033774,
+          "left": 121.79943091534379,
+          "top": 285.4781264944022,
+          "right": 266.3815744041929,
+          "bottom": 537.8755369977796
+        },
+        "petScreenBounds": {
+          "x": 35.31573033232984,
+          "y": 251.24060434045325,
+          "width": 278.25056122702074,
+          "height": 352.21644038199145,
+          "left": 35.31573033232984,
+          "top": 251.24060434045325,
+          "right": 313.5662915593506,
+          "bottom": 603.4570447224447
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": -23.203360211822513,
+            "y": 62.3073003115382,
+            "width": 316.8797199364303,
+            "height": 303.1518063388909,
+            "left": -23.203360211822513,
+            "top": 62.3073003115382,
+            "right": 293.67635972460783,
+            "bottom": 365.4591066504291,
+            "center": {
+              "x": 135.23649975639267,
+              "y": 213.88320348098364
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 401.0370380195066,
+            "y": 320.302039895284,
+            "width": 222.0609938465863,
+            "height": 115.72729134475526,
+            "left": 401.0370380195066,
+            "top": 320.302039895284,
+            "right": 623.0980318660929,
+            "bottom": 436.02933124003926,
+            "center": {
+              "x": 512.0675349427997,
+              "y": 378.1656855676616
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 571.7377199463957,
+            "y": 327.8440436004071,
+            "width": 314.8440821644458,
+            "height": 127.092589953887,
+            "left": 571.7377199463957,
+            "top": 327.8440436004071,
+            "right": 886.5818021108415,
+            "bottom": 454.9366335542941,
+            "center": {
+              "x": 729.1597610286186,
+              "y": 391.3903385773506
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 762.3628874225653,
+            "y": 336.2953080056893,
+            "width": 433.1639100015186,
+            "height": 140.66426510753905,
+            "left": 762.3628874225653,
+            "top": 336.2953080056893,
+            "right": 1195.526797424084,
+            "bottom": 476.9595731132284,
+            "center": {
+              "x": 978.9448424233246,
+              "y": 406.6274405594588
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 423.97026940866135,
+            "y": 368.1059243473176,
+            "width": 362.88911742785467,
+            "height": 200.68578675197426,
+            "left": 423.97026940866135,
+            "top": 368.1059243473176,
+            "right": 786.859386836516,
+            "bottom": 568.7917110992919,
+            "center": {
+              "x": 605.4148281225887,
+              "y": 468.4488177233047
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 660.0358762605663,
+            "y": 382.35476480180176,
+            "width": 580.8843651717841,
+            "height": 232.84603463324294,
+            "left": 660.0358762605663,
+            "top": 382.35476480180176,
+            "right": 1240.9202414323504,
+            "bottom": 615.2007994350447,
+            "center": {
+              "x": 950.4780588464583,
+              "y": 498.77778211842326
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 934.7674155092627,
+            "y": 399.0465985182559,
+            "width": 896.4181788946523,
+            "height": 275.431834895577,
+            "left": 934.7674155092627,
+            "top": 399.0465985182559,
+            "right": 1831.185594403915,
+            "bottom": 674.4784334138329,
+            "center": {
+              "x": 1382.976504956589,
+              "y": 536.7625159660445
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 214.82080623822247,
+            "y": 334.4051555800893,
+            "width": 86.78494126673468,
+            "height": 69.2710531066898,
+            "left": 214.82080623822247,
+            "top": 334.4051555800893,
+            "right": 301.60574750495715,
+            "bottom": 403.6762086867791,
+            "center": {
+              "x": 258.2132768715898,
+              "y": 369.0406821334342
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -893.6405260993287,
+            "y": 613.2895453395063,
+            "width": 597.7930509475591,
+            "height": 397.3200882360567,
+            "left": -893.6405260993287,
+            "top": 613.2895453395063,
+            "right": -295.8474751517695,
+            "bottom": 1010.609633575563,
+            "center": {
+              "x": -594.7440006255491,
+              "y": 811.9495894575346
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 1880.2391862757102,
+            "y": 380.2016265847401,
+            "width": 2122.7990926319662,
+            "height": 553.6080912751411,
+            "left": 1880.2391862757102,
+            "top": 380.2016265847401,
+            "right": 4003.0382789076766,
+            "bottom": 933.8097178598812,
+            "center": {
+              "x": 2941.6387325916935,
+              "y": 657.0056722223106
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 366.67503188718234,
+            "y": 273.9218590307898,
+            "width": 110.82636502289739,
+            "height": 36.7013883704052,
+            "left": 366.67503188718234,
+            "top": 273.9218590307898,
+            "right": 477.50139691007973,
+            "bottom": 310.623247401195,
+            "center": {
+              "x": 422.08821439863107,
+              "y": 292.2725532159924
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -388.1241064365619,
+            "y": 737.2070094588703,
+            "width": 563.5509687800193,
+            "height": 684.9508967316958,
+            "left": -388.1241064365619,
+            "top": 737.2070094588703,
+            "right": 175.42686234345734,
+            "bottom": 1422.157906190566,
+            "center": {
+              "x": -106.34862204655226,
+              "y": 1079.6824578247183
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": -4273.0967377382885,
+            "y": -1876.4941486188895,
+            "width": 2805.5005282846996,
+            "height": 1591.299222613613,
+            "left": -4273.0967377382885,
+            "top": -1876.4941486188895,
+            "right": -1467.596209453589,
+            "bottom": -285.19492600527644,
+            "center": {
+              "x": -2870.3464735959387,
+              "y": -1080.844537312083
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -360.2667364193198,
+            "y": 349.39843531897816,
+            "width": 189.92398227553204,
+            "height": 125.53889088811559,
+            "left": -360.2667364193198,
+            "top": 349.39843531897816,
+            "right": -170.34275414378774,
+            "bottom": 474.93732620709375,
+            "center": {
+              "x": -265.3047452815538,
+              "y": 412.16788076303595
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 57.540696532556794,
+            "y": 247.2236955722838,
+            "width": 247.695266134956,
+            "height": 331.3815332058416,
+            "left": 57.540696532556794,
+            "top": 247.2236955722838,
+            "right": 305.2359626675128,
+            "bottom": 578.6052287781254,
+            "center": {
+              "x": 181.3883296000348,
+              "y": 412.91446217520456
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": -2.2,
+            "y": 1.093715989481449,
+            "z": 2.68
+          },
+          "yaw": 0.5,
+          "viewHeight": 3.308275830252417,
+          "projection": "perspective",
+          "viewInsets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "canPan": false
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-capybara-phone-expanded",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "expanded",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 30,
+        "frameCount": 426,
+        "dpr": 1,
+        "width": 390,
+        "height": 844,
+        "drawCalls": 36,
+        "triangles": 214710,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 6
+        },
+        "bodyScreenBounds": {
+          "x": -23.09111457617896,
+          "y": 380.0176559451838,
+          "width": 54.08525318205868,
+          "height": 86.95143887533271,
+          "left": -23.09111457617896,
+          "top": 380.0176559451838,
+          "right": 30.99413860587972,
+          "bottom": 466.9690948205165
+        },
+        "petScreenBounds": {
+          "x": -48.96080369658464,
+          "y": 348.94459446487235,
+          "width": 104.53631477351303,
+          "height": 145.35704607322594,
+          "left": -48.96080369658464,
+          "top": 348.94459446487235,
+          "right": 55.57551107692839,
+          "bottom": 494.3016405380983
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": -68.82841158884227,
+            "y": -15.532607418413697,
+            "width": 277.33681688031226,
+            "height": 332.3406979878779,
+            "left": -68.82841158884227,
+            "top": -15.532607418413697,
+            "right": 208.50840529146998,
+            "bottom": 316.8080905694642,
+            "center": {
+              "x": 69.83999685131386,
+              "y": 150.63774157552524
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 158.017555194553,
+            "y": 318.7756886076102,
+            "width": 133.17430779415733,
+            "height": 121.226832890335,
+            "left": 158.017555194553,
+            "top": 318.7756886076102,
+            "right": 291.19186298871034,
+            "bottom": 440.0025214979452,
+            "center": {
+              "x": 224.60470909163166,
+              "y": 379.3891050527777
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 256.77484615928296,
+            "y": 356.1387183879387,
+            "width": 133.17430779415741,
+            "height": 121.22683289033495,
+            "left": 256.77484615928296,
+            "top": 356.1387183879387,
+            "right": 389.9491539534404,
+            "bottom": 477.36555127827364,
+            "center": {
+              "x": 323.3620000563617,
+              "y": 416.7521348331062
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 355.5321371240129,
+            "y": 393.5017481682671,
+            "width": 133.17430779415747,
+            "height": 121.22683289033489,
+            "left": 355.5321371240129,
+            "top": 393.5017481682671,
+            "right": 488.70644491817035,
+            "bottom": 514.728581058602,
+            "center": {
+              "x": 422.1192910210916,
+              "y": 454.11516461343456
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 99.57025508827172,
+            "y": 392.8676364713838,
+            "width": 133.1743077941574,
+            "height": 121.226832890335,
+            "left": 99.57025508827172,
+            "top": 392.8676364713838,
+            "right": 232.7445628824291,
+            "bottom": 514.0944693617188,
+            "center": {
+              "x": 166.1574089853504,
+              "y": 453.4810529165513
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 198.32754605300164,
+            "y": 430.23066625171225,
+            "width": 133.17430779415741,
+            "height": 121.22683289033489,
+            "left": 198.32754605300164,
+            "top": 430.23066625171225,
+            "right": 331.50185384715905,
+            "bottom": 551.4574991420471,
+            "center": {
+              "x": 264.9146999500804,
+              "y": 490.8440826968797
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 297.0848370177316,
+            "y": 467.5936960320406,
+            "width": 133.17430779415736,
+            "height": 121.226832890335,
+            "left": 297.0848370177316,
+            "top": 467.5936960320406,
+            "right": 430.259144811889,
+            "bottom": 588.8205289223756,
+            "center": {
+              "x": 363.6719909148103,
+              "y": 528.207112477208
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 62.04747713721206,
+            "y": 300.9734835252448,
+            "width": 69.99146224995354,
+            "height": 70.4575977717194,
+            "left": 62.04747713721206,
+            "top": 300.9734835252448,
+            "right": 132.0389393871656,
+            "bottom": 371.4310812969642,
+            "center": {
+              "x": 97.04320826218884,
+              "y": 336.2022824111045
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -208.66056394987723,
+            "y": 461.2680864965261,
+            "width": 69.99146224995357,
+            "height": 70.45759777171946,
+            "left": -208.66056394987723,
+            "top": 461.2680864965261,
+            "right": -138.66910169992366,
+            "bottom": 531.7256842682456,
+            "center": {
+              "x": -173.66483282490043,
+              "y": 496.4968853823858
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 404.1917018674729,
+            "y": 536.9886647337448,
+            "width": 69.99146224995354,
+            "height": 109.35640520464392,
+            "left": 404.1917018674729,
+            "top": 536.9886647337448,
+            "right": 474.18316411742643,
+            "bottom": 646.3450699383887,
+            "center": {
+              "x": 439.18743299244966,
+              "y": 591.6668673360668
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 331.46019273951856,
+            "y": 125.38813707536798,
+            "width": 123.48499485584904,
+            "height": 90.6959055693973,
+            "left": 331.46019273951856,
+            "top": 125.38813707536798,
+            "right": 454.9451875953676,
+            "bottom": 216.08404264476528,
+            "center": {
+              "x": 393.20269016744305,
+              "y": 170.7360898600666
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -106.1694449001081,
+            "y": 507.4440826967875,
+            "width": 69.9914622499536,
+            "height": 70.4575977717194,
+            "left": -106.1694449001081,
+            "top": 507.4440826967875,
+            "right": -36.177982650154505,
+            "bottom": 577.9016804685069,
+            "center": {
+              "x": -71.1737137751313,
+              "y": 542.6728815826473
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": 175.200695327562,
+            "y": 675.2451767187131,
+            "width": 63.36953694845576,
+            "height": 77.6999853324603,
+            "left": 175.200695327562,
+            "top": 675.2451767187131,
+            "right": 238.57023227601775,
+            "bottom": 752.9451620511734,
+            "center": {
+              "x": 206.88546380178985,
+              "y": 714.0951693849432
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -223.17986134746886,
+            "y": 309.9152505609404,
+            "width": 63.36953694845579,
+            "height": 77.69998533246041,
+            "left": -223.17986134746886,
+            "top": 309.9152505609404,
+            "right": -159.81032439901307,
+            "bottom": 387.61523589340084,
+            "center": {
+              "x": -191.49509287324096,
+              "y": 348.76524322717063
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": -41.80682252494724,
+            "y": 348.52400933820013,
+            "width": 94.12838700836748,
+            "height": 137.01621902125703,
+            "left": -41.80682252494724,
+            "top": 348.52400933820013,
+            "right": 52.32156448342024,
+            "bottom": 485.54022835945716,
+            "center": {
+              "x": 5.257370979236498,
+              "y": 417.03211884882865
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": 1.1,
+            "y": 0.45,
+            "z": 0.3
+          },
+          "yaw": 0.5,
+          "viewHeight": 18,
+          "projection": "orthographic",
+          "viewInsets": {
+            "top": 73,
+            "right": 0,
+            "bottom": 201.5,
+            "left": 0
+          },
+          "canPan": true
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-capybara-small-phone-home",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "home",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 30,
+        "frameCount": 454,
+        "dpr": 1,
+        "width": 284,
+        "height": 237,
+        "drawCalls": 28,
+        "triangles": 202648,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 6
+        },
+        "bodyScreenBounds": {
+          "x": 113.26154620203678,
+          "y": 245.47132298983644,
+          "width": 82.7464998541011,
+          "height": 144.41651364097123,
+          "left": 113.26154620203678,
+          "top": 245.47132298983644,
+          "right": 196.00804605613789,
+          "bottom": 389.88783663080767
+        },
+        "petScreenBounds": {
+          "x": 62.099679738175695,
+          "y": 224.79560944796145,
+          "width": 160.9658643675411,
+          "height": 202.4378204707055,
+          "left": 62.099679738175695,
+          "top": 224.79560944796145,
+          "right": 223.06554410571678,
+          "bottom": 427.23342991866696
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": 32.407086885091616,
+            "y": 117.69979521742646,
+            "width": 182.19581442598601,
+            "height": 173.6899297477815,
+            "left": 32.407086885091616,
+            "top": 117.69979521742646,
+            "right": 214.60290131107763,
+            "bottom": 291.38972496520796,
+            "center": {
+              "x": 123.50499409808462,
+              "y": 204.54476009131722
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 275.5437144355048,
+            "y": 265.507429262369,
+            "width": 126.06311700452358,
+            "height": 66.23671862822027,
+            "left": 275.5437144355048,
+            "top": 265.507429262369,
+            "right": 401.6068314400284,
+            "bottom": 331.74414789058926,
+            "center": {
+              "x": 338.5752729377666,
+              "y": 298.6257885764791
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 373.19561328138855,
+            "y": 269.82154066880344,
+            "width": 178.9421320434608,
+            "height": 72.72645810660276,
+            "left": 373.19561328138855,
+            "top": 269.82154066880344,
+            "right": 552.1377453248493,
+            "bottom": 342.5479987754062,
+            "center": {
+              "x": 462.66667930311894,
+              "y": 306.1847697221048
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 482.22633894571175,
+            "y": 274.65485104471986,
+            "width": 246.34989881390914,
+            "height": 80.47306221728138,
+            "left": 482.22633894571175,
+            "top": 274.65485104471986,
+            "right": 728.5762377596209,
+            "bottom": 355.12791326200124,
+            "center": {
+              "x": 605.4012883526664,
+              "y": 314.89138215336055
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 287.7466668628063,
+            "y": 292.8388608403397,
+            "width": 205.22359922488482,
+            "height": 114.6960715195458,
+            "left": 287.7466668628063,
+            "top": 292.8388608403397,
+            "right": 492.97026608769113,
+            "bottom": 407.5349323598855,
+            "center": {
+              "x": 390.35846647524875,
+              "y": 350.1868966001126
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 422.64036422866405,
+            "y": 300.97956786229975,
+            "width": 329.04357858122677,
+            "height": 133.0100735015244,
+            "left": 422.64036422866405,
+            "top": 300.97956786229975,
+            "right": 751.6839428098908,
+            "bottom": 433.98964136382415,
+            "center": {
+              "x": 587.1621535192775,
+              "y": 367.48460461306195
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 579.5763295647365,
+            "y": 310.51255161276583,
+            "width": 508.09116243581195,
+            "height": 157.2378921675064,
+            "left": 579.5763295647365,
+            "top": 310.51255161276583,
+            "right": 1087.6674920005485,
+            "bottom": 467.75044378027224,
+            "center": {
+              "x": 833.6219107826425,
+              "y": 389.13149769651903
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 168.55590573166245,
+            "y": 273.589396360956,
+            "width": 49.90410885593863,
+            "height": 39.66597427650515,
+            "left": 168.55590573166245,
+            "top": 273.589396360956,
+            "right": 218.46001458760108,
+            "bottom": 313.25537063746117,
+            "center": {
+              "x": 193.50796015963175,
+              "y": 293.4223834992086
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -471.4875551710571,
+            "y": 432.668460776471,
+            "width": 343.66627303150136,
+            "height": 225.98570206667017,
+            "left": -471.4875551710571,
+            "top": 432.668460776471,
+            "right": -127.82128213955576,
+            "bottom": 658.6541628431412,
+            "center": {
+              "x": -299.6544186553065,
+              "y": 545.6613118098061
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 1116.6023653597215,
+            "y": 299.46928540414365,
+            "width": 1196.8360660629303,
+            "height": 315.593301191868,
+            "left": 1116.6023653597215,
+            "top": 299.46928540414365,
+            "right": 2313.438431422652,
+            "bottom": 615.0625865960117,
+            "center": {
+              "x": 1715.0203983911865,
+              "y": 457.26593600007766
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 256.94494911700724,
+            "y": 238.96596617120878,
+            "width": 63.34246692650663,
+            "height": 21.03624578262105,
+            "left": 256.94494911700724,
+            "top": 238.96596617120878,
+            "right": 320.2874160435139,
+            "bottom": 260.0022119538298,
+            "center": {
+              "x": 288.61618258026056,
+              "y": 249.4840890625193
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -187.56983944811878,
+            "y": 503.05479602605266,
+            "width": 326.8455075653808,
+            "height": 387.90735589239586,
+            "left": -187.56983944811878,
+            "top": 503.05479602605266,
+            "right": 139.275668117262,
+            "bottom": 890.9621519184485,
+            "center": {
+              "x": -24.147085665428392,
+              "y": 697.0084739722506
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": -2419.770570905973,
+            "y": -1015.6054681699543,
+            "width": 1630.3750842195354,
+            "height": 932.111924461726,
+            "left": -2419.770570905973,
+            "top": -1015.6054681699543,
+            "right": -789.3954866864375,
+            "bottom": -83.49354370822829,
+            "center": {
+              "x": -1604.583028796205,
+              "y": -549.5495059390913
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -161.88614867645458,
+            "y": 282.13093033480607,
+            "width": 109.28872045500525,
+            "height": 71.84130183453647,
+            "left": -161.88614867645458,
+            "top": 282.13093033480607,
+            "right": -52.597428221449334,
+            "bottom": 353.97223216934253,
+            "center": {
+              "x": -107.24178844895195,
+              "y": 318.0515812520743
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 75.49876047337006,
+            "y": 223.597477466043,
+            "width": 142.79691375587515,
+            "height": 189.53316997758097,
+            "left": 75.49876047337006,
+            "top": 223.597477466043,
+            "right": 218.2956742292452,
+            "bottom": 413.13064744362396,
+            "center": {
+              "x": 146.89721735130763,
+              "y": 318.36406245483346
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": -2.130337552742616,
+            "y": 1.093715989481449,
+            "z": 2.68
+          },
+          "yaw": 0.5,
+          "viewHeight": 3.308275830252417,
+          "projection": "perspective",
+          "viewInsets": {
+            "top": 0,
+            "right": 0,
+            "bottom": 0,
+            "left": 0
+          },
+          "canPan": false
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    },
+    {
+      "label": "visual-capybara-small-phone-expanded",
+      "diagnostics": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "expanded",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": true,
+        "fps": 32,
+        "frameCount": 492,
+        "dpr": 1,
+        "width": 320,
+        "height": 668,
+        "drawCalls": 37,
+        "triangles": 214954,
+        "memory": {
+          "geometries": 37,
+          "textures": 4,
+          "programs": 6
+        },
+        "bodyScreenBounds": {
+          "x": -12.612398740388073,
+          "y": 300.772267975572,
+          "width": 42.80681176020758,
+          "height": 68.81938527099794,
+          "left": -12.612398740388073,
+          "top": 300.772267975572,
+          "right": 30.19441301981951,
+          "bottom": 369.59165324656993
+        },
+        "petScreenBounds": {
+          "x": -33.1262718419411,
+          "y": 276.09411116464895,
+          "width": 82.81022987902873,
+          "height": 115.14636511527186,
+          "left": -33.1262718419411,
+          "top": 276.09411116464895,
+          "right": 49.68395803708763,
+          "bottom": 391.2404762799208
+        },
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": -48.81206035704576,
+            "y": -12.29358027902885,
+            "width": 219.50354700953622,
+            "height": 263.037424473818,
+            "left": -48.81206035704576,
+            "top": -12.29358027902885,
+            "right": 170.69148665249045,
+            "bottom": 250.74384419478918,
+            "center": {
+              "x": 60.939713147722344,
+              "y": 119.22513195788017
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 130.72953420611543,
+            "y": 252.30113742877208,
+            "width": 105.40336209300605,
+            "height": 95.94730375680538,
+            "left": 130.72953420611543,
+            "top": 252.30113742877208,
+            "right": 236.13289629912148,
+            "bottom": 348.24844118557746,
+            "center": {
+              "x": 183.43121525261847,
+              "y": 300.2747893071748
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 208.89288771848464,
+            "y": 281.87282450609365,
+            "width": 105.40336209300602,
+            "height": 95.94730375680541,
+            "left": 208.89288771848464,
+            "top": 281.87282450609365,
+            "right": 314.29624981149067,
+            "bottom": 377.82012826289906,
+            "center": {
+              "x": 261.5945687649877,
+              "y": 329.8464763844963
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 287.0562412308538,
+            "y": 311.4445115834152,
+            "width": 105.40336209300614,
+            "height": 95.94730375680535,
+            "left": 287.0562412308538,
+            "top": 311.4445115834152,
+            "right": 392.45960332385994,
+            "bottom": 407.39181534022055,
+            "center": {
+              "x": 339.7579222773569,
+              "y": 359.41816346181787
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 84.47029668123876,
+            "y": 310.9426317095786,
+            "width": 105.40336209300607,
+            "height": 95.94730375680541,
+            "left": 84.47029668123876,
+            "top": 310.9426317095786,
+            "right": 189.87365877424483,
+            "bottom": 406.88993546638403,
+            "center": {
+              "x": 137.1719777277418,
+              "y": 358.9162835879813
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 162.63365019360793,
+            "y": 340.5143187869002,
+            "width": 105.40336209300608,
+            "height": 95.94730375680535,
+            "left": 162.63365019360793,
+            "top": 340.5143187869002,
+            "right": 268.037012286614,
+            "bottom": 436.4616225437056,
+            "center": {
+              "x": 215.33533124011097,
+              "y": 388.4879706653029
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 240.79700370597715,
+            "y": 370.0860058642217,
+            "width": 105.40336209300614,
+            "height": 95.94730375680541,
+            "left": 240.79700370597715,
+            "top": 370.0860058642217,
+            "right": 346.2003657989833,
+            "bottom": 466.0333096210271,
+            "center": {
+              "x": 293.49868475248024,
+              "y": 418.0596577426244
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 54.77217384793562,
+            "y": 238.21124051524112,
+            "width": 55.39608623574523,
+            "height": 55.765018141597864,
+            "left": 54.77217384793562,
+            "top": 238.21124051524112,
+            "right": 110.16826008368085,
+            "bottom": 293.976258656839,
+            "center": {
+              "x": 82.47021696580823,
+              "y": 266.0937495860401
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": -159.48490132525825,
+            "y": 365.0794807816107,
+            "width": 55.396086235745216,
+            "height": 55.76501814159792,
+            "left": -159.48490132525825,
+            "top": 365.0794807816107,
+            "right": -104.08881508951303,
+            "bottom": 420.8444989232086,
+            "center": {
+              "x": -131.78685820738565,
+              "y": 392.96198985240966
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 325.5687877339715,
+            "y": 425.00998583192126,
+            "width": 55.3960862357452,
+            "height": 86.5522259202632,
+            "left": 325.5687877339715,
+            "top": 425.00998583192126,
+            "right": 380.9648739697167,
+            "bottom": 511.56221175218445,
+            "center": {
+              "x": 353.2668308518441,
+              "y": 468.2860987920528
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 268.00403880331567,
+            "y": 99.24084782742395,
+            "width": 97.73456938827854,
+            "height": 71.78301530848034,
+            "left": 268.00403880331567,
+            "top": 99.24084782742395,
+            "right": 365.7386081915942,
+            "bottom": 171.0238631359043,
+            "center": {
+              "x": 316.8713234974549,
+              "y": 135.13235548166412
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": -78.3663379067206,
+            "y": 401.6263592908224,
+            "width": 55.39608623574523,
+            "height": 55.76501814159781,
+            "left": -78.3663379067206,
+            "top": 401.6263592908224,
+            "right": -22.970251670975372,
+            "bottom": 457.3913774324202,
+            "center": {
+              "x": -50.66829478884799,
+              "y": 429.5088683616213
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": 144.3294602829519,
+            "y": 534.4357559811615,
+            "width": 50.155036352569226,
+            "height": 61.4971447891985,
+            "left": 144.3294602829519,
+            "top": 534.4357559811615,
+            "right": 194.48449663552114,
+            "bottom": 595.93290077036,
+            "center": {
+              "x": 169.40697845923654,
+              "y": 565.1843283757607
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": -170.97647793851797,
+            "y": 245.28837366671587,
+            "width": 50.155036352569255,
+            "height": 61.49714478919856,
+            "left": -170.97647793851797,
+            "top": 245.28837366671587,
+            "right": -120.82144158594872,
+            "bottom": 306.7855184559144,
+            "center": {
+              "x": -145.89895976223335,
+              "y": 276.0369460613151
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": -27.425305031593297,
+            "y": 275.84601686957075,
+            "width": 74.49971862747567,
+            "height": 108.44411647653993,
+            "left": -27.425305031593297,
+            "top": 275.84601686957075,
+            "right": 47.074413595882376,
+            "bottom": 384.2901333461107,
+            "center": {
+              "x": 9.82455428214454,
+              "y": 330.06807510784074
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": false,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": 1.1,
+            "y": 0.45,
+            "z": 0.3
+          },
+          "yaw": 0.5,
+          "viewHeight": 18,
+          "projection": "orthographic",
+          "viewInsets": {
+            "top": 71,
+            "right": 0,
+            "bottom": 216,
+            "left": 0
+          },
+          "canPan": true
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 2
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "file": "artifacts/v12-camera-desktop-panned.png",
+      "sha256": "2a827791419178b2825ab24136b7cf662d50f638e5bb11906ab4dc271f421b7f"
+    },
+    {
+      "file": "artifacts/v12-camera-desktop-reset.png",
+      "sha256": "a4ab95bb223f44728ee1b78171c0b8f7db0004d4125068d954af30bc1892a9c5"
+    },
+    {
+      "file": "artifacts/v12-camera-failure.png",
+      "sha256": "07ff6f0d9ed86943713f8f463e5ae6570777832e9f17160c03a5f4ceda669a4d"
+    },
+    {
+      "file": "artifacts/v12-visual-plant-desktop-home.png",
+      "sha256": "9ca39fa1f33323bd42ca4ca9bef4386550596e93e6078c52efd2f4aab557f4b1"
+    },
+    {
+      "file": "artifacts/v12-visual-plant-desktop-expanded.png",
+      "sha256": "1a14360e5023b67c53d63554ca266c033fb96146f0ce05ca72abf0a8a97bde60"
+    },
+    {
+      "file": "artifacts/v12-visual-plant-phone-home.png",
+      "sha256": "b7f87291543d6a01d8d6e97c56babfe45fbe8ca2a7797fbaf4714d6363e413b3"
+    },
+    {
+      "file": "artifacts/v12-visual-plant-phone-expanded.png",
+      "sha256": "0fcb5ccae7499285593894ba2fa6255944d3b617a0c830014e7aa66a5e8f9ead"
+    },
+    {
+      "file": "artifacts/v12-visual-plant-small-phone-home.png",
+      "sha256": "3c8be8e4aac67eed3e4698502ef6c3041a02eb9bff118a89f5436d9821b0c3b6"
+    },
+    {
+      "file": "artifacts/v12-visual-plant-small-phone-expanded.png",
+      "sha256": "0edb752ce670f1beae6dd21cbd284bcb32844548a31de2f46a6d61fb093ca55f"
+    },
+    {
+      "file": "artifacts/v12-visual-plant-house3-detail.png",
+      "sha256": "39778c64947e09dfef47a8160b82840654788aec1743cc7a72beecb0557d8c63"
+    },
+    {
+      "file": "artifacts/v12-visual-capybara-desktop-home.png",
+      "sha256": "5b1f7c04181ccb29f6ab97f325e7875c5aa64f66b48c257f24f987dea741ea30"
+    },
+    {
+      "file": "artifacts/v12-visual-capybara-desktop-expanded.png",
+      "sha256": "77125ec1d9ea2b58188d97c015de8072df1024f29602d3648d0b3c4f831a3905"
+    },
+    {
+      "file": "artifacts/v12-visual-capybara-phone-home.png",
+      "sha256": "20d82150653326a4ea5ba0f984442255367e1b2c2142d677eec04e614d6693cf"
+    },
+    {
+      "file": "artifacts/v12-visual-capybara-phone-expanded.png",
+      "sha256": "de28bafb916cb8f42c20724363373a800822a71981d0af6815548e4acc35e6b0"
+    },
+    {
+      "file": "artifacts/v12-visual-capybara-small-phone-home.png",
+      "sha256": "a22c07138cd89eaaa5072f17b85429fcb174e764081865e5fbd658f37c328a80"
+    },
+    {
+      "file": "artifacts/v12-visual-capybara-small-phone-expanded.png",
+      "sha256": "b00d54fd7bd4e16ca3814acccc9e023cf0dbb38fc1a36c903e92586915c17c58"
+    },
+    {
+      "file": "artifacts/v12-visual-capybara-house3-detail.png",
+      "sha256": "d501d2ef5e1e498cab4b1ff8a0ee76d9b3a36c2f2ca7e1d29212cb3bcf07e467"
+    }
+  ],
+  "errors": [],
+  "skipped": [],
+  "finishedAt": "2026-11-16T08:59:40.795Z",
+  "finalSourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "27fac8732c52de17ff341566cd4654af516d2a935e92c0f750ab1b2e79ba0df7",
+    "farm.css": "cd5f5fa331cc89952fa6de01603c1873bb2400143a9597a68824b1f57e40dc24",
+    "farm-scene.js": "6bd3748bcec3f58680c3183673748705713f257af88f08f98ca195ee8ec0f12f",
+    "test/v12-browser.cjs": "9400de06a75e7d13e1ee73bae49286db8d974e7327cd5f66e97f0f7d4ce9f2cd"
+  },
+  "sourceStable": true,
+  "passed": 1,
+  "failed": 1
+}

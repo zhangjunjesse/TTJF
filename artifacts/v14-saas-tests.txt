@@ -1,0 +1,267 @@
+
+> little-steps-family-dashboard@0.14.0 test:saas
+> node --env-file-if-exists=.env.saas.test --test test/saas-auth.test.cjs test/saas-store.test.cjs test/saas-server.test.cjs test/saas-data.test.cjs test/saas-lifecycle.test.cjs test/saas-maintenance.test.cjs test/saas-action-audit.test.cjs
+
+TAP version 13
+# {"result":"passed","output":"artifacts/v14-action-audit.json","sourceStable":true,"uniqueActionTypes":27,"committedVariants":98,"protectedTypes":12,"protectedVariants":19,"checks":528,"receiptCount":98,"finalRevision":99,"otherFamilyUnchanged":true,"allThreeCrops":true,"allPaidFarmCatalogItems":true,"houseLevel":3,"elapsedCropHoursSimulated":104,"ledger":{"earned":600,"spent":16,"available":584}}
+# Subtest: independent SaaS audit: all 27 action types and 98 variants persist, authorize and replay correctly
+ok 1 - independent SaaS audit: all 27 action types and 98 variants persist, authorize and replay correctly
+  ---
+  duration_ms: 24534.9935
+  type: 'test'
+  ...
+# Subtest: real PG registration verifies once, hashes credentials/tokens, preserves empty account and revocable opaque sessions
+ok 2 - real PG registration verifies once, hashes credentials/tokens, preserves empty account and revocable opaque sessions
+  ---
+  duration_ms: 3393.8669
+  type: 'test'
+  ...
+# Subtest: real PG password reset, expiry and password change revoke sessions across instances with one-use tokens
+ok 3 - real PG password reset, expiry and password change revoke sessions across instances with one-use tokens
+  ---
+  duration_ms: 5633.1661
+  type: 'test'
+  ...
+# Subtest: real PG login counters span independent instances and ignore forwarded IP spoofing
+ok 4 - real PG login counters span independent instances and ignore forwarded IP spoofing
+  ---
+  duration_ms: 5197.4971
+  type: 'test'
+  ...
+# Subtest: unverified invited email cannot join; resend invalidates the previous verification link
+ok 5 - unverified invited email cannot join; resend invalidates the previous verification link
+  ---
+  duration_ms: 2635.6135
+  type: 'test'
+  ...
+# Subtest: configured nodemailer transport delivers over a real local SMTP connection
+ok 6 - configured nodemailer transport delivers over a real local SMTP connection
+  ---
+  duration_ms: 1422.9339
+  type: 'test'
+  ...
+# Subtest: production fails closed without HTTPS/SMTP/database and capture is explicitly local development only
+ok 7 - production fails closed without HTTPS/SMTP/database and capture is explicitly local development only
+  ---
+  duration_ms: 65.5836
+  type: 'test'
+  ...
+# Subtest: private legacy import requires verified target owner, is dry-run by default and preserves old PIN/receipts
+ok 8 - private legacy import requires verified target owner, is dry-run by default and preserves old PIN/receipts
+  ---
+  duration_ms: 3370.497
+  type: 'test'
+  ...
+# Subtest: import rollback leaves empty target, receipts and import audit unchanged
+ok 9 - import rollback leaves empty target, receipts and import audit unchanged
+  ---
+  duration_ms: 2388.5043
+  type: 'test'
+  ...
+# Subtest: private family backup restores to another empty owned family and refuses overwrite
+ok 10 - private family backup restores to another empty owned family and refuses overwrite
+  ---
+  duration_ms: 3211.7269
+  type: 'test'
+  ...
+# Subtest: import validates private policy and bumps a revision-one source before exposing it
+ok 11 - import validates private policy and bumps a revision-one source before exposing it
+  ---
+  duration_ms: 2074.8775
+  type: 'test'
+  ...
+# Subtest: operator CLI backs up, validates, restores and refuses overwrite using a disposable PostgreSQL schema
+ok 12 - operator CLI backs up, validates, restores and refuses overwrite using a disposable PostgreSQL schema
+  ---
+  duration_ms: 15691.7753
+  type: 'test'
+  ...
+# Subtest: v14 rename/leave require verified role, origin and CSRF, preserve business and reject stale membership
+ok 13 - v14 rename/leave require verified role, origin and CSRF, preserve business and reject stale membership
+  ---
+  duration_ms: 4126.3388
+  type: 'test'
+  ...
+# Subtest: v14 ownership transfers atomically only to a verified same-family parent using current password
+ok 14 - v14 ownership transfers atomically only to a verified same-family parent using current password
+  ---
+  duration_ms: 4884.758
+  type: 'test'
+  ...
+# Subtest: v14 family deletion requires exact name/password and cascades only the confirmed synthetic family
+ok 15 - v14 family deletion requires exact name/password and cascades only the confirmed synthetic family
+  ---
+  duration_ms: 5669.393
+  type: 'test'
+  ...
+# Subtest: v14 account deletion handles former inviter, all credential revocation, unverified accounts and owner refusal
+ok 16 - v14 account deletion handles former inviter, all credential revocation, unverified accounts and owner refusal
+  ---
+  duration_ms: 4361.6383
+  type: 'test'
+  ...
+# Subtest: v14 reciprocal cross-family owner transfers follow one user lock order without deadlock
+ok 17 - v14 reciprocal cross-family owner transfers follow one user lock order without deadlock
+  ---
+  duration_ms: 2433.5297
+  type: 'test'
+  ...
+# Subtest: v14 concurrent transfer versus target leave or account deletion never loses the family owner
+ok 18 - v14 concurrent transfer versus target leave or account deletion never loses the family owner
+  ---
+  duration_ms: 5158.4595
+  type: 'test'
+  ...
+# Subtest: v14 invite acceptance racing account deletion cannot recreate deleted membership or revive old invitation
+ok 19 - v14 invite acceptance racing account deletion cannot recreate deleted membership or revive old invitation
+  ---
+  duration_ms: 1552.3078
+  type: 'test'
+  ...
+# Subtest: v14 mutually invited former owners can concurrently delete accounts without invitation-row deadlocks
+ok 20 - v14 mutually invited former owners can concurrently delete accounts without invitation-row deadlocks
+  ---
+  duration_ms: 2518.9154
+  type: 'test'
+  ...
+# Subtest: v14 synthetic deletion failures roll back whole family cascades and account invitation revocation
+ok 21 - v14 synthetic deletion failures roll back whole family cascades and account invitation revocation
+  ---
+  duration_ms: 2182.7659
+  type: 'test'
+  ...
+# Subtest: v14 in-flight assistant leases survive leave and session cleanup until provider returns
+ok 22 - v14 in-flight assistant leases survive leave and session cleanup until provider returns
+  ---
+  duration_ms: 1381.8882
+  type: 'test'
+  ...
+# Subtest: v14 in-flight assistant leases survive delete-account and session cleanup until provider returns
+ok 23 - v14 in-flight assistant leases survive delete-account and session cleanup until provider returns
+  ---
+  duration_ms: 1344.3223
+  type: 'test'
+  ...
+# Subtest: v14 database constraint rejects ownerless commits and failed transfer rolls back both roles
+ok 24 - v14 database constraint rejects ownerless commits and failed transfer rolls back both roles
+  ---
+  duration_ms: 1620.2138
+  type: 'test'
+  ...
+# Subtest: v14 maintenance batch environment accepts bounds and rejects invalid startup configuration
+ok 25 - v14 maintenance batch environment accepts bounds and rejects invalid startup configuration
+  ---
+  duration_ms: 1.8153
+  type: 'test'
+  ...
+# Subtest: v14 proxy parser trusts exact peers, stops at first untrusted hop and rejects ambiguous headers
+ok 26 - v14 proxy parser trusts exact peers, stops at first untrusted hop and rejects ambiguous headers
+  ---
+  duration_ms: 6.9081
+  type: 'test'
+  ...
+# Subtest: v14 HTTP rate counters split only for explicitly trusted proxy clients and reject spoofed prefixes
+ok 27 - v14 HTTP rate counters split only for explicitly trusted proxy clients and reject spoofed prefixes
+  ---
+  duration_ms: 2714.7077
+  type: 'test'
+  ...
+# Subtest: v14 PG cleanup is bounded, preserves active credentials and all durable family business
+ok 28 - v14 PG cleanup is bounded, preserves active credentials and all durable family business
+  ---
+  duration_ms: 2357.4174
+  type: 'test'
+  ...
+# Subtest: v14 PG maintenance coordinates instances, rolls back errors and closes its timer
+ok 29 - v14 PG maintenance coordinates instances, rolls back errors and closes its timer
+  ---
+  duration_ms: 3353.5084
+  type: 'test'
+  ...
+# Subtest: real PG all business endpoints, replays and conflicts are tenant-authorized before returning data
+ok 30 - real PG all business endpoints, replays and conflicts are tenant-authorized before returning data
+  ---
+  duration_ms: 5736.2789
+  type: 'test'
+  ...
+# Subtest: real PG challenges and grants bind family, user, session, full action and revision across instances
+ok 31 - real PG challenges and grants bind family, user, session, full action and revision across instances
+  ---
+  duration_ms: 5577.4915
+  type: 'test'
+  ...
+# Subtest: real PG invitations are owner-only, email-bound, expiring, revocable and consumed atomically once
+ok 32 - real PG invitations are owner-only, email-bound, expiring, revocable and consumed atomically once
+  ---
+  duration_ms: 5934.6678
+  type: 'test'
+  ...
+# Subtest: delayed assistant output is re-authorized after member removal and never returns stale family data
+ok 33 - delayed assistant output is re-authorized after member removal and never returns stale family data
+  ---
+  duration_ms: 1594.6423
+  type: 'test'
+  ...
+# Subtest: real HTTP business loop keeps farm welcome gift, eight-hour crop timing and no-grant point protection
+ok 34 - real HTTP business loop keeps farm welcome gift, eight-hour crop timing and no-grant point protection
+  ---
+  duration_ms: 1592.1511
+  type: 'test'
+  ...
+# Subtest: assistant concurrency leases are shared across instances, family scoped and recover after worker expiry
+ok 35 - assistant concurrency leases are shared across instances, family scoped and recover after worker expiry
+  ---
+  duration_ms: 2140.8126
+  type: 'test'
+  ...
+# Subtest: PIN-changing challenges, grants and receipts never introduce a fast PIN fingerprint
+ok 36 - PIN-changing challenges, grants and receipts never introduce a fast PIN fingerprint
+  ---
+  duration_ms: 2378.9513
+  type: 'test'
+  ...
+# Subtest: SaaS static runtime, no-store, origin and CSRF enforcement expose no private resources
+ok 37 - SaaS static runtime, no-store, origin and CSRF enforcement expose no private resources
+  ---
+  duration_ms: 1219.2307
+  type: 'test'
+  ...
+# Subtest: real PG migration is concurrent/idempotent and family creation is atomic, empty and idempotent
+ok 38 - real PG migration is concurrent/idempotent and family creation is atomic, empty and idempotent
+  ---
+  duration_ms: 4239.8853
+  type: 'test'
+  ...
+# Subtest: real PG competing first setup and action retries across instances commit one receipt and one business effect
+ok 39 - real PG competing first setup and action retries across instances commit one receipt and one business effect
+  ---
+  duration_ms: 5380.2432
+  type: 'test'
+  ...
+# Subtest: real PostgreSQL transaction failure rolls back ledger, receipt and consumed grant, then retry succeeds
+ok 40 - real PostgreSQL transaction failure rolls back ledger, receipt and consumed grant, then retry succeeds
+  ---
+  duration_ms: 3647.0033
+  type: 'test'
+  ...
+# Subtest: closeSaas releases its owned real PG pool, keeps supplied pools usable, and is idempotent
+ok 41 - closeSaas releases its owned real PG pool, keeps supplied pools usable, and is idempotent
+  ---
+  duration_ms: 1364.1315
+  type: 'test'
+  ...
+# Subtest: real PG scoped counters isolate families and outsider requests never wait for foreign family row locks
+ok 42 - real PG scoped counters isolate families and outsider requests never wait for foreign family row locks
+  ---
+  duration_ms: 4081.0999
+  type: 'test'
+  ...
+1..42
+# tests 42
+# suites 0
+# pass 42
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 39854.7539

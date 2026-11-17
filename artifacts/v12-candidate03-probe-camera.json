@@ -1,0 +1,458 @@
+{
+  "command": "node test/v12-browser.cjs",
+  "evidenceTag": "candidate03",
+  "requested": [
+    "camera"
+  ],
+  "startedAt": "2026-11-16T09:29:56.976Z",
+  "sourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+    "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+    "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+    "farm-scene.js": "e9d390dbab34e2e1200e918716af4fe81eed48381de1a094c30ebf2d9a627f5e",
+    "test/v12-browser.cjs": "97e8c90b9909fef94d7d1e16281edfc5dd798b75e79f508227770113b0310b77"
+  },
+  "fixture": "Temporary createEnvironment server on an ephemeral loopback port and a separate browser context. All rich inventory is constructed by Model.apply. No live service or live family data is used.",
+  "boundaries": [
+    "Headless Microsoft Edge/Chromium; viewport and touch emulation do not prove Safari or iPad mini 4 hardware compatibility.",
+    "Eight-hour maturity and family-day boundaries use controlled client/server clocks, not eight hours of wall-clock waiting.",
+    "Short renderer diagnostics measure this desktop run only; no 10-minute A8/device soak, audible output, OS keyboard, or native touch claim.",
+    "Buttons are activated with real mouse/touch input after DOM hit-testing; production actions and state are never invoked or changed via page.evaluate.",
+    "Mechanical checks do not establish visual parity with Harvest Hollow. Final judgement requires reading screenshots against the four reference images; see artifacts/v12-visual-review.md."
+  ],
+  "visualReview": {
+    "status": "pending-human-image-review",
+    "references": [
+      "artifacts/v12-reference/hero.png",
+      "artifacts/v12-reference/farm-day.png",
+      "artifacts/v12-reference/phone-farm.png",
+      "artifacts/v12-reference/night.png"
+    ]
+  },
+  "groups": [
+    {
+      "name": "camera",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+        "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+        "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+        "farm-scene.js": "e9d390dbab34e2e1200e918716af4fe81eed48381de1a094c30ebf2d9a627f5e",
+        "test/v12-browser.cjs": "97e8c90b9909fef94d7d1e16281edfc5dd798b75e79f508227770113b0310b77"
+      },
+      "sourceStable": true
+    }
+  ],
+  "checks": [
+    {
+      "group": "camera",
+      "label": "Expanded camera supports actual drag, wheel zoom and visible reset without writing farm state",
+      "result": "passed"
+    },
+    {
+      "group": "camera",
+      "label": "390px touch drag and zoom buttons browse the scene without accidental selection",
+      "result": "passed"
+    },
+    {
+      "group": "camera",
+      "label": "320x568 yard exposes four 48px camera controls above the plot tray and accepts real taps",
+      "result": "passed"
+    }
+  ],
+  "layouts": [
+    {
+      "label": "camera-desktop-reset",
+      "width": 1024,
+      "height": 768,
+      "scrollWidth": 1024,
+      "scrollHeight": 768,
+      "bodyScrollHeight": 768,
+      "scrollY": 0,
+      "root": {
+        "x": 0,
+        "y": 0,
+        "width": 1024,
+        "height": 768,
+        "right": 1024,
+        "bottom": 768
+      },
+      "form": "farm",
+      "controls": [
+        {
+          "x": 16,
+          "y": 19.5,
+          "width": 48,
+          "height": 48,
+          "right": 64,
+          "bottom": 67.5,
+          "action": "form-close",
+          "id": "",
+          "label": "关闭面板",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 896,
+          "y": 19.5,
+          "width": 112,
+          "height": 48,
+          "right": 1008,
+          "bottom": 67.5,
+          "action": "farm-home",
+          "id": "",
+          "label": "返回积分首页",
+          "disabled": false,
+          "font": 14,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 954,
+          "y": 307.1875,
+          "width": 52,
+          "height": 52,
+          "right": 1006,
+          "bottom": 359.1875,
+          "action": "farm-zoom-in",
+          "id": "",
+          "label": "放大农场",
+          "disabled": false,
+          "font": 32,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 954,
+          "y": 369.1875,
+          "width": 52,
+          "height": 52,
+          "right": 1006,
+          "bottom": 421.1875,
+          "action": "farm-zoom-out",
+          "id": "",
+          "label": "缩小农场",
+          "disabled": false,
+          "font": 32,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 954,
+          "y": 431.1875,
+          "width": 52,
+          "height": 52,
+          "right": 1006,
+          "bottom": 483.1875,
+          "action": "farm-camera-reset",
+          "id": "",
+          "label": "回到农场全景",
+          "disabled": false,
+          "font": 32,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 954,
+          "y": 493.1875,
+          "width": 52,
+          "height": 52,
+          "right": 1006,
+          "bottom": 545.1875,
+          "action": "farm-lighting",
+          "id": "",
+          "label": "切换为夜晚景色",
+          "disabled": false,
+          "font": 32,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 22,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 95.5,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "fields",
+          "label": "田地",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 99.5,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 173,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "animals",
+          "label": "动物",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 177,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 250.5,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "build",
+          "label": "布置",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 254.5,
+          "y": 96,
+          "width": 73.5,
+          "height": 48,
+          "right": 328,
+          "bottom": 144,
+          "action": "farm-tab",
+          "id": "collection",
+          "label": "收藏",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 24,
+          "y": 664.5,
+          "width": 69.15625,
+          "height": 77.5,
+          "right": 93.15625,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p1",
+          "label": "1号田萝卜成熟啦",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 98.15625,
+          "y": 664.5,
+          "width": 69.171875,
+          "height": 77.5,
+          "right": 167.328125,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p2",
+          "label": "2号田萝卜成熟啦",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 172.328125,
+          "y": 664.5,
+          "width": 69.15625,
+          "height": 77.5,
+          "right": 241.484375,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p3",
+          "label": "3号田草莓约5小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 246.484375,
+          "y": 664.5,
+          "width": 69.171875,
+          "height": 77.5,
+          "right": 315.65625,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p4",
+          "label": "4号田草莓约5小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 320.65625,
+          "y": 664.5,
+          "width": 69.171875,
+          "height": 77.5,
+          "right": 389.828125,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p5",
+          "label": "5号田向日葵约8小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 394.828125,
+          "y": 664.5,
+          "width": 69.15625,
+          "height": 77.5,
+          "right": 463.984375,
+          "bottom": 742,
+          "action": "farm-plot",
+          "id": "p6",
+          "label": "6号田向日葵约8小时后成熟",
+          "disabled": false,
+          "font": 16,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 652,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 734.5,
+          "bottom": 742,
+          "action": "farm-harvest",
+          "id": "",
+          "label": "收获所有成熟作物",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 740.5,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 823,
+          "bottom": 742,
+          "action": "farm-seeds",
+          "id": "",
+          "label": "选择作物并播种",
+          "disabled": true,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 829,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 911.5,
+          "bottom": 742,
+          "action": "farm-care",
+          "id": "",
+          "label": "照料伙伴和动物",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        },
+        {
+          "x": 917.5,
+          "y": 676,
+          "width": 82.5,
+          "height": 66,
+          "right": 1000,
+          "bottom": 742,
+          "action": "farm-tab",
+          "id": "build",
+          "label": "打开背包与建设",
+          "disabled": false,
+          "font": 13,
+          "input": false,
+          "inViewport": true,
+          "reachable": true
+        }
+      ],
+      "problems": []
+    }
+  ],
+  "renderer": [],
+  "screenshots": [
+    {
+      "file": "artifacts/v12-candidate03-camera-desktop-panned.png",
+      "sha256": "8d26b56f476386d8e1e7b06e8a0c01ad308e896b558e6a0721d780ca17ad7854"
+    },
+    {
+      "file": "artifacts/v12-candidate03-camera-desktop-reset.png",
+      "sha256": "590bdb1e017f99183792947d391bcfadb8e6cd7a5907fb5b310141b05c934ba9"
+    },
+    {
+      "file": "artifacts/v12-candidate03-camera-phone-panned.png",
+      "sha256": "d2a5a083a3ca50bb845ed19add50b3757657c069b0d40d840124c550b4505efd"
+    },
+    {
+      "file": "artifacts/v12-candidate03-camera-phone-plot-focus.png",
+      "sha256": "71f58c0493cba2b7975869364991f3b0b8ced7a443df268252a5551e1ef87de0"
+    },
+    {
+      "file": "artifacts/v12-candidate03-camera-small-phone-four-tools-night.png",
+      "sha256": "2573a63c7c69acdec6adb6960cd6e5c3f8e8782dee9d2b1c36094579cfdf35a9"
+    },
+    {
+      "file": "artifacts/v12-candidate03-camera-small-phone-four-tools-day.png",
+      "sha256": "5c1ec87f0229f9b528e0f4f0029cf79511cd494ad4821b568f434285c23a7848"
+    }
+  ],
+  "errors": [],
+  "skipped": [],
+  "finishedAt": "2026-11-16T09:30:19.203Z",
+  "finalSourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+    "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+    "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+    "farm-scene.js": "e9d390dbab34e2e1200e918716af4fe81eed48381de1a094c30ebf2d9a627f5e",
+    "test/v12-browser.cjs": "97e8c90b9909fef94d7d1e16281edfc5dd798b75e79f508227770113b0310b77"
+  },
+  "sourceStable": true,
+  "passed": 1,
+  "failed": 0
+}

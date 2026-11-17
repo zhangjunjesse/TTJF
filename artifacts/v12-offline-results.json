@@ -1,0 +1,84 @@
+{
+  "derivedFrom": "artifacts/v12-probe-offline-offline-http-live.json",
+  "sourceReportSha256": "27a126084ca343ad9774263b377ba134d30f6278f821520f3e662f0bf6b590ca",
+  "scope": "Offline evidence only; no live entry records or screenshots are included.",
+  "startedAt": "2026-11-16T09:55:24.209Z",
+  "finishedAt": "2026-11-16T09:55:54.778Z",
+  "groups": [
+    {
+      "name": "offline",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+        "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+        "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+        "farm-scene.js": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de",
+        "test/v12-browser.cjs": "f2729a85933a0cf743444e253336e4748e2e68baddbc87d53c0f53463156eb3a"
+      },
+      "sourceStable": true
+    },
+    {
+      "name": "offline-http",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+        "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+        "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+        "farm-scene.js": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de",
+        "test/v12-browser.cjs": "f2729a85933a0cf743444e253336e4748e2e68baddbc87d53c0f53463156eb3a"
+      },
+      "sourceStable": true
+    }
+  ],
+  "checks": [
+    {
+      "group": "offline",
+      "label": "Final self-contained export actually renders and performs the farm loop without any network request",
+      "result": "passed"
+    },
+    {
+      "group": "offline",
+      "label": "An open offline animal panel refreshes itself across local midnight and permits one new daily care",
+      "result": "passed"
+    },
+    {
+      "group": "offline-http",
+      "label": "The exported HTML served over HTTP still stays explicitly local, persists the farm loop and sends no XHR/assets",
+      "result": "passed"
+    }
+  ],
+  "exportHash": "407b9cf1e94c44fd6f7b1098b04b002c380e5cbe58e29885d5d750eb3a1e94f3",
+  "sourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+    "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+    "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+    "farm-scene.js": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de",
+    "test/v12-browser.cjs": "f2729a85933a0cf743444e253336e4748e2e68baddbc87d53c0f53463156eb3a"
+  },
+  "finalSourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4a1efcef51dade9d48eed42c07a32c7f5bd415e05584a7ea9d2903ee52357785",
+    "farm-ui.js": "98b51b153679d02c21e34c93b2443a702733e980932cdeee7186567ea01c6b57",
+    "farm.css": "9067387c2ad407c0595e2f3b37f4f2fba3d089ee6edac81dc79f75b1b608937a",
+    "farm-scene.js": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de",
+    "test/v12-browser.cjs": "f2729a85933a0cf743444e253336e4748e2e68baddbc87d53c0f53463156eb3a"
+  },
+  "sourceStable": true,
+  "passed": 2,
+  "failed": 0
+}

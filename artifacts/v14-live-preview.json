@@ -1,0 +1,76 @@
+{
+  "at": "2026-11-16T16:33:11.893Z",
+  "origin": "http://127.0.0.1:4180",
+  "scope": "Existing live preview, anonymous read-only requests; no real family state or legacy4178 access.",
+  "assets": [
+    {
+      "file": "index.html",
+      "status": 200,
+      "sha256": "87a79ea532e56f24190120de004046652b8afe8779d8bc5e907480a61bad5acf"
+    },
+    {
+      "file": "app.js",
+      "status": 200,
+      "sha256": "2d2786c54003a6437f7ed9f798ddda5854f4026024965399d58dfc33a10512c6"
+    },
+    {
+      "file": "model.js",
+      "status": 200,
+      "sha256": "9586de7f7fd5a0ec9433ab4b167aaa30e1b43a0e61cae945fc1c0b6c816f7dc3"
+    },
+    {
+      "file": "saas-client.js",
+      "status": 200,
+      "sha256": "7dbae49a9c0d664e51b5026b4b5d6c79c245a37b3f96d611330bf11f80ad2385"
+    },
+    {
+      "file": "saas.css",
+      "status": 200,
+      "sha256": "84a5c09ccf3c8858cab805c236496c882eed4103d1358960574fc2959d6799c8"
+    },
+    {
+      "file": "farm-ui.js",
+      "status": 200,
+      "sha256": "f67bcb8457e8938ff72efb9f418f258332c26f5399e84139eb5a22d579cda3f2"
+    },
+    {
+      "file": "farm-scene.js",
+      "status": 200,
+      "sha256": "b0b1526889b498aecaf59cc6b16d7d79d4677b20fbfb90f754d112f7abd879de"
+    }
+  ],
+  "protected": [
+    {
+      "path": "/api/state",
+      "status": 401
+    },
+    {
+      "path": "/api/meta",
+      "status": 401
+    },
+    {
+      "path": "/saas-server.cjs",
+      "status": 404
+    },
+    {
+      "path": "/package.json",
+      "status": 404
+    },
+    {
+      "path": "/.env.saas.local",
+      "status": 400
+    },
+    {
+      "path": "/data/state.json",
+      "status": 404
+    }
+  ],
+  "pageErrors": [],
+  "writeAttempts": [],
+  "databaseHealth": "passed",
+  "screenshot": {
+    "file": "artifacts/v14-live-login.png",
+    "sha256": "0effb853e9a036fbb357c9b987d8058435d65d30e4ca4addb1cc7a23be1c23b8"
+  },
+  "result": "passed"
+}

@@ -9,7 +9,7 @@ out = root / 'export'
 out.mkdir(exist_ok=True)
 html = (root / 'index.html').read_text(encoding='utf-8')
 html = html.replace('<link rel="manifest" href="manifest.webmanifest">', '')
-for name in ('styles.css', 'pet.css'):
+for name in ('styles.css', 'pet.css', 'farm.css'):
     css = (root / name).read_text(encoding='utf-8')
     marker = '<link rel="stylesheet" href="' + name + '">'
     if marker not in html:
@@ -17,7 +17,7 @@ for name in ('styles.css', 'pet.css'):
     html = html.replace(marker, '<style>' + css + '</style>')
 # An explicit flag also forces local mode when a file previewer serves this HTML over HTTP.
 html = html.replace('<script src="model.js"></script>', '<script>window.__FAMILY_OFFLINE__ = true;</script>\n<script src="model.js"></script>')
-for name in ('model.js', 'assistant.js', 'pet.js', 'app.js'):
+for name in ('model.js', 'assistant.js', 'pet.js', 'farm-scene.js', 'farm-ui.js', 'app.js'):
     source = (root / name).read_text(encoding='utf-8').replace('</script', '<\\/script')
     marker = '<script src="' + name + '"></script>'
     if marker not in html:
@@ -31,10 +31,10 @@ for name in ('favicon.svg', 'app-icon.png', 'complete.wav', 'points.wav', 'redee
 if '<script src=' in html or '<link rel="stylesheet"' in html:
     raise ValueError('The standalone export still has external code dependencies')
 standalone = out / 'little-steps-demo.html'
-standalone.write_text(html, encoding='utf-8')
+standalone.write_text(html, encoding='utf-8', newline='\n')
 archive = out / 'little-steps-source.zip'
-allowed_top = {'index.html', 'styles.css', 'pet.css', 'pet.js', 'app.js', 'model.js', 'assistant.js', 'assistant-service.cjs', 'server.cjs', 'manifest.webmanifest', 'package.json', 'README.md'}
-allowed_tools = {'package-demo.py', 'verify-package.py', 'make-preview.py', 'make-assets.py'}
+allowed_top = {'index.html', 'styles.css', 'pet.css', 'pet.js', 'farm.css', 'farm-ui.js', 'farm-scene.js', 'app.js', 'model.js', 'assistant.js', 'assistant-service.cjs', 'server.cjs', 'manifest.webmanifest', 'package.json', 'package-lock.json', 'README.md'}
+allowed_tools = {'package-demo.py', 'verify-package.py', 'make-preview.py', 'make-assets.py', 'build-farm-scene.mjs'}
 with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
     for file in sorted(root.rglob('*')):
         if not file.is_file():
@@ -43,12 +43,12 @@ with zipfile.ZipFile(archive, 'w', zipfile.ZIP_DEFLATED) as z:
         if any(part.startswith('.') for part in rel.parts) or file.suffix.lower() in {'.key', '.pem'}:
             continue
         include = len(rel.parts) == 1 and rel.name in allowed_top
-        if rel.parts[0] in {'assets', 'docs', 'test'}:
+        if rel.parts[0] in {'assets', 'docs', 'test', 'farm'}:
             include = True
         elif rel.parts[0] == 'tools':
             include = file.name in allowed_tools or (len(rel.parts) == 3 and rel.parts[1] == 'pet-v6' and file.suffix in {'.html', '.js', '.css'})
         elif rel.parts[0] == 'artifacts':
-            include = (rel.parts[1].startswith(('v4-', 'v5-', 'v6-', 'v7-', 'v8-', 'v9-', 'v10-')) or (file.name.startswith('v3-') and 'failure' not in file.name)) and not any(private in file.name for private in ('live', 'migration'))
+            include = (rel.parts[1].startswith(('v4-', 'v5-', 'v6-', 'v7-', 'v8-', 'v9-', 'v10-', 'v11-', 'v12-')) or (file.name.startswith('v3-') and 'failure' not in file.name)) and not any(private in file.name for private in ('live', 'migration'))
         if include:
             z.write(file, 'little-steps/' + rel.as_posix())
     z.write(standalone, 'little-steps/offline-demo.html')

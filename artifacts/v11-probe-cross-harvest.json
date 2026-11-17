@@ -1,0 +1,81 @@
+{
+  "command": "node test/v11-browser.cjs",
+  "requested": [
+    "cross-harvest"
+  ],
+  "startedAt": "2026-11-16T08:00:13.921Z",
+  "sourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "354274ed4a66aeeda3b5915c5e3750b8c5231f24c30e5d8b1545a7170c5f8267",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "55c4c516390ac0a5a91904755aaf61526cdbf82ff318cf64b2492c439a5afb09",
+    "test/v11-browser.cjs": "939ea01c1ac6521bd955353109ce7cc963e16cdbf2bf17ad15065836f6d2a64f"
+  },
+  "fixture": "Temporary createEnvironment server on an ephemeral loopback port and a separate browser context. All rich inventory is constructed by Model.apply. No live service or live family data is used.",
+  "boundaries": [
+    "Headless Microsoft Edge/Chromium; viewport and touch emulation do not prove Safari or iPad mini 4 hardware compatibility.",
+    "Eight-hour maturity and family-day boundaries use controlled client/server clocks, not eight hours of wall-clock waiting.",
+    "Short renderer diagnostics measure this desktop run only; no 10-minute A8/device soak, audible output, OS keyboard, or native touch claim.",
+    "Buttons are activated with real mouse/touch input after DOM hit-testing; production actions and state are never invoked or changed via page.evaluate."
+  ],
+  "groups": [
+    {
+      "name": "cross-harvest",
+      "result": "passed",
+      "sourceHashes": {
+        "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+        "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+        "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+        "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+        "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+        "farm-ui.js": "354274ed4a66aeeda3b5915c5e3750b8c5231f24c30e5d8b1545a7170c5f8267",
+        "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+        "farm-scene.js": "55c4c516390ac0a5a91904755aaf61526cdbf82ff318cf64b2492c439a5afb09",
+        "test/v11-browser.cjs": "939ea01c1ac6521bd955353109ce7cc963e16cdbf2bf17ad15065836f6d2a64f"
+      },
+      "sourceStable": true
+    }
+  ],
+  "checks": [
+    {
+      "group": "cross-harvest",
+      "label": "A lost carrot receipt is never presented as device B's later strawberry harvest",
+      "result": "passed"
+    }
+  ],
+  "layouts": [],
+  "renderer": [],
+  "screenshots": [
+    {
+      "file": "artifacts/v11-two-device-carrot-receipt.png",
+      "sha256": "ca87056c99c03d1308f5b090f5ab3cb48e6a4ccb59e3df7203400e0a9affa245"
+    }
+  ],
+  "errors": [],
+  "skipped": [],
+  "receiptAttribution": {
+    "aAction": "ui-1794717000000-g63xzpv7",
+    "aFeedback": "收获结果已同步到背包",
+    "bAction": "ui-1794717000000-f9lwdnfx",
+    "bFeedback": "草莓 +3"
+  },
+  "finishedAt": "2026-11-16T08:00:23.063Z",
+  "finalSourceHashes": {
+    "model.js": "3c7a0fc8f2de8c464e862c0701bc1cda950b14b82d49fe46e04cbad05ab13809",
+    "server.cjs": "0682835de5dab0f2ea15e298d31dca7b385196e1775480b0cc9711c0ead6f5dd",
+    "app.js": "5734c5bee6e7ba95e18e0b40c95b3e8fe427f5595195ee33b981db25836bf661",
+    "styles.css": "979a1ba8ceaf267d64e3662fb4ed6c420d499645dd9c0d7f1df3503deb6d4693",
+    "index.html": "4af9840b7078aff783a8e5b8c2f3cbf347618f187c929dd03658b0d32efc127d",
+    "farm-ui.js": "354274ed4a66aeeda3b5915c5e3750b8c5231f24c30e5d8b1545a7170c5f8267",
+    "farm.css": "497fe1e108ab703bb730235bea903e1a7fe2ee1f7b2d03a567677b7ec3138aab",
+    "farm-scene.js": "55c4c516390ac0a5a91904755aaf61526cdbf82ff318cf64b2492c439a5afb09",
+    "test/v11-browser.cjs": "939ea01c1ac6521bd955353109ce7cc963e16cdbf2bf17ad15065836f6d2a64f"
+  },
+  "sourceStable": true,
+  "passed": 1,
+  "failed": 0
+}

@@ -1,0 +1,29 @@
+@charset "UTF-8";
+/* Account pages share the original controls; no renderer or business layout changes. */
+.saas-main { width: 100%; height: 100%; height: var(--app-height, 100%); overflow-y: auto; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; padding: 24px 16px; padding-top: calc(24px + env(safe-area-inset-top)); padding-bottom: calc(24px + env(safe-area-inset-bottom)); }
+.saas-main:focus { outline: none; }
+.saas-card { width: 100%; max-width: 480px; margin: 4vh auto; padding: 24px; border: 1px solid #dbe3d7; border-radius: 24px; background: #fffefa; box-shadow: 0 12px 32px rgba(44, 71, 52, .06); }
+.saas-brand { font-size: 14px; color: #627363; margin-bottom: 8px; }
+.saas-card h1 { font-size: 27px; line-height: 1.4; margin: 0; }
+.saas-card h1:focus { outline: none; }
+.saas-card h2 { margin: 20px 0 12px; font-size: 19px; }
+.saas-short-status { font-size: 15px; min-height: 24px; margin: 10px 0 16px; overflow-wrap: anywhere; }
+.saas-content { display: flex; flex-direction: column; gap: 12px; }
+.saas-content form { display: flex; flex-direction: column; gap: 16px; }
+.saas-content .field { display: flex; flex-direction: column; gap: 6px; margin: 0; width: 100%; }
+.saas-content .field input, .saas-content .field select { min-height: 50px; width: 100%; padding: 11px 12px; font-size: 16px; border: 1px solid #bdcbb7; border-radius: 12px; background: #fff; scroll-margin: 20px 0; }
+.saas-card .btn, .saas-card .text-button { min-height: 48px; min-width: 48px; font-size: 16px; white-space: normal; overflow-wrap: anywhere; }
+.saas-footer, .saas-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.saas-footer { margin-top: 20px; }
+.saas-footer .btn, .saas-actions .btn { flex: 1 1 auto; }
+.saas-menu { display: flex; flex-direction: column; gap: 12px; }
+.saas-identity { margin: 0 0 8px; font-size: 16px; overflow-wrap: anywhere; }
+.saas-list { list-style: none; margin: 0; padding: 0; }
+.saas-list li { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid #e0e6dc; }
+.saas-list li:first-child { padding-top: 0; }
+.saas-list li > div { flex: 1; min-width: 0; }
+.saas-list strong, .saas-list small { display: block; overflow-wrap: anywhere; }
+.saas-list small { margin-top: 3px; font-size: 14px; color: #627363; }
+.saas-list .btn { flex: 0 0 auto; max-width: 45%; padding: 10px 14px; }
+@media (max-width: 360px) { .saas-main { padding-left: 12px; padding-right: 12px; } .saas-card { padding: 18px; margin: 0 auto; } }
+@media (max-height: 620px) { .saas-card { margin-top: 0; margin-bottom: 0; } .saas-main { padding-top: 12px; padding-bottom: 12px; } }

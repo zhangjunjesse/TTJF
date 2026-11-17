@@ -1,14 +1,104 @@
 /* v0.9: app navigation with per-action parent authorization. */
 (function () {
   'use strict';
-  var M = window.FamilyModel, KEY = 'little-steps-demo-v1', PREF = 'little-steps-preferences';
-  var DRAFT = 'little-steps-drafts-v03', PRIVATE = 'little-steps-parent-private-v03';
-  var local = location.protocol === 'file:' || window.__FAMILY_OFFLINE__ === true, state, revision = 0, connected = false, serverReached = false;
+  var Farm = window.FamilyFarmUI, M = window.FamilyModel, KEY = 'little-steps-demo-v1', PREF = 'little-steps-preferences';
+  var DRAFT = 'little-steps-drafts-v03', PRIVATE = 'little-steps-parent-private-v03', SOUND = 'ttjf-saas-device-sound-v1';
+  var saas = window.__TTJF_SAAS__ === true, SaaS = window.FamilySaas;
+  var local = !saas && (location.protocol === 'file:' || window.__FAMILY_OFFLINE__ === true), state = null, revision = 0, connected = false, serverReached = false;
   var syncBusy = false, pending = false, retryTx = null, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
-  var assistantSequence = 0, avatarSequence = 0, petTimer = null, familyDay = null;
+  var assistantSequence = 0, avatarSequence = 0, petTimer = null, familyDay = null, serverTime = 0, serverReceived = 0, avatarSelection = null;
+  function monotonic() { return window.performance && window.performance.now ? window.performance.now() : Date.now(); }
+  function farmClock() { return !local && serverTime ? new Date(serverTime + Math.max(0, monotonic() - serverReceived)) : new Date(); }
   var privateConfig = readStore(PRIVATE, null), drafts = readStore(DRAFT, {}), reminderSound = '';
   var meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
-  var ui = { view: 'points', day: 0, reminderMode: 'near', filter: 'all', history: 'points', form: null, stack: [], auth: null, sound: false, display: false, assistantBusy: false, petReaction: 'idle', petMessage: '', homeFeedback: '', careBusy: false, petTab: 'bag', petTouches: 0 };
+  function freshUI() { return { view: 'points', day: 0, reminderMode: 'near', filter: 'all', history: 'points', form: null, stack: [], auth: null, sound: false, display: false, assistantBusy: false, petReaction: 'idle', petMessage: '', homeFeedback: '', careBusy: false, petTab: 'bag', petTouches: 0 }; }
+  var ui = freshUI();
+  function scopeReady() { return !saas || !!(SaaS && SaaS.ready() && state); }
+  function scopeToken() { return saas && SaaS ? SaaS.capture() : null; }
+  function scopeCurrent(token) { return !saas || !!(SaaS && SaaS.current(token) && scopeReady()); }
+  function trackScope(dispose) { return saas && SaaS ? SaaS.track(dispose) : function () {}; }
+  function clearFamily(keepAvatar) {
+    if (!keepAvatar) discardAvatar();
+    clearTimeout(toastTimer); clearTimeout(petTimer); toastTimer = null; petTimer = null;
+    stopRecognition();
+    [ui.form].concat(ui.stack || []).forEach(function (f) { if (f) { invalidateAssistant(f); f.avatarRequest = null; f.avatarBusy = false; f.data = {}; } });
+    if (ui.auth) { ui.auth.autoPin = null; ui.auth.tx.grant = null; clearParentSecrets(ui.auth.tx); }
+    if (retryTx) { retryTx.grant = null; clearParentSecrets(retryTx); }
+    if (setupTx) { setupTx.cancelled = true; clearParentSecrets(setupTx); }
+    if (wakeLock) { var oldLock = wakeLock; wakeLock = null; try { var release = oldLock.release(); if (release && release.catch) release.catch(function () {}); } catch (e) {} }
+    ['complete', 'points', 'redeem'].forEach(function (name) { var audio = document.getElementById('sound-' + name); if (audio) { try { audio.pause(); audio.currentTime = 0; } catch (e) {} } });
+    if (Farm) Farm.dispose();
+    state = null; revision = 0; parentRevision = -1; connected = false; serverReached = false;
+    syncBusy = false; pending = false; retryTx = null; setupTx = null; privateConfig = null; drafts = {}; reminderSound = '';
+    familyDay = null; serverTime = 0; serverReceived = 0; assistantSequence++; avatarSequence++; ui = freshUI();
+    meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
+    var notice = document.getElementById('toast'); if (notice) { notice.textContent = ''; notice.className = 'toast'; notice.style.display = 'none'; }
+    document.getElementById('app').innerHTML = ''; document.body.className = 'saas-screen';
+  }
+  function ordinary(value) {
+    if (value === null || typeof value !== 'object') return value;
+    if (Array.isArray(value)) return value.map(ordinary);
+    var out = {};
+    Object.keys(value).forEach(function (key) { if (!/^(password|currentPassword|confirmPassword|pin|confirmPin|setupPin|setupConfirm|answer|grant|challenge|challengeId|autoPin|tx|action|actionId|signature|token|csrfToken)$/i.test(key)) out[key] = ordinary(value[key]); });
+    return out;
+  }
+  function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), openedRevision: f.openedRevision, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
+  function suspendFamily() {
+    rememberDraft(); rememberSheetFocus();
+    var main = document.getElementById('main'), saved = { view: ui.view, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), scrollTop: main ? main.scrollTop : 0, revision: revision };
+    if (avatarSelection) {
+      avatarSelection.permitted = false;
+      if (avatarSelection.input) { avatarSelection.input.hidden = true; avatarSelection.input.setAttribute('data-saas-avatar-hold', 'true'); document.body.appendChild(avatarSelection.input); }
+    }
+    return saved;
+  }
+  function restorableForm(f) {
+    if (!f) return null;
+    var d = f.data || {}, target;
+    if (f.kind === 'task' && d.id) { target = find(state.tasks, d.id); if (!target || target.deleted) return null; }
+    if (f.kind === 'taskAction') { target = find(state.tasks, d.taskId); if (!target || target.deleted) return null; }
+    if (f.kind === 'pointItem' && d.id) { target = find(state.pointItems, d.id); if (!target) return { kind: 'point-list', data: {}, openedRevision: revision }; }
+    if (f.kind === 'points' && d.itemId) { target = find(state.pointItems, d.itemId); if (!target || !target.enabled) return { kind: 'behaviorPicker', data: {}, openedRevision: revision }; }
+    if ((f.kind === 'reward' && d.id) || f.kind === 'request') { target = find(state.rewards, d.id || d.rewardId); if (!target || (f.kind === 'request' && !target.enabled)) return { kind: 'rewards', data: {}, openedRevision: revision }; }
+    if (f.kind === 'approve') { target = find(state.requests, d.requestId); if (!target || target.status !== 'pending') return { kind: 'homeInbox', data: {}, openedRevision: revision }; }
+    if (typeof f.openedRevision !== 'number') f.openedRevision = revision;
+    if (f.kind === 'parentConfig') f.parentConfigured = meta.parent.configured;
+    if (f.kind === 'points' && d.recordDate !== today()) { d.recordDate = today(); d.recordTime = clock(); }
+    return f;
+  }
+  function restoreFamily(saved) {
+    if (!saved) { discardAvatar(); return; }
+    ['view', 'day', 'reminderMode', 'filter', 'history', 'petTab', 'homeFocus'].forEach(function (key) { if (saved[key] !== undefined) ui[key] = saved[key]; });
+    drafts = ordinary(saved.drafts || {}); ui.stack = (saved.stack || []).map(restorableForm).filter(function (f) { return !!f; });
+    ui.form = restorableForm(saved.form); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
+    render(false);
+    var main = document.getElementById('main'); if (main) main.scrollTop = saved.scrollTop || 0;
+    if (ui.form) { restorePlayFocus(ui.form.focusKey); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = ui.form.scrollTop || 0; }
+    if (avatarSelection && ui.form && ui.form.kind === 'profile') {
+      var picker = avatarSelection, replacement = document.querySelector('#editor-form #avatar-file');
+      picker.scope = scopeToken(); picker.form = ui.form; picker.permitted = true;
+      if (picker.input) { picker.input.hidden = false; picker.input.setAttribute('data-saas-avatar-hold', 'false'); if (replacement && replacement !== picker.input && replacement.parentNode) replacement.parentNode.replaceChild(picker.input, replacement); }
+      if (picker.file) loadAvatar(picker.file);
+    } else discardAvatar();
+    if (saved.form && !ui.form) toast('内容已更新');
+  }
+  function discardAvatar() {
+    if (!avatarSelection) return;
+    var picker = avatarSelection; avatarSelection = null; picker.cancelled = true; picker.permitted = false; picker.file = null; picker.form = null;
+    if (picker.input && picker.input.parentNode === document.body) picker.input.parentNode.removeChild(picker.input);
+  }
+  function prepareAvatar(input) {
+    discardAvatar();
+    avatarSelection = { input: input, scope: scopeToken(), form: ui.form, file: null, permitted: true, cancelled: false };
+    input.__familyAvatarTicket = avatarSelection; return avatarSelection;
+  }
+  function receiveAvatar(input) {
+    var ticket = input.__familyAvatarTicket;
+    if (ticket && (ticket.cancelled || ticket !== avatarSelection)) return;
+    if (!ticket) { if (!scopeReady() || !ui.form || ui.form.kind !== 'profile') return; ticket = prepareAvatar(input); }
+    ticket.file = input.files && input.files[0] || null;
+    if (ticket.permitted && scopeCurrent(ticket.scope) && ui.form === ticket.form && ticket.file) loadAvatar(ticket.file);
+  }
   var paths = {
     star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="m5 12 4 4L19 6"/>',
@@ -44,19 +134,24 @@
   function icon(name) { return '<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || paths.gift) + '</svg>'; }
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function clone(v) { return JSON.parse(JSON.stringify(v)); }
-  function readStore(k, fallback) { try { return JSON.parse(localStorage.getItem(k)) || fallback; } catch (e) { return fallback; } }
-  function saveStore(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function readStore(k, fallback) { if (saas) return fallback; try { return JSON.parse(localStorage.getItem(k)) || fallback; } catch (e) { return fallback; } }
+  function saveStore(k, v) { if (saas) return true; try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  function soundPreference(fallback) { try { var saved = localStorage.getItem(SOUND); return saved === 'true' ? true : saved === 'false' ? false : !!fallback; } catch (e) { return !!fallback; } }
+  function saveSoundPreference(value) { try { localStorage.setItem(SOUND, value ? 'true' : 'false'); } catch (e) {} }
   function find(rows, id) { for (var i = 0; i < (rows || []).length; i++) if (rows[i].id === id) return rows[i]; return null; }
-  function today() { return M.dateKey(new Date()); }
-  function day(n) { return M.addDays(today(), n); }
+  function appClock() { return saas ? farmClock() : new Date(); }
+  function calendarZone() { return saas ? 'Asia/Shanghai' : undefined; }
+  function today() { return M.dateKey(appClock(), calendarZone()); }
+  function day(n) { return M.addDays(today(), n, calendarZone()); }
   function pad(n) { return ('0' + n).slice(-2); }
-  function clock() { var d = new Date(); return pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function clock() { return M.calendarParts(appClock(), calendarZone()).time; }
   function uid() { return 'ui-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10); }
-  function niceDate(s) { var d = new Date(s + 'T12:00:00'); return isNaN(d.getTime()) ? '' : (d.getMonth() + 1) + '月' + d.getDate() + '日'; }
-  function niceTime(s) { var d = new Date(s); return isNaN(d.getTime()) ? '' : (d.getMonth() + 1) + '/' + d.getDate() + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes()); }
+  function niceDate(s) { var d = M.calendarParts(s, calendarZone()); return d.month + '月' + d.day + '日'; }
+  function niceTime(s) { if (isNaN(new Date(s).getTime())) return ''; var d = M.calendarParts(s, calendarZone()); return d.month + '/' + d.day + ' ' + d.time; }
   function category(c) { return { daily: '日常', weekend: '周末', outing: '月底' }[c] || '日常'; }
   function button(action, text, cls, id, label) { return '<button type="button" class="' + (cls || 'btn') + '" data-action="' + action + '"' + (id != null ? ' data-id="' + esc(id) + '"' : '') + (label ? ' aria-label="' + esc(label) + '"' : '') + '>' + text + '</button>'; }
   function request(method, url, data, done) {
+    if (saas) { if (!scopeReady()) return null; return SaaS.request(method, url, data, done, { business: true }); }
     var x = new XMLHttpRequest(), settled = false;
     function finish(status, result) { if (!settled) { settled = true; done(status, result); } }
     x.open(method, url, true); x.timeout = url === '/api/assistant' ? 20000 : 10000;
@@ -65,7 +160,7 @@
     x.onerror = x.ontimeout = function () { finish(0, {}); };
     x.send(data ? JSON.stringify(data) : null);
   }
-  function persist() { if (!saveStore(KEY, state)) toast('本机存储不可用'); }
+  function persist() { if (saas) return; if (!saveStore(KEY, state)) toast('本机存储不可用'); }
   function paintHomeFeedback() {
     var line = document.getElementById('home-feedback');
     if (line) { line.textContent = ui.homeFeedback || currentPet().name; line.setAttribute('data-feedback', ui.homeFeedback ? 'true' : 'false'); line.title = line.textContent; }
@@ -75,24 +170,38 @@
     var el = document.getElementById('toast'); el.className = 'toast'; el.style.display = 'none'; el.textContent = '';
   }
   function toast(text) {
+    if (!scopeReady()) return;
+    var scope = scopeToken();
     clearToast();
     var el = document.getElementById('toast'), inline = ui.view === 'points' && !ui.form && !ui.auth && document.getElementById('home-feedback');
     if (inline) { ui.homeFeedback = text; paintHomeFeedback(); }
     else { el.textContent = text; el.style.display = ''; el.className = 'toast visible'; }
-    toastTimer = setTimeout(clearToast, inline ? 3200 : 4200);
+    toastTimer = setTimeout(function () { if (scopeCurrent(scope)) clearToast(); }, inline ? 3200 : 4200);
   }
-  function play(name) { if (!ui.sound) return; var a = document.getElementById('sound-' + name); if (a) { a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () {}); } }
+  function play(name) { if (!scopeReady() || !ui.sound) return; var a = document.getElementById('sound-' + name); if (a) { a.currentTime = 0; var p = a.play(); if (p && p.catch) p.catch(function () {}); } }
   function syncLabel() { return local ? '本机' : connected ? '共享 · 已连接' : serverReached ? '共享 · 连接中断' : '共享 · 连接中'; }
-  function updateConnectionStatus() { var status = document.getElementById('sync-status'), badge = document.getElementById('connection-state'); if (status) status.textContent = syncLabel(); if (badge) badge.textContent = local || connected ? '' : serverReached ? '连接中断' : '连接中'; refreshPetControls(); refreshPetPurchase(); }
+  function updateConnectionStatus() { var status = document.getElementById('sync-status'), badge = document.getElementById('connection-state'); if (status) status.textContent = syncLabel(); if (badge) badge.textContent = local || connected ? '' : serverReached ? '连接中断' : '连接中'; refreshPetControls(); refreshPetPurchase(); if (Farm) Farm.tick(); }
   function acceptParent(parent, atRevision) {
     if (!parent || typeof parent.configured !== 'boolean' || typeof atRevision !== 'number' || atRevision < parentRevision) return false;
     if (parent.configured && parent.method !== 'pin' && parent.method !== 'math') return false;
     parentRevision = atRevision; meta.parent = { configured: parent.configured, method: parent.configured ? parent.method : null }; return true;
   }
   function refreshParentEditor() { if (ui.form && ui.form.kind === 'parentConfig' && ui.form.parentConfigured == null && meta.parent.configured != null) { ui.form.parentConfigured = meta.parent.configured; ui.form.data.method = meta.parent.method || 'pin'; render(false); } }
-  function setSnapshot(result) { if (result && result.state && typeof result.revision === 'number' && result.revision >= revision) { state = result.state; revision = result.revision; acceptParent(result.parent, revision); if (typeof result.familyDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(result.familyDay)) familyDay = result.familyDay; connected = !local; if (connected) serverReached = true; persist(); updateConnectionStatus(); return true; } return false; }
+  function setSnapshot(result) {
+    if (saas && (!SaaS || !SaaS.ready() || !SaaS.owns(result))) return false;
+    if (!result || !result.state || typeof result.revision !== 'number' || result.revision < revision) return false;
+    var sample = typeof result.serverNow === 'string' ? Date.parse(result.serverNow) : NaN;
+    // A delayed response from the same data version must not rewind the family day or clock.
+    var freshClock = result.revision > revision || !serverTime || (isFinite(sample) && sample > serverTime);
+    state = result.state; revision = result.revision; acceptParent(result.parent, revision);
+    if (freshClock) {
+      if (typeof result.familyDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(result.familyDay)) familyDay = result.familyDay;
+      if (isFinite(sample)) { serverTime = sample; serverReceived = monotonic(); }
+    }
+    connected = !local; if (connected) serverReached = true; persist(); updateConnectionStatus(); return true;
+  }
   function sync() {
-    if (local || syncBusy || pending) return;
+    if (!scopeReady() || local || syncBusy || pending) return;
     syncBusy = true;
     request('GET', '/api/state', null, function (status, result) {
       syncBusy = false;
@@ -105,7 +214,7 @@
         }
         if (retryTx && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
         refreshParentEditor();
-        if (changed && !ui.auth && (!ui.form || ui.form.kind === 'petHub')) render(false); else renderReminder();
+        if (changed && !ui.auth && (!ui.form || ui.form.kind === 'petHub' || ui.form.kind === 'farm')) render(false); else renderReminder();
         updateConnectionStatus();
       } else if (status !== 200 || !result.state || !result.state.tasks || typeof result.revision !== 'number') {
         connected = false; updateConnectionStatus();
@@ -113,6 +222,7 @@
     });
   }
   function loadMeta() {
+    if (!scopeReady()) return;
     if (local) { meta.parent = { configured: !!privateConfig, method: privateConfig ? privateConfig.method : null }; parentRevision = revision; return; }
     request('GET', '/api/meta', null, function (status, result) { if (status === 200) { if (result.assistant) meta.assistant = result.assistant; acceptParent(result.parent, result.revision); refreshParentEditor(); if (!ui.form && !ui.auth) render(false); } });
   }
@@ -147,7 +257,7 @@
     return name + ' · 格式无效';
   }
   function showError(message) { var el = document.getElementById(ui.auth ? 'parent-error' : 'form-error'); if (el) { el.textContent = message; el.hidden = false; } else toast(message); }
-  function isPublic(action) { return ['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene'].indexOf(action.type) >= 0; }
+  function isPublic(action) { return ['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene', 'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare'].indexOf(action.type) >= 0; }
   function conflict(tx, result) {
     if (result.state) setSnapshot(result);
     if (ui.auth && ui.auth.tx === tx) ui.auth.autoPin = null;
@@ -204,14 +314,17 @@
     });
   }
   function startSetup(action, auth) {
-    if (pending) return;
+    if (!scopeReady() || pending) return;
+    if (saas && !SaaS.isOwner()) { showError('请家庭所有者设置家长验证'); return; }
     if (setupTx && setupTx.uncertain && setupTx.form === ui.form) { submitSetup(setupTx); return; }
     if (!local && !connected) { showError('未连接'); return; }
     if (action.method === 'pin' && (!/^\d{6}$/.test(action.pin || '') || action.pin !== action.confirmPin)) { showError(action.pin !== action.confirmPin ? 'PIN不一致' : 'PIN格式无效'); return; }
     action.id = uid(); setupTx = { action: action, revision: auth ? auth.tx.revision : revision, form: ui.form, auth: auth || null, busy: false, uncertain: false, cancelled: false }; submitSetup(setupTx);
   }
   function beginAction(action, message) {
-    if (pending) return;
+    if (!scopeReady() || pending) return;
+    if (saas && !SaaS.isOwner() && meta.parent.configured === false && !isPublic(action)) { showError('请家庭所有者设置家长验证'); return; }
+    if (retryTx && retryTx.uncertain && /^farm\./.test(retryTx.action.type) && JSON.stringify(action) !== retryTx.signature) { showError('请先确认上次小院操作的结果'); return; }
     if (action.type === 'parent.setup') { startSetup(action, null); return; }
     if (action.type === 'parent.configure' && meta.parent.configured === false) { if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); return; }
     if (!local && !connected) { showError('未连接 · 草稿已保留'); return; }
@@ -223,7 +336,7 @@
     if (retryTx && retryTx.signature === signature) tx = retryTx;
     else { action.id = uid(); tx = { action: action, signature: signature, form: ui.form, revision: revision, message: message, grant: null, previousGrowth: M.growth(state) }; }
     if (!tx.uncertain) { tx.revision = revision; tx.previousGrowth = M.growth(state); tx.previousPetStatus = playStatus(); }
-    try { if (action.type !== 'parent.configure' && (local || action.type !== 'pet.care')) M.apply(state, tx.action, new Date()); } catch (e) { showError(errorText(e)); return; }
+    try { if (action.type !== 'parent.configure' && (local || (action.type !== 'pet.care' && action.type.indexOf('farm.') !== 0))) M.apply(state, tx.action, appClock(), calendarZone()); } catch (e) { showError(errorText(e)); return; }
     retryTx = tx; invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; stopRecognition();
     if (tx.uncertain && tx.grant) { submitTransaction(tx); return; }
     if (isPublic(tx.action)) { submitTransaction(tx); return; }
@@ -325,7 +438,7 @@
         pending = true;
         saveLocalParent(tx.action.method, tx.action.pin, function (err) { pending = false; if (err) { showError(errorText(err)); return; } state = clone(state); state.appliedActions.push(tx.action.id); revision++; finishTransaction(tx); });
       } else {
-        try { state = M.apply(state, tx.action, new Date()); revision++; finishTransaction(tx); } catch (e) { ui.auth = null; render(false); showError(errorText(e)); }
+        try { state = M.apply(state, tx.action, appClock(), calendarZone()); revision++; finishTransaction(tx); } catch (e) { ui.auth = null; render(false); showError(errorText(e)); }
       }
       return;
     }
@@ -344,9 +457,10 @@
     if (['points.add', 'pet.care', 'pet.scene'].indexOf(tx.action.type) >= 0 && ui.form && ui.form !== tx.form) rememberDraft();
     pending = false; tx.grant = null; if (retryTx === tx) retryTx = null;
     if (ui.auth && ui.auth.tx === tx) ui.auth = null;
+    var keepFarm = tx.form && ui.form === tx.form && tx.form.kind === 'farm' && ['farm.harvest', 'farm.animalCare', 'farm.place', 'farm.exchange'].indexOf(tx.action.type) >= 0;
     var keepInbox = tx.form && ui.form === tx.form && tx.form.kind === 'homeInbox' && ['task.ack', 'task.snooze', 'task.toggle', 'redemption.cancel'].indexOf(tx.action.type) >= 0;
     if (tx.form && ui.form === tx.form) {
-      if (keepInbox) ui.form.openedRevision = revision;
+      if (keepInbox || keepFarm) ui.form.openedRevision = revision;
       else {
         delete drafts[draftKey(tx.form)]; saveStore(DRAFT, drafts); ui.form = ui.stack.pop() || null;
         if (tx.action.type === 'pointItem.save' && ui.form && ui.form.kind === 'point-list') { ui.form.data.aiText = ''; ui.form.aiStatus = '已保存'; }
@@ -357,13 +471,14 @@
     if (tx.action.type === 'pet.buy') { message = '补给已入背包'; if (ui.form && ui.form.kind === 'petHub') { ui.form.data.tab = 'bag'; ui.form.openedRevision = revision; } }
     if (tx.action.type === 'pet.care') {
       var status = playStatus(), before = tx.previousPetStatus, unlocked = status && status.unlockedScenes.filter(function (id) { return !before || before.unlockedScenes.indexOf(id) < 0; }), newest = unlocked && unlocked.length ? find(status.scenes, unlocked[unlocked.length - 1]) : null;
-      message = newest && newest.id !== 'home' ? '解锁' + newest.name + '！' : status && before && revision === tx.revision + 1 ? careName(tx.action.care) + '完成 · 探索+' + (status.exploration - before.exploration) : '照料完成 · 进度已同步';
+      message = status && status.farmMode ? careName(tx.action.care) + '完成 · 特别互动' : newest && newest.id !== 'home' ? '解锁' + newest.name + '！' : status && before && revision === tx.revision + 1 ? careName(tx.action.care) + '完成 · 探索+' + (status.exploration - before.exploration) : '照料完成 · 进度已同步';
       stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; ui.careBusy = true; ui.petReaction = newest && newest.id !== 'home' ? 'unlock' : tx.action.care; ui.petMessage = message;
     }
     if (tx.action.type === 'pet.scene') { var scene = find(playStatus().scenes, tx.action.sceneId); ui.form = null; ui.stack = []; ui.view = 'points'; message = '已到' + (scene ? scene.name : '新场景'); }
     if (tx.action.type === 'pet.configure') { clearTimeout(petTimer); ui.careBusy = false; ui.petReaction = 'idle'; ui.petMessage = ''; clearToast(); }
     persist(); render(false);
     if (keepInbox) clearToast(); else toast(message);
+    if (Farm) Farm.complete(tx.action);
     if (tx.action.type === 'points.add') { play('points'); reactPet('celebrate', message); }
     if (tx.action.type === 'pet.care') reactPet(ui.petReaction, message);
     if (tx.action.type === 'points.add' || tx.action.type === 'pet.care' || tx.action.type === 'pet.scene') { var hero = document.querySelector('.companion-scene'); if (hero) hero.focus(); }
@@ -390,6 +505,7 @@
     if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
   }
   function openForm(kind, data, restore, replace) {
+    if (avatarSelection && avatarSelection.form === ui.form) discardAvatar();
     rememberSheetFocus(); if (!ui.form) ui.homeFocus = focusKey(document.activeElement); rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
     if (ui.form && !replace) ui.stack.push(ui.form);
     var f = { kind: kind, data: clone(data || {}), openedRevision: revision };
@@ -403,6 +519,7 @@
     if (pending && !setupTx) return;
     if (setupTx) cancelSetup();
     if (ui.auth) { ui.auth.autoPin = null; ui.auth.tx.grant = null; clearParentSecrets(ui.auth.tx); if (retryTx && retryTx.action.type === 'parent.configure') retryTx = null; ui.auth = null; render(false); return; }
+    if (avatarSelection && avatarSelection.form === ui.form) discardAvatar();
     rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
     var closed = ui.form, parent = ui.stack.pop() || null;
     if (closed && closed.kind === 'parentConfig' && retryTx && retryTx.form === closed) { clearParentSecrets(retryTx); retryTx = null; }
@@ -460,15 +577,15 @@
   }
   function header() {
     if (ui.view === 'points') return '<header class="app-header home-header">' + button('profile-edit', '<span class="child-avatar">' + avatarImage(state.childAvatar, state.childName) + '</span><span class="child-profile-copy"><strong>' + esc(state.childName) + '</strong><small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span>', 'child-profile home-profile', '', '修改' + state.childName + '的昵称和头像') + '<div class="header-tools"><div id="home-inbox-slot">' + homeInboxButton() + '</div>' + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
-    return '<header class="app-header"><div class="brand-mark" aria-hidden="true">' + icon('star') + '</div><div class="app-title"><h1>小小向前</h1><span class="date-label">' + niceDate(today()) + ' · 星期' + ['日', '一', '二', '三', '四', '五', '六'][new Date().getDay()] + '<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span></div><div class="header-tools">' + (ui.display ? button('display', icon('close'), 'icon-button', '', '恢复自动锁定') : '') + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
+    return '<header class="app-header"><div class="brand-mark" aria-hidden="true">' + icon('star') + '</div><div class="app-title"><h1>小小向前</h1><span class="date-label">' + niceDate(today()) + ' · 星期' + ['日', '一', '二', '三', '四', '五', '六'][M.calendarParts(appClock(), calendarZone()).weekday] + '<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span></div><div class="header-tools">' + (ui.display ? button('display', icon('close'), 'icon-button', '', '恢复自动锁定') : '') + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
   }
   function navigation() {
     return '<nav class="bottom-nav" aria-label="主要模块"><div class="main-tabs">' + [['points', 'star', '积分'], ['reminders', 'calendar', '提醒']].map(function (item) { return button('nav', icon(item[1]) + '<span>' + item[2] + '</span>', 'nav-item ' + (ui.view === item[0] ? 'active' : ''), item[0], item[2]).replace('<button ', '<button aria-current="' + (ui.view === item[0] ? 'page' : 'false') + '" '); }).join('') + '</div>' + button('voice', icon('mic') + '<span>指令</span>', 'voice-entry', '', '指令') + '</nav>';
   }
-  function currentPet() { return state.pet || { kind: 'plant', name: '芽芽' }; }
+  function currentPet() { return state && state.pet || { kind: 'plant', name: '芽芽' }; }
   function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
   function growthInfo() { return M.growth(state); }
-  function playStatus() { return M.petStatus && (local || familyDay) ? M.petStatus(state, local ? new Date() : familyDay) : null; }
+  function playStatus() { return M.petStatus && (local || familyDay) ? M.petStatus(state, saas ? appClock() : local ? new Date() : familyDay, calendarZone()) : null; }
   function careName(care) { return { feed: '投喂', wash: '清洁', train: '训练' }[care] || '照料'; }
   function itemArt(id) { return window.FamilyPet && window.FamilyPet.renderItem ? window.FamilyPet.renderItem(id) : icon({ snack: 'snack', dew: 'water', ball: 'ball' }[id]); }
   function careButton(item, status, source, bag) {
@@ -487,10 +604,11 @@
   function petDrawing(kind, stage, name, reaction, staticPreview, framing, sceneId) { return window.FamilyPet ? window.FamilyPet.render({ kind: kind, stage: stage, name: name, reaction: reaction || 'idle', framing: framing || 'scene', sceneId: sceneId || (staticPreview ? 'home' : (playStatus() || {}).sceneId || state.petScene || 'home'), reducedMotion: !!staticPreview || reducedMotion() }) : '<div class="companion-loading">伙伴加载中</div>'; }
   function avatarImage(value, name, extra) { return value ? '<img class="profile-avatar-image ' + (extra || '') + '" src="' + esc(value) + '" alt="' + esc(name || '孩子') + '的头像">' : '<span class="avatar-initial ' + (extra || '') + '" aria-hidden="true">' + esc(String(name || '小').slice(0, 1)) + '</span>'; }
   function companionPanel() {
+    if (Farm && M.farmStatus) return Farm.home();
     var pet = currentPet(), g = growthInfo(), status = playStatus(), next = status && status.nextUnlock, goal = next ? next.name + ' 差' + next.remaining : status ? '全部地点已解锁' : '等待资源同步';
     return '<section class="companion-card" aria-label="成长伙伴"><div class="companion-heading">' + button('pet-growth', '<span id="home-feedback" class="pet-name" role="status" aria-live="polite" data-feedback="' + (ui.homeFeedback ? 'true' : 'false') + '" title="' + esc(ui.homeFeedback || pet.name) + '">' + esc(ui.homeFeedback || pet.name) + '</span><span class="pet-level">Lv.' + g.level + ' · ' + g.xp + ' 成长值' + (status ? ' · 探索' + status.exploration : '') + '</span>', 'pet-growth-entry', '', '查看' + pet.name + '的成长，' + g.stageName) + button('pet-hub', '<b>背包·探索</b><small>' + esc(goal) + '</small>', 'text-button pet-hub-entry', '', '背包和探索，' + goal) + '</div><div class="growth-track" role="progressbar" aria-label="本阶段成长进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(g.progress * 100) + '"><div style="width:' + Math.max(0, Math.min(100, g.progress * 100)) + '%"></div></div><button type="button" class="companion-scene" data-action="pet-touch" aria-label="免费摸摸' + esc(pet.name) + '"><div id="pet-art">' + petDrawing(pet.kind, g.stage, pet.name, ui.petReaction, false, 'hero') + '</div><span class="pet-touch-echo" aria-hidden="true">♥ 摸摸</span></button><p id="pet-dialogue" class="pet-announcement" aria-hidden="true">' + esc(ui.petMessage || '') + '</p><div class="companion-interactions" data-controls-key="' + esc(careControlsKey(status)) + '" aria-label="照料">' + careButtons(status) + '</div></section>';
   }
-  function rankedItems() { return M.frequentPointItems(state, new Date()); }
+  function rankedItems() { return M.frequentPointItems(state, appClock()); }
   function behaviorTile(p, i, extra) {
     return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b>' + (p.reason && extra !== 'picker-behavior' ? '<small>' + esc(p.reason) + '</small>' : '') + '</span><strong>+' + p.points + '</strong>', 'behavior-card ' + (extra || ''), p.id, p.name + '，加' + p.points + '分');
   }
@@ -544,24 +662,29 @@
   }
   function rewardsBody() {
     var req = activeRequest(), t = M.totals(state), rewards = state.rewards.filter(function (r) { return r.enabled && (ui.filter === 'all' || ui.filter === r.category); });
-    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p></div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, new Date()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
+    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p></div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, appClock(), calendarZone()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
   }
   function growthBody() {
     var pet = currentPet(), g = growthInfo(), stages = M.growthStages(pet.kind);
     return facts([['成长值', g.xp], ['成长阶段', g.stageName], ['成长星', g.stars]], 'growth-values') + '<div class="growth-journey">' + stages.map(function (stage) { var at = stage.at, i = stage.stage - 1; return '<div class="journey-step ' + (g.stage === i + 1 ? 'current' : g.xp >= at ? 'unlocked' : '') + '"><div class="journey-pet">' + petDrawing(pet.kind, i + 1, pet.name, 'idle', true) + '</div><div><span>阶段 ' + (i + 1) + ' · 成长值 ' + at + '</span><h3>' + esc(stage.name) + '</h3><small>' + (g.xp >= at ? (g.stage === i + 1 ? '当前' : '已到达') : '还差 ' + (at - g.xp)) + '</small></div><span class="journey-badge">' + icon(g.xp >= at ? 'check' : 'lock') + '</span></div>'; }).join('') + '</div>';
   }
   function reactPet(reaction, message) {
+    if (!scopeReady()) return;
+    var scope = scopeToken();
     var pet = currentPet(), g = growthInfo(), words = { pet: '摸摸 ♥', feed: '投喂完成！', wash: '清洁完成！', train: '训练完成！', celebrate: '成长啦', unlock: '新地点解锁！' };
     clearTimeout(petTimer); ui.petReaction = reaction; ui.petMessage = message || words[reaction] || words.pet;
+    if (Farm) Farm.react(reaction, 'pet');
     var art = document.getElementById('pet-art'), dialogue = document.getElementById('pet-dialogue');
     if (art) art.innerHTML = petDrawing(pet.kind, g.stage, pet.name, reaction, false, 'hero');
     if (dialogue) dialogue.textContent = ui.petMessage;
     if (reaction !== 'celebrate') play('complete'); if (!message) toast(ui.petMessage);
-    petTimer = setTimeout(function () { ui.petReaction = 'idle'; ui.careBusy = false; var current = currentPet(), art = document.getElementById('pet-art'); if (art) art.innerHTML = petDrawing(current.kind, growthInfo().stage, current.name, 'idle', false, 'hero'); refreshPetControls(); if (ui.form && ui.form.kind === 'petHub' && !ui.auth) render(false); }, 2700);
+    petTimer = setTimeout(function () { if (!scopeCurrent(scope)) return; ui.petReaction = 'idle'; ui.careBusy = false; var current = currentPet(), art = document.getElementById('pet-art'); if (art) art.innerHTML = petDrawing(current.kind, growthInfo().stage, current.name, 'idle', false, 'hero'); refreshPetControls(); if (ui.form && ui.form.kind === 'petHub' && !ui.auth) render(false); }, 2700);
   }
   function touchPet() {
+    if (!scopeReady()) return;
+    var scope = scopeToken();
     ui.petTouches++;
-    if (pending || ui.careBusy || ui.petReaction === 'celebrate' || ui.petReaction === 'unlock') { var scene = document.querySelector('.companion-scene'); if (scene) { scene.classList.add('pet-touched'); setTimeout(function () { scene.classList.remove('pet-touched'); }, 450); } return; }
+    if (pending || ui.careBusy || ui.petReaction === 'celebrate' || ui.petReaction === 'unlock') { var scene = document.querySelector('.companion-scene'); if (scene) { scene.classList.add('pet-touched'); setTimeout(function () { if (scopeCurrent(scope)) scene.classList.remove('pet-touched'); }, 450); } return; }
     reactPet('pet');
   }
   function requestStrip(req) {
@@ -569,7 +692,7 @@
     return '<div class="request-strip" data-request-id="' + esc(req.id) + '"><div class="request-copy"><span class="status-label">待审批</span><strong>' + esc(reward ? reward.name : req.name) + '<em>' + price + ' 分</em></strong><small>已扣分 0</small></div><div class="request-actions">' + button('redemption-approve', '家长确认', 'btn primary', req.id) + button('redemption-cancel', '取消申请', 'btn danger', req.id) + '</div></div>';
   }
   function taskRow(t) {
-    var status = t.done ? '已完成' : t.snoozeUntil && new Date(t.snoozeUntil).getTime() > Date.now() ? '稍后至 ' + niceTime(t.snoozeUntil).split(' ')[1] : t.ackAt ? '已知道' : '';
+    var status = t.done ? '已完成' : t.snoozeUntil && new Date(t.snoozeUntil).getTime() > appClock().getTime() ? '稍后至 ' + niceTime(t.snoozeUntil).split(' ')[1] : t.ackAt ? '已知道' : '';
     if (t.type === 'task' && t.date < today()) status = '原定' + niceDate(t.date) + (status ? ' · ' + status : ' · 尚未完成');
     return '<div class="task-row ' + (t.done ? 'is-done' : '') + (t.date < today() && !t.done ? ' is-overdue' : '') + '" data-task-id="' + esc(t.id) + '">' + button('task-toggle', icon('check'), 'task-complete ' + (t.done ? 'done' : ''), t.id, (t.done ? '撤销完成：' : '完成：') + t.title).replace('<button ', '<button aria-pressed="' + !!t.done + '" ') + button('task-edit', '<span class="task-copy"><strong>' + esc(t.title) + '</strong><span class="task-time"><b>' + esc(t.time || '当天') + '</b>' + (t.type === 'event' ? '<small>' + niceDate(t.date) + '</small>' : '') + (status ? '<small>' + esc(status) + '</small>' : '') + '</span>' + (t.note ? '<span class="task-note">' + esc(t.note) + '</span>' : '') + '</span>' + icon('chevron'), 'task-open', t.id, '编辑提醒：' + t.title) + '</div>';
   }
@@ -581,18 +704,20 @@
     }).sort(function (a, b) { return (a.date + (a.time || '99')).localeCompare(b.date + (b.time || '99')); });
     var active = all.filter(function (t) { return !t.done; }), done = all.filter(function (t) { return t.done; });
     var preparation = ui.reminderMode === 'near' && ui.day === 0 ? state.tasks.filter(function (t) {
-      return t.type === 'event' && !t.deleted && !t.done && t.date >= today() && t.date <= M.addDays(today(), Number(t.remindDays || 0));
+      return t.type === 'event' && !t.deleted && !t.done && t.date >= today() && t.date <= M.addDays(today(), Number(t.remindDays || 0), calendarZone());
     }).sort(function (a, b) { return (a.date + (a.time || '99')).localeCompare(b.date + (b.time || '99')); }) : [];
     return '<section class="reminders-screen"><div class="reminder-heading"><div><h2>提醒</h2></div>' + button('task-new', icon('plus'), 'icon-button nav-add', '', '新增提醒') + '</div><div class="reminder-toolbar"><div class="day-tabs">' + (ui.reminderMode === 'near' ? ['今天', '明天', '后天'].map(function (s, i) { return button('day', s + '<small>' + Number(day(i).slice(-2)) + '</small>', 'day-tab ' + (ui.day === i ? 'active' : ''), String(i)); }).join('') : '<span class="events-label">重要事件</span>') + '</div>' + button('reminder-mode', ui.reminderMode === 'near' ? '重要事件' : '回到近期', 'text-button', ui.reminderMode === 'near' ? 'events' : 'near') + '</div><div class="reminder-list">' + active.map(taskRow).join('') + (active.length ? '' : empty(ui.reminderMode === 'events' ? '待处理 0' : '待办 0')) + '</div>' + (preparation.length ? '<section class="advance-events" data-region="advance-events"><div class="section-heading"><h3>提前准备</h3><small>重要事件</small></div>' + preparation.map(taskRow).join('') + '</section>' : '') + (done.length ? '<details class="completed-list"><summary>已完成 ' + done.length + ' 项</summary>' + done.map(taskRow).join('') + '</details>' : '') + '</section>';
   }
   function dueTasks() {
-    return state.tasks.filter(function (t) { if (t.deleted || t.done || !t.time || t.ackAt) return false; var at = t.snoozeUntil ? new Date(t.snoozeUntil).getTime() : new Date(t.date + 'T' + t.time + ':00').getTime(); return isFinite(at) && at <= Date.now(); }).sort(function (a, b) { return (a.snoozeUntil || a.date + 'T' + a.time).localeCompare(b.snoozeUntil || b.date + 'T' + b.time); });
+    if (!state || !scopeReady()) return [];
+    return state.tasks.filter(function (t) { if (t.deleted || t.done || !t.time || t.ackAt) return false; var at; try { at = new Date(t.snoozeUntil || M.calendarTimestamp(t.date, t.time, calendarZone())).getTime(); } catch (e) { return false; } return isFinite(at) && at <= appClock().getTime(); }).sort(function (a, b) { return (a.snoozeUntil || a.date + 'T' + a.time).localeCompare(b.snoozeUntil || b.date + 'T' + b.time); });
   }
   function reminderBanner() {
     var list = dueTasks(), t = list[0]; if (!t) return '';
     return '<section class="reminder-banner" aria-label="到点提醒"><div class="reminder-banner-copy">' + icon('clock') + '<div><small>' + (list.length > 1 ? list.length + ' 条提醒待处理' : '到点提醒') + '</small><strong>' + esc(t.title) + '</strong></div></div><div class="reminder-banner-actions">' + button('task-ack', '知道了', 'btn', t.id) + button('task-snooze', '10分钟后', 'btn', t.id) + button('task-toggle', '完成', 'btn reminder-primary', t.id) + '</div></section>';
   }
   function renderReminder() {
+    if (!scopeReady()) return;
     var el = document.getElementById('reminder-slot'), inbox = document.getElementById('home-inbox-slot');
     if (el) el.innerHTML = ui.view === 'points' ? '' : reminderBanner();
     var inboxKey = homeInboxKey();
@@ -608,7 +733,7 @@
   function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row', id); }
   function preferencesBody() {
     var speech = !!(window.SpeechRecognition || window.webkitSpeechRecognition), wake = navigator.wakeLock && navigator.wakeLock.request;
-    return '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + '<div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'archive') + '</div>' + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
+    return (saas ? '<div class="menu-group">' + menuRow('saas-account', '账号与家庭', esc(SaaS.identity().family.name), 'settings') + menuRow('saas-logout', '退出登录', '', 'lock') + '</div>' : '') + '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + '<div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'archive') + '</div>' + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
   }
   function listManagement(kind) {
     var isReward = kind === 'reward-list', rows = isReward ? state.rewards : state.pointItems;
@@ -698,32 +823,37 @@
     return '<div class="profile-photo-editor"><div class="profile-photo-preview">' + avatarImage(d.childAvatar, d.childName) + '</div><div>' + button('avatar-choose', icon('camera') + '选择照片', 'btn outline') + (d.childAvatar ? button('avatar-remove', '移除照片', 'btn danger') : '') + '</div><input id="avatar-file" type="file" name="avatarFile" accept="image/jpeg,image/png,image/webp" class="file-picker"><p id="avatar-status" role="status">' + esc(f.avatarStatus || '') + '</p></div>' + field('孩子昵称', 'childName', d.childName || '', 'required maxlength="40"');
   }
   function loadAvatar(file) {
-    var f = ui.form; if (!f || f.kind !== 'profile' || !file) return;
+    var f = ui.form; if (!scopeReady() || !f || f.kind !== 'profile' || !file) return;
     rememberDraft();
-    var types = ['image/jpeg', 'image/png', 'image/webp'], token = ++avatarSequence; f.avatarRequest = token;
-    function status(message, busy) { if (ui.form !== f || f.avatarRequest !== token) return; f.avatarBusy = !!busy; f.avatarStatus = message; var el = document.getElementById('avatar-status'); if (el) el.textContent = message; var save = document.querySelector('.sheet-save'); if (save && !ui.auth) { save.disabled = !!(busy || pending); save.setAttribute('aria-busy', String(!!(busy || pending))); save.textContent = busy ? '处理中' : '保存'; } }
+    var types = ['image/jpeg', 'image/png', 'image/webp'], token = ++avatarSequence, scope = scopeToken(); f.avatarRequest = token;
+    var reader = null, image = null, url = '', release = function () {};
+    function active() { return scopeCurrent(scope) && ui.form === f && f.avatarRequest === token; }
+    function cleanup() { release(); if (reader) { reader.onload = reader.onerror = null; try { if (reader.readyState === 1) reader.abort(); } catch (e) {} } if (image) { image.onload = image.onerror = null; image.src = ''; } if (url) { URL.revokeObjectURL(url); url = ''; } }
+    function status(message, busy) { if (!active()) return; f.avatarBusy = !!busy; f.avatarStatus = message; var el = document.getElementById('avatar-status'); if (el) el.textContent = message; var save = document.querySelector('.sheet-save'); if (save && !ui.auth) { save.disabled = !!(busy || pending); save.setAttribute('aria-busy', String(!!(busy || pending))); save.textContent = busy ? '处理中' : '保存'; } }
     if (types.indexOf(file.type) < 0) { status('格式 · JPEG / PNG / WebP'); return; }
     if (file.size > 8 * 1024 * 1024) { status('图片超过 8 MB'); return; }
     status('照片处理中', true);
-    var reader = new FileReader();
-    reader.onerror = function () { status('图片读取失败'); };
+    reader = new FileReader(); release = trackScope(cleanup);
+    reader.onerror = function () { cleanup(); status('图片读取失败'); };
     reader.onload = function () {
-      if (ui.form !== f || f.avatarRequest !== token) return;
+      if (!active()) { cleanup(); return; }
       var bytes = new Uint8Array(reader.result), jpeg = bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255, png = bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71 && bytes[4] === 13 && bytes[5] === 10 && bytes[6] === 26 && bytes[7] === 10, webp = bytes[0] === 82 && bytes[1] === 73 && bytes[2] === 70 && bytes[3] === 70 && bytes[8] === 87 && bytes[9] === 69 && bytes[10] === 66 && bytes[11] === 80;
-      if (!((file.type === 'image/jpeg' && jpeg) || (file.type === 'image/png' && png) || (file.type === 'image/webp' && webp))) { status('图片格式无效'); return; }
-      var url = URL.createObjectURL(file), image = new Image();
-      image.onerror = function () { URL.revokeObjectURL(url); status('图片无法读取'); };
+      if (!((file.type === 'image/jpeg' && jpeg) || (file.type === 'image/png' && png) || (file.type === 'image/webp' && webp))) { cleanup(); status('图片格式无效'); return; }
+      url = URL.createObjectURL(file); image = new Image();
+      image.onerror = function () { cleanup(); status('图片无法读取'); };
       image.onload = function () {
-        URL.revokeObjectURL(url); if (ui.form !== f || f.avatarRequest !== token) return;
+        if (!active()) { cleanup(); return; }
         var w = image.naturalWidth, h = image.naturalHeight;
-        if (!w || !h || w * h > 16000000) { status('图片超过 1600 万像素'); return; }
+        if (!w || !h || w * h > 16000000) { cleanup(); status('图片超过 1600 万像素'); return; }
         try {
           var canvas = document.createElement('canvas'); canvas.width = 192; canvas.height = 192;
           var ctx = canvas.getContext('2d'), side = Math.min(w, h); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 192, 192); ctx.drawImage(image, (w - side) / 2, (h - side) / 2, side, side, 0, 0, 192, 192);
           var avatar = canvas.toDataURL('image/jpeg', 0.86);
           if (avatar.length > 160000 || avatar.indexOf('data:image/jpeg;base64,') !== 0) throw new Error('头像处理失败');
+          cleanup(); if (!active()) return;
+          if (avatarSelection && avatarSelection.form === f) avatarSelection.file = null;
           f.data.childAvatar = avatar; f.avatarBusy = false; f.editVersion = (f.editVersion || 0) + 1; f.avatarStatus = '头像已选定'; render(false);
-        } catch (e) { status('头像处理失败'); }
+        } catch (e) { cleanup(); status('头像处理失败'); }
       };
       image.src = url;
     };
@@ -732,8 +862,16 @@
   function petDailyMarks(status) {
     return '<div class="pet-daily-marks">' + ['feed', 'wash', 'train'].map(function (care) { var done = status.caredToday.indexOf(care) >= 0; return '<span data-care="' + care + '" data-completed="' + done + '">' + icon(done ? 'check' : { feed: 'snack', wash: 'water', train: 'ball' }[care]) + careName(care) + '<small>' + (done ? '已完成' : '未完成') + '</small></span>'; }).join('') + '</div>' + facts([['今日全项奖励', '+1里程 · ' + (status.dailyBonusEarned ? '已获得' : '待完成')]], 'pet-bonus-note');
   }
+  function petArchiveBody(status, f) {
+    var tab = f.data.tab === 'explore' ? 'explore' : 'bag'; f.data.tab = tab; f.openedRevision = revision;
+    var tabs = '<div class="pet-tabs" aria-label="旧收藏">' + [['bag', '旧道具'], ['explore', '旧探索收藏']].map(function (o) { return button('pet-tab', o[1], 'mode-tab ' + (tab === o[0] ? 'active' : ''), o[0]); }).join('') + '</div>';
+    var note = '<p class="farm-legacy-note">探索里程 · ' + status.exploration + '</p>';
+    if (tab === 'explore') return tabs + note + '<div class="pet-scene-list">' + status.scenes.map(function (scene) { return '<div class="pet-scene-card ' + (scene.unlocked ? 'unlocked' : 'locked') + '"><span class="scene-badge">' + icon(scene.unlocked ? 'star' : 'lock') + '</span><div><h3>' + esc(scene.name) + '</h3><small>' + scene.threshold + '里程 · ' + (scene.unlocked ? '已收藏' : '未到达') + '</small></div></div>'; }).join('') + '</div>';
+    return tabs + note + '<div class="pet-supplies">' + status.catalog.map(function (item) { return '<div class="pet-supply-card" data-item-id="' + item.id + '"><span class="pet-item-art" aria-hidden="true">' + itemArt(item.id) + '</span><div><h3>' + esc(item.name) + '</h3><p>库存 ' + status.inventory[item.id] + ' 件</p></div>' + (status.inventory[item.id] > 0 ? careButton(item, status, 'inventory', true) : '<small>已用完</small>') + '</div>'; }).join('') + '</div>';
+  }
   function petHubBody(f) {
     var status = playStatus(), tab = f.data.tab || 'bag'; ui.petTab = tab;
+    if (status && status.farmMode) return petArchiveBody(status, f);
     var tabs = '<div class="pet-tabs" aria-label="伙伴">' + [['bag', '背包'], ['supply', '补给'], ['explore', '探索收藏']].map(function (o) { return button('pet-tab', o[1], 'mode-tab ' + (tab === o[0] ? 'active' : ''), o[0]); }).join('') + '</div>';
     if (!status) return tabs + empty('未连接');
     f.openedRevision = revision;
@@ -757,6 +895,7 @@
   }
   function openPetPurchase(itemId) {
     var status = playStatus(); if (!status || !find(status.catalog, itemId)) { showError('未连接'); return; }
+    if (status.farmMode) { showError('小院陪伴免费，补给已停止出售'); return; }
     if (!ui.form || ui.form.kind !== 'petHub') openForm('petHub', { tab: 'supply' });
     openForm('petBuy', { itemId: itemId, quantity: 1 }, true);
   }
@@ -767,6 +906,7 @@
   function editorContent() {
     var f = ui.form, d = f.data, body = '', title = '', sub = '', submit = '', footer = '', actions = '', submitBlocked = false, r, permission, total = M.totals(state);
     if (f.kind === 'behaviorPicker') return behaviorPickerContent();
+    if (f.kind === 'farm' && Farm) return Farm.panel(f);
     if (f.kind === 'homeInbox') { title = homeInboxTitle(); f.openedRevision = revision; ui.inboxKey = homeInboxKey(); body = '<div id="home-inbox-body">' + homeInboxBody() + '</div>'; }
     else if (f.kind === 'records') { title = '积分记录'; body = recordsBody(); }
     else if (f.kind === 'preferences') { title = '设置'; body = preferencesBody(); }
@@ -790,7 +930,7 @@
       title = f.kind === 'approve' ? '确认兑换' : '申请兑换'; submit = f.kind === 'approve' ? '确认兑换' : '提交申请';
       if (!r || (f.kind === 'approve' && (!req || req.status !== 'pending'))) { body = empty('申请已更新'); submit = ''; }
       else {
-        permission = M.availability(state, r.id, new Date());
+        permission = M.availability(state, r.id, appClock(), calendarZone());
         body = '<div class="redeem-preview"><span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><h3>' + esc(r.name) + '</h3><strong>' + r.points + '<small> 分</small></strong></div><div class="redemption-math"><div><span>可用</span><b>' + total.available + '</b></div><span>−</span><div><span>兑换扣分</span><b>' + r.points + '</b></div><span>=</span><div><span>兑换后</span><b>' + (total.available - r.points) + '</b></div></div>' + (f.kind === 'request' ? facts([['本次申请扣分', '0'], ['审批', '家长']]) : '') + (!permission.allowed ? '<p class="availability-note">' + esc(availabilityLabel(permission)) + '</p>' : '') + (f.kind === 'approve' ? area('备注（选填）', 'note', d.note || '') : '');
         submitBlocked = !permission.allowed;
       }
@@ -815,7 +955,8 @@
     } else if (f.kind === 'parentConfig') {
       var initial = f.parentConfigured === false, parentSetup = setupTx && setupTx.form === f && !setupTx.auth ? setupTx : null, method = d.method || meta.parent.method || 'pin';
       title = initial ? '设置家长验证' : '修改家长验证'; sub = local ? '本机' : '共享'; submit = initial ? '保存设置' : '保存修改';
-      if (f.parentConfigured == null) { body = '<p class="status-line">家长验证 · 待确认</p>'; submit = ''; }
+      if (saas && initial && !SaaS.isOwner()) { body = '<p class="status-line">请家庭所有者设置家长验证</p>'; submit = ''; }
+      else if (f.parentConfigured == null) { body = '<p class="status-line">家长验证 · 待确认</p>'; submit = ''; }
       else if (f.setupConflict) { body = '<p class="status-line">家长验证已设置</p>'; submit = ''; }
       else if (parentSetup && parentSetup.uncertain) { body = facts([['验证方式', parentSetup.action.method === 'math' ? '算术题' : 'PIN']]) + '<p class="status-line">设置结果待确认</p>'; submit = '重试设置'; }
       else {
@@ -868,21 +1009,23 @@
     return '<div class="sheet-overlay"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div class="sheet-nav-start">' + button(auth ? 'parent-cancel' : 'form-close', icon(nested ? 'back' : 'close'), 'icon-button', '', auth ? '返回修改' : nested ? '返回上一级' : '关闭面板') + '</div><div class="sheet-heading"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div><div class="sheet-nav-actions">' + (actions || '') + '</div></header>' + content + '</section></div>';
   }
   function render(reset) {
+    if (!scopeReady()) return;
     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
     var oldSheet = document.querySelector('.sheet'), oldBody = document.querySelector('.sheet-body'), oldKind = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-form-kind') : '', nextKind = (ui.auth ? 'parent:' : '') + (ui.form ? ui.form.kind : ''), sameSheet = !!oldSheet && oldKind === nextKind, key = sameSheet ? focusKey(document.activeElement) : ui.form && ui.form.focusKey, sheetScroll = sameSheet && oldBody ? oldBody.scrollTop : ui.form && ui.form.scrollTop || 0;
     var selection = sameSheet && document.activeElement && typeof document.activeElement.selectionStart === 'number' ? { start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd } : null;
     document.body.className = 'view-' + ui.view + (ui.form || ui.auth ? ' sheet-open' : '') + (ui.display ? ' display-mode' : '');
+    if (Farm) Farm.beforeRender();
     document.getElementById('app').innerHTML = '<div class="app-shell"' + (ui.form || ui.auth ? ' aria-hidden="true"' : '') + '>' + header() + '<div id="reminder-slot">' + (ui.view === 'points' ? '' : reminderBanner()) + '</div><main id="main" class="app-main" tabindex="-1">' + (ui.view === 'points' ? pointsPage() : reminderPage()) + '</main>' + navigation() + '</div>' + (ui.auth ? parentContent() : ui.form ? editorContent() : '');
     var main = document.getElementById('main'); if (main) main.scrollTop = reset || ui.view === 'points' ? 0 : scroll;
     var notice = document.getElementById('toast');
     if (ui.view === 'points' && !ui.form && !ui.auth && notice.className.indexOf('visible') >= 0) toast(notice.textContent);
     if (ui.form && ui.form.kind === 'homeInbox' && !ui.auth) focusInbox();
-    else if (ui.form && ['points', 'behaviorPicker', 'petHub', 'petBuy', 'petGrowth', 'petConfig'].indexOf(ui.form.kind) >= 0) { restorePlayFocus(key); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll; if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} } }
+    else if (ui.form && ['points', 'behaviorPicker', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) { restorePlayFocus(key); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll; if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} } }
     else if (oldSheet && !ui.form && !ui.auth && ui.homeFocus) restorePlayFocus(ui.homeFocus);
-    refreshPetPurchase(); fitViewport();
+    refreshPetPurchase(); fitViewport(); if (Farm) Farm.afterRender();
   }
   function makeAction(f, v) {
-    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: v.reason.trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = new Date(today() + 'T' + v.recordTime + ':00').toISOString(); return action; }
+    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: v.reason.trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return action; }
     if (f.kind === 'petBuy') { var status = playStatus(), supply = status && find(status.catalog, f.data.itemId), quantity = Number(v.quantity); if (!supply || !isFinite(quantity) || quantity < 1 || quantity > 10 || quantity !== Math.floor(quantity)) throw new Error('数量无效'); return { type: 'pet.buy', itemId: supply.id, quantity: quantity, expectedPoints: quantity * supply.points }; }
     if (f.kind === 'request') return { type: 'redemption.request', rewardId: f.data.rewardId };
     if (f.kind === 'approve') { var req = find(state.requests, f.data.requestId), reward = req && find(state.rewards, req.rewardId); if (!reward || req.status !== 'pending') throw new Error('申请已更新'); return { type: 'redemption.approve', requestId: req.id, expectedPoints: reward.points, note: (v.note || '').trim() }; }
@@ -921,45 +1064,52 @@
     if (!local) { request('POST', '/api/assistant', { text: text, context: 'general' }, receive); }
     else { try { if (!window.FamilyAssistant) throw new Error('指令服务不可用'); receive(200, window.FamilyAssistant.interpret(text, assistantState(), new Date(), { context: 'general' })); } catch (e) { receive(400, { error: e.message }); } }
   }
-  function stopRecognition() { if (recognition) { try { recognition.abort(); } catch (e) {} recognition = null; } }
+  function stopRecognition() { if (recognition) { var previous = recognition; recognition = null; try { previous.abort(); } catch (e) {} } }
   function listen(targetName) {
     targetName = targetName || 'speech';
     if (recognition) { stopRecognition(); render(false); return; }
     var Speech = window.SpeechRecognition || window.webkitSpeechRecognition, status = document.getElementById('voice-status');
     if (!Speech || window.isSecureContext === false) { if (status) status.textContent = !Speech ? '听写不支持' : '听写不可用'; var input = document.querySelector('[name="' + targetName + '"]'); if (input) input.focus(); return; }
     try {
-      var f = ui.form, r = new Speech(); recognition = r; r.lang = 'zh-CN'; r.interimResults = true; r.continuous = false;
-      r.onstart = function () { if (ui.form !== f || recognition !== r || ui.auth) return; var el = document.getElementById('voice-status'); if (el) el.textContent = '听写中'; };
-      r.onresult = function (event) { if (ui.form !== f || recognition !== r || ui.auth) return; var text = ''; for (var i = 0; i < event.results.length; i++) text += event.results[i][0].transcript; f.data[targetName] = text; var input = document.querySelector('[name="' + targetName + '"]'); if (input) input.value = text; rememberDraft(); };
-      r.onerror = function () { if (ui.form !== f || recognition !== r || ui.auth) return; var el = document.getElementById('voice-status'); if (el) el.textContent = '听写未完成'; };
-      r.onend = function () { if (recognition !== r) return; recognition = null; if (ui.form !== f || ui.auth) return; var el = document.getElementById('voice-status'); if (el && el.textContent === '听写中') el.textContent = '听写已停止'; };
+      var f = ui.form, scope = scopeToken(), r = new Speech(); recognition = r; r.lang = 'zh-CN'; r.interimResults = true; r.continuous = false;
+      r.onstart = function () { if (!scopeCurrent(scope) || ui.form !== f || recognition !== r || ui.auth) return; var el = document.getElementById('voice-status'); if (el) el.textContent = '听写中'; };
+      r.onresult = function (event) { if (!scopeCurrent(scope) || ui.form !== f || recognition !== r || ui.auth) return; var text = ''; for (var i = 0; i < event.results.length; i++) text += event.results[i][0].transcript; f.data[targetName] = text; var input = document.querySelector('[name="' + targetName + '"]'); if (input) input.value = text; rememberDraft(); };
+      r.onerror = function () { if (!scopeCurrent(scope) || ui.form !== f || recognition !== r || ui.auth) return; var el = document.getElementById('voice-status'); if (el) el.textContent = '听写未完成'; };
+      r.onend = function () { if (!scopeCurrent(scope) || recognition !== r) return; recognition = null; if (ui.form !== f || ui.auth) return; var el = document.getElementById('voice-status'); if (el && el.textContent === '听写中') el.textContent = '听写已停止'; };
       r.start();
     } catch (e) { recognition = null; if (status) status.textContent = '听写不可用'; }
   }
   function refreshWakeStatus() { if (ui.form && ui.form.kind === 'preferences' && !ui.auth) render(false); }
   function displayMode() {
+    if (!scopeReady()) return;
+    var scope = scopeToken();
     if (ui.wakePending) { toast('申请中'); return; }
     if (wakeLock && !wakeLock.released) {
       var previous = wakeLock; ui.wakePending = true;
-      previous.release().then(function () { if (wakeLock === previous) { wakeLock = null; ui.display = false; } ui.wakePending = false; refreshWakeStatus(); toast('常亮已关闭'); }, function () { ui.wakePending = false; refreshWakeStatus(); toast('常亮关闭失败'); }); return;
+      previous.release().then(function () { if (!scopeCurrent(scope)) return; if (wakeLock === previous) { wakeLock = null; ui.display = false; } ui.wakePending = false; refreshWakeStatus(); toast('常亮已关闭'); }, function () { if (!scopeCurrent(scope)) return; ui.wakePending = false; refreshWakeStatus(); toast('常亮关闭失败'); }); return;
     }
     ui.display = false;
     if (!(navigator.wakeLock && navigator.wakeLock.request)) { refreshWakeStatus(); toast('常亮不支持'); return; }
     ui.wakePending = true; refreshWakeStatus();
     navigator.wakeLock.request('screen').then(function (lock) {
+      if (!scopeCurrent(scope)) { try { var release = lock.release(); if (release && release.catch) release.catch(function () {}); } catch (e) {} return; }
       wakeLock = lock; ui.wakePending = false; ui.display = !lock.released;
-      lock.addEventListener('release', function () { if (wakeLock === lock) { wakeLock = null; ui.display = false; ui.wakePending = false; refreshWakeStatus(); } });
+      lock.addEventListener('release', function () { if (!scopeCurrent(scope)) return; if (wakeLock === lock) { wakeLock = null; ui.display = false; ui.wakePending = false; refreshWakeStatus(); } });
       refreshWakeStatus(); toast(ui.display ? '常亮已开启' : '常亮已关闭');
-    }, function () { ui.wakePending = false; ui.display = false; refreshWakeStatus(); toast('常亮未获允许'); });
+    }, function () { if (!scopeCurrent(scope)) return; ui.wakePending = false; ui.display = false; refreshWakeStatus(); toast('常亮未获允许'); });
   }
   function exportData() { var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = '家庭积分提醒-' + today() + '.json'; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); toast('记录已导出'); }
   function onAction(action, id, element) {
+    if (!scopeReady()) return;
+    if (saas && action === 'saas-account') { SaaS.openSettings(); return; }
+    if (saas && action === 'saas-logout') { SaaS.logout(); return; }
     if (action === 'pet-touch' && !ui.auth) { touchPet(); return; }
     if (action === 'form-close' || action === 'parent-cancel') { closeForm(); return; }
     if (pending) return;
     if (ui.auth) return;
+    if (Farm && Farm.handle(action, id, element)) return;
     var item, task, copy;
-    if (action === 'nav') { rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
+    if (action === 'nav') { discardAvatar(); rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
     else if (action === 'home-inbox') openForm('homeInbox', {});
     else if (action === 'all-behaviors') openForm('behaviorPicker', { query: '', page: 0 });
     else if (action === 'picker-search' && ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.searchOpen = !(ui.form.data.searchOpen || ui.form.data.query); if (!ui.form.data.searchOpen) { ui.form.data.query = ''; ui.form.data.page = 0; } render(false); var pickerSearch = document.getElementById('behavior-search'); if (ui.form.data.searchOpen && pickerSearch) pickerSearch.focus(); }
@@ -967,8 +1117,8 @@
     else if (action === 'picker-prev' || action === 'picker-next') { if (ui.form && ui.form.kind === 'behaviorPicker') { ui.form.data.page = (Number(ui.form.data.page) || 0) + (action === 'picker-next' ? 1 : -1); updatePicker(); } }
     else if (action === 'jump-rewards') openForm('rewards', {});
     else if (action === 'profile-edit') openForm('profile', { childName: state.childName, childAvatar: state.childAvatar || '' });
-    else if (action === 'avatar-choose') { var fileInput = document.getElementById('avatar-file'); if (fileInput) fileInput.click(); }
-    else if (action === 'avatar-remove') { rememberDraft(); ui.form.avatarRequest = null; ui.form.avatarBusy = false; ui.form.data.childAvatar = ''; ui.form.avatarStatus = '头像已移除'; render(false); }
+    else if (action === 'avatar-choose') { var fileInput = document.getElementById('avatar-file'); if (fileInput) { if (saas) prepareAvatar(fileInput); fileInput.click(); } }
+    else if (action === 'avatar-remove') { discardAvatar(); rememberDraft(); ui.form.avatarRequest = null; ui.form.avatarBusy = false; ui.form.data.childAvatar = ''; ui.form.avatarStatus = '头像已移除'; render(false); }
     else if (action === 'pet-hub') openForm('petHub', { tab: ui.petTab || 'bag' });
     else if (action === 'pet-tab') { if (ui.form && ui.form.kind === 'petHub' && ['bag', 'supply', 'explore'].indexOf(id) >= 0) { ui.form.data.tab = id; render(false); } }
     else if (action === 'pet-home') { rememberDraft(); ui.form = null; ui.stack = []; ui.view = 'points'; render(false); var petTarget = document.querySelector('.companion-scene'); if (petTarget) petTarget.focus(); }
@@ -1010,7 +1160,7 @@
     else if (action === 'task-ack') beginAction({ type: 'task.ack', taskId: id }, '已收到');
     else if (action === 'task-snooze') beginAction({ type: 'task.snooze', taskId: id, minutes: 10 }, '已延后10分钟');
     else if (action === 'task-delete') beginAction({ type: 'task.delete', taskId: id }, '提醒已取消。');
-    else if (action === 'task-tomorrow') { rememberDraft(); task = clone(ui.form.data); task.date = day(1); task.type = 'task'; task.remindDays = 0; ui.form.data = task; render(false); toast('日期 · 明天'); }
+    else if (action === 'task-tomorrow') { rememberDraft(); task = clone(ui.form.data); task.date = day(1); ui.form.data = task; render(false); toast('日期 · 明天'); }
     else if (action === 'task-copy') { rememberDraft(); copy = clone(ui.form.data); delete copy.id; copy.date = day(1); copy.done = false; openForm('task', copy); }
     else if (action === 'form-task-type') { rememberDraft(); ui.form.data.type = id; if (id === 'task' && (ui.form.data.date > day(2) || ui.form.data.date < today())) ui.form.data.date = today(); render(false); }
     else if (action === 'form-day') { rememberDraft(); ui.form.data.date = day(Number(id)); render(false); }
@@ -1018,7 +1168,7 @@
     else if (action === 'parent-config') openForm('parentConfig', { method: meta.parent && meta.parent.method || 'pin' });
     else if (action === 'voice') openForm('voice', {}, true);
     else if (action === 'listen') listen();
-    else if (action === 'sound') { ui.sound = !ui.sound; saveStore(PREF, { sound: ui.sound }); render(false); if (ui.sound) play('complete'); }
+    else if (action === 'sound') { ui.sound = !ui.sound; if (saas) saveSoundPreference(ui.sound); else saveStore(PREF, { sound: ui.sound }); render(false); if (ui.sound) play('complete'); }
     else if (action === 'display') displayMode();
     else if (action === 'export') exportData();
   }
@@ -1033,8 +1183,9 @@
     if (form && form.id === 'editor-form' && ui.form) { if (input.name !== 'aiText' && input.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1; rememberDraft(); if (ui.form.kind === 'points') refreshTemplatePreview(); if (ui.form.kind === 'petBuy') refreshPetPurchase(); }
   }
   document.addEventListener('input', draftInput);
-  document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); } });
+  document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { if (saas) receiveAvatar(event.target); else loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); } });
   document.addEventListener('submit', function (event) {
+    if (!scopeReady()) return;
     if (event.target.id === 'parent-form') { event.preventDefault(); submitParent(event.target); return; }
     if (event.target.id !== 'editor-form') return; event.preventDefault(); if (pending || (ui.form && ui.form.kind === 'voice' && ui.assistantBusy)) return;
     rememberDraft();
@@ -1056,14 +1207,29 @@
     if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();
   }
   window.addEventListener('resize', fitViewport); if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
-  window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (!ui.auth && (!ui.form || ui.form.kind === 'petHub')) render(false); } } });
+  window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (!ui.auth && (!ui.form || ui.form.kind === 'petHub' || ui.form.kind === 'farm')) render(false); } } });
   if (!M) { document.getElementById('app').innerHTML = '<p class="loading-screen">数据模块未加载</p>'; return; }
-  state = readStore(KEY, null); if (!state || state.version !== 1 || !state.tasks) state = M.createSeed(new Date());
-  state = M.normalize(state);
+  if (!saas) {
+    state = readStore(KEY, null); if (!state || state.version !== 1 || !state.tasks) state = M.createSeed(new Date());
+    state = M.normalize(state);
+  }
   if (drafts['points:new'] && drafts['points:new'].itemId) { var legacyPointDraft = clone(drafts['points:new']), legacyKey = 'points:' + legacyPointDraft.itemId; if (!drafts[legacyKey]) drafts[legacyKey] = clone(legacyPointDraft); delete legacyPointDraft.itemId; legacyPointDraft.saveAsTemplate = false; drafts['points:new'] = legacyPointDraft; saveStore(DRAFT, drafts); }
   var preferences = readStore(PREF, {}); ui.sound = !!preferences.sound; ui.display = false;
-  persist(); loadMeta(); render(false); sync();
+  if (Farm) Farm.setup({
+      context: function () { if (!scopeReady()) return { ready: false, state: null, local: false, connected: false }; return { ready: true, state: state, now: farmClock(), familyDay: saas || local ? today() : familyDay || today(), pet: currentPet(), growth: growthInfo(), reducedMotion: reducedMotion(), local: local, connected: connected, pending: pending, retry: retryTx, form: ui.form, auth: ui.auth, view: ui.view, feedback: ui.homeFeedback }; },
+      icon: icon, render: function () { render(false); }, act: beginAction,
+      open: function (data, replace) { openForm('farm', data, false, replace); },
+      home: function () { rememberDraft(); ui.form = null; ui.stack = []; ui.view = 'points'; render(false); restorePlayFocus({ tag: 'BUTTON', type: 'button', id: '', name: '', action: 'farm-open', dataId: '' }); },
+      sheet: function (title, sub, body, actions) { return sheet(title, sub, body, false, actions); },
+      toast: toast, petPlay: function (kind) { reactPet(kind, careName(kind) + '完成 · 免费陪伴'); toast('和' + currentPet().name + '一起玩了一会儿'); }, touchPet: touchPet,
+      retry: function () { if (retryTx && retryTx.uncertain && /^farm\./.test(retryTx.action.type) && !pending && (local || connected)) submitTransaction(retryTx); }
+    });
+  if (saas) {
+    fitViewport();
+    if (SaaS) SaaS.start({ clear: clearFamily, suspend: suspendFamily, refresh: sync, enter: function (result, saved) { if (!setSnapshot(result)) { SaaS.recheck(); return; } lastDay = today(); ui.sound = soundPreference(saved && saved.sound); loadMeta(); if (saved) restoreFamily(saved); else { discardAvatar(); render(false); } } });
+    else document.getElementById('app').innerHTML = '<p class="loading-screen">账号模块未加载 · 请刷新</p>';
+  } else { persist(); loadMeta(); render(false); sync(); }
   var lastDay = today();
-  setInterval(function () { sync(); renderReminder(); if (lastDay !== today()) { lastDay = today(); if (!ui.auth && (!ui.form || (local && ui.form.kind === 'petHub'))) render(false); } }, 5000);
-  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { return { view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeWide() ? 4 : 2).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches }; } };
+  setInterval(function () { if (!scopeReady()) return; sync(); renderReminder(); if (Farm) Farm.tick(); if (lastDay !== today()) { lastDay = today(); if (!ui.auth && (!ui.form || (local && ui.form.kind === 'petHub'))) render(false); } }, 5000);
+  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { if (!scopeReady()) return { ready: false, view: 'account', connected: false, revision: 0, form: null, auth: false, pending: false, aiBusy: false, screenAwake: false, farmView: null, farmStatus: null, farmRender: Farm ? Farm.diagnostics() : null }; return { ready: true, view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeWide() ? 4 : 2).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: saas || local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches, farmView: ui.form && ui.form.kind === 'farm' ? ui.form.data.view : null, farmStatus: Farm && M.farmStatus ? Farm.status() : null, farmRender: Farm ? Farm.diagnostics() : null }; } };
 }());
