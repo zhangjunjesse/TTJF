@@ -11,9 +11,15 @@ npm ci --ignore-scripts
 npm start
 ```
 
-打开 http://127.0.0.1:4180/。应用自动建立私有 `data/ttjf.sqlite` 并执行版本迁移。开发邮件默认写入私有 `data/saas-mail`，不会真实外发。注册后，在最新邮件 JSON 中找到验证链接，打开并确认，再登录创建家庭。新数据库没有默认账号、家庭或旧存档；v0.14 在其他环境创建过的账号不代表新数据库已经有该账号。
+打开 http://127.0.0.1:4180/。应用自动建立私有 `data/ttjf.sqlite` 并执行版本迁移。本机 HTTP 只用于回环地址；账号、数据库和邮件均走真实流程，验证、邀请和恢复邮件使用 SMTP。普通启动没有自动文件邮箱回退；`DEV_MAIL_DIR` 只保留给显式选择本地捕获的测试，生产禁止使用。
 
-可选执行 `npm run db:init` 生成被 Git 忽略的 `.env.saas.local`。`npm start` 和 `npm run dev:saas` 都会在文件存在时读取它；外部环境变量优先。已有配置不会被自动覆盖。旧 PG 的 `.env.saas.*` / `DATABASE_URL` 不能直接作为 SQLite 配置使用，应先保存旧库及配置，再移除 `DATABASE_URL`、明确选择新的数据库路径。同时设置 `SQLITE_FILE` 也不会绕过旧配置保护，容器默认路径同样如此。
+启动会根据 `INITIAL_ACCOUNT_EMAIL` / `INITIAL_ACCOUNT_PASSWORD` 补建缺失账号，默认邮箱为 `391504704@qq.com`。密码由私有环境配置注入，以 scrypt 保存。该运维预置账号首次创建即为已验证，可直接登录；已有账号不改密码、不改验证状态、不重建家庭。没有预置家庭或旧存档；其他用户仍须注册和邮箱验证。首次登录后自行填写家庭名和孩子称呼。旧 PostgreSQL 账号不会因此迁入。
+
+执行 `npm run db:init` 生成被 Git 忽略的 `.env.saas.local`，填写 `INITIAL_ACCOUNT_PASSWORD` 和 `SMTP_PASS`。模板采用 `smtp.qq.com:465` 和初始邮箱；不填写真实凭据的模板不能直接完成初始化。`npm start` 和 `npm run dev:saas` 都会在文件存在时读取它；外部环境变量优先。已有配置不会被自动覆盖。
+
+当前维护者的账号和邮件配置另保存在私有 `data/initialize-private.ps1`。该脚本只在 `.env.saas.local` 缺失时创建运行配置；`tools/start-saas.ps1` 会调用它，随后由服务启动执行账号初始化。脚本包含秘密，必须像数据库备份一样私下保管，不提交 Git、不通过 HTTP 分发。部署到服务器时私下转移所需配置，并设置生产 HTTPS 来源；无需重新设计账号和邮件流程。
+
+旧 PG 的 `.env.saas.*` / `DATABASE_URL` 不能直接作为 SQLite 配置使用，应先保存旧库及配置，再移除 `DATABASE_URL`、明确选择新的数据库路径。同时设置 `SQLITE_FILE` 也不会绕过旧配置保护，容器默认路径同样如此。
 
 常用配置：
 
@@ -22,7 +28,9 @@ npm start
 | `SQLITE_FILE` | 私有本地数据库路径，默认项目 `data/ttjf.sqlite` |
 | `SAAS_HOST` / `SAAS_PORT` | 监听地址和端口，默认 `127.0.0.1:4180`；兼容 `HOST` / `PORT` |
 | `PUBLIC_ORIGIN` | 邮件链接及同源校验使用的站点来源；开发命令默认本机地址，生产必须显式 HTTPS |
-| `DEV_MAIL_DIR` | 开发邮件目录，仅限 development + loopback 来源；生产不允许此方式 |
+| `INITIAL_ACCOUNT_EMAIL` / `INITIAL_ACCOUNT_PASSWORD` | 缺失账号的首次创建配置；已有账号保持不变。显式填写邮箱而缺少密码会拒绝启动 |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USER` / `SMTP_PASS` | 真实邮件服务器、端口、邮箱及授权码；QQ 使用 smtp.qq.com、465 |
+| `DEV_MAIL_DIR` | 仅供测试显式选择的文件邮件目录；须 development + loopback，生产禁止；普通启动不自动设置 |
 
 退出应用使用 Ctrl+C；连接和当前清理任务会收尾，数据库文件保留。更新源码/依赖后再启动，应用按迁移版本升级数据库；升级前先备份。不要删除或覆盖 `data/`，也不要同时启动多个服务进程操作同一个数据库。测试自行使用临时目录，不需要手动建测试库。
 
@@ -41,9 +49,11 @@ SMTP_HOST=your-smtp-host.example
 SMTP_PORT=587
 SMTP_USER=YOUR_SMTP_ACCOUNT
 SMTP_PASS=YOUR_SMTP_PASSWORD
+INITIAL_ACCOUNT_EMAIL=391504704@qq.com
+INITIAL_ACCOUNT_PASSWORD=YOUR_INITIAL_ACCOUNT_PASSWORD
 ```
 
-路径和域名均需替换。Windows 可使用本机私有绝对路径。运行账号必须能读写数据库所在目录，因为 SQLite 需要创建回滚日志；目录不得由静态网站公开提供，也不得放在网络共享盘。数据库与备份不进入 Git。
+路径、域名和密码占位值均需替换。若不需要预置账号，移除两项 `INITIAL_ACCOUNT_*`；不要保留邮箱而留空初始密码。Windows 可使用本机私有绝对路径。运行账号必须能读写数据库所在目录，因为 SQLite 需要创建回滚日志；目录不得由静态网站公开提供，也不得放在网络共享盘。数据库与备份不进入 Git。
 
 ```powershell
 npm ci --omit=dev --ignore-scripts

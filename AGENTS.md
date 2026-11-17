@@ -10,6 +10,7 @@
 
 - `npm start` 启动 `saas-server.cjs`；浏览器主要入口为 `index.html`、`app.js`、`saas-client.js`，业务计算在 `model.js`。
 - `saas/` 管理账号、家庭、生命周期、业务授权、邮件、网络与临时记录清理。当前持久化由 `saas/store.cjs`、`saas/sqlite.cjs` 和 `saas/migrations/` 提供。
+- 初始账号由 `saas/initial-account.cjs` 按私有环境配置幂等创建；已有账号的密码、验证状态和家庭数据保持不变。私有 `data/initialize-private.ps1` 可恢复缺失的运行配置，真实凭据不提交。普通启动要求配置 SMTP，不自动回退到文件邮件；本机回环 HTTP 与公网生产 HTTPS 使用相同业务流程。
 - 目标为一个 Node 服务进程和本机 SQLite。`data/`、环境文件、开发邮件、数据库及备份不得提交或暴露为静态资源。旧 `server.cjs` 单户 JSON 服务独立保留，不与 SaaS 自动合并。
 - 一个家庭一个孩子、一套账本。所有者/家长是成员角色；家庭必须恰有一个 owner。权限校验、版本判断、业务状态、一次性授权和回执须原子提交，重试不能重复记账。
 - SaaS 不在浏览器持久化业务数据或凭据；上海家庭日期和作物实际生长时长属于不同时间规则。

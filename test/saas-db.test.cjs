@@ -188,16 +188,18 @@ test('restore never removes an existing staging directory entry when exclusive c
   assert.deepEqual(fs.readFileSync(stage), sentinel, 'failed exclusive creation did not grant cleanup ownership');
 });
 
-test('local init creates one private SQLite environment and bootstrap provisions a real database without PostgreSQL', async t => {
+test('init creates private real SMTP settings and bootstrap provisions SQLite with the configured account', async t => {
   const f = await H.fixture(t), directory = path.join(path.dirname(f.databasePath), 'isolated-project');
   const project = path.resolve(__dirname, '..');
-  for (const file of ['tools/saas-local.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql']) {
+  for (const file of ['tools/saas-local.cjs', 'saas/initial-account.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql']) {
     fs.mkdirSync(path.dirname(path.join(directory, file)), { recursive: true });
     fs.copyFileSync(path.join(project, file), path.join(directory, file));
   }
   function cli(command, expected = 0) {
+    const env = { ...process.env, DATABASE_URL: '', TEST_DATABASE_URL: '', SQLITE_FILE: '' };
+    delete env.INITIAL_ACCOUNT_EMAIL; delete env.INITIAL_ACCOUNT_PASSWORD;
     const result = spawnSync(process.execPath, ['tools/saas-local.cjs', command], {
-      cwd: directory, env: { ...process.env, DATABASE_URL: '', TEST_DATABASE_URL: '', SQLITE_FILE: '' }, encoding: 'utf8', timeout: 10000, windowsHide: true
+      cwd: directory, env, encoding: 'utf8', timeout: 10000, windowsHide: true
     });
     assert.equal(result.error, undefined); assert.equal(result.status, expected, result.stderr);
     return result;
@@ -205,18 +207,29 @@ test('local init creates one private SQLite environment and bootstrap provisions
   assert.match(cli('init').stdout, /Created private/);
   const local = path.join(directory, '.env.saas.local'), bytes = fs.readFileSync(local);
   assert.match(bytes.toString(), /^SQLITE_FILE=data\/ttjf.sqlite$/m);
+  assert.match(bytes.toString(), /^NODE_ENV=development$/m);
   assert.match(bytes.toString(), /^PUBLIC_ORIGIN=http:\/\/127.0.0.1:4180$/m);
-  assert.match(bytes.toString(), /^DEV_MAIL_DIR=data\/saas-mail$/m);
+  assert.match(bytes.toString(), /^SMTP_HOST=smtp.qq.com$/m);
+  assert.match(bytes.toString(), /^SMTP_PORT=465$/m);
+  assert.match(bytes.toString(), /^INITIAL_ACCOUNT_EMAIL=391504704@qq.com$/m);
+  assert.equal(bytes.toString().includes('DEV_MAIL_DIR'), false);
   assert.equal(bytes.toString().includes('DATABASE_URL'), false);
   assert.equal(fs.existsSync(path.join(directory, '.env.saas.test')), false);
   assert.equal(fs.existsSync(path.join(directory, '.env.saas.postgres')), false);
   assert.match(cli('init').stdout, /already exists/);
   assert.deepEqual(fs.readFileSync(local), bytes, 'repeat init preserves existing settings');
+  assert.match(cli('bootstrap', 1).stderr, /INITIAL_ACCOUNT_PASSWORD/);
+  fs.writeFileSync(local, bytes.toString().replace('INITIAL_ACCOUNT_PASSWORD=\n', 'INITIAL_ACCOUNT_PASSWORD=Synthetic-initial-password-17\n'));
   const result = JSON.parse(cli('bootstrap').stdout);
   assert.equal(result.ready, true); assert.equal(result.storage, 'sqlite');
   assert.equal(result.databasePath, path.join(directory, 'data', 'ttjf.sqlite'));
   const raw = new DatabaseSync(result.databasePath, { readOnly: true });
-  try { assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2]); }
+  try {
+    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2]);
+    const account = raw.prepare('SELECT email,verified_at FROM saas_users').get();
+    assert.equal(account.email, '391504704@qq.com');
+    assert.ok(account.verified_at);
+  }
   finally { raw.close(); }
   fs.unlinkSync(local);
   fs.writeFileSync(path.join(directory, '.env.saas.postgres'), 'POSTGRES_PASSWORD=synthetic-only\n');
