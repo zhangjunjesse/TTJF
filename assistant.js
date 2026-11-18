@@ -107,13 +107,24 @@
   }
   function scopeOf(options) {
     var scope = options && options.context || 'general';
-    return ['general', 'points', 'pointItems'].indexOf(scope) >= 0 ? scope : '';
+    return ['general', 'points', 'pointItems', 'pointItemCreate'].indexOf(scope) >= 0 ? scope : '';
   }
   function escapeRegExp(value) { return String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
   function cleanPhrase(value) { return trim(value).replace(/^[\s，,。:：;；“”「」"']+|[\s，,。:：;；“”「」"']+$/g, ''); }
   function numberTokens(s) {
     var pattern = /([零〇一二两三四五六七八九十百\d]+)\s*分(?!钟)/g, found = [], match;
     while ((match = pattern.exec(s))) { found.push({value:num(match[1]),text:match[0],index:match.index}); }
+    return found;
+  }
+  function creationPointTokens(s) {
+    var pattern = /(?:积分|分值|得分)\s*(?:(?:设置为|设为|改为|是|为)\s*|[:：=]\s*)?([零〇一二两三四五六七八九十百\d]+)(?:\s*分(?!钟))?|([零〇一二两三四五六七八九十百\d]+)\s*(?:个)?(?:积分|分(?!钟))/g,
+      found = [], match, value, numberAt;
+    while ((match = pattern.exec(s))) {
+      value = match[1] || match[2]; numberAt = match.index + match[0].lastIndexOf(value);
+      if (/[.．点]/.test(s.charAt(numberAt - 1)) || /[.．点]/.test(s.charAt(numberAt + value.length)) ||
+          /(?:[-－]|负)\s*$/.test(s.slice(0, numberAt)) || /^\s*分钟/.test(s.slice(numberAt + value.length))) { continue; }
+      found.push({value:num(value),text:match[0],index:match.index});
+    }
     return found;
   }
   function invalidAmount(s) {
@@ -139,7 +150,8 @@
     return candidates(rows, s, 'name');
   }
   function templateDraft(s, state, now, options) {
-    var create = /^(?:请)?(?:帮我)?(?:新增|新建|添加|加一个|加个|创建|增加)/.test(s), target = options && options.targetId,
+    var createForm = scopeOf(options) === 'pointItemCreate',
+      create = createForm || /^(?:请)?(?:帮我)?(?:新增|新建|添加|加一个|加个|创建|增加)/.test(s), target = options && options.targetId,
       prefix = s.split(/改名|更名|改成|改为|改到|调整为|设为|设置为/)[0], found = templateCandidates(state, prefix), row,
       item = {}, tokens, nextName, reasonMatch, reasonPart, remaining, verb;
     if (/(?:然后|另外|顺便|同时|[；;]).*(?:新增|添加|停用|启用|加|给|提醒|修改|把)/.test(s)) { return clarify('一次先管理一个常用加分项，请分开描述。'); }
@@ -152,8 +164,8 @@
       if (found.length !== 1) { return clarify('要调整哪个常用项？请说完整名称，例如“把自主阅读改为每次 8 分”。'); }
       row = find(state.pointItems, found[0].id);
     }
-    tokens = numberTokens(s);
-    if (tokens.length > 1 && !/从.+(?:改|调|设)/.test(s)) { return clarify('听到多个分值，请明确这个常用项以后每次加多少分。'); }
+    tokens = createForm ? creationPointTokens(s) : numberTokens(s);
+    if (tokens.length > 1 && (createForm || !/从.+(?:改|调|设)/.test(s))) { return clarify('听到多个分值，请明确这个常用项以后每次加多少分。'); }
     if (row) { item.id = row.id; }
     if (tokens.length) { item.points = tokens[tokens.length - 1].value; }
     reasonMatch = /(?:预设原因|加分原因|具体原因|原因|理由)(?:\s*(?:修改为|改成|改为|设置为|设为|写成|是|为))?\s*[:：]?\s*(.+)$/.exec(s);
@@ -161,14 +173,17 @@
     if (/停用|禁用|暂停使用|暂时不用|先不用|不再用|不要启用|删除/.test(s)) { item.enabled = false; }
     else if (/启用|恢复使用|重新开启/.test(s)) { item.enabled = true; }
     if (create) {
-      if (!tokens.length) { return clarify('新增的常用项每次加多少分？'); }
+      if (!tokens.length && !createForm) { return clarify('新增的常用项每次加多少分？'); }
       remaining = reasonMatch ? s.slice(0, reasonMatch.index) : s;
       remaining = remaining.replace(/^(?:请)?(?:帮我)?(?:新增|新建|添加|加|创建|增加)(?:一个|个|一项)?/, '').replace(/^(?:常用加分项|常用项|加分模板|加分项|模板|常用)\s*[:：]?\s*/, '');
+      if (createForm) { remaining = remaining.replace(/^(?:常用行为|行为名称|行为)\s*[:：]?\s*/, ''); }
+      if (createForm && tokens.length) { remaining = remaining.replace(tokens[0].text, ''); }
       remaining = remaining.replace(/(?:每次|一次|默认|积分|加|给|奖励|记|为|设为|设置为)?\s*[零〇一二两三四五六七八九十百\d]+\s*分(?!钟)/g, '').replace(/(?:这个|的)?(?:常用加分项|常用项|加分模板|加分项|模板)(?:目)?/, '').replace(/(?:先|暂时)?停用|启用/g, '');
+      if (createForm) { remaining = remaining.replace(/(?:[，,\s]*(?:完成后|以后|每次|一次|默认|奖励|加|给|记|设为|设置为))+[，,\s]*$/, ''); }
       item.name = cleanPhrase(remaining);
-      if (!item.name) { return clarify('这个常用加分项叫什么名字？例如“主动刷牙，每次 3 分”。'); }
-      if (item.reason === undefined) { item.reason = ''; }
-      if (item.enabled === undefined) { item.enabled = true; }
+      if (!item.name && !createForm) { return clarify('这个常用加分项叫什么名字？例如“主动刷牙，每次 3 分”。'); }
+      if (!createForm && item.reason === undefined) { item.reason = ''; }
+      if (!createForm && item.enabled === undefined) { item.enabled = true; }
     } else {
       verb = /(?:改名|更名|名称(?:改成|改为|设为|设置为)?)(?:为|成|叫)?\s*[:：]?\s*(.+?)(?:[，,；;]|$)/.exec(s);
       if (verb) { nextName = cleanPhrase(verb[1]); }
@@ -178,12 +193,48 @@
     }
     return normalize({kind:'action',action:{type:'pointItem.save',payload:{item:item}}}, state, now, options);
   }
+  function normalizePointItemCreate(candidate, state, now, options) {
+    if (options && options.targetId) { return clarify('这里只新建常用行为，请从管理列表修改已有行为。'); }
+    var item, fields, check, checked, missing = [], tokens;
+    if (candidate.kind === 'form' && candidate.form === 'pointItem' && plain(candidate.fields)) { item = candidate.fields; }
+    else if (candidate.kind === 'action' && plain(candidate.action) && candidate.action.type === 'pointItem.save' && plain(candidate.action.payload) && plain(candidate.action.payload.item)) { item = candidate.action.payload.item; }
+    else { return clarify('这里只填写一个新的常用行为，不会直接加分或修改已有行为。'); }
+    if (Object.prototype.hasOwnProperty.call(item, 'id')) { return clarify('这里只新建常用行为，请从管理列表修改已有行为。'); }
+    fields = copyFields(item, ['name','points','reason','enabled']);
+    if (typeof fields.name === 'string') { fields.name = trim(fields.name); }
+    if (typeof fields.reason === 'string') { fields.reason = trim(fields.reason); }
+    if (fields.reason === null) { fields.reason = ''; }
+    if (fields.name === undefined || fields.name === null || fields.name === '') { delete fields.name; }
+    if (fields.points === undefined || fields.points === null || fields.points === '') { delete fields.points; }
+    if (fields.reason === undefined) { delete fields.reason; }
+    if (fields.enabled === undefined) { delete fields.enabled; }
+    // Check every supplied field with the real domain rules. Temporary required
+    // values exist only for validation; missing values never enter the form.
+    check = copyFields(fields, ['name','points','reason','enabled']);
+    if (check.name === undefined) { check.name = '待填写行为'; }
+    if (check.points === undefined) { check.points = 1; }
+    checked = normalize({kind:'action',action:{type:'pointItem.save',payload:{item:check}}}, state, now, {context:'pointItems'});
+    if (checked.kind !== 'action') { return checked; }
+    if (fields.points !== undefined && options && typeof options.sourceText === 'string') {
+      tokens = creationPointTokens(options.sourceText);
+      if (tokens.length !== 1 || tokens[0].value !== fields.points) { delete fields.points; }
+    }
+    if (fields.name === undefined) { missing.push('name'); }
+    if (fields.points === undefined) { missing.push('points'); }
+    if (missing.length) {
+      return base({kind:'form',form:'pointItem',fields:fields,missing:missing,
+        question:missing.length === 2 ? '请补充行为名称和每次的分值。' : (missing[0] === 'name' ? '这个常用行为叫什么名字？' : '这个常用行为以后每次加多少分？')});
+    }
+    return base({kind:'action',action:{type:'pointItem.save',payload:{item:fields}},title:'新增常用加分项',
+      summary:fields.name + ' · 每次 ' + fields.points + ' 分' + (fields.enabled === undefined ? '' : ' · ' + (fields.enabled ? '启用' : '停用，保留历史'))});
+  }
   function normalize(candidate, state, now, options) {
     now = now === undefined ? new Date() : new Date(now);
     var scope = scopeOf(options);
     if (!scope) { return clarify('请从当前加分或常用项管理入口重新开始。'); }
     if (!plain(candidate)) { return clarify('没有理解清楚，请换个说法。'); }
     if (candidate.kind === 'clarify') { return clarify(brief(trim(candidate.question) || '还需要哪一项信息？', 160)); }
+    if (scope === 'pointItemCreate') { return normalizePointItemCreate(candidate, state, now, options); }
     if (candidate.kind === 'answer' || candidate.kind === 'query') { return query(candidate.query || {type:'balance'}, state, now); }
     if (candidate.kind !== 'action' || !plain(candidate.action) || !plain(candidate.action.payload)) { return clarify('可以说“明天七点半提醒带水杯”，或“主动整理书包，加五分”。'); }
     var type = candidate.action.type, p = candidate.action.payload, payload, flat, row, title, summary;
@@ -246,6 +297,11 @@
     var s = trim(input), now = suppliedNow === undefined ? new Date() : new Date(suppliedNow), scope = scopeOf(options);
     if (!scope) { return clarify('请从当前加分或常用项管理入口重新开始。'); }
     if (!s || s.length > 1200 || /密码|验证码|验证题|核验题|解锁|忽略.*验证|绕过/.test(s)) { return generalInterpret(input, state, now); }
+    if (scope === 'pointItemCreate') {
+      if (options && options.targetId) { return clarify('这里只新建常用行为，请从管理列表修改已有行为。'); }
+      if (/改名|更名|停用|禁用|删除|把.+(?:改成|改为|调整)/.test(s)) { return clarify('这里只新建常用行为，请从管理列表修改已有行为。'); }
+      return templateDraft(s, state, now, {context:scope,sourceText:s});
+    }
     if (scope === 'pointItems') { return templateDraft(s, state, now, options); }
     if (scope === 'points') {
       if (/常用|模板|停用|启用|改名|改为每次|改成每次/.test(s)) { return clarify('这看起来是在管理常用项，请使用常用加分项里的 AI 入口。'); }

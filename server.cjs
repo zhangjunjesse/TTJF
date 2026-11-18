@@ -400,8 +400,8 @@ function createServer(options = {}) {
     }
     const context = payload.context === undefined ? 'general' : payload.context;
     const targetId = payload.targetId === undefined ? '' : payload.targetId;
-    if (!['general', 'points', 'pointItems'].includes(context) || typeof targetId !== 'string' ||
-        (targetId !== '' && !ACTION_ID.test(targetId))) {
+    if (!['general', 'points', 'pointItems', 'pointItemCreate'].includes(context) || typeof targetId !== 'string' ||
+        (targetId !== '' && !ACTION_ID.test(targetId)) || (context === 'pointItemCreate' && targetId !== '')) {
       return reject(response, 400, 'VALIDATION_ERROR', '助手情境或目标标识无效');
     }
     assistantInFlight += 1;
@@ -458,7 +458,7 @@ function createServer(options = {}) {
         const status = assistant.status();
         if (!status || !['local', 'connected'].includes(status.mode) || typeof status.label !== 'string') { throw new Error('invalid status'); }
         const sampledNow = new Date(now());
-        return respond(response, 200, { revision: current.revision, parent: publicParent(), assistant: { mode: status.mode, label: status.label }, now: sampledNow.toISOString(), familyDay: FamilyModel.dateKey(sampledNow) });
+        return respond(response, 200, { revision: current.revision, parent: publicParent(), assistant: { mode: status.mode, label: status.label, ...(status.formOnly === true ? {formOnly:true} : {}) }, now: sampledNow.toISOString(), familyDay: FamilyModel.dateKey(sampledNow) });
       } catch (_) { return reject(response, 503, 'ASSISTANT_UNAVAILABLE', '助手暂不可用'); }
     }
     const handlers = { '/api/action': actionRequest, '/api/parent/challenge': challengeRequest,

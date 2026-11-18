@@ -140,6 +140,7 @@ test('every non-public action fails without a real grant and cannot change the f
   const commands = [credit('deny-credit'), { id: 'deny-redeem', type: 'reward.redeem', rewardId: 'reward-pencil' },
     { id: 'deny-approve', type: 'redemption.approve', requestId: 'request-any', expectedPoints: 12 },
     { id: 'deny-item', type: 'pointItem.save', item: { name: '测试', points: 3 } },
+    { id: 'deny-item-delete', type: 'pointItem.delete', itemId: 'point-reading' },
     { id: 'deny-reward', type: 'reward.save', reward: { name: '测试', points: 3 } },
     { id: 'deny-task', type: 'task.save', task: { title: '测试', date: '2026-11-14' } },
     { id: 'deny-delete', type: 'task.delete', taskId: 'task-reading' },
@@ -197,6 +198,42 @@ test('verified actions increment revision durably and are visible to another rea
   assert.match(disk.receipts['award-1'].digest, /^[a-f0-9]{64}$/);
   assert.deepEqual((await state(f.server)).body, response.body);
   assert.equal(fs.readdirSync(path.dirname(f.dataFile)).filter(name => name.endsWith('.tmp')).length, 0);
+});
+
+test('verified point template deletion keeps history and requires its exact grant through replay and restart', async t => {
+  const f = await fixture(t);
+  const before = (await state(f.server)).body;
+  const action = { id: 'delete-template', type: 'pointItem.delete', itemId: 'point-reading' };
+  const grant = await authorize(f.server, action);
+  const changed = await post(f.server, '/api/action', { revision: 1, action: { ...action, itemId: 'point-focus' }, grant });
+  assert.equal(changed.status, 403);
+  assert.equal(changed.body.code, 'GRANT_INVALID');
+  const stale = await post(f.server, '/api/action', { revision: 2, action, grant });
+  assert.equal(stale.status, 409);
+  assert.deepEqual(stale.body, before);
+  const removed = await post(f.server, '/api/action', { revision: 1, action, grant });
+  assert.equal(removed.status, 200);
+  assert.equal(removed.body.revision, 2);
+  assert.deepEqual(removed.body.state.pointItems, before.state.pointItems.filter(item => item.id !== action.itemId));
+  assert.deepEqual(removed.body.state.points, before.state.points);
+  assert.deepEqual(removed.body.state.redemptions, before.state.redemptions);
+  assert.deepEqual(Model.totals(removed.body.state), Model.totals(before.state));
+  assert.deepEqual((await post(f.server, '/api/action', { revision: 1, action })).body, removed.body);
+  assert.equal((await post(f.server, '/api/action', { revision: 2, action: { ...action, itemId: 'point-focus' } })).body.code, 'ACTION_ID_REUSED');
+  const missing = await challenge(f.server, { ...action, id: 'delete-template-again' }, 2);
+  assert.equal(missing.status, 400);
+  assert.equal(missing.body.code, 'VALIDATION_ERROR');
+  const saved = JSON.parse(fs.readFileSync(f.dataFile, 'utf8'));
+  assert.deepEqual(saved.state, removed.body.state);
+  assert.equal(saved.state.appliedActions.filter(id => id === action.id).length, 1);
+  await close(f.server);
+  const restarted = createServer(f.config);
+  t.after(() => close(restarted));
+  await listen(restarted);
+  assert.deepEqual((await state(restarted)).body, removed.body);
+  const replay = await post(restarted, '/api/action', { revision: 1, action });
+  assert.equal(replay.status, 200);
+  assert.deepEqual(replay.body, removed.body);
 });
 
 test('lost-response retries accept only the identical complete action, independent of key order or stale revision', async t => {
@@ -842,14 +879,14 @@ test('assistant context and target are validated and forwarded without the saved
   const f = await fixture(t, { assistantService: service });
   await submit(f.server, { id: 'assistant-profile', type: 'profile.update', childName: '小满', childAvatar: PNG_AVATAR });
   const before = fs.readFileSync(f.dataFile, 'utf8');
-  const cases = [{}, { context: 'points' }, { context: 'pointItems', targetId: 'point-reading' }, { context: 'general', targetId: '' }];
+  const cases = [{}, { context: 'points' }, { context: 'pointItems', targetId: 'point-reading' }, { context: 'pointItemCreate', targetId: '' }, { context: 'general', targetId: '' }];
   for (const options of cases) {
     const result = await post(f.server, '/api/assistant', Object.assign({ text: '  整理这句话  ', childAvatar: PNG_AVATAR }, options));
     assert.equal(result.status, 200);
   }
   assert.deepEqual(received.map(row => row.options), [
     { context: 'general', targetId: '' }, { context: 'points', targetId: '' },
-    { context: 'pointItems', targetId: 'point-reading' }, { context: 'general', targetId: '' }
+    { context: 'pointItems', targetId: 'point-reading' }, { context: 'pointItemCreate', targetId: '' }, { context: 'general', targetId: '' }
   ]);
   for (const entry of received) {
     assert.equal(entry.text, '整理这句话');
@@ -864,12 +901,24 @@ test('assistant context and target are validated and forwarded without the saved
   }
   assert.ok(!JSON.stringify(received).includes('data:image/'));
   for (const options of [{ context: 'unknown' }, { context: null }, { context: ['points'] },
-    { context: 'pointItems', targetId: '../photo' }, { targetId: 12 }, { targetId: 'x'.repeat(201) }]) {
+    { context: 'pointItems', targetId: '../photo' }, { context: 'pointItemCreate', targetId: 'point-reading' }, { targetId: 12 }, { targetId: 'x'.repeat(201) }]) {
     assert.equal((await post(f.server, '/api/assistant', Object.assign({ text: '整理' }, options))).status, 400);
   }
   assert.equal(received.length, cases.length);
   assert.equal(fs.readFileSync(f.dataFile, 'utf8'), before);
   assert.equal((await state(f.server)).body.state.childAvatar, PNG_AVATAR);
+});
+
+test('assistant metadata exposes only a true form-only flag while preserving the existing status shape', async t => {
+  let flag;
+  const f = await fixture(t, {assistantService:{status:() => ({mode:'connected',label:'测试适配器',formOnly:flag,privateField:'PRIVATE_STATUS'}),
+    interpret:async () => ({kind:'clarify',question:'请补充'})}});
+  for (flag of [undefined, false, 'true', 1, true]) {
+    const result = await request(f.server, 'GET', '/api/meta');
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.assistant, {mode:'connected',label:'测试适配器',...(flag === true ? {formOnly:true} : {})});
+    assert.doesNotMatch(JSON.stringify(result.body), /PRIVATE_STATUS|privateField/);
+  }
 });
 
 const petBuy = (id, itemId = 'snack', quantity = 1) => ({ id, type: 'pet.buy', itemId, quantity, expectedPoints: quantity * 3 });

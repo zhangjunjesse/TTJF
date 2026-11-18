@@ -340,7 +340,9 @@
     }
     var signature = JSON.stringify(action), tx;
     if (retryTx && retryTx.signature === signature) tx = retryTx;
-    else { action.id = uid(); tx = { action: action, signature: signature, form: ui.form, revision: revision, message: message, grant: null, previousGrowth: M.growth(state) }; }
+    else { action.id = uid(); tx = { action: action, signature: signature, revision: revision, message: message, grant: null, previousGrowth: M.growth(state) }; }
+    // A retry can be initiated from a newly reopened editor.
+    tx.form = ui.form;
     if (!tx.uncertain) { tx.revision = revision; tx.previousGrowth = M.growth(state); tx.previousPetStatus = playStatus(); }
     try { if (action.type !== 'parent.configure' && (local || (action.type !== 'pet.care' && action.type.indexOf('farm.') !== 0))) M.apply(state, tx.action, appClock(), calendarZone()); } catch (e) { showError(errorText(e)); return; }
     retryTx = tx; invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; stopRecognition();
@@ -757,15 +759,26 @@
   function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row' + (action === 'parent-config' ? ' parent-entry' : ''), id); }
   function preferencesBody() {
     var speech = !!(window.SpeechRecognition || window.webkitSpeechRecognition), wake = navigator.wakeLock && navigator.wakeLock.request;
-    return (saas ? '<div class="menu-group">' + menuRow('saas-account', '账号与家庭', esc(SaaS.identity().family.name), 'settings') + menuRow('saas-logout', '退出登录', '', 'lock') + '</div>' : '') + '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + '<div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'archive') + '</div>' + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
+    return (saas ? '<div class="menu-group">' + menuRow('saas-account', '账号与家庭', esc(SaaS.identity().family.name), 'settings') + menuRow('saas-logout', '退出登录', '', 'lock') + '</div>' : '') + '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.formOnly ? '新建常用行为已接入 AI' : assistantLabel('general')]], 'capability-values') + '<div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'archive') + '</div>' + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
   }
   function listManagement(kind) {
     var isReward = kind === 'reward-list', rows = isReward ? state.rewards : state.pointItems;
     return '<div class="manage-list">' + rows.map(function (r) { return button(isReward ? 'reward-edit' : 'point-item-edit', '<span><b>' + esc(r.name) + '</b><small>' + r.points + ' 分 · ' + (isReward ? category(r.category) + ' · ' : '') + (r.enabled ? '启用中' : '已停用') + '</small></span>' + icon('chevron'), 'manage-row', r.id); }).join('') + '</div>';
   }
+  function assistantLabel(context) {
+    if (meta.assistant.formOnly && context !== 'pointItemCreate') return '指令演示';
+    return meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示';
+  }
+  function rememberAssistantResult(result, context) {
+    if (meta.assistant.formOnly && context !== 'pointItemCreate') return;
+    meta.assistant.mode = result.mode || 'local';
+    meta.assistant.label = result.label || '指令演示';
+  }
   function contextAI(f, context) {
     if (!f.aiOpen) return '';
-    return '<section class="context-ai" data-context="' + context + '"><div class="context-ai-heading"><strong>' + icon('spark') + '指令填写</strong><span>' + esc(meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示') + '</span></div><div class="context-ai-input"><label class="field"><span>指令</span><textarea name="aiText" rows="1" maxlength="1000">' + esc(f.data.aiText || '') + '</textarea></label><div class="context-ai-actions">' + button('listen-context', icon('mic'), 'icon-button', '', recognition ? '停止听写' : '听写') + '<button type="button" data-action="ai-fill" data-id="' + context + '" class="btn outline ai-fill-button" aria-busy="' + !!f.aiBusy + '"' + (f.aiBusy ? ' disabled' : '') + '>' + (f.aiBusy ? '整理中' : '填写') + '</button></div></div><p id="context-ai-status" class="context-ai-status" role="status">' + esc(f.aiStatus || '') + '</p><p id="voice-status" class="context-voice-status" aria-live="polite"></p></section>';
+    var creating = context === 'pointItemCreate';
+    var placeholder = creating ? ' placeholder="例如：以后自己读书满二十分钟，奖励五分"' : '';
+    return '<section class="context-ai" data-context="' + context + '"><div class="context-ai-heading"><strong>' + icon('spark') + (creating ? '一句话填写' : '指令填写') + '</strong><span>' + esc(assistantLabel(context)) + '</span></div><div class="context-ai-input"><label class="field"><span>' + (creating ? '想鼓励什么行为？' : '指令') + '</span><textarea name="aiText" rows="1" maxlength="1000"' + placeholder + '>' + esc(f.data.aiText || '') + '</textarea></label><div class="context-ai-actions">' + button('listen-context', icon('mic'), 'icon-button', '', recognition ? '停止听写' : '听写') + '<button type="button" data-action="ai-fill" data-id="' + context + '" class="btn outline ai-fill-button" aria-busy="' + !!f.aiBusy + '"' + (f.aiBusy ? ' disabled' : '') + '>' + (f.aiBusy ? '整理中' : creating ? '帮我填好' : '填写') + '</button></div></div><p id="context-ai-status" class="context-ai-status" role="status">' + esc(f.aiStatus || '') + '</p><p id="voice-status" class="context-voice-status" aria-live="polite"></p></section>';
   }
   function invalidateAssistant(f) { if (!f) return; if (f.aiBusy) f.aiStatus = '已暂停'; f.aiRequest = null; f.voiceRequest = null; f.aiBusy = false; if (f.kind === 'voice') ui.assistantBusy = false; }
   function assistantMessage(result) {
@@ -801,12 +814,28 @@
     f.aiStatus = message; if (ui.form !== f || ui.auth) return;
     var status = document.getElementById('context-ai-status'), fill = document.querySelector('[data-action="ai-fill"]');
     if (status) status.textContent = message;
-    if (fill) { fill.disabled = !!f.aiBusy; fill.setAttribute('aria-busy', String(!!f.aiBusy)); fill.textContent = f.aiBusy ? '整理中' : '填写'; }
+    if (fill) { fill.disabled = !!f.aiBusy; fill.setAttribute('aria-busy', String(!!f.aiBusy)); fill.textContent = f.aiBusy ? '整理中' : fill.getAttribute('data-id') === 'pointItemCreate' ? '帮我填好' : '填写'; }
+  }
+  function fillNewPointItem(f, patch, missing) {
+    if (!patch || patch.id) { updateAIStatus(f, '目标不匹配'); return; }
+    var changed = ['name', 'points', 'reason', 'enabled'].filter(function (key) { return patch[key] !== undefined; });
+    changed.forEach(function (key) { f.data[key] = patch[key]; });
+    if (patch.points !== undefined) f.data.templatePointsChosen = true;
+    // The initial five is a manual-entry default. An incomplete instruction
+    // should ask for a score unless the parent has already supplied one.
+    if (missing && missing.indexOf('points') >= 0 && !f.data.templatePointsChosen && Number(f.data.points) === 5) f.data.points = '';
+    f.aiStatus = !String(f.data.name || '').trim() ? '这个行为叫什么？' : !f.data.points ? '每次奖励多少分？' : '草稿已填写，请核对后保存。';
+    render(false);
+    changed.forEach(function (key) {
+      var input = document.querySelector('#editor-form [name="' + key + '"]');
+      if (input) input.classList.add('ai-field-filled');
+    });
   }
   function contextualInterpret(context) {
     var f = ui.form; if (!f || f.aiBusy || ui.auth || pending) return;
     if (context === 'points' && f.kind !== 'points') return;
     if (context === 'pointItems' && f.kind !== 'pointItem' && f.kind !== 'point-list') return;
+    if (context === 'pointItemCreate' && (f.kind !== 'pointItem' || f.data.id)) return;
     rememberDraft(); stopRecognition();
     var text = (f.data.aiText || '').trim(); if (!text) { updateAIStatus(f, '指令 · 必填'); return; }
     var token = ++assistantSequence, editVersion = f.editVersion || 0, options = { context: context, targetId: f.kind === 'pointItem' ? f.data.id || '' : '' };
@@ -818,9 +847,13 @@
       if ((f.editVersion || 0) !== editVersion || (f.data.aiText || '').trim() !== text) { updateAIStatus(f, '已保留手动输入'); return; }
       if (status !== 200 || !result) { updateAIStatus(f, errorText(result || {})); return; }
       if (result.result) result = result.result;
-      meta.assistant = { mode: result.mode || 'local', label: result.label || '指令演示' };
+      rememberAssistantResult(result, context);
+      if (context === 'pointItemCreate' && result.kind === 'form' && result.form === 'pointItem') {
+        fillNewPointItem(f, result.fields, result.missing); return;
+      }
       if (result.kind !== 'action' || !result.action) { updateAIStatus(f, assistantMessage(result)); return; }
       var a = result.action, p = a.payload || {}, data, previous;
+      if (context === 'pointItemCreate' && a.type === 'pointItem.save') { fillNewPointItem(f, p.item); return; }
       if (context === 'points' && a.type === 'points.add') {
         if (p.itemId !== undefined) f.data.itemId = p.itemId || ''; if (f.data.itemId) f.data.saveAsTemplate = false; ['name', 'points', 'reason'].forEach(function (key) { if (p[key] !== undefined) f.data[key] = p[key]; });
         f.aiStatus = '草稿已填写'; render(false); return;
@@ -972,7 +1005,8 @@
       body = field('礼品名称', 'name', d.name || '', 'required maxlength="120"') + field('所需积分', 'points', d.points || '', 'required min="1" step="1" inputmode="numeric"', 'number') + '<div class="field-pair">' + select('兑换日期', 'category', d.category || 'daily', [['daily', '每天'], ['weekend', '周末'], ['outing', '月底']]) + select('状态', 'enabled', d.enabled === false || d.enabled === 'false' ? 'false' : 'true', [['true', '启用'], ['false', '停用']]) + '</div>';
     } else if (f.kind === 'pointItem') {
       title = d.id ? '编辑常用行为' : '新建常用行为'; submit = '保存常用行为';
-      body = '<p class="template-help">设置以后可选的行为和默认分值，本次不增加积分。</p>' + contextAI(f, 'pointItems') + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + field('默认分值', 'points', d.points || 5, 'required min="1" step="1" inputmode="numeric"', 'number') + area('预设原因', 'reason', d.reason || '', 'maxlength="2000"') + select('状态', 'enabled', d.enabled === false || d.enabled === 'false' ? 'false' : 'true', [['true', '启用'], ['false', '停用']]);
+      body = '<p class="template-help">设置以后可选的行为和默认分值，本次不增加积分。</p>' + contextAI(f, d.id ? 'pointItems' : 'pointItemCreate') + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + field('默认分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + area('预设原因', 'reason', d.reason || '', 'maxlength="2000"') + select('状态', 'enabled', d.enabled === false || d.enabled === 'false' ? 'false' : 'true', [['true', '启用'], ['false', '停用']]);
+      if (d.id) body += button('point-item-delete', icon('trash') + '删除常用行为', 'btn danger', d.id);
     } else if (f.kind === 'familySettings') {
       title = '家庭设置'; submit = '保存设置';
       body = field('孩子名字', 'childName', d.childName || state.childName, 'required maxlength="40"') + field('月底兑换天数', 'monthEndDays', d.monthEndDays || state.settings.monthEndDays, 'required min="1" max="31" step="1" inputmode="numeric"', 'number');
@@ -987,7 +1021,7 @@
         body = (!initial ? facts([['当前方式', meta.parent.method === 'math' ? '算术题' : 'PIN']]) : '') + select('验证方式', 'method', method, [['pin', '6位 PIN'], ['math', '算术题']]) + field(initial ? '设置PIN' : '新PIN', 'pin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ') + field(initial ? '确认PIN' : '确认新PIN', 'confirmPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ');
       }
     } else if (f.kind === 'voice') {
-      title = '指令'; sub = meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示'; submit = ui.assistantBusy ? '整理中' : '发送';
+      title = '指令'; sub = assistantLabel('general'); submit = ui.assistantBusy ? '整理中' : '发送';
       body = '<div class="voice-box">' + button('listen', icon('mic') + (recognition ? '停止听写' : '听写'), 'btn voice-start') + '<p id="voice-status">' + (recognition ? '听写中' : '') + '</p></div>' + area('指令内容', 'speech', d.speech || '', 'required maxlength="1000"') + (d.answer ? '<div class="assistant-answer" role="status">' + esc(d.answer) + '</div>' : '');
     }
     var isEditor = ['points', 'petBuy', 'request', 'approve', 'task', 'taskAction', 'reward', 'pointItem', 'point-list', 'profile', 'petConfig', 'familySettings', 'parentConfig', 'voice'].indexOf(f.kind) >= 0;
@@ -1007,6 +1041,7 @@
     else if (action.type === 'pet.buy') { var status = playStatus(); target = status && find(status.catalog, action.itemId); rows = [['道具', target ? target.name : action.itemId], ['单价', (target ? target.points : 3) + ' 分 / 件'], ['数量', action.quantity], ['本次扣分', '−' + action.expectedPoints], ['购买后余额', t.available - action.expectedPoints]]; }
     else if (action.type === 'reward.save') rows = [['礼品', action.reward.name], ['所需积分', action.reward.points], ['兑换日期', category(action.reward.category)], ['状态', action.reward.enabled ? '启用' : '停用']];
     else if (action.type === 'pointItem.save') { rows = [['常用加分项', action.item.name], ['默认分值', action.item.points], ['状态', action.item.enabled ? '启用' : '停用']]; if (action.item.reason) rows.push(['预设原因', action.item.reason]); }
+    else if (action.type === 'pointItem.delete') { target = find(state.pointItems, action.itemId); rows = [['要删除的行为', target ? target.name : '已更新']]; }
     else if (action.type === 'task.save') { rows = [['提醒', action.task.title], ['日期', action.task.date], ['时间', action.task.time || '全天']]; if (action.task.note) rows.push(['备注', action.task.note]); }
     else if (action.type === 'task.delete') { target = find(state.tasks, action.taskId); rows = [['取消提醒', target ? target.title : '已更新']]; }
     else if (action.type === 'profile.update') rows = [['孩子', action.childName], ['头像', action.childAvatar ? '照片' : '文字']];
@@ -1016,7 +1051,9 @@
   }
   function parentContent() {
     var a = ui.auth, confirming = a.phase === 'confirm', setup = a.phase === 'setup' || a.phase === 'setup-saving' || a.phase === 'setup-retry';
+    var deletingItem = a.tx.action.type === 'pointItem.delete';
     var prompt = confirming ? '请核对本次加分，确认后由家长验证。' : setup ? '请家长设置 6 位 PIN，保护每一次加分和兑换。' : a.method === 'math' ? '请家长完成算术验证后继续。' : '请家长输入 PIN，验证后完成本次操作。';
+    if (deletingItem) prompt = (setup ? '请先设置家长 PIN。' : '') + '删除后，这个行为会从常用列表中移除。过去的加分记录和积分都会保留。';
     var body = '<p id="parent-dialog-prompt" class="parent-dialog-prompt">' + prompt + '</p>', submit = '验证并完成';
     if (confirming) submit = '确认加' + a.tx.action.points + '分';
     else if (a.phase === 'setup') { body += field('设置PIN', 'setupPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password') + field('确认PIN', 'setupConfirm', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password'); submit = '设置并完成'; }
@@ -1028,9 +1065,16 @@
     else if (a.phase === 'retry') { body += '<p class="status-line">结果待确认</p>'; submit = '重试保存'; }
     else submit = '重新验证';
     body += '<div class="authorization-summary">' + actionSummary(a.tx.action) + '</div>';
-    var parentBusy = !!(a.busy || pending), dangerous = a.tx.action.type === 'task.delete';
-    if (dangerous) { if (a.phase === 'verify') submit = '验证并取消'; else if (a.phase === 'setup') submit = '设置并取消'; else if (a.phase === 'saving') submit = '取消中'; else if (a.phase === 'retry') submit = '重试取消'; }
-    return sheet(confirming ? '确认本次加分' : setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证', confirming ? '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
+    var parentBusy = !!(a.busy || pending), dangerous = deletingItem || a.tx.action.type === 'task.delete';
+    if (dangerous) {
+      var verb = deletingItem ? '删除' : '取消';
+      if (a.phase === 'verify') submit = '验证并' + verb;
+      else if (a.phase === 'setup') submit = '设置并' + verb;
+      else if (a.phase === 'saving') submit = verb + '中';
+      else if (a.phase === 'retry') submit = '重试' + verb;
+    }
+    var title = deletingItem ? '确认删除常用行为' : confirming ? '确认本次加分' : setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证';
+    return sheet(title, confirming ? '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
   }
   function sheet(title, sub, content, auth, actions) {
     var nested = auth || ui.stack.length > 0, dialogClass = auth ? ' global-dialog ' + (ui.auth.phase === 'confirm' ? 'points-confirm-dialog' : 'parent-dialog') : '';
@@ -1078,7 +1122,10 @@
     if (f.kind === 'taskAction') return { type: f.data.type, taskId: f.data.taskId, minutes: f.data.type === 'task.snooze' ? 10 : undefined };
     if (f.kind === 'task') return { type: 'task.save', task: { id: f.data.id, type: v.type, title: v.title.trim(), date: v.date, time: v.time, note: (v.note || '').trim(), remindDays: Number(v.remindDays || 0) } };
     if (f.kind === 'reward') return { type: 'reward.save', reward: { id: f.data.id, name: v.name.trim(), points: Number(v.points), category: v.category, enabled: v.enabled === 'true', icon: { daily: 'pencil', weekend: 'burger', outing: 'mountain' }[v.category] } };
-    if (f.kind === 'pointItem') return { type: 'pointItem.save', item: { id: f.data.id, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim(), enabled: v.enabled === 'true' } };
+    if (f.kind === 'pointItem') {
+      if (f.data.id && !find(state.pointItems, f.data.id)) throw new Error('常用项不存在');
+      return { type: 'pointItem.save', item: { id: f.data.id, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim(), enabled: v.enabled === 'true' } };
+    }
     if (f.kind === 'profile') return { type: 'profile.update', childName: (v.childName || '').trim(), childAvatar: f.data.childAvatar || '' };
     if (f.kind === 'petConfig') return { type: 'pet.configure', kind: f.data.kind, name: (v.petName || '').trim() };
     if (f.kind === 'familySettings') return { type: 'settings.update', childName: v.childName.trim(), settings: { monthEndDays: Number(v.monthEndDays), preferredReward: state.settings.preferredReward } };
@@ -1095,7 +1142,7 @@
       if (status !== 200 || !result) { render(false); showError(errorText(result || {})); return; }
       if ((f.data.speech || '').trim() !== text) { render(false); showError('指令已修改'); return; }
       if (result.result) result = result.result;
-      meta.assistant = { mode: result.mode || 'local', label: result.label || '指令演示' };
+      rememberAssistantResult(result, 'general');
       if (result.kind !== 'action' || !result.action) { f.data.answer = assistantMessage(result); render(false); return; }
       var a = result.action, p = a.payload || a, kind = '', data;
       if (a.type === 'task.save') { kind = 'task'; data = p.task || p; if (data.id) { var previousTask = find(state.tasks, data.id); if (previousTask) { var patchTask = clone(data); data = clone(previousTask); Object.keys(patchTask).forEach(function (key) { data[key] = patchTask[key]; }); } } }
@@ -1200,6 +1247,7 @@
     else if (action === 'reward-edit') { item = find(state.rewards, id); if (item) openForm('reward', item); }
     else if (action === 'point-item-new') openForm('pointItem', { points: 5, enabled: true }, true);
     else if (action === 'point-item-edit') { item = find(state.pointItems, id); if (item) openForm('pointItem', item); }
+    else if (action === 'point-item-delete' && ui.form && ui.form.kind === 'pointItem' && ui.form.data.id === id) beginAction({ type: 'pointItem.delete', itemId: id }, '常用行为已删除');
     else if (action === 'day') { ui.day = Number(id); render(false); }
     else if (action === 'reminder-mode') { ui.reminderMode = id; render(false); }
     else if (action === 'task-new') openForm('task', { type: ui.reminderMode === 'events' ? 'event' : 'task', date: day(ui.day), time: '', note: '' }, true);
@@ -1228,7 +1276,13 @@
       var error = document.getElementById(form.id === 'parent-form' ? 'parent-error' : 'form-error'); if (error) error.hidden = true;
     }
     if (input.id === 'behavior-search' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.query === input.value) return; ui.form.data.query = input.value; ui.form.data.page = 0; updatePicker(); return; }
-    if (form && form.id === 'editor-form' && ui.form) { if (input.name !== 'aiText' && input.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1; rememberDraft(); if (ui.form.kind === 'points') refreshTemplatePreview(); if (ui.form.kind === 'petBuy') refreshPetPurchase(); }
+    if (form && form.id === 'editor-form' && ui.form) {
+      if (input.name !== 'aiText' && input.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1;
+      if (ui.form.kind === 'pointItem' && !ui.form.data.id && input.name === 'points') ui.form.data.templatePointsChosen = true;
+      rememberDraft();
+      if (ui.form.kind === 'points') refreshTemplatePreview();
+      if (ui.form.kind === 'petBuy') refreshPetPurchase();
+    }
   }
   document.addEventListener('input', draftInput);
   document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { if (saas) receiveAvatar(event.target); else loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); } });

@@ -202,6 +202,38 @@ test('point-item changes leave historical names and points intact; disabled item
   assert.throws(() => action(state, 'points.remove', { pointId: 'seed-p1' }), /不支持/);
 });
 
+test('point template deletion removes only the catalog entry and preserves historical points and growth', () => {
+  const original = freeze(seed());
+  const command = { id: 'delete-used-template', type: 'pointItem.delete', itemId: 'point-reading' };
+  const next = Model.apply(original, command, NOW);
+  assert.deepEqual(next.pointItems, original.pointItems.filter(item => item.id !== command.itemId));
+  assert.deepEqual(next.points, original.points);
+  assert.deepEqual(next.redemptions, original.redemptions);
+  assert.deepEqual(Model.totals(next), Model.totals(original));
+  assert.deepEqual(Model.growth(next), Model.growth(original));
+  assert.equal(Model.frequentPointItems(next, NOW).some(item => item.id === command.itemId), false);
+  assert.deepEqual(Model.normalize(next), next, 'historical item IDs remain valid after deletion');
+  assert.equal(Model.apply(next, command, NOW), next, 'exact retries do not delete a second entry');
+  assert.throws(() => action(next, 'points.add', { itemId: command.itemId, name: '自主阅读', points: 5 }), /加分项不存在/);
+  assert.throws(() => action(next, 'pointItem.delete', { itemId: command.itemId }), /加分项不存在/);
+  assert.equal(original.pointItems.length, 4);
+});
+
+test('point template deletion accepts disabled and last entries but requires one existing target', () => {
+  let state = action(seed(), 'pointItem.save', { item: { id: 'point-reading', enabled: false } });
+  const before = JSON.stringify(state);
+  for (const itemId of [undefined, null, '', false, 0, {}, '../point-reading', 'missing-template']) {
+    assert.throws(() => action(state, 'pointItem.delete', { itemId }), /标识|不存在/);
+    assert.equal(JSON.stringify(state), before);
+  }
+  assert.throws(() => action(state, 'pointItem.delete', { itemId: 'point-reading', points: 100 }), /不接受客户端字段/);
+  assert.equal(JSON.stringify(state), before);
+  for (const item of state.pointItems.slice()) { state = action(state, 'pointItem.delete', { itemId: item.id }); }
+  assert.deepEqual(state.pointItems, []);
+  assert.deepEqual(Model.frequentPointItems(state, NOW), []);
+  assert.deepEqual(Model.totals(state), Model.totals(seed()));
+});
+
 test('availability combines weekend and month-end categories while daily is always open', () => {
   const state = rich();
   const check = (day, reward) => Model.availability(state, reward, new Date(2026, 10, day, 12)).allowed;

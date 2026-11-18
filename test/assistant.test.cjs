@@ -315,3 +315,194 @@ test('provider draft cannot cross from template management into a real award', a
   assert.equal(result.kind, 'clarify');
   assert.match(result.question, /不会直接给孩子加分/);
 });
+
+test('new-template context treats a description as a fresh draft even when its name already exists', () => {
+  const state = seed(), before = JSON.stringify(state), options = {context:'pointItemCreate'};
+  for (const [sentence, name] of [
+    ['自主阅读，5分', '自主阅读'],
+    ['以后自己读书满二十分钟，奖励五分', '以后自己读书满二十分钟'],
+    ['新增常用行为：每天阅读20分钟，奖励5积分', '每天阅读20分钟']
+  ]) {
+    const result = A.interpret(sentence, state, now, options);
+    assert.equal(result.kind, 'action', JSON.stringify(result));
+    assert.deepEqual(result.action, {type:'pointItem.save',payload:{item:{name,points:5}}});
+  }
+  const reading = A.interpret('每天阅读20分钟', state, now, options);
+  assert.equal(reading.kind, 'form');
+  assert.equal(reading.form, 'pointItem');
+  assert.deepEqual(reading.fields, {name:'每天阅读20分钟'});
+  assert.deepEqual(reading.missing, ['points']);
+  assert.match(reading.question, /多少分/);
+  const amount = A.interpret('5分', state, now, options);
+  assert.equal(amount.kind, 'form');
+  assert.deepEqual(amount.fields, {points:5});
+  assert.deepEqual(amount.missing, ['name']);
+  assert.equal(JSON.stringify(state), before, 'creating drafts never changes existing templates or balances');
+});
+
+test('new-template normalization checks partial fields and never borrows an existing id or missing value', () => {
+  const state = seed(), before = JSON.stringify(state), options = {context:'pointItemCreate',sourceText:'每天阅读20分钟'};
+  const partial = A.normalize({kind:'form',form:'pointItem',fields:{name:'  每天阅读20分钟  ',reason:' 手动约定的原因 ',grant:'fake'},missing:[],question:'已保存'}, state, now, options);
+  assert.equal(partial.kind, 'form');
+  assert.deepEqual(partial.fields, {name:'每天阅读20分钟',reason:'手动约定的原因'});
+  assert.deepEqual(partial.missing, ['points']);
+  assert.doesNotMatch(partial.question, /已保存/);
+  const patches = [{id:state.pointItems[0].id}, {id:''}, {name:{}}, {name:'x'.repeat(121)},
+    {points:0}, {points:-1}, {points:1.5}, {points:'5'}, {points:Number.MAX_SAFE_INTEGER + 1}, {reason:{}}, {reason:'x'.repeat(2001)}, {enabled:'true'}];
+  for (const patch of patches) {
+    const result = A.normalize({kind:'form',form:'pointItem',fields:{name:'阅读',...patch}}, state, now, options);
+    assert.equal(result.kind, 'clarify', JSON.stringify(patch));
+  }
+  for (const candidate of [
+    {kind:'query',query:{type:'balance'}},
+    {kind:'action',action:{type:'points.add',payload:{name:'阅读',points:5}}},
+    {kind:'form',form:'reward',fields:{name:'阅读',points:5}}
+  ]) { assert.equal(A.normalize(candidate, state, now, options).kind, 'clarify'); }
+  assert.equal(A.normalize({kind:'form',form:'pointItem',fields:{name:'阅读'}}, state, now, {...options,targetId:state.pointItems[0].id}).kind, 'clarify');
+  const explicit = A.normalize({kind:'form',form:'pointItem',fields:{name:'阅读',points:5,reason:'约定的原因',enabled:false}}, state, now, {context:'pointItemCreate',sourceText:'阅读每次5分，原因：约定的原因，暂不启用'});
+  assert.equal(explicit.kind, 'action');
+  assert.deepEqual(explicit.action.payload.item, {name:'阅读',points:5,reason:'约定的原因',enabled:false});
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('configured new-template task sends only the instruction and fixed form context', async () => {
+  const state = seed();
+  state.childName = 'PRIVATE_CHILD_MARKER';
+  state.pointItems[0].reason = 'PRIVATE_PRESET_MARKER';
+  state.familyId = 'PRIVATE_FAMILY_MARKER';
+  state.parent = {hash:'PRIVATE_AUTH_MARKER'};
+  const before = JSON.stringify(state), text = '以后自己读书满二十分钟，奖励五分';
+  const service = createAssistantService({apiKey:'test-key',fetch:provider(
+    {kind:'form',form:'pointItem',fields:{name:'自己读书满20分钟',points:5}},
+    (url, options) => {
+      const request = JSON.parse(options.body);
+      assert.equal(request.messages.length, 2);
+      assert.match(request.messages[0].content, /固定任务/);
+      assert.match(request.messages[0].content, /20分钟/);
+      assert.deepEqual(JSON.parse(request.messages[1].content), {context:{inputMode:'pointItemCreate'},instruction:text});
+      assert.doesNotMatch(options.body, /PRIVATE_|childName|familyId|pointItems|seed-p1|seed-r1/);
+    }
+  )});
+  const result = await service.interpret(text, state, now, {context:'pointItemCreate'});
+  assert.equal(result.mode, 'connected');
+  assert.equal(result.kind, 'action');
+  assert.deepEqual(result.action, {type:'pointItem.save',payload:{item:{name:'自己读书满20分钟',points:5}}});
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('configured new-template output fills known fields but cannot invent a score from a duration', async () => {
+  const state = seed(), before = JSON.stringify(state);
+  for (const [text, fields, expected] of [
+    ['每天阅读20分钟', {name:'每天阅读20分钟'}, {name:'每天阅读20分钟'}],
+    ['每天阅读20分钟', {name:'每天阅读20分钟',points:20}, {name:'每天阅读20分钟'}],
+    ['每天阅读20分钟', {name:'每天阅读20分钟',points:5}, {name:'每天阅读20分钟'}],
+    ['每天阅读20分钟奖励5分', {name:'每天阅读20分钟',points:20}, {name:'每天阅读20分钟'}],
+    ['每天阅读奖励5分或8分', {name:'每天阅读',points:5}, {name:'每天阅读'}],
+    ['每天阅读奖励3.5分', {name:'每天阅读',points:5}, {name:'每天阅读'}],
+    ['每天阅读奖励3.5积分', {name:'每天阅读',points:5}, {name:'每天阅读'}],
+    ['每天阅读，分值为3.5', {name:'每天阅读',points:3}, {name:'每天阅读'}],
+    ['每天阅读奖励-5分', {name:'每天阅读',points:5}, {name:'每天阅读'}]
+  ]) {
+    const service = createAssistantService({apiKey:'test-key',fetch:provider({kind:'form',form:'pointItem',fields})});
+    const result = await service.interpret(text, state, now, {context:'pointItemCreate'});
+    assert.equal(result.kind, 'form', JSON.stringify(result));
+    assert.deepEqual(result.fields, expected);
+    assert.deepEqual(result.missing, ['points']);
+    assert.equal(result.mode, 'connected');
+  }
+  for (const text of ['每天阅读20分钟，奖励5积分', '每天阅读20分钟，分值为五', '每天阅读20分钟，每次5分', '每次朗读1.5分钟，奖励5分']) {
+    const service = createAssistantService({apiKey:'test-key',fetch:provider({kind:'form',form:'pointItem',fields:{name:'每天阅读20分钟',points:5}})});
+    assert.equal((await service.interpret(text, state, now, {context:'pointItemCreate'})).kind, 'action', text);
+  }
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('new-template provider cannot update existing templates or cross into ledger actions', async () => {
+  const state = seed(), before = JSON.stringify(state);
+  for (const candidate of [
+    {kind:'action',action:{type:'pointItem.save',payload:{item:{id:state.pointItems[0].id,points:5}}}},
+    {kind:'form',form:'pointItem',fields:{id:state.pointItems[0].id,name:'阅读',points:5}},
+    {kind:'action',action:{type:'points.add',payload:{name:'阅读',points:5}}}
+  ]) {
+    const service = createAssistantService({apiKey:'test-key',fetch:provider(candidate)});
+    assert.equal((await service.interpret('阅读每次5分', state, now, {context:'pointItemCreate'})).kind, 'clarify');
+  }
+  let calls = 0;
+  const service = createAssistantService({apiKey:'test-key',fetch:async () => { calls++; throw new Error('unexpected provider call'); }});
+  assert.equal((await service.interpret('阅读每次5分', state, now, {context:'pointItemCreate',targetId:state.pointItems[0].id})).kind, 'clarify');
+  assert.equal(calls, 0);
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('only DeepSeek new-template requests disable provider thinking', async () => {
+  const state = seed();
+  for (const [baseUrl, context, disabled] of [
+    ['https://api.deepseek.com', 'pointItemCreate', true],
+    ['https://api.deepseek.com/v1', 'pointItemCreate', true],
+    ['https://api.deepseek.com', 'general', false],
+    ['https://api.deepseek.com', 'points', false],
+    ['https://api.deepseek.com', 'pointItems', false],
+    ['https://other.example.test/v1', 'pointItemCreate', false],
+    ['https://api.deepseek.com.example.test/v1', 'pointItemCreate', false]
+  ]) {
+    let calls = 0;
+    const candidate = context === 'pointItemCreate' ? {kind:'form',form:'pointItem',fields:{name:'阅读',points:5}} : {kind:'clarify',question:'请补充内容'};
+    const service = createAssistantService({apiKey:'test-key',baseUrl,fetch:provider(candidate, (url, options) => {
+      calls++;
+      const request = JSON.parse(options.body);
+      assert.deepEqual(request.thinking, disabled ? {type:'disabled'} : undefined, baseUrl + ' ' + context);
+      assert.equal(request.max_tokens, 650);
+    })});
+    await service.interpret('阅读每次5分', state, now, {context});
+    assert.equal(calls, 1);
+  }
+});
+
+test('form-only configuration sends new-template inputs to the provider while other contexts stay local', async () => {
+  const state = seed(), before = JSON.stringify(state);
+  let calls = 0;
+  const service = createAssistantService({apiKey:'test-key',formOnly:true,fetch:provider(
+    {kind:'form',form:'pointItem',fields:{name:'自己读书满20分钟',points:5}},
+    () => { calls++; }
+  )});
+  assert.deepEqual(service.status(), {mode:'connected',label:'AI 已配置',formOnly:true});
+  for (const [context, text, kind] of [
+    ['general', '我还有多少积分', 'answer'],
+    ['points', '行为：阅读，加5分', 'action'],
+    ['pointItems', '新增常用项：整理书包，3分', 'action']
+  ]) {
+    const result = await service.interpret(text, state, now, {context});
+    assert.equal(result.kind, kind, JSON.stringify(result));
+    assert.equal(result.mode, 'local');
+    assert.equal(result.label, '指令演示');
+  }
+  assert.equal(calls, 0, 'general, points and management do not cross the provider boundary');
+  const created = await service.interpret('以后自己读书满二十分钟，奖励五分', state, now, {context:'pointItemCreate'});
+  assert.equal(created.kind, 'action');
+  assert.equal(created.mode, 'connected');
+  assert.deepEqual(created.action.payload.item, {name:'自己读书满20分钟',points:5});
+  assert.equal(calls, 1);
+  assert.equal(JSON.stringify(state), before);
+  assert.deepEqual(createAssistantService({apiKey:'',formOnly:true}).status(), {mode:'local',label:'指令演示'});
+  assert.deepEqual(createAssistantService({apiKey:'test-key',formOnly:false}).status(), {mode:'connected',label:'AI 已配置'});
+});
+
+test('AI_FORM_ONLY enables the same scope and an explicit false preserves general-provider deployments', async () => {
+  const previous = process.env.AI_FORM_ONLY;
+  try {
+    process.env.AI_FORM_ONLY = '1';
+    let calls = 0;
+    const fetch = provider({kind:'query',query:{type:'balance'}}, () => { calls++; });
+    const scoped = createAssistantService({apiKey:'test-key',fetch});
+    assert.equal(scoped.status().formOnly, true);
+    assert.equal((await scoped.interpret('我还有多少积分', seed(), now)).mode, 'local');
+    assert.equal(calls, 0);
+    const general = createAssistantService({apiKey:'test-key',formOnly:false,fetch});
+    assert.deepEqual(general.status(), {mode:'connected',label:'AI 已配置'});
+    assert.equal((await general.interpret('我还有多少积分', seed(), now)).mode, 'connected');
+    assert.equal(calls, 1);
+  } finally {
+    if (previous === undefined) { delete process.env.AI_FORM_ONLY; }
+    else { process.env.AI_FORM_ONLY = previous; }
+  }
+});

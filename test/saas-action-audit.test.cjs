@@ -14,7 +14,7 @@ const COMMAND = 'node --test --test-reporter=spec test/saas-action-audit.test.cj
 const EXPECTED_TYPES = [
   'farm.animalCare', 'farm.exchange', 'farm.harvest', 'farm.place', 'farm.plant', 'farm.start',
   'parent.configure', 'parent.setup', 'pet.buy', 'pet.care', 'pet.configure', 'pet.scene',
-  'pointItem.save', 'points.add', 'profile.update', 'redemption.approve', 'redemption.cancel',
+  'pointItem.delete', 'pointItem.save', 'points.add', 'profile.update', 'redemption.approve', 'redemption.cancel',
   'redemption.request', 'reward.redeem', 'reward.save', 'settings.update', 'task.ack',
   'task.delete', 'task.restore', 'task.save', 'task.snooze', 'task.toggle'
 ];
@@ -38,7 +38,7 @@ const initialSourceHashes = sourceHashes();
 const H = require('../saas/testing.cjs');
 const M = require('../model.js');
 
-test('independent SaaS audit: all 27 action types and 98 variants persist, authorize and replay correctly', async t => {
+test('independent SaaS audit: all 28 action types and 99 variants persist, authorize and replay correctly', async t => {
   const report = {
     schemaVersion: 1,
     startedAt: new Date().toISOString(),
@@ -46,7 +46,7 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
     invocation: { executable: process.execPath, execArgv: process.execArgv, argv: process.argv },
     nodeVersion: process.version,
     scope: 'Real local HTTP and SQLite; disposable database file; synthetic users only.',
-    provenance: 'Persisted from the independent 27-type / 98-variant inline audit, then rerun as this test.',
+    provenance: 'Expanded the independent 27-type / 98-variant audit to include point template deletion.',
     result: 'running',
     sourceHashes: initialSourceHashes,
     variants: [],
@@ -55,7 +55,7 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
       'Uses the fixture clock; 104 hours of crop growth are simulated, not a physical waiting period.',
       'No requests to existing ports 4178 or 4180; no real family JSON or developer mailbox is read.',
       'No external email delivery, cloud AI request, production deployment, billing, or device claim.',
-      'New account/family lifecycle APIs are outside this 27-type business-action matrix.'
+      'New account/family lifecycle APIs are outside this 28-type business-action matrix.'
     ]
   };
   try {
@@ -208,11 +208,18 @@ test('independent SaaS audit: all 27 action types and 98 variants persist, autho
     for (const itemId of ['picnic', 'rabbitstatue', 'mailbox', 'trellis', 'windmill', 'house2', 'house3']) {
       await commit('Exchange crops for ' + itemId, { type: 'farm.exchange', itemId });
     }
+    const ledgerBeforeDeletion = state.points, totalsBeforeDeletion = M.totals(state);
+    await commit('Delete used point template', { type: 'pointItem.delete', itemId: state.points[0].itemId }, true,
+      s => {
+        assert.equal(s.pointItems.some(item => item.id === ledgerBeforeDeletion[0].itemId), false);
+        assert.deepEqual(s.points, ledgerBeforeDeletion);
+        assert.deepEqual(M.totals(s), totalsBeforeDeletion);
+      });
     assert.equal(state.farm.houseLevel, 3);
     assert.deepEqual(M.totals(state), { earned: 600, spent: 16, available: 584 });
     assert.deepEqual([...seen].sort(), EXPECTED_TYPES);
-    assert.equal(counter, 98);
-    assert.equal(protectedSeen.size, 12);
+    assert.equal(counter, 99);
+    assert.equal(protectedSeen.size, 13);
     const receiptCount = (await f.database.query('SELECT count(*) AS n FROM saas_action_receipts WHERE family_id=$1',
       [owner.familyId])).rows[0].n;
     assert.equal(receiptCount, counter);

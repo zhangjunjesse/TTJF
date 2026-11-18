@@ -78,7 +78,7 @@ function createBusiness({ store, auth, now, assistant }) {
       const status = assistant.status();
       if (!status || !['local', 'connected'].includes(status.mode) || typeof status.label !== 'string') { return error(503, 'ASSISTANT_UNAVAILABLE', '助手暂不可用'); }
       const sampled = at();
-      return result({ revision: family.revision, parent: publicParent(family), assistant: { mode: status.mode, label: status.label }, now: sampled.toISOString(), familyDay: M.dateKey(sampled, 'Asia/Shanghai') });
+      return result({ revision: family.revision, parent: publicParent(family), assistant: { mode: status.mode, label: status.label, ...(status.formOnly === true ? {formOnly:true} : {}) }, now: sampled.toISOString(), familyDay: M.dateKey(sampled, 'Asia/Shanghai') });
     });
   }
   async function challenge(ctx, body) {
@@ -201,7 +201,8 @@ function createBusiness({ store, auth, now, assistant }) {
       await rate(client, who, family, 'assistant', 12);
       if (typeof body.text !== 'string' || !body.text.trim() || body.text.length > 1200) { return error(400, 'VALIDATION_ERROR', '请输入不超过1200字的指令'); }
       const context = body.context === undefined ? 'general' : body.context, targetId = body.targetId === undefined ? '' : body.targetId;
-      if (!['general', 'points', 'pointItems'].includes(context) || typeof targetId !== 'string' || (targetId && !S.ID.test(targetId))) { return error(400, 'VALIDATION_ERROR', '助手情境或目标标识无效'); }
+      if (!['general', 'points', 'pointItems', 'pointItemCreate'].includes(context) || typeof targetId !== 'string' || (targetId && !S.ID.test(targetId)) ||
+          (context === 'pointItemCreate' && targetId !== '')) { return error(400, 'VALIDATION_ERROR', '助手情境或目标标识无效'); }
       await client.query('DELETE FROM saas_assistant_leases WHERE family_id=$1 AND expires_at<=$2', [family.id, at()]);
       const active = (await client.query('SELECT expires_at FROM saas_assistant_leases WHERE family_id=$1 ORDER BY expires_at', [family.id])).rows;
       if (active.length >= 2) { rateError(active[0].expires_at); }

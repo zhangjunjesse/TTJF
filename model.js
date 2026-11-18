@@ -973,6 +973,12 @@
       };
       if (previous) { next.pointItems[next.pointItems.indexOf(previous)] = record; }
       else { next.pointItems.push(record); }
+    } else if (action.type === 'pointItem.delete') {
+      actionFields(action, ['itemId']);
+      previous = find(next.pointItems, id(action.itemId, '加分项标识'));
+      if (!previous) { fail('加分项不存在'); }
+      // Ledger rows retain their original item ID, name, points and reason.
+      next.pointItems.splice(next.pointItems.indexOf(previous), 1);
     } else if (action.type === 'reward.save') {
       input = object(action.reward, '奖励');
       key = optionalId(input.id, '奖励标识') || id('reward-' + action.id, '奖励标识');

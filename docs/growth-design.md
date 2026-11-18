@@ -27,7 +27,7 @@ v0.3 让高频加分与低频兑换占据相近面积，家长需要离开表单
 - 常用项列表与编辑表单均有自然语言辅助，支持新增、改名、改分、修改预设原因、停用和启用。只生成模板草稿，不给孩子加分，也不修改过去的记录。
 - 人工输入、取消、换场景或进入核验后，迟到的整理结果不能覆盖当前内容。服务失败时保留输入，仍可手动保存。
 - 模板草稿取消后保留原描述；真实保存成功返回列表后，清空已完成的描述并显示列表已更新。没有后台请求时不残留“正在整理”。
-- 当前使用明确标注的本地“指令演示”。OpenAI 兼容服务适配已实现，但未配置真实外部模型凭证；不能把本地规则或模拟上游通过说成外部模型已联通。
+- 未配置模型时使用本地「指令演示」。服务端可用 `AI_FORM_ONLY=1` 单独启用「新建常用行为」的模型填表。该任务只发送固定提示词和本次输入的文字。
 
 ### 成长体系
 
@@ -86,7 +86,7 @@ v0.3 让高频加分与低频兑换占据相近面积，家长需要离开表单
 - `pet.configure {kind,name}` 是公开外观操作，不修改账本或孩子资料。
 - `FamilyModel.growth(state)` 返回 `{xp,stage,level,stageName,previousAt,nextAt,remaining,progress,stars}`。stage 为 1–5，progress 为 0–1，500 后 level/stars 继续增加；种类不改变门槛。
 - `FamilyPet.render({kind,stage,name,reaction,reducedMotion})` 返回 SVG，外部文字转义；[角色绘制](../pet.js)与[角色样式](../pet.css)单独拥有美术实现，主界面不另画一套。
-- `POST /api/assistant` 接收可选 `{context:'general'|'points'|'pointItems',targetId?}`。服务调用 `interpret(text,state,now,{context,targetId})`；旧三参调用默认 general。
+- `POST /api/assistant` 支持 `general`、`points`、`pointItems` 与 `pointItemCreate` 情境，省略时使用 `general`。新建表单使用 `pointItemCreate` 和空的 `targetId`。缺少名称或分值时返回 `kind:'form'`、已识别的字段和待补项；完整草稿返回 `pointItem.save` 候选。
 - 管理候选为 `pointItem.save {payload:{item:{id?,name?,points?,reason?,enabled?}}}`。points 情境只允许一次加分草稿，pointItems 情境只允许模板草稿；目标不明确时澄清，不默认批量写入。省略字段保留原模板值。
 - AI 草稿不能生成核验授权；领域校验和原逐笔授权流程保持有效。完整动作及版本绑定授权，冲突后重新核对和验证。
 

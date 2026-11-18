@@ -43,6 +43,48 @@ test('real SQLite all business endpoints, replays and conflicts are tenant-autho
   assert.equal(privateReceipt.algorithm, 'scrypt'); assert.equal(privateReceipt.n, 32768);
 });
 
+test('real SQLite new-template assistant context requires no target and leaves durable family state unchanged', async t => {
+  const calls = [];
+  const f = await H.fixture(t, {assistantService:{status:() => ({mode:'connected',label:'测试适配器'}),
+    interpret:async (text, state, at, options) => {
+      calls.push({text,options:{...options},at:at.toISOString()});
+      state.pointItems.length = 0;
+      state.childName = 'draft-only mutation';
+      return {kind:'form',form:'pointItem',fields:{name:'每天阅读20分钟'},missing:['points'],question:'这个常用行为以后每次加多少分？'};
+    }}});
+  const owner = await H.family(f, await H.register(f, 'new-template@example.test'));
+  const before = await H.request(f.server, 'GET', '/api/state', undefined, owner);
+  const result = await H.request(f.server, 'POST', '/api/assistant', {text:'  每天阅读20分钟  ',context:'pointItemCreate',targetId:''}, owner);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.kind, 'form');
+  assert.deepEqual(result.body.fields, {name:'每天阅读20分钟'});
+  assert.deepEqual(result.body.missing, ['points']);
+  assert.deepEqual(calls, [{text:'每天阅读20分钟',options:{context:'pointItemCreate',targetId:''},at:new Date(f.clock.value).toISOString()}]);
+  for (const options of [{context:'pointItemCreate',targetId:'existing-template'}, {context:'pointItemCreate',targetId:null},
+    {context:'pointItemCreate',targetId:12}, {context:'unknown'}]) {
+    const invalid = await H.request(f.server, 'POST', '/api/assistant', {text:'阅读5分',...options}, owner);
+    assert.equal(invalid.status, 400);
+    assert.equal(invalid.body.code, 'VALIDATION_ERROR');
+  }
+  assert.equal(calls.length, 1, 'invalid create targets never reach the assistant');
+  const after = await H.request(f.server, 'GET', '/api/state', undefined, owner);
+  assert.deepEqual(after.body, before.body);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_assistant_leases')).rows[0].n, 0);
+});
+
+test('real SQLite assistant metadata exposes only the true form-only capability flag', async t => {
+  let flag;
+  const f = await H.fixture(t, {assistantService:{status:() => ({mode:'connected',label:'测试适配器',formOnly:flag,privateField:'PRIVATE_STATUS'}),
+    interpret:async () => ({kind:'clarify',question:'请补充'})}});
+  const owner = await H.family(f, await H.register(f, 'assistant-scope@example.test'));
+  for (flag of [undefined, false, 'true', 1, true]) {
+    const result = await H.request(f.server, 'GET', '/api/meta', undefined, owner);
+    assert.equal(result.status, 200);
+    assert.deepEqual(result.body.assistant, {mode:'connected',label:'测试适配器',...(flag === true ? {formOnly:true} : {})});
+    assert.doesNotMatch(JSON.stringify(result.body), /PRIVATE_STATUS|privateField/);
+  }
+});
+
 test('real SQLite optional credit reasons keep grants, idempotency and durable empty ledger text', async t => {
   const f = await H.fixture(t);
   const owner = await H.family(f, await H.register(f, 'optional-reason@example.test'));
@@ -85,6 +127,80 @@ test('real SQLite optional credit reasons keep grants, idempotency and durable e
   assert.equal(reloaded.status, 200);
   assert.equal(reloaded.body.revision, revision);
   assert.deepEqual(reloaded.body.state, stored.state);
+});
+
+test('real SQLite point template deletion preserves its ledger and enforces parent, family, grant and revision boundaries', async t => {
+  const f = await H.fixture(t);
+  const owner = await H.family(f, await H.register(f, 'delete-template-owner@example.test'));
+  const parent = await H.invite(f, owner, await H.register(f, 'delete-template-parent@example.test'));
+  const outsider = await H.family(f, await H.register(f, 'delete-template-other@example.test'));
+  await H.setup(f, owner, 'math');
+  const award = { id: 'template-delete-award', type: 'points.add', name: '整理书包', points: 7, reason: '独立整理', saveAsTemplate: true };
+  const awardGrant = await H.grant(f, owner, award);
+  const awarded = await H.request(f.server, 'POST', '/api/action', { revision: 2, action: award, grant: awardGrant }, owner);
+  assert.equal(awarded.status, 200);
+  const templateId = awarded.body.state.pointItems[0].id;
+  const another = { id: 'another-template', type: 'pointItem.save', item: { id: 'another-template', name: '阅读', points: 3 } };
+  const anotherGrant = await H.grant(f, owner, another, 3);
+  assert.equal((await H.request(f.server, 'POST', '/api/action', { revision: 3, action: another, grant: anotherGrant }, owner)).status, 200);
+  const before = (await H.request(f.server, 'GET', '/api/state', undefined, parent)).body;
+  const action = { id: 'delete-used-template', type: 'pointItem.delete', itemId: templateId };
+  const command = { revision: 4, action };
+  const denied = await H.request(f.server, 'POST', '/api/action', command, parent);
+  assert.equal(denied.status, 403);
+  assert.equal(denied.body.code, 'PARENT_REQUIRED');
+  const crossFamily = await H.request(f.server, 'POST', '/api/parent/challenge', command, { ...outsider, familyId: owner.familyId });
+  assert.equal(crossFamily.status, 403);
+  assert.equal(crossFamily.body.code, 'FAMILY_FORBIDDEN');
+  assert.equal(crossFamily.body.state, undefined);
+  const grant = await H.grant(f, parent, action, 4);
+  const independent = await f.openDatabase(), second = await f.start({ database: independent });
+  const wrongMember = await H.request(second, 'POST', '/api/action', { ...command, grant }, owner);
+  assert.equal(wrongMember.status, 403);
+  assert.equal(wrongMember.body.code, 'GRANT_INVALID');
+  const changed = await H.request(second, 'POST', '/api/action', { ...command, action: { ...action, itemId: 'another-template' }, grant }, parent);
+  assert.equal(changed.status, 403);
+  assert.equal(changed.body.code, 'GRANT_INVALID');
+  const stale = await H.request(second, 'POST', '/api/action', { ...command, revision: 3, grant }, parent);
+  assert.equal(stale.status, 409);
+  assert.deepEqual(stale.body, before);
+  const applied = await Promise.all([f.server, second].map(server => H.request(server, 'POST', '/api/action', { ...command, grant }, parent)));
+  for (const response of applied) {
+    assert.equal(response.status, 200);
+    assert.equal(response.body.revision, 5);
+    assert.deepEqual(response.body.state.pointItems, before.state.pointItems.filter(item => item.id !== templateId));
+    assert.deepEqual(response.body.state.points, before.state.points);
+    assert.deepEqual(response.body.state.redemptions, before.state.redemptions);
+    assert.deepEqual(M.totals(response.body.state), M.totals(before.state));
+  }
+  assert.deepEqual(applied[0].body, applied[1].body);
+  const replay = await H.request(second, 'POST', '/api/action', command, parent);
+  assert.equal(replay.status, 200);
+  assert.deepEqual(replay.body, applied[0].body);
+  const changedReplay = await H.request(second, 'POST', '/api/action', { ...command, action: { ...action, itemId: 'another-template' } }, parent);
+  assert.equal(changedReplay.status, 400);
+  assert.equal(changedReplay.body.code, 'ACTION_ID_REUSED');
+  const missing = await H.request(second, 'POST', '/api/parent/challenge', { revision: 5, action: { ...action, id: 'repeat-delete' } }, parent);
+  assert.equal(missing.status, 400);
+  assert.equal(missing.body.code, 'VALIDATION_ERROR');
+  const obsoleteAward = await H.request(second, 'POST', '/api/parent/challenge', {
+    revision: 5, action: { id: 'award-deleted-template', type: 'points.add', itemId: templateId, name: '整理书包', points: 7 }
+  }, parent);
+  assert.equal(obsoleteAward.status, 400);
+  assert.equal(obsoleteAward.body.code, 'VALIDATION_ERROR');
+  const stored = (await independent.query('SELECT state,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
+  assert.deepEqual(stored.state, applied[0].body.state);
+  assert.equal(Number(stored.revision), 5);
+  assert.equal((await independent.query('SELECT count(*) AS n FROM saas_action_receipts WHERE family_id=$1 AND action_id=$2', [owner.familyId, action.id])).rows[0].n, 1);
+  assert.equal((await independent.query('SELECT count(*) AS n FROM saas_parent_grants WHERE family_id=$1', [owner.familyId])).rows[0].n, 0);
+  const otherState = (await H.request(second, 'GET', '/api/state', undefined, outsider)).body;
+  assert.equal(otherState.revision, 1);
+  assert.deepEqual(otherState.state.pointItems, []);
+  assert.deepEqual(otherState.state.points, []);
+  await f.server.closeSaas();
+  const reloaded = await H.request(second, 'GET', '/api/state', undefined, parent);
+  assert.equal(reloaded.status, 200);
+  assert.deepEqual(reloaded.body, applied[0].body);
 });
 
 test('real SQLite challenges and grants bind family, user, session, full action and revision across request handlers', async t => {
