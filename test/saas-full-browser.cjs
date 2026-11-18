@@ -44,7 +44,7 @@ async function answer(value) {
 }
 async function authorize(label, trigger = save) {
   const before = await sql(), marker = env.calls.length;
-  await click(page, trigger); await page.waitForSelector('#parent-form [name="answer"]', { timeout: 10000 });
+  await click(page, trigger); await B.confirmPoints(page); await page.waitForSelector('#parent-form [name="answer"]', { timeout: 10000 });
   assert.deepEqual(await sql(), before, label + ': confirmation must precede persistence');
   let value = currentPin;
   if (await Q.visible(page, '.math-question')) {
@@ -278,16 +278,48 @@ async function run() {
     await Q.check('Avatar file decode, cancel, authorized rename/save, reload and removal are real browser operations', async () => {
       const image = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 48; c.height = 48; const g = c.getContext('2d'); g.fillStyle = '#356644'; g.fillRect(0, 0, 48, 48); return c.toDataURL('image/png').split(',')[1]; });
       const file = path.join(OUT, 'synthetic-avatar.png'); fs.writeFileSync(file, Buffer.from(image, 'base64'));
-      async function choose() { const pending = page.waitForFileChooser(); await click(page, a('avatar-choose')); await (await pending).accept([file]); await page.waitForFunction(() => document.querySelector('#avatar-status') && document.querySelector('#avatar-status').textContent === '头像已选定'); }
+      async function choose(selected = file) { const pending = page.waitForFileChooser(); await click(page, a('avatar-choose')); await (await pending).accept([selected]); await page.waitForFunction(() => document.querySelector('#avatar-status') && document.querySelector('#avatar-status').textContent === '头像已选定'); }
+      assert.equal(await page.$eval('.home-behavior-heading h2', el => el.textContent), '棒棒哒');
+      assert.equal(await page.$eval('.profile-edit-hint', el => el.textContent), '上传头像');
+      assert.match(await page.$eval(a('profile-edit'), el => el.getAttribute('aria-label')), /上传头像/);
       await click(page, a('profile-edit')); await choose(); await form({ childName: '合成新昵称' }); const before = await sql(); await Q.home(page); assert.deepEqual(await sql(), before);
-      await click(page, a('profile-edit')); await choose(); await form({ childName: '合成新昵称' }); await authorize('save profile and avatar');
+      assert.equal(await page.$('.child-avatar img'), null, 'cancel does not replace the home avatar');
+      await click(page, a('profile-edit')); await choose(); await form({ childName: '合成新昵称' });
+      assert.equal(await page.$eval('.profile-photo-preview img', el => el.complete && el.naturalWidth === 192 && el.naturalHeight === 192), true);
+      assert.match(await page.$eval(a('avatar-choose'), el => el.textContent), /更换头像/);
+      await Q.shot(page, 'avatar-upload-preview'); await authorize('save profile and avatar');
       assert.match((await state()).childAvatar, /^data:image\/jpeg;base64,/); assert.equal((await state()).childName, '合成新昵称');
       await reloadProof('profile photo survives reload'); await Q.shot(page, 'avatar-and-child-name');
+      const originalAvatar = (await state()).childAvatar;
+      for (const [width, height] of [[905, 892], [320, 568]]) {
+        await page.setViewport({ width, height });
+        await page.waitForFunction(() => { const image = document.querySelector('.child-avatar img'); return image && image.complete && image.naturalWidth > 0; });
+        assert.equal(await page.$eval('.child-avatar img', el => el.getAttribute('src')), originalAvatar, 'header displays the persisted upload');
+        assert.equal(await page.$eval('.profile-edit-hint', el => el.textContent), '更换头像');
+        assert.equal(await page.$eval('.home-header', header => {
+          const box = header.getBoundingClientRect();
+          return document.documentElement.scrollWidth <= innerWidth && ['.child-avatar', '.profile-edit-hint'].every(selector => {
+            const r = header.querySelector(selector).getBoundingClientRect();
+            return r.left >= box.left && r.top >= box.top && r.right <= box.right && r.bottom <= box.bottom;
+          });
+        }), true, 'avatar and upload hint remain visible on ' + width + 'px');
+        await Q.shot(page, 'uploaded-avatar-home-' + width);
+      }
+      await page.setViewport({ width: 905, height: 892 });
+      const replacement = path.join(OUT, 'synthetic-avatar-replacement.png');
+      const replacementImage = await page.evaluate(() => { const c = document.createElement('canvas'); c.width = 60; c.height = 90; const g = c.getContext('2d'); g.fillStyle = '#b56a34'; g.fillRect(0, 0, 60, 90); return c.toDataURL('image/png').split(',')[1]; });
+      fs.writeFileSync(replacement, Buffer.from(replacementImage, 'base64'));
+      await click(page, a('profile-edit')); await choose(replacement); await authorize('replace avatar');
+      assert.notEqual((await state()).childAvatar, originalAvatar); await Q.home(page);
+      assert.equal(await page.$eval('.child-avatar img', el => el.getAttribute('src')), (await state()).childAvatar);
       await click(page, a('profile-edit')); await click(page, a('avatar-remove')); await authorize('remove avatar'); assert.equal((await state()).childAvatar, '');
+      await Q.home(page); assert.equal(await page.$('.child-avatar img'), null);
+      assert.equal(await page.$eval('.profile-edit-hint', el => el.textContent), '上传头像');
     });
     await Q.check('Two partners, farm preview/place/remove, free care and daily animal record preserve ledger', async () => {
-      await credit(500); await Q.home(page); await publicClick('farm start', a('farm-start')); await publicClick('welcome harvest', a('farm-harvest'));
-      await click(page, a('farm-open')); await click(page, a('farm-tab', 'collection')); await click(page, a('pet-config'));
+      await credit(500); await Q.home(page); await click(page, a('farm-open')); await publicClick('farm start', a('farm-start'));
+      await click(page, a('farm-open')); await publicClick('welcome harvest', a('farm-harvest'));
+      await click(page, a('farm-tab', 'collection')); await click(page, a('pet-config'));
       await click(page, a('pet-kind', 'capybara')); await form({ petName: '合成水豚' }); await publicClick('switch partner capybara', save); assert.equal((await ui(page)).petKind, 'capybara');
       await Q.home(page); await Q.shot(page, 'capybara-family-home');
       await click(page, a('farm-open')); await click(page, a('farm-tab', 'collection')); await click(page, a('pet-config'));
@@ -297,7 +329,7 @@ async function run() {
       await publicClick('exchange flowerpot', a('farm-exchange', 'flowerpot')); await publicClick('place flowerpot', a('farm-place', 'flowerpot'));
       await publicClick('remove flowerpot', a('farm-remove', 'entry')); assert.equal((await state()).farm.placements.entry, null);
       await publicClick('replace flowerpot freely', a('farm-place', 'flowerpot')); assert.equal((await ui(page)).farmStatus.inventory.carrot, 0);
-      await Q.home(page); await click(page, a('farm-care')); const beforePlay = await sql(); await click(page, a('farm-pet-play', 'feed')); assert.deepEqual(await sql(), beforePlay);
+      await Q.home(page); await click(page, a('farm-open')); await click(page, a('farm-care')); const beforePlay = await sql(); await click(page, a('farm-pet-play', 'feed')); assert.deepEqual(await sql(), beforePlay);
       await click(page, a('farm-animal', 'rabbit')); await publicClick('daily rabbit care', a('farm-animal-care', 'rabbit'));
       assert.equal((await state()).farm.animalCare.length, 1); const daily = await sql(); await click(page, a('farm-animal-care', 'rabbit')); assert.deepEqual(await sql(), daily);
       assert.deepEqual(await totals(page), { earned: 500, spent: 0, available: 500 });
@@ -307,15 +339,16 @@ async function run() {
 
   await group('farm-catalog', async () => {
     await Q.check('Every crop is planted and harvested through UI; all catalog exchanges and house levels persist without spending points', async () => {
-      await credit(500); await Q.home(page); await publicClick('catalog farm start', a('farm-start')); await publicClick('catalog welcome harvest', a('farm-harvest'));
+      await credit(500); await Q.home(page); await click(page, a('farm-open')); await publicClick('catalog farm start', a('farm-start'));
+      await click(page, a('farm-open')); await publicClick('catalog welcome harvest', a('farm-harvest'));
       for (const [crop, rounds] of [['carrot', 5], ['strawberry', 4], ['sunflower', 3]]) {
         for (let round = 0; round < rounds; round++) {
-          await Q.home(page); await click(page, a('farm-seeds')); await click(page, a('farm-crop', crop));
+          await Q.home(page); await click(page, a('farm-open')); await click(page, a('farm-seeds')); await click(page, a('farm-crop', crop));
           await publicClick('plant ' + crop + ' round ' + round, a('farm-plant'));
           assert.equal((await state()).farm.plots.filter(plot => plot.cropId === crop).length, 6);
           const previous = (await state()).farm.inventory[crop]; await env.setClock(env.now() + 8 * 3600000 + 1);
           await page.reload({ waitUntil: 'load' }); await selectAfterReload();
-          await publicClick('harvest ' + crop + ' round ' + round, a('farm-harvest'));
+          await click(page, a('farm-open')); await publicClick('harvest ' + crop + ' round ' + round, a('farm-harvest'));
           assert.equal((await state()).farm.inventory[crop], previous + 18);
         }
       }
@@ -331,12 +364,12 @@ async function run() {
     });
     await Q.check('Both animals record one care per family day and expose third/seventh-day milestones', async () => {
       if ((await state()).farm === null) {
-        await credit(500); await Q.home(page); await publicClick('animal-care farm start', a('farm-start'));
+        await credit(500); await Q.home(page); await click(page, a('farm-open')); await publicClick('animal-care farm start', a('farm-start'));
       }
       for (let index = 0; index < 7; index++) {
         if (index) { await env.setClock(env.now() + DAY); await page.reload({ waitUntil: 'load' }); await selectAfterReload(); }
         for (const animal of ['chicken', 'rabbit']) {
-          await Q.home(page); await click(page, a('farm-care')); await click(page, a('farm-animal', animal)); await publicClick('care ' + animal + ' day ' + index, a('farm-animal-care', animal));
+          await Q.home(page); await click(page, a('farm-open')); await click(page, a('farm-care')); await click(page, a('farm-animal', animal)); await publicClick('care ' + animal + ' day ' + index, a('farm-animal-care', animal));
           const before = await sql(); await click(page, a('farm-animal-care', animal)); assert.deepEqual(await sql(), before, 'Same-day play is free and adds no duplicate record');
         }
       }
@@ -428,7 +461,7 @@ async function run() {
     });
     await Q.check('Parent answers and grants do not survive suspension or auto-submit after resume', async () => {
       await Q.home(page); await click(page, a('add-points')); await click(page, a('points-new')); await form({ name: '合成恢复加分', points: 6, reason: '恢复后仍重新验证' });
-      const before = await sql(); await click(page, save); await page.waitForSelector('#parent-form [name="answer"]'); await type(page, '#parent-form [name="answer"]', '246');
+      const before = await sql(); await click(page, save); await B.confirmPoints(page); await page.waitForSelector('#parent-form [name="answer"]'); await type(page, '#parent-form [name="answer"]', '246');
       await visibility(true); await visibility(false); await Q.ready(page, familyId);
       assert.equal((await ui(page)).auth, false); assert.equal(await page.$('#parent-form'), null); assert.deepEqual(await sql(), before);
       assert.equal(await page.$eval('[name="reason"]', node => node.value), '恢复后仍重新验证'); await authorize('resume demands a new challenge'); assert.equal((await totals(page)).earned, 6);

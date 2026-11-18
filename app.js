@@ -101,6 +101,7 @@
     if (ticket.permitted && scopeCurrent(ticket.scope) && ui.form === ticket.form && ticket.file) loadAvatar(ticket.file);
   }
   var paths = {
+    home: '<path d="m3 11 9-8 9 8M5 10v11h14V10M9 21v-8h6v8"/>',
     star: '<path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9z"/>',
     plus: '<path d="M12 5v14M5 12h14"/>', check: '<path d="m5 12 4 4L19 6"/>',
     clock: '<circle cx="12" cy="12" r="9"/><path d="M12 6v6l4 2"/>',
@@ -164,7 +165,11 @@
   function persist() { if (saas) return; if (!saveStore(KEY, state)) toast('本机存储不可用'); }
   function paintHomeFeedback() {
     var line = document.getElementById('home-feedback');
-    if (line) { line.textContent = ui.homeFeedback || currentPet().name; line.setAttribute('data-feedback', ui.homeFeedback ? 'true' : 'false'); line.title = line.textContent; }
+    if (line) {
+      var defaultText = line.getAttribute('data-default-text');
+      line.textContent = ui.homeFeedback || (defaultText == null ? currentPet().name : defaultText);
+      line.setAttribute('data-feedback', ui.homeFeedback ? 'true' : 'false'); line.title = line.textContent;
+    }
   }
   function clearToast() {
     clearTimeout(toastTimer); ui.homeFeedback = ''; paintHomeFeedback();
@@ -342,8 +347,8 @@
     if (tx.uncertain && tx.grant) { submitTransaction(tx); return; }
     if (isPublic(tx.action)) { submitTransaction(tx); return; }
     rememberSheetFocus();
-    ui.auth = { tx: tx, phase: meta.parent.configured === false ? 'setup' : 'loading', busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
-    render(false); if (ui.auth.phase !== 'setup') issueChallenge(ui.auth);
+    ui.auth = { tx: tx, phase: tx.action.type === 'points.add' ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
+    render(false); if (ui.auth.phase === 'loading') issueChallenge(ui.auth);
   }
   function issueChallenge(auth) {
     if (auth !== ui.auth) return;
@@ -419,6 +424,11 @@
   }
   function submitParent(form) {
     var auth = ui.auth; if (!auth || auth.busy || pending) return;
+    if (auth.phase === 'confirm') {
+      if (auth.tx.revision !== revision) { conflict(auth.tx, { revision: revision, state: state }); return; }
+      auth.phase = meta.parent.configured === false ? 'setup' : 'loading';
+      render(false); if (auth.phase === 'loading') issueChallenge(auth); return;
+    }
     if (auth.phase === 'setup-retry') { if (setupTx && setupTx.auth === auth) submitSetup(setupTx); return; }
     if (auth.phase === 'retry') { submitTransaction(auth.tx); return; }
     if (auth.phase === 'challenge-error') { issueChallenge(auth); return; }
@@ -553,7 +563,7 @@
     var f = ui.form; if (!f || f.kind !== 'points') return;
     var amount = document.querySelector('.entry-summary strong'); if (amount) amount.innerHTML = pointsAmount(f.data.points);
     var el = document.getElementById('template-save-preview'); if (el) el.innerHTML = templateSavePreview();
-    var submit = document.querySelector('.sheet-save'); if (submit) { var label = !f.data.itemId && f.data.saveAsTemplate ? '加分并新增常用' : '确认加分'; submit.textContent = pending ? '保存中' : '加分'; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); }
+    var submit = document.querySelector('.sheet-save'); if (submit) { var label = '核对加分'; submit.textContent = pending ? '保存中' : label; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); }
   }
   function field(label, name, value, extra, type) { return '<label class="field"><span>' + label + '</span><input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value) + '" ' + (extra || '') + '></label>'; }
   function area(label, name, value, extra) { return '<label class="field"><span>' + label + '</span><textarea name="' + name + '" rows="3" ' + (extra || '') + '>' + esc(value) + '</textarea></label>'; }
@@ -561,7 +571,12 @@
   function sectionHeading(title, actions) { return '<div class="section-heading"><h2>' + title + '</h2><div class="heading-actions">' + (actions || '') + '</div></div>'; }
   function empty(text) { return '<p class="empty-state">' + esc(text) + '</p>'; }
   function activeRequest() { return (state.requests || []).filter(function (r) { return r.status === 'pending'; })[0]; }
-  function homeWide() { return window.innerWidth >= 900 && window.innerWidth >= window.innerHeight; }
+  function homeViewportHeight() { return (window.visualViewport && window.visualViewport.height) || window.innerHeight; }
+  function homeWide() {
+    var width = window.innerWidth, height = homeViewportHeight();
+    return width >= 700 || (width >= 480 && width > height && height <= 620);
+  }
+  function homeItemLimit() { return window.innerWidth >= 700 && homeViewportHeight() > 450 ? 4 : 2; }
   function homeInboxKey() { return dueTasks().map(function (t) { return t.id + ':' + (t.snoozeUntil || ''); }).join('|') + '/' + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).map(function (r) { return r.id; }).join('|') + '/' + revision; }
   function homeInboxButton() {
     var due = dueTasks().length, requests = (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, count = due + requests;
@@ -577,7 +592,8 @@
     return (list.length ? '<h3 class="inbox-heading">到点提醒</h3>' + list.map(function (t) { return '<section class="inbox-task"><h3>' + esc(t.title) + '</h3><p>' + niceDate(t.date) + ' ' + esc(t.time || '当天事项') + '</p><div class="reminder-banner-actions">' + button('task-ack', '知道了', 'btn', t.id) + button('task-snooze', '10分钟后', 'btn', t.id) + button('task-toggle', '完成', 'btn reminder-primary', t.id) + '</div></section>'; }).join('') : '') + (requests.length ? '<h3 class="inbox-heading">礼品申请</h3>' + requests.map(requestStrip).join('') : '') + (!list.length && !requests.length ? empty('待处理 0') : '');
   }
   function header() {
-    if (ui.view === 'points') return '<header class="app-header home-header">' + button('profile-edit', '<span class="child-avatar">' + avatarImage(state.childAvatar, state.childName) + '</span><span class="child-profile-copy"><strong>' + esc(state.childName) + '</strong><small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span>', 'child-profile home-profile', '', '修改' + state.childName + '的昵称和头像') + '<div class="header-tools"><div id="home-inbox-slot">' + homeInboxButton() + '</div>' + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
+    var avatarAction = state.childAvatar ? '更换头像' : '上传头像';
+    if (ui.view === 'points') return '<header class="app-header home-header">' + button('profile-edit', '<span class="child-avatar">' + avatarImage(state.childAvatar, state.childName) + '<span class="avatar-camera-badge" aria-hidden="true">' + icon('camera') + '</span></span><span class="child-profile-copy"><strong>' + esc(state.childName) + '</strong><small class="profile-edit-hint">' + avatarAction + '</small><small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span>', 'child-profile home-profile', '', avatarAction + '，修改' + state.childName + '的昵称和头像') + '<div class="header-tools"><div id="home-inbox-slot">' + homeInboxButton() + '</div>' + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
     return '<header class="app-header"><div class="brand-mark" aria-hidden="true">' + icon('star') + '</div><div class="app-title"><h1>小小向前</h1><span class="date-label">' + niceDate(today()) + ' · 星期' + ['日', '一', '二', '三', '四', '五', '六'][M.calendarParts(appClock(), calendarZone()).weekday] + '<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span></div><div class="header-tools">' + (ui.display ? button('display', icon('close'), 'icon-button', '', '恢复自动锁定') : '') + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
   }
   function navigation() {
@@ -602,7 +618,13 @@
   }
   function careControlsKey(status) { return JSON.stringify([status ? [status.familyDay, status.freeRemaining, status.inventory, status.caredToday] : null, local || connected, pending, ui.careBusy, retryTx && retryTx.uncertain && retryTx.action.type === 'pet.care' ? [retryTx.action.care, retryTx.action.source] : null]); }
   function refreshPetControls() { if (!state) return; var controls = document.querySelector('.companion-interactions'), status = playStatus(), key = careControlsKey(status); if (controls && controls.getAttribute('data-controls-key') !== key) { var focused = controls.contains(document.activeElement) ? focusKey(document.activeElement) : null; controls.innerHTML = careButtons(status); controls.setAttribute('data-controls-key', key); if (focused) restorePlayFocus(focused); } }
-  function petDrawing(kind, stage, name, reaction, staticPreview, framing, sceneId) { return window.FamilyPet ? window.FamilyPet.render({ kind: kind, stage: stage, name: name, reaction: reaction || 'idle', framing: framing || 'scene', sceneId: sceneId || (staticPreview ? 'home' : (playStatus() || {}).sceneId || state.petScene || 'home'), reducedMotion: !!staticPreview || reducedMotion() }) : '<div class="companion-loading">伙伴加载中</div>'; }
+  function petDrawing(kind, stage, name, reaction, staticPreview, framing, sceneId) {
+    if (staticPreview && kind === 'plant' && Farm && Farm.dragonPortrait) {
+      var form = M.growthStages(kind)[stage - 1] || M.growthStages(kind)[0];
+      return Farm.dragonPortrait(form.stage, 'default', (name || '芽芽') + ' · ' + form.name);
+    }
+    return window.FamilyPet ? window.FamilyPet.render({ kind: kind, stage: stage, name: name, reaction: reaction || 'idle', framing: framing || 'scene', sceneId: sceneId || (staticPreview ? 'home' : (playStatus() || {}).sceneId || state.petScene || 'home'), reducedMotion: !!staticPreview || reducedMotion() }) : '<div class="companion-loading">伙伴加载中</div>';
+  }
   function avatarImage(value, name, extra) { return value ? '<img class="profile-avatar-image ' + (extra || '') + '" src="' + esc(value) + '" alt="' + esc(name || '孩子') + '的头像">' : '<span class="avatar-initial ' + (extra || '') + '" aria-hidden="true">' + esc(String(name || '小').slice(0, 1)) + '</span>'; }
   function companionPanel() {
     if (Farm && M.farmStatus) return Farm.home();
@@ -614,8 +636,8 @@
     return button('choose-point', '<span class="behavior-symbol behavior-symbol-' + (i % 4) + '">' + icon(['leaf', 'pencil', 'sun', 'heart'][i % 4]) + '</span><span class="behavior-copy"><b>' + esc(p.name) + '</b>' + (p.reason && extra !== 'picker-behavior' ? '<small>' + esc(p.reason) + '</small>' : '') + '</span><strong>+' + p.points + '</strong>', 'behavior-card ' + (extra || ''), p.id, p.name + '，加' + p.points + '分');
   }
   function pointsPage() {
-    var t = M.totals(state), wide = homeWide(), all = rankedItems(), items = all.slice(0, wide ? 4 : 2); ui.homeWide = wide;
-    return '<section class="growth-home interaction-home ' + (wide ? 'home-wide' : 'home-portrait') + '" data-home-layout="' + (wide ? 'landscape' : 'portrait') + '"><section class="credit-card" aria-label="积分操作">' + button('records', '<span class="credit-label">可用积分 ' + icon('list') + '</span><strong data-testid="available-points" class="' + (String(t.available).length > 5 ? 'long-balance' : '') + '">' + t.available + '</strong>', 'credit-score', '', '可用' + t.available + '积分，查看记录') + '<div class="credit-actions">' + button('add-points', icon('plus') + '<span>加分</span>', 'btn primary credit-add') + button('jump-rewards', icon('gift') + '<span>兑换</span>', 'btn credit-rewards', '', '礼品兑换') + '</div></section>' + companionPanel() + '<section class="frequent-behaviors home-behaviors"><div class="home-behavior-heading"><h2>常用行为</h2>' + button('all-behaviors', '全部行为 <small>' + all.length + '</small>' + icon('chevron'), 'text-button', '', '选择全部' + all.length + '个启用行为') + '</div><div class="home-behavior-buttons count-' + items.length + '">' + (items.length ? items.map(function (p, i) { return behaviorTile(p, i, 'home-behavior'); }).join('') : button('all-behaviors', icon('plus') + '<span>添加常用行为</span>', 'empty-behaviors')) + '</div></section></section>';
+    var t = M.totals(state), wide = homeWide(), all = rankedItems(), items = all.slice(0, homeItemLimit()); ui.homeWide = wide; ui.homeItemLimit = homeItemLimit();
+    return '<section class="growth-home interaction-home ' + (wide ? 'home-wide' : 'home-portrait') + '" data-home-layout="' + (wide ? 'landscape' : 'portrait') + '"><section class="credit-card" aria-label="积分操作">' + button('records', '<img class="credit-scene-art" data-credit-scene alt="" aria-hidden="true"><span class="credit-kicker credit-label">历史总积分</span><strong data-testid="earned-points" class="credit-value ' + (String(t.earned).length > 5 ? 'long-balance' : '') + '">' + t.earned + '</strong><span class="credit-redeemable"><span>可兑换积分</span><b data-testid="available-points" class="' + (String(t.available).length > 8 ? 'long-balance' : '') + '">' + t.available + '</b></span><span class="credit-history-hint">积分记录 ' + icon('list') + '</span>', 'credit-score', '', '历史总积分' + t.earned + '，可兑换积分' + t.available + '，查看记录') + '<div class="credit-actions">' + button('add-points', icon('star') + '<span>立即加分</span>', 'btn primary credit-add') + button('jump-rewards', icon('gift') + '<span>兑换</span>', 'btn credit-rewards', '', '礼品兑换') + '</div></section>' + companionPanel() + '<section class="frequent-behaviors home-behaviors"><div class="home-behavior-heading"><h2>棒棒哒</h2>' + button('all-behaviors', '全部行为 <small>' + all.length + '</small>' + icon('chevron'), 'text-button', '', '选择全部' + all.length + '个启用行为') + '</div><div class="home-behavior-buttons count-' + items.length + '">' + (items.length ? items.map(function (p, i) { return behaviorTile(p, i, 'home-behavior'); }).join('') : button('all-behaviors', icon('edit') + '<span>设置常用行为</span>', 'empty-behaviors')) + '</div></section></section>';
   }
   function pickerData() {
     var f = ui.form, query = (f.data.query || '').trim().toLowerCase(), all = rankedItems(), items = all.filter(function (p) { return !query || (p.name + ' ' + (p.reason || '')).toLowerCase().indexOf(query) >= 0; });
@@ -643,7 +665,7 @@
   }
   function behaviorPickerContent() {
     var data = pickerData(), searchOpen = !!(ui.form.data.searchOpen || data.query);
-    var actions = button('picker-search', icon('search'), 'icon-button' + (searchOpen ? ' active' : ''), '', searchOpen ? '收起搜索' : '搜索加分项').replace('<button ', '<button aria-expanded="' + searchOpen + '" ') + button('point-list', icon('edit'), 'icon-button', '', '管理常用加分') + button('points-new', icon('plus'), 'icon-button nav-add', '', '新增加分');
+    var actions = button('picker-search', icon('search'), 'icon-button' + (searchOpen ? ' active' : ''), '', searchOpen ? '收起搜索' : '搜索加分项').replace('<button ', '<button aria-expanded="' + searchOpen + '" ') + button('point-list', icon('edit'), 'icon-button', '', '管理常用行为') + button('points-new', icon('star'), 'icon-button nav-add', '', '立即加分');
     return sheet('加分', '', '<div class="behavior-picker-body"><div class="picker-tools"' + (searchOpen ? '' : ' hidden') + '><div class="picker-search"><input id="behavior-search" type="search" value="' + esc(ui.form.data.query || '') + '" placeholder="搜索" aria-label="搜索行为">' + button('picker-clear', icon('close'), 'icon-button', '', '清除搜索') + '</div></div><div id="behavior-picker-results" class="behavior-picker-results">' + pickerResults(data) + '</div></div><div id="behavior-picker-footer" class="sheet-footer picker-footer"' + (data.pages === 1 ? ' hidden' : '') + '>' + pickerFooter(data) + '</div>', false, actions).replace('class="sheet"', 'class="sheet behavior-picker-sheet"');
   }
   function updatePicker(commitPage) {
@@ -664,7 +686,7 @@
   }
   function rewardsBody() {
     var req = activeRequest(), t = M.totals(state), rewards = state.rewards.filter(function (r) { return r.enabled && (ui.filter === 'all' || ui.filter === r.category); });
-    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p></div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, appClock(), calendarZone()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
+    return '<div class="rewards-sheet-heading"><p>可用 <strong>' + t.available + '</strong> 分</p>' + button('rewards-history', icon('list') + '<span>兑换记录</span>', 'text-button rewards-history-entry', '', '查看兑换记录') + '</div>' + (req ? requestStrip(req) : '') + '<div class="filter-tabs">' + [['all', '全部'], ['daily', '日常'], ['weekend', '周末'], ['outing', '月底']].map(function (o) { return button('reward-filter', o[1], 'filter-tab ' + (ui.filter === o[0] ? 'active' : ''), o[0]); }).join('') + '</div><div class="rewards-grid">' + rewards.map(function (r) { var a = M.availability(state, r.id, appClock(), calendarZone()); return button('redeem', '<span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><span class="reward-info"><strong>' + esc(r.name) + '</strong><span class="reward-cost">' + r.points + '<small> 分</small></span><small class="reward-rule">' + esc(availabilityLabel(a)) + '</small></span>' + icon('chevron'), 'reward-card', r.id); }).join('') + '</div>' + (rewards.length ? '' : empty('礼品 0'));
   }
   function growthBody() {
     var pet = currentPet(), g = growthInfo(), stages = M.growthStages(pet.kind);
@@ -673,14 +695,14 @@
   function reactPet(reaction, message) {
     if (!scopeReady()) return;
     var scope = scopeToken();
-    var pet = currentPet(), g = growthInfo(), words = { pet: '摸摸 ♥', feed: '投喂完成！', wash: '清洁完成！', train: '训练完成！', celebrate: '成长啦', unlock: '新地点解锁！' };
+    var pet = currentPet(), g = growthInfo(), words = { pet: '嘿嘿，最喜欢你的摸摸啦！', feed: '啊呜！这口真好吃～', wash: '泡泡飞起来啦，我也香香啦！', train: '接住！再一起玩一会儿吧！', celebrate: '我们又一起进步啦！', unlock: '新地点解锁！' };
     clearTimeout(petTimer); ui.petReaction = reaction; ui.petMessage = message || words[reaction] || words.pet;
     if (Farm) Farm.react(reaction, 'pet');
     var art = document.getElementById('pet-art'), dialogue = document.getElementById('pet-dialogue');
     if (art) art.innerHTML = petDrawing(pet.kind, g.stage, pet.name, reaction, false, 'hero');
-    if (dialogue) dialogue.textContent = ui.petMessage;
-    if (reaction !== 'celebrate') play('complete'); if (!message) toast(ui.petMessage);
-    petTimer = setTimeout(function () { if (!scopeCurrent(scope)) return; ui.petReaction = 'idle'; ui.careBusy = false; var current = currentPet(), art = document.getElementById('pet-art'); if (art) art.innerHTML = petDrawing(current.kind, growthInfo().stage, current.name, 'idle', false, 'hero'); refreshPetControls(); if (ui.form && ui.form.kind === 'petHub' && !ui.auth) render(false); }, 2700);
+    if (dialogue) { dialogue.textContent = ui.petMessage; if (dialogue.parentNode.classList) dialogue.parentNode.classList.add('pet-speaking'); }
+    if (reaction !== 'celebrate') play('complete'); if (!message && !document.querySelector('.pet-home-card')) toast(ui.petMessage);
+    petTimer = setTimeout(function () { if (!scopeCurrent(scope)) return; ui.petReaction = 'idle'; ui.petMessage = ''; ui.careBusy = false; var current = currentPet(), art = document.getElementById('pet-art'), dialogue = document.getElementById('pet-dialogue'); if (dialogue) { dialogue.textContent = ''; if (dialogue.parentNode.classList) dialogue.parentNode.classList.remove('pet-speaking'); } if (art) art.innerHTML = petDrawing(current.kind, growthInfo().stage, current.name, 'idle', false, 'hero'); refreshPetControls(); if (ui.form && ui.form.kind === 'petHub' && !ui.auth) render(false); }, 2700);
   }
   function touchPet() {
     if (!scopeReady()) return;
@@ -730,9 +752,9 @@
   }
   function recordsBody() {
     var t = M.totals(state), rows = ui.history === 'points' ? state.points : ui.history === 'purchases' ? state.petPurchases || [] : state.redemptions;
-    return '<div class="ledger-summary"><span>累计获得<b>' + t.earned + '</b></span><span>已使用<b>' + t.spent + '</b></span><span>当前可用<b>' + t.available + '</b></span></div><div class="day-tabs history-tabs">' + button('history', '加分记录', 'day-tab ' + (ui.history === 'points' ? 'active' : ''), 'points') + button('history', '礼品兑换', 'day-tab ' + (ui.history === 'redemptions' ? 'active' : ''), 'redemptions') + button('history', '道具购买', 'day-tab ' + (ui.history === 'purchases' ? 'active' : ''), 'purchases') + '</div><div class="record-list">' + rows.slice().reverse().map(function (r) { return '<div class="record-row"><div><strong>' + esc(r.name) + '</strong><p>' + esc(ui.history === 'purchases' ? r.quantity + '件 × ' + r.unitPoints + '积分 / 件' : r.reason || r.note || category(r.category) + '礼品') + '</p><small>' + niceTime(r.at) + '</small></div><b class="record-number">' + (ui.history === 'points' ? '+' : '−') + r.points + '<small> 分</small></b></div>'; }).join('') + (rows.length ? '' : empty('记录 0')) + '</div>';
+    return '<div class="ledger-summary"><span>累计获得<b>' + t.earned + '</b></span><span>已使用<b>' + t.spent + '</b></span><span>当前可用<b>' + t.available + '</b></span></div><div class="day-tabs history-tabs">' + button('history', '加分记录', 'day-tab ' + (ui.history === 'points' ? 'active' : ''), 'points') + button('history', '礼品兑换', 'day-tab ' + (ui.history === 'redemptions' ? 'active' : ''), 'redemptions') + button('history', '道具购买', 'day-tab ' + (ui.history === 'purchases' ? 'active' : ''), 'purchases') + '</div><div class="record-list">' + rows.slice().reverse().map(function (r) { return '<div class="record-row"><div><strong>' + esc(r.name) + '</strong><p>' + esc(ui.history === 'purchases' ? r.quantity + '件 × ' + r.unitPoints + '积分 / 件' : ui.history === 'points' ? r.reason || '未填写原因' : r.note || category(r.category) + '礼品') + '</p><small>' + niceTime(r.at) + '</small></div><b class="record-number">' + (ui.history === 'points' ? '+' : '−') + r.points + '<small> 分</small></b></div>'; }).join('') + (rows.length ? '' : empty('记录 0')) + '</div>';
   }
-  function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row', id); }
+  function menuRow(action, title, note, symbol, id) { return button(action, '<span class="menu-symbol">' + icon(symbol) + '</span><span><b>' + title + '</b><small>' + note + '</small></span>' + icon('chevron'), 'menu-row' + (action === 'parent-config' ? ' parent-entry' : ''), id); }
   function preferencesBody() {
     var speech = !!(window.SpeechRecognition || window.webkitSpeechRecognition), wake = navigator.wakeLock && navigator.wakeLock.request;
     return (saas ? '<div class="menu-group">' + menuRow('saas-account', '账号与家庭', esc(SaaS.identity().family.name), 'settings') + menuRow('saas-logout', '退出登录', '', 'lock') + '</div>' : '') + '<div class="menu-group">' + menuRow('family-settings', '家庭设置', esc(state.childName), 'settings') + menuRow('parent-config', '家长验证', meta.parent.configured === false ? '未设置' : meta.parent.configured == null ? '待确认' : meta.parent.method === 'math' ? '算术题' : 'PIN', 'lock') + menuRow('sound', '提醒声音', ui.sound ? '已开启' : '已关闭', 'sound') + menuRow('display', '屏幕常亮', ui.display ? '已开启' : ui.wakePending ? '申请中' : wake ? '未开启' : '不支持', 'screen') + '</div>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.mode === 'connected' ? meta.assistant.label : '指令演示']], 'capability-values') + '<div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'archive') + '</div>' + '<p id="sync-status" class="sync-status">' + syncLabel() + '</p>';
@@ -822,7 +844,7 @@
   }
   function profileBody(f) {
     var d = f.data;
-    return '<div class="profile-photo-editor"><div class="profile-photo-preview">' + avatarImage(d.childAvatar, d.childName) + '</div><div>' + button('avatar-choose', icon('camera') + '选择照片', 'btn outline') + (d.childAvatar ? button('avatar-remove', '移除照片', 'btn danger') : '') + '</div><input id="avatar-file" type="file" name="avatarFile" accept="image/jpeg,image/png,image/webp" class="file-picker"><p id="avatar-status" role="status">' + esc(f.avatarStatus || '') + '</p></div>' + field('孩子昵称', 'childName', d.childName || '', 'required maxlength="40"');
+    return '<div class="profile-photo-editor"><div class="profile-photo-preview">' + avatarImage(d.childAvatar, d.childName) + '</div><div>' + button('avatar-choose', icon('camera') + (d.childAvatar ? '更换头像' : '上传头像'), 'btn primary') + (d.childAvatar ? button('avatar-remove', '移除头像', 'btn outline') : '') + '</div><input id="avatar-file" type="file" name="avatarFile" accept="image/jpeg,image/png,image/webp" class="file-picker" aria-label="选择头像图片" tabindex="-1"><p class="profile-photo-help">支持 JPG、PNG、WebP，最大 8 MB<br>自动裁剪为方形，保存后显示在首页</p><p id="avatar-status" role="status">' + esc(f.avatarStatus || '') + '</p></div>' + field('孩子昵称', 'childName', d.childName || '', 'required maxlength="40"');
   }
   function loadAvatar(file) {
     var f = ui.form; if (!scopeReady() || !f || f.kind !== 'profile' || !file) return;
@@ -910,7 +932,7 @@
     if (f.kind === 'behaviorPicker') return behaviorPickerContent();
     if (f.kind === 'farm' && Farm) return Farm.panel(f);
     if (f.kind === 'homeInbox') { title = homeInboxTitle(); f.openedRevision = revision; ui.inboxKey = homeInboxKey(); body = '<div id="home-inbox-body">' + homeInboxBody() + '</div>'; }
-    else if (f.kind === 'records') { title = '积分记录'; body = recordsBody(); }
+    else if (f.kind === 'records') { title = d.source === 'rewards' ? '兑换记录' : '积分记录'; body = recordsBody(); }
     else if (f.kind === 'preferences') { title = '设置'; body = preferencesBody(); }
     else if (f.kind === 'rewards') { title = '礼品兑换'; body = rewardsBody(); actions = button('reward-list', icon('edit'), 'icon-button', '', '管理礼品') + button('reward-new', icon('plus'), 'icon-button nav-add', '', '新增礼品'); }
     else if (f.kind === 'petGrowth') { title = '成长足迹'; body = growthBody(); }
@@ -922,10 +944,10 @@
     }
     else if (f.kind === 'profile') { title = '孩子资料'; submit = '保存资料'; body = profileBody(f); }
     else if (f.kind === 'petConfig') { title = '伙伴设置'; submit = '保存伙伴'; body = petConfigBody(f); }
-    else if (f.kind === 'point-list' || f.kind === 'reward-list') { title = f.kind === 'point-list' ? '常用加分' : '礼品'; body = (f.kind === 'point-list' ? contextAI(f, 'pointItems') : '') + listManagement(f.kind); actions = button(f.kind === 'point-list' ? 'point-item-new' : 'reward-new', icon('plus'), 'icon-button nav-add', '', f.kind === 'point-list' ? '新增常用加分' : '新增礼品'); }
+    else if (f.kind === 'point-list' || f.kind === 'reward-list') { title = f.kind === 'point-list' ? '常用行为' : '礼品'; body = (f.kind === 'point-list' ? contextAI(f, 'pointItems') : '') + listManagement(f.kind); actions = f.kind === 'point-list' ? button('point-item-new', icon('edit') + '<span>新建常用行为</span>', 'text-button template-create', '', '新建常用行为') : button('reward-new', icon('plus'), 'icon-button nav-add', '', '新增礼品'); }
     else if (f.kind === 'points') {
-      title = '加分'; submit = !d.itemId && d.saveAsTemplate ? '加分并新增常用' : '确认加分';
-      body = contextAI(f, 'points') + '<div class="entry-summary"><span>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因', 'reason', d.reason || '', 'required maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
+      title = '立即加分'; submit = '核对加分';
+      body = contextAI(f, 'points') + '<div class="entry-summary"><span>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因（选填）', 'reason', d.reason || '', 'maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
     } else if (f.kind === 'request' || f.kind === 'approve') {
       var req = f.kind === 'approve' ? find(state.requests, d.requestId) : null;
       r = find(state.rewards, req ? req.rewardId : d.rewardId);
@@ -949,8 +971,8 @@
       title = d.id ? '编辑礼品' : '添加礼品'; submit = '保存礼品';
       body = field('礼品名称', 'name', d.name || '', 'required maxlength="120"') + field('所需积分', 'points', d.points || '', 'required min="1" step="1" inputmode="numeric"', 'number') + '<div class="field-pair">' + select('兑换日期', 'category', d.category || 'daily', [['daily', '每天'], ['weekend', '周末'], ['outing', '月底']]) + select('状态', 'enabled', d.enabled === false || d.enabled === 'false' ? 'false' : 'true', [['true', '启用'], ['false', '停用']]) + '</div>';
     } else if (f.kind === 'pointItem') {
-      title = d.id ? '编辑加分项' : '添加加分项'; submit = '保存加分项';
-      body = contextAI(f, 'pointItems') + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + field('默认分值', 'points', d.points || 5, 'required min="1" step="1" inputmode="numeric"', 'number') + area('预设原因', 'reason', d.reason || '', 'maxlength="2000"') + select('状态', 'enabled', d.enabled === false || d.enabled === 'false' ? 'false' : 'true', [['true', '启用'], ['false', '停用']]);
+      title = d.id ? '编辑常用行为' : '新建常用行为'; submit = '保存常用行为';
+      body = '<p class="template-help">设置以后可选的行为和默认分值，本次不增加积分。</p>' + contextAI(f, 'pointItems') + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + field('默认分值', 'points', d.points || 5, 'required min="1" step="1" inputmode="numeric"', 'number') + area('预设原因', 'reason', d.reason || '', 'maxlength="2000"') + select('状态', 'enabled', d.enabled === false || d.enabled === 'false' ? 'false' : 'true', [['true', '启用'], ['false', '停用']]);
     } else if (f.kind === 'familySettings') {
       title = '家庭设置'; submit = '保存设置';
       body = field('孩子名字', 'childName', d.childName || state.childName, 'required maxlength="40"') + field('月底兑换天数', 'monthEndDays', d.monthEndDays || state.settings.monthEndDays, 'required min="1" max="31" step="1" inputmode="numeric"', 'number');
@@ -972,7 +994,7 @@
     if (['points', 'pointItem', 'point-list'].indexOf(f.kind) >= 0) actions = button('ai-toggle', icon('spark'), 'icon-button' + (f.aiOpen ? ' active' : ''), '', '指令填写').replace('<button ', '<button aria-expanded="' + !!f.aiOpen + '" ') + actions;
     if (submit) {
       var submitBusy = pending || (f.kind === 'voice' && ui.assistantBusy) || (f.kind === 'profile' && f.avatarBusy);
-      var submitLabel = f.kind === 'points' ? '加分' : f.kind === 'request' ? '申请兑换' : f.kind === 'approve' ? '确认兑换' : f.kind === 'petBuy' ? '确认购买' : /^保存|^设置/.test(submit) ? '保存' : submit;
+      var submitLabel = f.kind === 'points' ? '核对加分' : f.kind === 'request' ? '申请兑换' : f.kind === 'approve' ? '确认兑换' : f.kind === 'petBuy' ? '确认购买' : /^保存|^设置/.test(submit) ? '保存' : submit;
       actions += '<button type="submit" form="editor-form" class="btn primary sheet-save" aria-label="' + esc(submit) + '" data-label="' + esc(submit) + '" aria-busy="' + !!submitBusy + '"' + (submitBusy || submitBlocked ? ' disabled' : '') + '>' + (pending ? '保存中' : f.kind === 'profile' && f.avatarBusy ? '处理中' : submitLabel) + '</button>';
     }
     var inside = '<p id="form-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div>' + (footer ? '<div class="sheet-footer">' + footer + '</div>' : '');
@@ -980,7 +1002,7 @@
   }
   function actionSummary(action) {
     var rows = [], req, r, target, t = M.totals(state);
-    if (action.type === 'points.add') { rows = [['孩子', state.childName], ['行为', action.name], ['本次加分', '+' + action.points], ['原因', action.reason]]; if (action.saveAsTemplate) rows.push(['新增常用', action.name]); }
+    if (action.type === 'points.add') { rows = [['孩子', state.childName], ['行为', action.name], ['本次加分', '+' + action.points + ' 分'], ['记录时间', action.at ? niceTime(action.at) : '确认完成时'], ['原因', action.reason || '未填写']]; if (action.saveAsTemplate) rows.push(['新增常用', action.name]); }
     else if (action.type === 'redemption.approve') { req = find(state.requests, action.requestId); r = req && find(state.rewards, req.rewardId); rows = [['礼品', r ? r.name : '已更新'], ['本次扣分', '−' + action.expectedPoints], ['兑换后余额', t.available - action.expectedPoints]]; if (action.note) rows.push(['备注', action.note]); }
     else if (action.type === 'pet.buy') { var status = playStatus(); target = status && find(status.catalog, action.itemId); rows = [['道具', target ? target.name : action.itemId], ['单价', (target ? target.points : 3) + ' 分 / 件'], ['数量', action.quantity], ['本次扣分', '−' + action.expectedPoints], ['购买后余额', t.available - action.expectedPoints]]; }
     else if (action.type === 'reward.save') rows = [['礼品', action.reward.name], ['所需积分', action.reward.points], ['兑换日期', category(action.reward.category)], ['状态', action.reward.enabled ? '启用' : '停用']];
@@ -993,8 +1015,11 @@
     return facts(rows, 'authorization-values');
   }
   function parentContent() {
-    var a = ui.auth, setup = a.phase === 'setup' || a.phase === 'setup-saving' || a.phase === 'setup-retry', body = '<div class="authorization-summary">' + actionSummary(a.tx.action) + '</div>', submit = '验证并完成';
-    if (a.phase === 'setup') { body += field('设置PIN', 'setupPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password') + field('确认PIN', 'setupConfirm', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password'); submit = '设置并完成'; }
+    var a = ui.auth, confirming = a.phase === 'confirm', setup = a.phase === 'setup' || a.phase === 'setup-saving' || a.phase === 'setup-retry';
+    var prompt = confirming ? '请核对本次加分，确认后由家长验证。' : setup ? '请家长设置 6 位 PIN，保护每一次加分和兑换。' : a.method === 'math' ? '请家长完成算术验证后继续。' : '请家长输入 PIN，验证后完成本次操作。';
+    var body = '<p id="parent-dialog-prompt" class="parent-dialog-prompt">' + prompt + '</p>', submit = '验证并完成';
+    if (confirming) submit = '确认加' + a.tx.action.points + '分';
+    else if (a.phase === 'setup') { body += field('设置PIN', 'setupPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password') + field('确认PIN', 'setupConfirm', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password'); submit = '设置并完成'; }
     else if (a.phase === 'verify') { body += (a.method === 'math' ? '<p class="math-question">' + esc(a.question) + '</p>' : '') + field(a.method === 'math' ? '答案' : a.tx.action.type === 'parent.configure' ? '当前PIN' : '家长PIN', 'answer', '', 'required inputmode="numeric" autocomplete="off"' + (a.method === 'pin' ? ' minlength="6" maxlength="12" pattern="[0-9]{6,12}"' : ''), a.method === 'pin' ? 'password' : 'text'); }
     else if (a.phase === 'loading') submit = '准备中';
     else if (a.phase === 'verifying') submit = '验证中';
@@ -1002,28 +1027,38 @@
     else if (a.phase === 'setup-retry') { body += '<p class="status-line">设置结果待确认</p>'; submit = '重试设置'; }
     else if (a.phase === 'retry') { body += '<p class="status-line">结果待确认</p>'; submit = '重试保存'; }
     else submit = '重新验证';
+    body += '<div class="authorization-summary">' + actionSummary(a.tx.action) + '</div>';
     var parentBusy = !!(a.busy || pending), dangerous = a.tx.action.type === 'task.delete';
     if (dangerous) { if (a.phase === 'verify') submit = '验证并取消'; else if (a.phase === 'setup') submit = '设置并取消'; else if (a.phase === 'saving') submit = '取消中'; else if (a.phase === 'retry') submit = '重试取消'; }
-    return sheet(setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证', local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit" class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
+    return sheet(confirming ? '确认本次加分' : setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证', confirming ? '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
   }
   function sheet(title, sub, content, auth, actions) {
-    var nested = auth || ui.stack.length > 0;
-    return '<div class="sheet-overlay"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div class="sheet-nav-start">' + button(auth ? 'parent-cancel' : 'form-close', icon(nested ? 'back' : 'close'), 'icon-button', '', auth ? '返回修改' : nested ? '返回上一级' : '关闭面板') + '</div><div class="sheet-heading"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div><div class="sheet-nav-actions">' + (actions || '') + '</div></header>' + content + '</section></div>';
+    var nested = auth || ui.stack.length > 0, dialogClass = auth ? ' global-dialog ' + (ui.auth.phase === 'confirm' ? 'points-confirm-dialog' : 'parent-dialog') : '';
+    return '<div class="sheet-overlay' + (auth ? ' global-dialog-overlay' : '') + '"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet' + dialogClass + '" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"' + (auth ? ' data-auth-phase="' + ui.auth.phase + '" aria-describedby="parent-dialog-prompt"' : '') + '><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div class="sheet-nav-start">' + button(auth ? 'parent-cancel' : 'form-close', icon(nested ? 'back' : 'close'), 'icon-button', '', auth ? '返回修改' : nested ? '返回上一级' : '关闭面板') + '</div><div class="sheet-heading"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div><div class="sheet-nav-actions">' + (actions || '') + '</div></header>' + content + '</section></div>';
   }
   function render(reset) {
     if (!scopeReady()) return;
     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
-    var oldSheet = document.querySelector('.sheet'), oldBody = document.querySelector('.sheet-body'), oldKind = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-form-kind') : '', nextKind = (ui.auth ? 'parent:' : '') + (ui.form ? ui.form.kind : ''), sameSheet = !!oldSheet && oldKind === nextKind, key = sameSheet ? focusKey(document.activeElement) : ui.form && ui.form.focusKey, sheetScroll = sameSheet && oldBody ? oldBody.scrollTop : ui.form && ui.form.scrollTop || 0;
+    var oldSheet = document.querySelector('.sheet'), oldBody = document.querySelector('.sheet-body'), oldKind = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-form-kind') : '', oldAuthPhase = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-auth-phase') : '', nextKind = (ui.auth ? 'parent:' : '') + (ui.form ? ui.form.kind : ''), sameSheet = !!oldSheet && oldKind === nextKind, key = sameSheet ? focusKey(document.activeElement) : ui.form && ui.form.focusKey, sheetScroll = sameSheet && oldBody ? oldBody.scrollTop : ui.form && ui.form.scrollTop || 0;
+    var homeRefresh = !reset && ui.view === 'points' && !oldSheet && !ui.form && !ui.auth && old && old.querySelector && old.querySelector('.pet-home-card'), homeKey = homeRefresh ? focusKey(document.activeElement) : null;
     var selection = sameSheet && document.activeElement && typeof document.activeElement.selectionStart === 'number' ? { start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd } : null;
     document.body.className = 'view-' + ui.view + (ui.form || ui.auth ? ' sheet-open' : '') + (ui.display ? ' display-mode' : '');
     if (Farm) Farm.beforeRender();
     document.getElementById('app').innerHTML = '<div class="app-shell"' + (ui.form || ui.auth ? ' aria-hidden="true"' : '') + '>' + header() + '<div id="reminder-slot">' + (ui.view === 'points' ? '' : reminderBanner()) + '</div><main id="main" class="app-main" tabindex="-1">' + (ui.view === 'points' ? pointsPage() : reminderPage()) + '</main>' + navigation() + '</div>' + (ui.auth ? parentContent() : ui.form ? editorContent() : '');
-    var main = document.getElementById('main'); if (main) main.scrollTop = reset || ui.view === 'points' ? 0 : scroll;
+    var main = document.getElementById('main');
+    if (main) {
+      var gallery = ui.view === 'points' && main.querySelector && main.querySelector('.pet-home-card.is-previewing');
+      if (gallery && main.classList) main.classList.add('home-gallery');
+      if (homeKey && (homeKey.action === 'farm-pet-preview' || homeKey.action === 'farm-pet-current')) homeKey.action = gallery ? 'farm-pet-current' : 'farm-pet-preview';
+      main.scrollTop = homeRefresh ? scroll : reset || ui.view === 'points' ? 0 : scroll;
+    }
     var notice = document.getElementById('toast');
     if (ui.view === 'points' && !ui.form && !ui.auth && notice.className.indexOf('visible') >= 0) toast(notice.textContent);
-    if (ui.form && ui.form.kind === 'homeInbox' && !ui.auth) focusInbox();
-    else if (ui.form && ['points', 'behaviorPicker', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) { restorePlayFocus(key); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll; if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} } }
+    if (ui.auth) { restorePlayFocus(sameSheet && oldAuthPhase === ui.auth.phase ? key : null); }
+    else if (ui.form && ui.form.kind === 'homeInbox') focusInbox();
+    else if (ui.form && ['points', 'behaviorPicker', 'point-list', 'pointItem', 'records', 'rewards', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) { restorePlayFocus(key); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll; if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} } }
     else if (oldSheet && !ui.form && !ui.auth && ui.homeFocus) restorePlayFocus(ui.homeFocus);
+    else if (homeRefresh && homeKey && homeKey.action) restorePlayFocus(homeKey);
     refreshPetPurchase(); fitViewport();
     if (window.FamilyWorldUI) {
       var scenePet = currentPet();
@@ -1036,7 +1071,7 @@
     if (Farm) Farm.afterRender();
   }
   function makeAction(f, v) {
-    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: v.reason.trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return action; }
+    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return action; }
     if (f.kind === 'petBuy') { var status = playStatus(), supply = status && find(status.catalog, f.data.itemId), quantity = Number(v.quantity); if (!supply || !isFinite(quantity) || quantity < 1 || quantity > 10 || quantity !== Math.floor(quantity)) throw new Error('数量无效'); return { type: 'pet.buy', itemId: supply.id, quantity: quantity, expectedPoints: quantity * supply.points }; }
     if (f.kind === 'request') return { type: 'redemption.request', rewardId: f.data.rewardId };
     if (f.kind === 'approve') { var req = find(state.requests, f.data.requestId), reward = req && find(state.rewards, req.rewardId); if (!reward || req.status !== 'pending') throw new Error('申请已更新'); return { type: 'redemption.approve', requestId: req.id, expectedPoints: reward.points, note: (v.note || '').trim() }; }
@@ -1116,6 +1151,7 @@
     if (saas && action === 'saas-logout') { SaaS.logout(); return; }
     if (action === 'pet-touch' && !ui.auth) { touchPet(); return; }
     if (action === 'form-close' || action === 'parent-cancel') { closeForm(); return; }
+    if (action === 'points-confirm') { submitParent(document.getElementById('parent-form')); return; }
     if (pending) return;
     if (ui.auth) return;
     if (Farm && Farm.handle(action, id, element)) return;
@@ -1154,6 +1190,7 @@
     else if (action === 'points-new') choosePoints(null);
     else if (action === 'choose-point') { item = find(state.pointItems, id); if (item && item.enabled) choosePoints(item); }
     else if (action === 'records' || action === 'preferences' || action === 'point-list' || action === 'reward-list') openForm(action, {});
+    else if (action === 'rewards-history') { ui.history = 'redemptions'; openForm('records', { source: 'rewards' }); }
     else if (action === 'reward-filter') { ui.filter = id; render(false); }
     else if (action === 'history') { ui.history = id; render(false); }
     else if (action === 'redeem') openForm('request', { rewardId: id });
@@ -1210,11 +1247,22 @@
   document.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { event.preventDefault(); if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; }
     if (event.key === 'Escape' && (ui.form || ui.auth)) closeForm();
-    if (event.key === 'Tab' && (ui.form || ui.auth)) { var sheetEl = document.querySelector('.sheet'), nodes = sheetEl ? sheetEl.querySelectorAll('button:not([disabled]),input:not([type="hidden"]),select,textarea,[tabindex="0"]') : []; nodes = Array.prototype.filter.call(nodes, function (node) { return node.getClientRects().length > 0; }); if (nodes.length) { var first = nodes[0], last = nodes[nodes.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }
+    if (event.key === 'Tab' && (ui.form || ui.auth)) { var sheetEl = document.querySelector('.sheet'), nodes = sheetEl ? sheetEl.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]') : []; nodes = Array.prototype.filter.call(nodes, function (node) { return node.getClientRects().length > 0; }); if (nodes.length) { var first = nodes[0], last = nodes[nodes.length - 1]; if (!sheetEl.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); } else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }
   });
   function fitViewport() {
-    var root = document.documentElement; if (root.style && root.style.setProperty) root.style.setProperty('--app-height', ((window.visualViewport && window.visualViewport.height) || window.innerHeight) + 'px');
-    if (state && ui.view === 'points' && ui.homeWide !== homeWide() && !ui.form && !ui.auth) render(false);
+    var root = document.documentElement, height = homeViewportHeight(), width = window.innerWidth;
+    if (root.style && root.style.setProperty) root.style.setProperty('--app-height', height + 'px');
+    var home = ui.view === 'points' && document.querySelector('.home-portrait');
+    if (home && home.classList && home.classList.toggle) {
+      home.classList.toggle('home-roomy', height >= 650);
+      home.classList.toggle('home-tall', height >= 700);
+    }
+    var gallery = ui.view === 'points' && document.querySelector('.home-gallery');
+    if (gallery && gallery.classList && gallery.classList.toggle) {
+      gallery.classList.toggle('gallery-focused', width < 700 || height <= 620);
+      gallery.classList.toggle('gallery-landscape', width >= 480 && width > height && height <= 620);
+    }
+    if (state && ui.view === 'points' && (ui.homeWide !== homeWide() || ui.homeItemLimit !== homeItemLimit()) && !ui.form && !ui.auth) render(false);
     if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();
   }
   window.addEventListener('resize', fitViewport); if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
@@ -1227,12 +1275,12 @@
   if (drafts['points:new'] && drafts['points:new'].itemId) { var legacyPointDraft = clone(drafts['points:new']), legacyKey = 'points:' + legacyPointDraft.itemId; if (!drafts[legacyKey]) drafts[legacyKey] = clone(legacyPointDraft); delete legacyPointDraft.itemId; legacyPointDraft.saveAsTemplate = false; drafts['points:new'] = legacyPointDraft; saveStore(DRAFT, drafts); }
   var preferences = readStore(PREF, {}); ui.sound = !!preferences.sound; ui.display = false;
   if (Farm) Farm.setup({
-      context: function () { if (!scopeReady()) return { ready: false, state: null, local: false, connected: false }; return { ready: true, state: state, now: farmClock(), familyDay: saas || local ? today() : familyDay || today(), pet: currentPet(), growth: growthInfo(), reducedMotion: reducedMotion(), local: local, connected: connected, pending: pending, retry: retryTx, form: ui.form, auth: ui.auth, view: ui.view, feedback: ui.homeFeedback }; },
+      context: function () { if (!scopeReady()) return { ready: false, state: null, local: false, connected: false }; return { ready: true, state: state, earnedPoints: M.totals(state).earned, availablePoints: M.totals(state).available, now: farmClock(), familyDay: saas || local ? today() : familyDay || today(), pet: currentPet(), growth: growthInfo(), petMessage: ui.petMessage, reducedMotion: reducedMotion(), local: local, connected: connected, pending: pending, retry: retryTx, form: ui.form, auth: ui.auth, view: ui.view, feedback: ui.homeFeedback }; },
       icon: icon, render: function () { render(false); }, act: beginAction,
       open: function (data, replace) { openForm('farm', data, false, replace); },
       home: function () { rememberDraft(); ui.form = null; ui.stack = []; ui.view = 'points'; render(false); restorePlayFocus({ tag: 'BUTTON', type: 'button', id: '', name: '', action: 'farm-open', dataId: '' }); },
       sheet: function (title, sub, body, actions) { return sheet(title, sub, body, false, actions); },
-      toast: toast, petPlay: function (kind) { reactPet(kind, careName(kind) + '完成 · 免费陪伴'); toast('和' + currentPet().name + '一起玩了一会儿'); }, touchPet: touchPet,
+      toast: toast, petPlay: function (kind) { if (['feed', 'wash', 'train'].indexOf(kind) >= 0 && !pending && !ui.careBusy) reactPet(kind); }, touchPet: touchPet,
       retry: function () { if (retryTx && retryTx.uncertain && /^farm\./.test(retryTx.action.type) && !pending && (local || connected)) submitTransaction(retryTx); }
     });
   if (saas) {
@@ -1242,5 +1290,5 @@
   } else { persist(); loadMeta(); render(false); sync(); }
   var lastDay = today();
   setInterval(function () { if (!scopeReady()) return; sync(); renderReminder(); if (Farm) Farm.tick(); if (lastDay !== today()) { lastDay = today(); if (!ui.auth && (!ui.form || (local && ui.form.kind === 'petHub'))) render(false); } }, 5000);
-  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { if (!scopeReady()) return { ready: false, view: 'account', connected: false, revision: 0, form: null, auth: false, pending: false, aiBusy: false, screenAwake: false, farmView: null, farmStatus: null, farmRender: Farm ? Farm.diagnostics() : null }; return { ready: true, view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeWide() ? 4 : 2).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: saas || local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches, farmView: ui.form && ui.form.kind === 'farm' ? ui.form.data.view : null, farmStatus: Farm && M.farmStatus ? Farm.status() : null, farmRender: Farm ? Farm.diagnostics() : null }; } };
+  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { if (!scopeReady()) return { ready: false, view: 'account', connected: false, revision: 0, form: null, auth: false, pending: false, aiBusy: false, screenAwake: false, farmView: null, farmStatus: null, farmRender: Farm ? Farm.diagnostics() : null }; return { ready: true, view: ui.view, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeItemLimit()).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: saas || local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches, farmView: ui.form && ui.form.kind === 'farm' ? ui.form.data.view : null, farmStatus: Farm && M.farmStatus ? Farm.status() : null, farmRender: Farm ? Farm.diagnostics() : null }; } };
 }());

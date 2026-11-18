@@ -100,20 +100,22 @@ function farmUI(state, now = START, formData = { view: 'care' }) {
 
 function farmSceneUI() {
   const state = startFarm(), scenes = [], attached = new Set();
+  let creditImage = null;
   const context = { ready: true, state, now: START, familyDay: M.dateKey(START), local: true, connected: true,
-    view: 'points', form: { kind: 'farm', data: { view: 'care' } }, pet: state.pet, growth: M.growth(state), reducedMotion: true };
+    view: 'points', form: { kind: 'farm', data: { view: 'care' } }, pet: state.pet, growth: M.growth(state), reducedMotion: true, earnedPoints: 25, availablePoints: 0 };
   const initialView = () => ({ x: 0, z: 0, zoom: 1, focus: null });
   const target = { firstChild: null, closest: () => true,
     getAttribute: name => name === 'data-farm-scene' ? context.form ? 'expanded' : 'home' : null,
     getBoundingClientRect: () => ({ left: 0, top: 0, right: 1000, bottom: 800 }),
     insertBefore(surface) { attached.add(surface); surface.parentNode = target; },
     removeChild(surface) { attached.delete(surface); surface.parentNode = null; } };
-  const document = { hidden: false, addEventListener() {}, createElement: () => ({}), querySelector: () => null,
+  const document = { hidden: false, addEventListener() {}, createElement: () => ({}), querySelector: selector => selector === '[data-credit-scene]' ? creditImage : null,
     querySelectorAll: selector => selector === '[data-farm-scene]' ? [target] : [] };
   const window = { FamilyModel: M, addEventListener() {}, FamilyFarmScene: { mount(surface, options) {
     let view = initialView();
-    const scene = { options, disposed: false, paused: false,
+    const scene = { options, disposed: false, paused: false, reactions: [],
       update(next) { this.options = next; }, pause(value) { this.paused = value; }, resize() {},
+      react(kind, target) { this.reactions.push({ kind, target }); },
       dispose() { this.disposed = true; },
       camera(action = {}) { if (action.restore) view = copy(action.restore); return { navigation: copy(view) }; },
       focus(value) { view.focus = copy(value); },
@@ -125,8 +127,12 @@ function farmSceneUI() {
   } } };
   vm.runInNewContext(FARM_SOURCE, { window, document }, { filename: 'farm-scene-ui.js' });
   const farm = window.FamilyFarmUI;
-  farm.setup({ context: () => context, render: () => farm.afterRender() });
-  return { farm, context, scenes, attached, initialView };
+  farm.setup({ context: () => context, render: () => farm.afterRender(), icon: () => '' });
+  return { farm, context, scenes, attached, initialView, replaceCreditImage() {
+    creditImage = { src: '', attributes: {}, setAttribute(name, value) { this.attributes[name] = value; },
+      removeAttribute(name) { delete this.attributes[name]; if (name === 'src') this.src = ''; } };
+    return creditImage;
+  } };
 }
 
 function harvestRace() {
@@ -143,6 +149,114 @@ function harvestRace() {
 test('complete application and farm UI sources compile before installing VM hooks', () => {
   assert.doesNotThrow(() => new vm.Script(APP_SOURCE, { filename: 'app.js' }));
   assert.doesNotThrow(() => new vm.Script(FARM_SOURCE, { filename: 'farm-ui.js' }));
+});
+
+test('home previews project a separate 3D stage without changing actual growth or family state', () => {
+  const ui = farmSceneUI(); ui.context.form = null;
+  const before = copy(ui.context.state), realGrowth = copy(ui.context.growth);
+  const home = ui.farm.home(); ui.farm.afterRender();
+  assert.match(home, /免费陪伴互动/);
+  assert.doesNotMatch(home, /data-action="farm-pet-(?:rotate|reset)"|pet-rotation-tools|pet-drag-hint/);
+  assert.doesNotMatch(home, /data-action="farm-(?:harvest|seeds|start)"/);
+  assert.doesNotMatch(home, /每获得 1 积分，增加 1 成长值|兑换不影响成长/,
+    'the single-screen home keeps growth explanations in the gallery');
+  assert.match(home, /role="progressbar" aria-label="本阶段成长进度"/);
+  assert.match(home, new RegExp('aria-valuemin="' + realGrowth.previousAt + '" aria-valuemax="' + realGrowth.nextAt + '" aria-valuenow="' + realGrowth.xp + '"'));
+  assert.match(home, /id="home-feedback"[^>]*role="status"[^>]*aria-live="polite"/,
+    'home feedback remains available after removing the permanent footer');
+  ui.farm.handle('farm-pet-preview');
+  for (let stage = 1; stage <= 5; stage++) {
+    ui.farm.handle('farm-pet-stage', String(stage));
+    assert.equal(ui.farm.diagnostics().previewStage, stage);
+    assert.equal(ui.scenes[0].options.growth.stage, stage);
+    assert.equal(ui.scenes[0].options.companionView.preview, true);
+    for (const variant of ['default', 'festival']) {
+      ui.farm.handle('farm-pet-look', variant);
+      assert.equal(ui.scenes[0].options.growth.stage, stage, 'look changes retain the selected stage');
+      assert.equal(ui.scenes[0].options.companionView.variant, variant);
+      const markup = ui.farm.home();
+      assert.match(markup, /每获得 1 积分，增加 1 成长值/);
+      assert.match(markup, /兑换不影响成长/);
+      assert.match(markup, /data-action="farm-pet-look" data-id="default"/);
+      assert.match(markup, /data-action="farm-pet-look" data-id="festival"/);
+      assert.deepEqual(ui.context.growth, realGrowth);
+      assert.deepEqual(ui.context.state, before);
+    }
+    assert.deepEqual(ui.context.growth, realGrowth);
+    assert.deepEqual(ui.context.state, before);
+  }
+  assert.match(ui.farm.home(), /成长图鉴/);
+  ui.farm.handle('farm-pet-current');
+  assert.equal(ui.farm.diagnostics().previewStage, null);
+  assert.equal(ui.scenes[0].options.growth.stage, realGrowth.stage);
+  assert.equal(ui.scenes[0].options.companionView.preview, false);
+  assert.equal(ui.scenes[0].options.companionView.variant, 'default');
+  assert.doesNotMatch(ui.farm.home(), /data-action="farm-pet-look"/);
+  ui.farm.handle('farm-pet-preview');
+  assert.equal(ui.scenes[0].options.companionView.variant, 'default', 'reopening begins from the ordinary look');
+});
+
+test('preview is cleared on real growth changes, station release, and family disposal', () => {
+  const ui = farmSceneUI(); ui.context.form = null; ui.farm.home(); ui.farm.afterRender();
+  ui.farm.handle('farm-pet-preview'); ui.farm.handle('farm-pet-stage', '5'); ui.farm.handle('farm-pet-look', 'festival');
+  ui.context.growth = { ...ui.context.growth, xp: ui.context.growth.xp + 1 };
+  ui.farm.home(); ui.farm.afterRender();
+  assert.equal(ui.farm.diagnostics().previewStage, null);
+  assert.equal(ui.scenes[0].options.companionView.variant, 'default');
+  ui.farm.handle('farm-pet-preview'); ui.farm.handle('farm-pet-stage', '5'); ui.farm.handle('farm-pet-look', 'festival'); ui.farm.releaseScene();
+  assert.equal(ui.farm.diagnostics().previewStage, null);
+  ui.farm.afterRender();
+  assert.equal(ui.scenes.at(-1).options.companionView.variant, 'default');
+  ui.farm.handle('farm-pet-preview'); ui.farm.handle('farm-pet-stage', '4'); ui.farm.handle('farm-pet-look', 'festival'); ui.farm.dispose();
+  assert.equal(ui.farm.diagnostics().previewStage, null);
+  assert.equal(ui.farm.diagnostics().renderer, null);
+});
+
+test('gallery looks are unavailable to another species, an inactive preview, or a protected panel', () => {
+  const ui = farmSceneUI(); ui.context.form = null; ui.farm.home(); ui.farm.afterRender();
+  const before = copy(ui.context.state);
+  ui.farm.handle('farm-pet-look', 'festival');
+  ui.farm.handle('farm-pet-stage', '5');
+  assert.equal(ui.farm.diagnostics().previewStage, null, 'a look action cannot start its own gallery');
+  assert.equal(ui.scenes[0].options.companionView.variant, 'default');
+  ui.farm.handle('farm-pet-preview');
+  ui.farm.handle('farm-pet-look', 'unsupported');
+  assert.equal(ui.scenes[0].options.companionView.variant, 'default');
+  ui.farm.handle('farm-pet-current');
+  ui.context.pet = { kind: 'capybara', name: '水豚' };
+  ui.farm.home(); ui.farm.afterRender(); ui.farm.handle('farm-pet-preview'); ui.farm.handle('farm-pet-look', 'festival');
+  assert.doesNotMatch(ui.farm.home(), /data-action="farm-pet-look"/);
+  assert.equal(ui.scenes[0].options.companionView.variant, 'default');
+  ui.farm.handle('farm-pet-current'); ui.context.pet = before.pet;
+  ui.farm.home(); ui.farm.afterRender();
+  for (const blocked of [{ form: { kind: 'farm', data: {} } }, { auth: {} }, { view: 'rewards' }]) {
+    Object.assign(ui.context, { form: null, auth: null, view: 'points' }, blocked);
+    ui.farm.handle('farm-pet-preview'); ui.farm.handle('farm-pet-look', 'festival');
+    assert.equal(ui.farm.diagnostics().previewStage, null);
+  }
+  assert.deepEqual(ui.context.state, before);
+});
+
+test('credit frames follow the current DOM image, clear at release, and ignore a stale family scene callback', () => {
+  const ui = farmSceneUI(); ui.context.form = null;
+  const firstImage = ui.replaceCreditImage(); ui.farm.afterRender();
+  const scene = ui.scenes[0], oldCallback = scene.options.onCreditFrame;
+  assert.equal(scene.options.credit.enabled, true); assert.equal(scene.options.credit.balance, 25);
+  oldCallback('data:image/png;base64,first'); assert.equal(firstImage.src, 'data:image/png;base64,first');
+  const secondImage = ui.replaceCreditImage(); ui.farm.afterRender();
+  scene.options.onCreditFrame('data:image/png;base64,current');
+  assert.equal(secondImage.src, 'data:image/png;base64,current');
+  assert.equal(firstImage.src, 'data:image/png;base64,first');
+  ui.farm.complete({ type: 'points.add' });
+  assert.deepEqual(scene.reactions, [{ kind: 'earn', target: 'pet' }]);
+  ui.farm.releaseScene(); assert.equal(secondImage.src, '');
+  oldCallback('data:image/png;base64,late'); assert.equal(secondImage.src, '');
+  ui.farm.afterRender(); const currentScene = ui.scenes[1];
+  currentScene.options.onCreditFrame('data:image/png;base64,new'); assert.equal(secondImage.src, 'data:image/png;base64,new');
+  ui.context.ready = false;
+  currentScene.options.onCreditFrame('data:image/png;base64,blocked'); assert.equal(secondImage.src, 'data:image/png;base64,new');
+  ui.farm.complete({ type: 'points.add' }); assert.equal(currentScene.reactions.length, 0);
+  ui.farm.dispose(); assert.equal(secondImage.src, '');
 });
 
 test('same-revision older and identical clock samples cannot rewind time or re-anchor elapsed time', () => {

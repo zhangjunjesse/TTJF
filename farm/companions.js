@@ -1,21 +1,19 @@
 import * as THREE from 'three';
 import { group } from './primitives.js';
 import { sculpture, sweep, lens, roundedPanel, ribbon, line } from './companion-sculpt.js';
+import { makeCompanionInteractions, animateCompanionInteraction } from './companion-interactions.js';
+import { makeForestBud, animateForestBud } from './forest-bud/companion.js';
 
-// Both companions are original, closed low-poly sculptures. The deliberately
-// shaped cross-sections replace the old stacked balls, white eyeballs and halos.
+// The capybara keeps its existing closed low-poly sculpt. The plant companion
+// uses the approved forest-bud sculpt and living rig through the shared factory.
 const C = {
-  leaf: 0x779759, leafDark: 0x456a49, leafLight: 0xa8bb78, jade: 0x8bbbad,
-  belly: 0xd4c28e, cream: 0xe5ddbc, ink: 0x28332d, leather: 0x805b3c,
-  leatherLight: 0xaf8356, brass: 0xc5a45c, rust: 0xb76546, rustLight: 0xc98156,
+  cream: 0xe5ddbc, ink: 0x28332d, brass: 0xc5a45c, rust: 0xb76546, rustLight: 0xc98156,
   fur: 0x977551, furLight: 0xb7976d, muzzle: 0xbda07a, furDark: 0x6e523a,
   suit: 0xd3d4ba, suitShadow: 0xa5b19d, teal: 0x487b77, tealDark: 0x355a57,
   visor: 0xbad9d5, blue: 0x647e87
 };
 const color = hex => new THREE.Color(hex);
 const blend = (base, hex, amount) => base.lerp(color(hex), amount);
-const leafOutline = [[0, -.30], [-.15, -.10], [-.18, .18], [0, .49], [.18, .18], [.15, -.10]];
-const eyeOutline = [[-.105, 0], [-.089, .071], [-.047, .108], [.014, .114], [.071, .083], [.104, .023], [.083, -.055], [.022, -.083], [-.047, -.065], [-.091, -.036]];
 
 // Fit every eye vertex to the actual polygonal face, rather than placing a
 // flat eye in front of the skull. The shallow closed lenses are inset solids.
@@ -64,62 +62,18 @@ function conformEyes(head, socket, surface) {
   });
 }
 
-function eye(w, parent, eyes, side, pos, dragon, surface) {
+function eye(w, parent, eyes, pos, surface) {
   const socket = group(parent, pos);
   // A narrow lid sits against the face; no white ball or floating iris.
-  const shape = dragon ? eyeOutline : [[-.108, 0], [-.078, .043], [-.025, .061], [.039, .055], [.103, .010], [.063, -.041], [0, -.050], [-.061, -.035]];
-  lens(w, socket, dragon ? C.leafDark : C.furDark, shape.map(p => [p[0] * 1.12, p[1] * 1.13]), .014, [0, .005, -.006]);
+  const shape = [[-.108, 0], [-.078, .043], [-.025, .061], [.039, .055], [.103, .010], [.063, -.041], [0, -.050], [-.061, -.035]];
+  lens(w, socket, C.furDark, shape.map(p => [p[0] * 1.12, p[1] * 1.13]), .014, [0, .005, -.006]);
   const blink = group(socket, [0, 0, .010]);
   lens(w, blink, C.ink, shape, .018);
-  if (dragon) lens(w, blink, 0x819759, [[-.046, -.047], [.036, -.043], [.062, -.012], [.025, .023], [-.025, .018]], .006, [.016, -.014, .022]);
-  lens(w, blink, 0xe9e7cd, [[-.019, -.005], [-.014, .021], [.011, .025], [.020, .008], [.009, -.008]], .006, [dragon ? -.038 : -.045, dragon ? .038 : .016, .027]);
+  lens(w, blink, 0xe9e7cd, [[-.019, -.005], [-.014, .021], [.011, .025], [.020, .008], [.009, -.008]], .006, [-.045, .016, .027]);
   // The coloured outer edge is only 0.01 units deep; the eyebrow is sculpted
   // into the head's upper front plane instead of adding a separate raised bar.
   conformEyes(parent, socket, surface);
   eyes.push(socket); return socket;
-}
-
-function dragonWing(w, root, side, stage) {
-  const pivot = group(root, [side * .45, 1.45 + stage * .045, -.30]);
-  const scale = [.26, .44, .63, .80, .90][stage - 1];
-  pivot.scale.set(side * scale, scale, scale);
-  pivot.rotation.y = side * -.22;
-  const outline = [[0, -.06], [.18, .48], [.48, .89], [.91, 1.12], [.91, .75], [.84, .47], [1.17, .35], [.91, .24], [.71, .19], [.61, -.14], [.43, .04], [.21, -.05]];
-  lens(w, pivot, stage >= 4 ? 0x819c68 : 0x9db57c, outline, .115, null, null, [.39, .38]);
-  lens(w, pivot, 0xb3c38a, [[.18, .29], [.48, .86], [.89, 1.08], [.71, .54], [.39, .22]], .045, [0, 0, .075], null, [.48, .55]);
-  sweep(w, pivot, C.leafDark, [[0, -.05, .02], [.17, .43, .10], [.48, .87, .05], [.91, 1.12, 0]], [.075, .065, .044, .010]);
-  sweep(w, pivot, C.leafDark, [[.16, .33, .09], [.48, .39, .12], [.84, .47, .02], [1.17, .35, 0]], [.043, .034, .023, .008]);
-  sweep(w, pivot, C.leafDark, [[.16, .29, .08], [.38, .17, .13], [.61, -.14, 0]], [.04, .026, .008]);
-  if (stage >= 4) lens(w, pivot, C.jade, [[-.065, 0], [0, -.095], [.075, 0], [0, .17]], .08, [.91, 1.10, .01]);
-  pivot.userData.baseY = pivot.rotation.y;
-  w.bake(pivot); return pivot;
-}
-
-function crystal(w, parent, pos, scale, tilt = 0, hex = C.jade) {
-  return sculpture(w, parent, hex, [
-    { y: 0, rx: .11, rz: .09 }, { y: .11, rx: .18, rz: .13 },
-    { y: .34, rx: .12, rz: .10 }, { y: .55, rx: .012, rz: .01 }
-  ], { sides: 5, position: pos, scale, rotation: [0, .13, tilt] });
-}
-
-function shell(w, body) {
-  const sides = 16, vertices = [], indices = [];
-  // Irregular broken lip with a substantial wall and open top.
-  const lip = Array.from({ length: sides }, (_, i) => .64 + [0, .09, -.06, .16, -.035, .04, -.055, .14][i % 8]);
-  const rings = [
-    { radius: [.39, .34], heights: Array(sides).fill(.10) },
-    { radius: [.65, .52], heights: Array(sides).fill(.32) },
-    { radius: [.67, .54], heights: lip },
-    { radius: [.61, .48], heights: lip.map(y => y - .015) },
-    { radius: [.58, .45], heights: Array(sides).fill(.31) }
-  ];
-  rings.forEach(r => { for (let i = 0; i < sides; i++) { const a = i * Math.PI * 2 / sides; vertices.push(Math.cos(a) * r.radius[0], r.heights[i], .02 + Math.sin(a) * r.radius[1]); } });
-  for (let r = 0; r < rings.length - 1; r++) for (let i = 0; i < sides; i++) { const a = r * sides + i, b = r * sides + (i + 1) % sides, c = b + sides, d = a + sides; indices.push(a, c, b, a, d, c); }
-  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3)); g.setIndex(indices);
-  const flat = g.toNonIndexed(); g.dispose(); flat.computeVertexNormals(); w.geometries.add(flat);
-  w.add(body, flat, 0xcbd2b3);
-  line(w, body, 0x9cae88, [[-.26, .52, .533], [-.16, .42, .55], [-.23, .34, .55], [-.07, .24, .51]], .013);
-  crystal(w, body, [.37, .33, .45], [.37, .41, .24], -.45, 0x98b6a5);
 }
 
 function frontSurface(mesh) {
@@ -134,117 +88,6 @@ function frontSurface(mesh) {
     }
     return front;
   };
-}
-
-function dragonClothes(w, body, head, stage, torso) {
-  const fit = frontSurface(torso);
-  if (stage === 1) { shell(w, body); return; }
-  // An actual triangular folded neckerchief follows the chest and shoulder.
-  ribbon(w, body, C.rust, [[-.38, 1.68, .22], [-.27, 1.60, .44], [0, 1.53, .54], [.29, 1.60, .42], [.43, 1.67, .18]], .17, .045);
-  lens(w, body, C.rustLight, [[-.17, .10], [.18, .04], [.03, -.30]], .035, [.03, 1.54, .57], [-.15, 0, -.12]);
-  if (stage >= 3) {
-    ribbon(w, body, C.leather, [[-.42, 1.70, .17], [-.28, 1.49, .52], [-.08, 1.19, .62], [.16, .91, .61], [.44, .65, .42]], .13, .035, fit);
-    ribbon(w, body, 0xbe9566, [[-.35, 1.61, .42], [-.22, 1.42, .57], [.02, 1.11, .65], [.28, .82, .55]], .022, .012, (x, y) => fit(x, y) + .02);
-    const satchel = group(body, [.61, .74, .13]); satchel.rotation.z = -.13; satchel.rotation.y = .28;
-    roundedPanel(w, satchel, C.leather, .43, .46, .20, .08, [0, 0, 0]);
-    roundedPanel(w, satchel, C.leatherLight, .45, .22, .045, .04, [0, .16, .20]);
-    roundedPanel(w, satchel, C.brass, .07, .12, .02, .01, [0, .055, .25]);
-    line(w, satchel, 0xceb181, [[-.17, -.17, .224], [0, -.19, .224], [.17, -.17, .224]], .006);
-  }
-  if (stage >= 4) {
-    const cape = group(body, [0, 1.72, -.38]);
-    sculpture(w, cape, stage === 5 ? 0x687e53 : C.rust, [
-      { y: -.90, rx: .60, rz: .075, z: -.34 }, { y: -.67, rx: .66, rz: .10, z: -.27 },
-      { y: -.31, rx: .55, rz: .13, z: -.15 }, { y: 0, rx: .35, rz: .12, z: 0 }
-    ], { sides: 12, power: 3 });
-    const clothTrim = stage === 5 ? C.brass : C.rustLight;
-    ribbon(w, cape, clothTrim, [[-.55, -.86, -.375], [-.30, -.91, -.405], [0, -.92, -.418], [.30, -.91, -.405], [.55, -.86, -.375]], .035, .018);
-    for (const s of [-1, 1]) ribbon(w, cape, stage === 5 ? 0x546b46 : 0xa45a40, [[s * .17, -.08, -.14], [s * .25, -.38, -.30], [s * .32, -.70, -.38]], .023, .014);
-    if (stage === 5) {
-      const emblem = lens(w, cape, C.jade, leafOutline, .035, [0, -.39, -.355], [0, Math.PI, 0]);
-      emblem.scale.set(.58, .56, .62);
-      line(w, cape, C.brass, [[0, -.51, -.391], [0, -.37, -.400], [0, -.20, -.353]], .009);
-    }
-    for (const s of [-1, 1]) {
-      ribbon(w, body, C.leatherLight, [[s * .36, 1.72, -.21], [s * .48, 1.70, .04], [s * .39, 1.62, .39]], .12, .045);
-      lens(w, body, C.brass, [[-.075, 0], [0, -.09], [.075, 0], [0, .11]], .035, [s * .36, 1.62, .43]);
-    }
-  }
-  if (stage >= 5) {
-    // The crown is a planted leaf/crystal comb integrated into the brow.
-    // It has no floating ring or unsupported overhead element.
-    ribbon(w, head, C.brass, [[-.45, .39, .13], [-.23, .48, .30], [0, .51, .36], [.23, .48, .30], [.45, .39, .13]], .075, .04);
-    crystal(w, head, [0, .48, .27], [.64, .83, .59], 0, 0xc2d6b4);
-    for (const s of [-1, 1]) crystal(w, head, [s * .24, .45, .19], [.46, .61, .43], s * -.28);
-  }
-}
-
-function makeDragon(w, root, body, head, eyes, limbs, wings, core, stage) {
-  const adult = (stage - 1) / 4, height = 1.69 + adult * .18;
-  const torso = sculpture(w, body, C.leaf, [
-    { y: .16, rx: .34, rz: .29, z: .02 }, { y: .37, rx: .56, rz: .41, z: -.02 },
-    { y: .71, rx: .62, rz: .49, z: -.01 }, { y: 1.04, rx: .58, rz: .49, z: 0 },
-    { y: 1.31, rx: .47, rz: .40, z: -.01 }, { y: 1.56, rx: .34, rz: .30, z: -.01 },
-    { y: height, rx: .32, rz: .29, z: .02 }
-  ], { sides: 16, shade: (p, n, base) => {
-    if (n.z > .40 && p.y > .33 && p.y < 1.56 && Math.abs(p.x) < .39) return blend(base, C.belly, .97);
-    if (n.y < -.25 || n.z < -.6) return base.multiplyScalar(.94);
-    return base;
-  } }); core.push(torso);
-  const headY = [1.76, 1.86, 1.94, 2.00, 2.04][stage - 1];
-  head.position.set(0, headY, .02);
-  const headMesh = sculpture(w, head, C.leaf, [
-    { z: -.43, rx: .19, ry: .27, y: .015 }, { z: -.28, rx: .48, ry: .48, y: .025 },
-    { z: -.02, rx: .64, ry: .53, y: .015 }, { z: .26, rx: .64, ry: .46, y: -.025 },
-    { z: .48, rx: .53, ry: .32, y: -.11 }, { z: .71, rx: .40, ry: .23, y: -.19 },
-    { z: .86, rx: .31, ry: .175, y: -.18 }
-  ], { axis: 'z', sides: 16, power: 2.6, shade: (p, n, base) => {
-    if (p.z > .49) return blend(base, C.leafLight, .80);
-    if (p.y < -.27 && p.z > .10) return blend(base, C.belly, .45);
-    return base;
-  } }); core.push(headMesh);
-  // Leaf-shaped cheek fins and swept, horn-like branches root into the skull.
-  for (const s of [-1, 1]) {
-    const fin = lens(w, head, C.leafDark, [[-.11, -.23], [-.18, .03], [0, .35], [.16, .11], [.10, -.15]], .085, [s * .58, .02, -.17], [.08, s * .70, s * -.60]);
-    core.push(fin);
-    lens(w, head, C.leafLight, [[-.07, -.16], [-.09, .02], [0, .23], [.08, .07], [.05, -.10]], .033, [s * .62, .045, -.105], [.08, s * .70, s * -.60]);
-    const hornSize = [.48, .66, .82, .94, 1][stage - 1];
-    sweep(w, head, C.belly, [[s * .38, .36, -.11], [s * (.38 + .05 * hornSize), .36 + .23 * hornSize, -.11 - .09 * hornSize], [s * (.38 + .13 * hornSize), .36 + .49 * hornSize, -.11 - .24 * hornSize], [s * (.38 + .22 * hornSize), .36 + .58 * hornSize, -.11 - .37 * hornSize]], [.10, .085, .052, .005]);
-    eye(w, head, eyes, s, [s * .39, .145, 0], true, headMesh);
-    lens(w, head, C.leafDark, [[-.035, -.017], [-.031, .020], [.014, .022], [.034, .002], [.018, -.019]], .007, [s * .164, -.082, .865], [-.31, s * .07, s * -.12]);
-    // One tapered foreleg from shoulder to mitten, without a spherical cuff.
-    const arm = group(root, [s * .45, stage === 1 ? 1.29 : 1.41, .01]);
-    core.push(sculpture(w, arm, C.leaf, [
-      { y: -.66, rx: .13, rz: .18, x: s * .12, z: .17 },
-      { y: -.56, rx: .20, rz: .23, x: s * .14, z: .17 },
-      { y: -.31, rx: .18, rz: .19, x: s * .16, z: .09 },
-      { y: -.08, rx: .19, rz: .19, x: s * .08, z: .01 },
-      { y: .09, rx: .14, rz: .15, x: 0, z: 0 }
-    ], { sides: 12, power: 2.7 }));
-    for (let i = -1; i <= 1; i++) line(w, arm, C.leafDark, [[s * .12 + i * .086, -.53, .382], [s * .12 + i * .086, -.60, .361]], .007);
-    limbs.push(arm);
-    // Weight-bearing haunch descends into a broad three-toed foot.
-    core.push(sculpture(w, body, C.leafDark, [
-      { y: .005, rx: .24, rz: .34, x: s * .38, z: .20 },
-      { y: .13, rx: .29, rz: .38, x: s * .38, z: .20 },
-      { y: .30, rx: .27, rz: .31, x: s * .39, z: .10 },
-      { y: .49, rx: .22, rz: .25, x: s * .39, z: -.025 }
-    ], { sides: 12, power: 3.0 }));
-    for (let i = -1; i <= 1; i++) sweep(w, body, C.belly, [[s * .38 + i * .145, .145, .47], [s * .38 + i * .145, .10, .59], [s * .38 + i * .145, .085, .64]], [.045, .037, .004], { sides: 5 });
-    wings.push(dragonWing(w, root, s, stage));
-  }
-  line(w, head, C.leafDark, [[-.245, -.28, .80], [-.14, -.33, .865], [0, -.346, .885], [.14, -.33, .865], [.245, -.28, .80]], .010);
-  // A small leafy comb, not spheres mounted on the forehead.
-  for (let i = 0; i < (stage < 3 ? 1 : 3); i++) {
-    const leaf = lens(w, head, i % 2 ? C.leafDark : C.jade, leafOutline, .075, [0, .47 - i * .025, -.05 - i * .19], [i * -.18, Math.PI / 2, 0]);
-    leaf.scale.setScalar(stage === 1 ? .57 : .73);
-  }
-  const tail = group(root, [0, .50, -.32]);
-  sweep(w, tail, C.leaf, [[0, 0, 0], [.25, -.13, -.38], [.59, -.25, -.69], [.98, -.20, -.88], [1.21, -.02, -.94], [1.30, .19, -.91]], [[.27, .27], [.24, .23], [.17, .18], [.11, .13], [.07, .09], [.015, .02]], { sides: 12 });
-  for (let i = 0; i < 3; i++) lens(w, tail, C.leafDark, [[-.10, 0], [0, .22], [.12, 0]], .055, [.36 + i * .29, -.02 - Math.sin(i * 1.2) * .12, -.48 - i * .20], [0, .55, -.40]);
-  lens(w, tail, stage >= 4 ? C.jade : C.leafLight, leafOutline, .095, [1.30, .26, -.91], [.2, .18, -.35]);
-  dragonClothes(w, body, head, stage, torso);
-  return tail;
 }
 
 function capyHelmet(w, body, head, stage) {
@@ -384,7 +227,7 @@ function makeCapybara(w, root, body, head, eyes, limbs, core, stage) {
       { y: .65, rx: .045, rz: .035, x: s * .48, z: -.16 }
     ], { sides: 10, power: 2.6 }); core.push(ear);
     lens(w, head, 0x8a654c, [[-.077, -.085], [-.075, .042], [-.032, .095], [.048, .080], [.071, .008], [.044, -.07]], .016, [s * .50, .49, -.072], [0, s * .18, s * -.08]);
-    eye(w, head, eyes, s, [s * .466, .120, 0], false, headMesh);
+    eye(w, head, eyes, [s * .466, .120, 0], headMesh);
     // Two small incised nostrils and the characteristic long blunt nose plane.
     lens(w, head, C.furDark, [[-.051, -.014], [-.039, .018], [.020, .023], [.050, -.005], [.022, -.027]], .008, [s * .245, -.105, 1.008], [-.18, s * .04, s * -.12]);
     line(w, head, C.furDark, [[s * .30, -.28, .987], [s * .19, -.312, 1.012], [s * .065, -.311, 1.014]], .008);
@@ -418,17 +261,19 @@ function makeCapybara(w, root, body, head, eyes, limbs, core, stage) {
   capyEquipment(w, body, head, stage, clothingSurface);
 }
 
-export function makeCompanion(w, kind, stage, stars = 0) {
+export function makeCompanion(w, kind, stage, stars = 0, opts = {}) {
   stage = Math.max(1, Math.min(5, Math.floor(Number(stage) || 1)));
+  if (kind !== 'capybara') return makeForestBud(w, stage, stars, opts);
+  const variant = 'default';
   const root = group(), body = group(root), head = group(root), eyes = [], core = [], limbs = [], wings = [];
-  const tail = kind === 'capybara'
-    ? (makeCapybara(w, root, body, head, eyes, limbs, core, stage), null)
-    : makeDragon(w, root, body, head, eyes, limbs, wings, core, stage);
+  root.userData.companionVariant = variant;
+  makeCapybara(w, root, body, head, eyes, limbs, core, stage);
+  const tail = null;
   // All 5 stages change proportions as well as physical equipment. The baby
   // has a broader head and shorter torso; mature companions have more neck.
-  if (stage === 1) { head.scale.set(1.04, 1.02, 1.00); body.scale.set(1.02, .90, 1.02); }
+  if (stage === 1) { head.scale.x *= 1.04; head.scale.y *= 1.02; body.scale.set(1.02, .90, 1.02); }
   if (stars > 0) {
-    const badge = group(body, [kind === 'capybara' ? .24 : -.26, 1.28, kind === 'capybara' ? .57 : .59]);
+    const badge = group(body, [.24, 1.28, .57]);
     lens(w, badge, C.brass, [[-.06, -.03], [0, -.075], [.06, -.03], [.06, .05], [0, .08], [-.06, .05]], .02);
     lens(w, badge, C.cream, [[-.022, 0], [0, .035], [.022, 0], [0, -.025]], .012, [0, 0, .025]);
   }
@@ -448,26 +293,33 @@ export function makeCompanion(w, kind, stage, stars = 0) {
   w.bake(body); w.bake(head); limbs.forEach(l => w.bake(l)); if (tail) w.bake(tail);
   eyes.forEach(e => { e.userData.parent.add(e); delete e.userData.parent; w.bake(e); });
   root.traverse(mesh => { if (mesh.isMesh && !mesh.material.transparent) { mesh.castShadow = !mesh.userData.noShadow; mesh.receiveShadow = !mesh.userData.noShadow; } });
-  return { root, body, head, limbs, wings, eyes, tail, bodyBounds, bodyPoints: new Float32Array(bodyPoints), headY: head.position.y, bodyScaleY: body.scale.y, kind, stage, anatomyVertexCount: bodyPoints.length / 3 };
+  const pet = { root, body, head, limbs, wings, eyes, tail, bodyBounds, bodyPoints: new Float32Array(bodyPoints), headY: head.position.y, bodyScaleY: body.scale.y, kind, stage, variant, anatomyVertexCount: bodyPoints.length / 3,
+    restHeadPosition: head.position.clone(), restHeadScale: head.scale.clone(), restBodyScale: body.scale.clone() };
+  // Props are created after the anatomy projection and static batching. They
+  // remain reusable, independently animated Workshop-owned scene resources.
+  pet.interactions = makeCompanionInteractions(w, pet);
+  return pet;
 }
 
 export function animateCompanion(pet, seconds, response, reducedMotion) {
+  if (pet.disposed) return;
+  if (pet.forestBud) return animateForestBud(pet, seconds, response, reducedMotion);
   const wave = reducedMotion ? 0 : Math.sin(seconds * 1.65);
-  const amount = response ? Math.sin(Math.max(0, Math.min(1, response.progress || 0)) * Math.PI) : 0;
-  const happy = response && /harvest|grow|level|points|upgrade|celebrate/.test(response.kind);
-  pet.root.position.y = reducedMotion ? 0 : Math.max(0, amount) * (happy ? .20 : .035);
-  pet.body.scale.y = (pet.bodyScaleY || 1) * (1 + wave * .008);
-  pet.head.position.y = pet.headY + wave * .012;
-  pet.head.rotation.z = wave * .012 + amount * (pet.kind === 'capybara' ? .035 : .06);
-  pet.head.rotation.y = response?.look || 0;
-  pet.head.rotation.x = amount * -.045;
+  // The renderer owns outer yaw and x/z placement, and adds the scene's base y
+  // after this call. Reset our local offset and every pose channel each frame.
+  pet.root.position.y = 0;
+  pet.body.scale.copy(pet.restBodyScale); pet.body.scale.y *= 1 + wave * .008;
+  pet.body.rotation.set(0, 0, 0);
+  pet.head.position.copy(pet.restHeadPosition); pet.head.position.y += wave * .012;
+  pet.head.scale.copy(pet.restHeadScale);
+  pet.head.rotation.set(0, Number(response?.look) || 0, wave * .012);
   for (let i = 0; i < pet.limbs.length; i++) {
-    pet.limbs[i].rotation.z = (i ? 1 : -1) * (amount * (happy ? .65 : .32));
-    pet.limbs[i].rotation.x = wave * .012 + amount * -.11;
+    pet.limbs[i].rotation.set(wave * .012, 0, 0);
   }
-  for (let i = 0; i < pet.wings.length; i++) pet.wings[i].rotation.y = (pet.wings[i].userData.baseY || 0) + (i ? 1 : -1) * (wave * .028 + amount * .20);
-  if (pet.tail) pet.tail.rotation.y = wave * .045 + amount * .13;
+  for (let i = 0; i < pet.wings.length; i++) pet.wings[i].rotation.set(0, (pet.wings[i].userData.baseY || 0) + (i ? 1 : -1) * wave * .028, 0);
+  if (pet.tail) pet.tail.rotation.set(0, wave * .045, 0);
   const cycle = seconds % 5.3;
   const blink = !reducedMotion && cycle > 5.12 ? Math.max(.06, Math.abs(cycle - 5.21) / .09) : 1;
   pet.eyes.forEach(e => { e.scale.y = blink; });
+  animateCompanionInteraction(pet, response, reducedMotion);
 }

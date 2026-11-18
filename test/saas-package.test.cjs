@@ -37,6 +37,9 @@ test('Docker runtime COPY serves every top-level HTML asset through the SaaS HTT
     else if (file === 'runtime.js') assert.match(response.body, /window\.__TTJF_SAAS__=true;/, 'SaaS serves its own runtime mode');
     else {
       const expected = read(file);
+      if (file.endsWith('.css')) {
+        assert.ok(response.body.trim() && !response.body.includes('\0'), `${file} must contain nonempty stylesheet text without NUL bytes`);
+      }
       assert.deepEqual(response.body, file.endsWith('.webmanifest') ? JSON.parse(expected) : expected, file);
     }
   }

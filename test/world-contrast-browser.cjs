@@ -14,10 +14,10 @@ const OUT = path.join(process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.T
 const hashCSS = () => crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, 'farm-world.css'))).digest('hex');
 fs.mkdirSync(OUT, { recursive: true });
 const report = { status: 'running', startedAt: new Date().toISOString(), cssHash: hashCSS(), controls: [],
-  method: 'Real computed styles; opaque two-stop RGB gradients bounded by their lightest channels, including CSS brightness on text and background. No backgroundColor substitution for gradients.',
+  method: 'Real computed styles; RGB gradient layers bounded by conservative channel envelopes, including CSS brightness on text and background. Both light and dark labels are verified; transparent controls resolve the actual painted ancestor.',
   boundaries: ['Synthetic legacy HTTP family; no production family or SaaS/SQLite persistence is exercised.',
     'Desktop Edge at 390x844; native iPad/Safari and OS keyboard are unverified.',
-    'Only solid fills and the current two-stop RGB gradients/brightness filters are supported; other rendering fails explicitly.'] };
+    'Only solid fills and current two-stop RGB linear/radial gradient layers with an opaque base, plus brightness filters, are supported; other rendering fails explicitly.'] };
 const persist = () => fs.writeFileSync(path.join(OUT, 'results.json'), JSON.stringify(report, null, 2));
 persist();
 let browser, env, page;
@@ -45,19 +45,41 @@ function contrast(style) {
   let stops;
   if (style.backgroundImage === 'none') stops = [rgb(style.backgroundColor)];
   else {
-    assert.match(style.backgroundImage, /^linear-gradient\(rgba?\([\d.,\s]+\), rgba?\([\d.,\s]+\)\)$/, 'unsupported gradient: ' + style.backgroundImage);
-    stops = style.backgroundImage.match(/rgba?\([^)]+\)/g).map(rgb);
+    let depth = 0, start = 0; const layers = [];
+    for (let index = 0; index < style.backgroundImage.length; index++) {
+      const character = style.backgroundImage[index];
+      if (character === '(') depth++;
+      else if (character === ')') depth--;
+      else if (character === ',' && depth === 0) { layers.push(style.backgroundImage.slice(start, index).trim()); start = index + 1; }
+    }
+    layers.push(style.backgroundImage.slice(start).trim());
+    const gradients = layers.map(layer => {
+      assert.match(layer, /^(?:linear|radial)-gradient\(.+\)$/, 'unsupported gradient: ' + layer);
+      const colors = (layer.match(/rgba?\([^)]+\)/g) || []).map(rgba);
+      assert.equal(colors.length, 2, 'two-stop RGB gradient required: ' + layer);
+      assert.ok(colors.every(color => color[3] >= 0 && color[3] <= 1));
+      return colors;
+    });
+    assert.ok(gradients.at(-1).every(color => color[3] === 1), 'the bottom gradient must be opaque');
+    // Every interpolation and alpha composite lies inside the channel envelope
+    // of the opaque base and non-transparent overlaid stops.
+    stops = gradients.flat().filter(color => color[3] > 0).map(color => color.slice(0, 3));
   }
   assert.ok(style.filter === 'none' || /^brightness\([\d.]+\)$/.test(style.filter), 'unsupported filter: ' + style.filter);
   const brightness = style.filter === 'none' ? 1 : Number(style.filter.match(/[\d.]+/)[0]);
-  // RGB interpolation stays within the per-channel envelope. A lighter opaque
-  // label has its lowest contrast at this conservative brightest background.
-  // Round the label down and background up to cover 8-bit raster quantization.
+  const backgroundBrightness = style.backgroundOwned ? brightness : 1;
+  // Bound both polarities and include raster rounding. A gradient crossing a
+  // foreground's luminance cannot establish 4.5:1 with this conservative model.
   function bound(color, backgrounds) {
-    const foreground = rgb(color).map(value => Math.floor(Math.min(255, value * brightness)));
-    const brightest = [0, 1, 2].map(channel => Math.ceil(Math.min(255, Math.max(...backgrounds.map(stop => stop[channel])) * brightness)));
-    assert.ok(foreground.every((value, channel) => value >= brightest[channel]), 'expected a light label on a darker fill');
-    return { foreground, brightest, minimumRatio: (luminance(foreground) + .05) / (luminance(brightest) + .05) };
+    const channels = rgb(color).map(value => Math.min(255, value * brightness));
+    const lowerForeground = channels.map(Math.floor), upperForeground = channels.map(Math.ceil);
+    const darkest = [0, 1, 2].map(channel => Math.floor(Math.min(255, Math.min(...backgrounds.map(stop => stop[channel])) * backgroundBrightness)));
+    const brightest = [0, 1, 2].map(channel => Math.ceil(Math.min(255, Math.max(...backgrounds.map(stop => stop[channel])) * backgroundBrightness)));
+    if (luminance(lowerForeground) >= luminance(brightest)) return { polarity: 'light', foreground: lowerForeground, darkest, brightest,
+      minimumRatio: (luminance(lowerForeground) + .05) / (luminance(brightest) + .05) };
+    if (luminance(upperForeground) <= luminance(darkest)) return { polarity: 'dark', foreground: upperForeground, darkest, brightest,
+      minimumRatio: (luminance(darkest) + .05) / (luminance(upperForeground) + .05) };
+    return { polarity: 'crossing', foreground: channels, darkest, brightest, minimumRatio: 1 };
   }
   const textRuns = style.textRuns.map(text => {
     let backgrounds = stops;
@@ -70,11 +92,15 @@ function contrast(style) {
     return { label: text.label, ...bound(text.color, backgrounds) };
   });
   const base = bound(style.color, stops);
-  return { stops, brightness, ...base, textRuns, minimumRatio: Math.min(base.minimumRatio, ...textRuns.map(text => text.minimumRatio)) };
+  return { stops, brightness, backgroundBrightness, ...base, textRuns, minimumRatio: Math.min(base.minimumRatio, ...textRuns.map(text => text.minimumRatio)) };
 }
 async function styleOf(selector) {
   return page.$eval(selector, element => {
     const s = getComputedStyle(element), box = element.getBoundingClientRect();
+    let background = element, painted = s;
+    while (background.parentElement && painted.backgroundImage === 'none' && /^rgba\([\d.,\s]+,\s*0\)$/.test(painted.backgroundColor)) {
+      background = background.parentElement; painted = getComputedStyle(background);
+    }
     const rect = value => ({ x: value.x, y: value.y, width: value.width, height: value.height });
     const text = document.createRange(); text.selectNodeContents(element);
     const ancestorEffects = [];
@@ -96,7 +122,8 @@ async function styleOf(selector) {
       return { label: [...node.childNodes].filter(child => child.nodeType === Node.TEXT_NODE).map(child => child.textContent).join('').trim(), color: getComputedStyle(node).color, layers };
     });
     return { label: element.textContent.trim() || element.getAttribute('aria-label'), className: element.className,
-      color: s.color, backgroundImage: s.backgroundImage, backgroundColor: s.backgroundColor, filter: s.filter,
+      color: s.color, backgroundImage: painted.backgroundImage, backgroundColor: painted.backgroundColor,
+      backgroundSource: background.tagName + '.' + background.className, backgroundOwned: background === element, filter: s.filter,
       opacity: s.opacity, cursor: s.cursor, fontSize: s.fontSize, fontWeight: s.fontWeight,
       disabled: element.disabled, busy: element.getAttribute('aria-busy'), hover: element.matches(':hover'),
       focusVisible: element.matches(':focus-visible'), active: element.matches(':active'),
@@ -108,7 +135,7 @@ async function settle() {
   await B.delay(220);
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 }
-async function audit(label, selector) {
+async function audit(label, selector, supportingSelectors = []) {
   report.current = label; persist();
   const control = { label, selector, states: [] }; report.controls.push(control);
   await page.$eval(selector, element => element.scrollIntoView({ block: 'center', behavior: 'instant' }));
@@ -120,6 +147,12 @@ async function audit(label, selector) {
     if (state === 'focus') { assert.equal(style.focusVisible, true); assert.notEqual(style.outlineStyle, 'none'); }
     if (state === 'active') assert.equal(style.active, true);
     const result = { state, ...style, ...contrast(style) };
+    result.supportingText = [];
+    for (const supportingSelector of supportingSelectors) {
+      const supportingStyle = await styleOf(supportingSelector);
+      result.supportingText.push({ selector: supportingSelector, ...supportingStyle, ...contrast(supportingStyle) });
+    }
+    result.minimumRatio = Math.min(result.minimumRatio, ...result.supportingText.map(text => text.minimumRatio));
     result.passed = result.minimumRatio >= 4.5;
     control.states.push(result); persist();
     console.log((result.passed ? 'PASS ' : 'FAIL ') + label + '/' + state + ': ' + result.minimumRatio.toFixed(4));
@@ -156,7 +189,9 @@ async function disabled() {
   const before = env.requests.length;
   await page.mouse.click(style.box.x + style.box.width / 2, style.box.y + style.box.height / 2);
   await B.delay(50); assert.equal(env.requests.length, before, 'disabled action must not submit');
-  report.disabled = style; await page.screenshot({ path: path.join(OUT, 'disabled-redemption.png') }); persist();
+  report.disabled = { ...style, ...contrast(style) };
+  assert.ok(report.disabled.minimumRatio >= 4.5, 'disabled primary label remains readable');
+  await page.screenshot({ path: path.join(OUT, 'disabled-redemption.png') }); persist();
 }
 async function runTest() {
   try {
@@ -165,9 +200,40 @@ async function runTest() {
     env = await B.createEnvironment(browser, { state }); page = await env.newPage({ width: 390, height: 844 });
     page.setDefaultTimeout(5000); page.setDefaultNavigationTimeout(10000); await env.load(page);
     await audit('home-primary', '.credit-add');
-    await audit('home-harvest', '.farm-toolbar .farm-tool-primary');
-    await B.click(page, a('add-points')); await audit('picker-add', '.sheet .icon-button.nav-add');
+    // Audit the button as one composited control, including every nested text run
+    // and the redeemable badge fill under the button's active brightness filter.
+    await audit('wallet-balance-history', '.credit-score');
+    const wallet = report.controls.find(control => control.label === 'wallet-balance-history');
+    for (const stateResult of wallet.states) {
+      const labels = stateResult.textRuns.map(text => text.label), totals = M.totals(state);
+      for (const label of ['历史总积分', '可兑换积分', String(totals.earned), String(totals.available)]) {
+        assert.ok(labels.includes(label), 'wallet contrast includes ' + label + ' in ' + stateResult.state);
+      }
+    }
+    await audit('wallet-rewards', '.credit-rewards');
+    await audit('home-pet-touch', '.pet-home-card ' + a('farm-pet-touch'));
+    for (const care of ['feed', 'wash', 'train']) await audit('home-pet-' + care, '.pet-home-card ' + a('farm-pet-play', care));
+    await audit('home-pet-preview', '.pet-home-card ' + a('farm-pet-preview'));
+    await B.click(page, a('farm-pet-preview'));
+    await audit('gallery-selected-stage', a('farm-pet-stage') + '[aria-pressed="true"]');
+    await audit('gallery-future-stage', a('farm-pet-stage', 5));
+    await audit('gallery-default-selected', a('farm-pet-look', 'default'));
+    await audit('gallery-festival-available', a('farm-pet-look', 'festival'));
+    await B.click(page, a('farm-pet-look', 'festival'));
+    await audit('gallery-default-available', a('farm-pet-look', 'default'));
+    await audit('gallery-festival-selected', a('farm-pet-look', 'festival'));
+    await B.click(page, a('farm-pet-current'));
+    await B.click(page, a('add-points')); await audit('picker-award-entry', '.sheet .icon-button.nav-add');
+    await B.click(page, '.sheet ' + a('point-list')); await audit('template-create', '.sheet .template-create');
+    await B.closeSheet(page);
     await B.click(page, '.sheet ' + a('points-new')); await audit('points-save', B.SELECTORS.submit);
+    await B.fillForm(page, { name: '自主阅读', points: 5, reason: '主动分享今天读到的故事' });
+    await B.click(page, B.SELECTORS.submit); await B.confirmPoints(page);
+    await page.waitForSelector(B.SELECTORS.answer);
+    await audit('parent-pin', B.SELECTORS.answer, ['.parent-dialog-prompt', '.parent-dialog .field > span']);
+    await audit('parent-submit', B.SELECTORS.verify);
+    await home(); await B.click(page, a('jump-rewards'));
+    await audit('rewards-history-entry', '.rewards-history-entry');
     await home(); await B.click(page, a('farm-open')); await audit('farm-harvest', '.farm-game-sheet .farm-tool-primary');
     await home(); await B.click(page, a('home-inbox')); await audit('reminder-complete', '.sheet .reminder-primary');
     await home(); await B.navigate(page, 'reminders'); await B.click(page, a('task-edit', 'task-reading'));

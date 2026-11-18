@@ -43,6 +43,50 @@ test('real SQLite all business endpoints, replays and conflicts are tenant-autho
   assert.equal(privateReceipt.algorithm, 'scrypt'); assert.equal(privateReceipt.n, 32768);
 });
 
+test('real SQLite optional credit reasons keep grants, idempotency and durable empty ledger text', async t => {
+  const f = await H.fixture(t);
+  const owner = await H.family(f, await H.register(f, 'optional-reason@example.test'));
+  await H.setup(f, owner, 'math');
+  const independent = await f.openDatabase();
+  const second = await f.start({ database: independent });
+  const commands = [
+    { id: 'optional-missing', type: 'points.add', name: '阅读', points: 3 },
+    { id: 'optional-null', type: 'points.add', name: '专心练习', points: 3, reason: null },
+    { id: 'optional-whitespace', type: 'points.add', name: '整理文具', points: 3, reason: ' \t\n ', saveAsTemplate: true }
+  ];
+  let revision = 2;
+  for (const action of commands) {
+    const denied = await H.request(f.server, 'POST', '/api/action', { revision, action }, owner);
+    assert.equal(denied.status, 403);
+    assert.equal(denied.body.code, 'PARENT_REQUIRED');
+    const grant = await H.grant(f, owner, action, revision);
+    const changed = await H.request(second, 'POST', '/api/action', {
+      revision, action: { ...action, reason: '后来补充的原因' }, grant
+    }, owner);
+    assert.equal(changed.status, 403);
+    assert.equal(changed.body.code, 'GRANT_INVALID');
+    const applied = await H.request(f.server, 'POST', '/api/action', { revision, action, grant }, owner);
+    assert.equal(applied.status, 200);
+    assert.equal(applied.body.revision, revision + 1);
+    assert.equal(applied.body.state.points.at(-1).reason, '');
+    const replay = await H.request(second, 'POST', '/api/action', { revision, action }, owner);
+    assert.equal(replay.status, 200);
+    assert.deepEqual(replay.body, applied.body);
+    assert.equal(replay.body.state.points.length, revision - 1);
+    revision += 1;
+  }
+  const stored = (await independent.query('SELECT state,revision FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
+  assert.deepEqual(stored.state.points.map(row => row.reason), ['', '', '']);
+  assert.equal(stored.state.pointItems.at(-1).reason, '');
+  assert.deepEqual(M.totals(stored.state), { earned: 9, spent: 0, available: 9 });
+  assert.equal((await independent.query('SELECT count(*) AS n FROM saas_parent_grants WHERE family_id=$1', [owner.familyId])).rows[0].n, 0);
+  await f.server.closeSaas();
+  const reloaded = await H.request(second, 'GET', '/api/state', undefined, owner);
+  assert.equal(reloaded.status, 200);
+  assert.equal(reloaded.body.revision, revision);
+  assert.deepEqual(reloaded.body.state, stored.state);
+});
+
 test('real SQLite challenges and grants bind family, user, session, full action and revision across request handlers', async t => {
   const f = await H.fixture(t), second = await f.start();
   const owner = await H.family(f, await H.register(f, 'grants-owner@example.test'));

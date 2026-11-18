@@ -110,6 +110,7 @@ const scenarios = {
     await check('protected save changes to authorization and cancel restores the editable points draft', async () => {
       await B.fillForm(page, { reason: 'World presentation test reason' });
       await click(B.SELECTORS.submit, { scroll: false });
+      await B.confirmPoints(page);
       await page.waitForSelector('#parent-form [name="answer"]'); await route('authorization', 'parent-verification');
       await click(a('parent-cancel')); await route('points');
       assert.equal(await page.$eval('#editor-form [name="reason"]', el => el.value), 'World presentation test reason');
@@ -154,6 +155,7 @@ const scenarios = {
   },
   async companion() {
     await check('farm panel remains the farm while growth, archive and partner settings use their places', async () => {
+      await click(a('farm-open')); await form('farm'); await click(a('farm-tab', 'collection')); await route('farm');
       await open('pet-growth', 'petGrowth', 'history', 'growth-history'); await home();
       await click(a('farm-open')); await form('farm'); await route('farm', 'farm-panel');
       await click(a('farm-tab', 'collection')); await route('farm');
@@ -220,6 +222,7 @@ const scenarios = {
       const previous = await page.evaluate(() => window.FamilyDemo.getUI().farmRender.renderer.id);
       await route('farm', 'night-before-navigation'); await home();
       await open('add-points', 'behaviorPicker', 'points', 'station-after-night'); await home();
+      await click(a('farm-open')); await form('farm');
       await page.waitForFunction(() => {
         const scene = window.FamilyDemo.getUI().farmRender.renderer;
         return scene && scene.ready && scene.lighting === 'night';
@@ -241,6 +244,7 @@ async function runFallback() {
     await click(a('add-points')); await form('behaviorPicker'); await route('points', 'picker-fallback', true);
     await click(a('choose-point')); await form('points'); await route('points', 'points-fallback', true);
     await B.fillForm(page, { reason: 'Fallback draft still works' }); await click(B.SELECTORS.submit, { scroll: false });
+    await B.confirmPoints(page);
     await page.waitForSelector('#parent-form [name="answer"]'); await route('authorization', 'verification-fallback', true);
     await click(a('parent-cancel')); assert.equal(await page.$eval('#editor-form [name="reason"]', el => el.value), 'Fallback draft still works');
   });

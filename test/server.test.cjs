@@ -450,11 +450,46 @@ test('write failure keeps the old ledger, credential and grant so the exact acti
   assert.deepEqual(saved.state.appliedActions, [action.id]);
 });
 
+test('optional credit reasons remain protected, replay once and reload from disk as empty text', async t => {
+  const f = await fixture(t);
+  const commands = [
+    { id: 'optional-missing', type: 'points.add', name: '阅读', points: 3 },
+    { id: 'optional-null', type: 'points.add', itemId: 'point-reading', points: 3, reason: null },
+    { id: 'optional-whitespace', type: 'points.add', name: '整理文具', points: 3, reason: ' \t\n ', saveAsTemplate: true }
+  ];
+  let revision = 1;
+  for (const action of commands) {
+    const denied = await post(f.server, '/api/action', { revision, action });
+    assert.equal(denied.status, 403);
+    assert.equal(denied.body.code, 'PARENT_REQUIRED');
+    const applied = await submit(f.server, action, revision);
+    assert.equal(applied.status, 200);
+    assert.equal(applied.body.revision, revision + 1);
+    assert.equal(applied.body.state.points[applied.body.state.points.length - 1].reason, '');
+    const replay = await post(f.server, '/api/action', { revision, action });
+    assert.deepEqual(replay.body, applied.body);
+    assert.equal(replay.status, 200);
+    revision += 1;
+  }
+  const stored = JSON.parse(fs.readFileSync(f.dataFile, 'utf8'));
+  assert.equal(stored.state.pointItems[stored.state.pointItems.length - 1].reason, '');
+  assert.deepEqual(Model.totals(stored.state), { earned: 137, spent: 40, available: 97 });
+  await close(f.server);
+  const reloaded = createServer(f.config);
+  t.after(() => close(reloaded));
+  await listen(reloaded);
+  const snapshot = await state(reloaded);
+  assert.equal(snapshot.status, 200);
+  assert.deepEqual(snapshot.body.state, stored.state);
+  assert.equal(snapshot.body.revision, revision);
+});
+
 test('invalid sensitive drafts are rejected before challenge issuance without changing disk', async t => {
   const f = await fixture(t);
   const before = fs.readFileSync(f.dataFile, 'utf8');
   for (const action of [credit('bad-zero', 0), { id: 'bad-type', type: 'points.delete' },
-    { id: 'bad-reason', type: 'points.add', name: '阅读', points: 1, reason: ' ' },
+    { id: 'bad-reason', type: 'points.add', name: '阅读', points: 1, reason: {} },
+    { id: 'long-reason', type: 'points.add', name: '阅读', points: 1, reason: '字'.repeat(2001) },
     { id: 'bad-pin', type: 'parent.configure', method: 'pin', pin: '123' },
     { id: 'bad-method', type: 'parent.configure', method: 'none' }]) {
     const response = await challenge(f.server, action);

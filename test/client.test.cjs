@@ -149,6 +149,7 @@ async function client(options = {}) {
   };
   async function submitAward() {
     if (!(await page.$('#parent-form'))) { await click(page, SELECTORS.submit, { scroll: false }); }
+    await B.confirmPoints(page);
     await page.waitForSelector(SELECTORS.answer);
     await verify(page, PIN);
     await delay(50);
@@ -276,6 +277,7 @@ regression('C6', 'a committed response lost in transit is reconciled once and th
   await click(page, await page.$('#parent-form') ? SELECTORS.verify : SELECTORS.submit, { scroll: false });
   // A correct client may retry the same idempotent action directly or obtain a
   // new operation-bound challenge. Both must retain the exact action identity.
+  await B.confirmPoints(page);
   if (await page.$(SELECTORS.answer)) { await verify(page); }
   await delay(50);
   const retry = (await app.posts()).at(-1);
@@ -285,6 +287,7 @@ regression('C6', 'a committed response lost in transit is reconciled once and th
   await app.accept(retry, committed); // 409 carries the already committed action.
   if ((await ui(page)).form) {
     await click(page, await page.$('#parent-form') ? SELECTORS.verify : SELECTORS.submit, { scroll: false });
+    await B.confirmPoints(page);
     if (await page.$(SELECTORS.answer)) { await verify(page); }
     await delay(50);
     const finalRetry = (await app.posts()).at(-1);

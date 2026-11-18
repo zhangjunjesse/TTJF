@@ -152,12 +152,23 @@ test('invalid task fields, unknown IDs and attempts to rewrite history are rejec
   assert.equal(next.tasks[0].createdAt, seed().tasks[0].createdAt);
 });
 
-test('points require positive integers and a reason, and support a custom behavior', () => {
+test('points require positive integers and a name while optional reasons normalize to empty text', () => {
   [-1, 0, 0.5, NaN, Infinity, '5', null, 9007199254740992].forEach(points => {
     assert.throws(() => action(seed(), 'points.add', { name: '好行为', points, reason: '原因' }), /正整数/);
   });
-  ['', '   ', null].forEach(reason => {
+  [{}, { reason: undefined }, { reason: null }, { reason: '' }, { reason: ' \t\n ' }].forEach(optional => {
+    const before = freeze(seed());
+    const state = action(before, 'points.add', Object.assign({ name: '好行为', points: 5 }, optional));
+    assert.equal(state.points[state.points.length - 1].reason, '');
+    assert.deepEqual(Model.totals(state), { earned: 133, spent: 40, available: 93 });
+    assert.deepEqual(Model.normalize(JSON.parse(JSON.stringify(state))), state);
+    assert.deepEqual(state.points.slice(0, -1), before.points);
+  });
+  [0, true, {}, [], '字'.repeat(2001)].forEach(reason => {
     assert.throws(() => action(seed(), 'points.add', { name: '好行为', points: 5, reason }), /原因/);
+    const stored = seed();
+    stored.points[0].reason = reason;
+    assert.throws(() => Model.normalize(stored), /原因/);
   });
   assert.throws(() => action(seed(), 'points.add', { points: 5, reason: '有原因但没名称' }), /名称/);
   const state = action(seed(), 'points.add', { name: '  自己系鞋带  ', points: 3, reason: '  耐心尝试  ' });
@@ -434,7 +445,9 @@ test('reminder actions reject non-ten-minute delays and completed or deleted tas
 test('stored reason presets do not invent an explicit reason for a new credit', () => {
   let state = action(seed(), 'pointItem.save', { item: { id: 'point-tidy', reason: '  没有提醒，自己收好了书包  ' } });
   assert.equal(state.pointItems.find(row => row.id === 'point-tidy').reason, '没有提醒，自己收好了书包');
-  assert.throws(() => action(state, 'points.add', { itemId: 'point-tidy' }), /加分原因/);
+  state = action(state, 'points.add', { itemId: 'point-tidy' });
+  assert.equal(state.points[state.points.length - 1].reason, '');
+  assert.equal(state.pointItems.find(row => row.id === 'point-tidy').reason, '没有提醒，自己收好了书包');
   state = action(state, 'points.add', { itemId: 'point-tidy', reason: '今天自己收好了书包' });
   assert.equal(state.points[state.points.length - 1].reason, '今天自己收好了书包');
 });
@@ -713,7 +726,7 @@ test('discarded previews and invalid drafts do not count, and an idempotent succ
   assert.equal(preview.points.length, 1);
   // The candidate is discarded; the confirmed state remains the source of usage.
   assert.deepEqual(frequentIds(state), originalOrder);
-  assert.throws(() => Model.apply(state, Object.assign({}, draft, { id: 'invalid-preview', reason: '' }), NOW), /原因/);
+  assert.throws(() => Model.apply(state, Object.assign({}, draft, { id: 'invalid-preview', points: 0, reason: '' }), NOW), /正整数/);
   assert.deepEqual(frequentIds(state), originalOrder);
   assert.equal(JSON.stringify(state), original);
   const acceptedAction = Object.assign({}, draft, { id: 'accepted-once' });
@@ -960,11 +973,33 @@ test('one custom credit atomically creates a deterministic template without over
   assert.equal(second.points[1].points, 9);
 });
 
+test('custom credits may atomically save a reusable template with no reason', () => {
+  const state = freeze(withUsage());
+  for (const optional of [{}, { reason: null }, { reason: ' \t\n ' }]) {
+    const command = Object.assign({ id: 'optional-template', type: 'points.add', name: '整理文具', points: 6, saveAsTemplate: true }, optional);
+    const next = Model.apply(state, command, NOW);
+    assert.equal(next.points.length, 1);
+    assert.equal(next.points[0].reason, '');
+    assert.equal(next.points[0].itemId, 'item-optional-template');
+    assert.deepEqual(next.pointItems[next.pointItems.length - 1], {
+      id: 'item-optional-template', name: '整理文具', points: 6, reason: '', enabled: true
+    });
+    const reloaded = Model.normalize(JSON.parse(JSON.stringify(next)));
+    assert.deepEqual(reloaded, next);
+    assert.equal(Model.apply(reloaded, command, NOW), reloaded);
+    const reused = action(reloaded, 'points.add', { itemId: 'item-optional-template' });
+    assert.equal(reused.points[1].reason, '');
+    assert.deepEqual(Model.totals(reused), { earned: 12, spent: 0, available: 12 });
+  }
+  assert.equal(state.points.length, 0);
+  assert.equal(state.pointItems.length, 4);
+});
+
 test('invalid or colliding atomic-template credits leave neither a template nor a ledger entry', () => {
   const initial = freeze(seed());
   const original = JSON.stringify(initial);
   const command = { id: 'bad-template', type: 'points.add', name: '测试', points: 5, reason: '测试原因', saveAsTemplate: true };
-  for (const patch of [{ itemId: 'point-reading' }, { reason: '' }, { points: 0 }, { saveAsTemplate: 'true' }]) {
+  for (const patch of [{ itemId: 'point-reading' }, { reason: {} }, { points: 0 }, { saveAsTemplate: 'true' }]) {
     assert.throws(() => Model.apply(initial, Object.assign({}, command, patch), NOW));
     assert.equal(JSON.stringify(initial), original);
   }

@@ -430,7 +430,7 @@ async function run() {
     await page.waitForFunction(() => window.FamilyDemo.getUI().parentConfigured === true); await home(page);
     await click(page, action('add-points')); await click(page, action('points-new'));
     await type(page, '#editor-form [name="name"]', '合成真实核验加分'); await type(page, '#editor-form [name="points"]', 500); await type(page, '#editor-form [name="reason"]', '仅隔离数据库测试');
-    await click(page, save); await page.waitForSelector('#parent-form [name="answer"]'); assert.equal((await totals(page)).earned, 0);
+    await click(page, save); await B.confirmPoints(page); await page.waitForSelector('#parent-form [name="answer"]'); assert.equal((await totals(page)).earned, 0);
     await type(page, '#parent-form [name="answer"]', '000000'); await click(page, parentSubmit);
     await page.waitForFunction(() => { const e = document.querySelector('#parent-error'); return e && !e.hidden && e.textContent; });
     assert.equal((await totals(page)).earned, 0);
@@ -441,16 +441,16 @@ async function run() {
   });
   await check('Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged', async () => {
     const ledger = await totals(page);
-    await click(page, action('farm-start')); await settled(page); assert.equal((await ui(page)).farmStatus.readyCount, 1);
-    await click(page, action('farm-harvest')); await settled(page); assert.equal((await ui(page)).farmStatus.inventory.carrot, 3);
-    await click(page, action('farm-open')); await click(page, action('farm-tab', 'build')); await click(page, action('farm-item', 'flowerpot'));
+    await click(page, action('farm-open')); await click(page, action('farm-start')); await settled(page); assert.equal((await ui(page)).farmStatus.readyCount, 1);
+    await click(page, action('farm-open')); await click(page, action('farm-harvest')); await settled(page); assert.equal((await ui(page)).farmStatus.inventory.carrot, 3);
+    await click(page, action('farm-tab', 'build')); await click(page, action('farm-item', 'flowerpot'));
     await click(page, action('farm-exchange', 'flowerpot')); await settled(page);
     await click(page, action('farm-place', 'flowerpot')); await settled(page); assert.equal((await snapshot(page)).farm.placements.entry, 'flowerpot');
-    await home(page); await click(page, action('farm-seeds')); await click(page, action('farm-crop', 'carrot')); await click(page, action('farm-plant')); await settled(page); await home(page);
+    await home(page); await click(page, action('farm-open')); await click(page, action('farm-seeds')); await click(page, action('farm-crop', 'carrot')); await click(page, action('farm-plant')); await settled(page); await home(page);
     const planted = await snapshot(page), count = planted.farm.plots.filter(plot => plot.cropId === 'carrot').length;
     assert.equal(count, 6); assert.equal((await ui(page)).farmStatus.readyCount, 0);
     env.clock(env.now() + H8); await page.reload({ waitUntil: 'load' }); await ready(page, familyA);
-    await click(page, action('farm-harvest')); await settled(page); assert.equal((await ui(page)).farmStatus.inventory.carrot, count * 3);
+    await click(page, action('farm-open')); await click(page, action('farm-harvest')); await settled(page); assert.equal((await ui(page)).farmStatus.inventory.carrot, count * 3);
     assert.deepEqual(await totals(page), ledger); assert.equal((await ui(page)).farmStatus.readyCount, 0);
     const completed = await snapshot(page); await env.restart(); await page.reload({ waitUntil: 'load' }); await ready(page, familyA);
     assert.deepEqual(await snapshot(page), completed); await shot(page, 'farm-loop-persisted-after-restart');
@@ -661,7 +661,7 @@ async function execute(scenario = run) {
 }
 module.exports = { B, M, ROOT, OUT, RUN, PIN, PASSWORD, NEW_PASSWORD, report, execute, initialize, check, shot, audit, configureSelection, includesPhase,
   sa, submit, save, parentSubmit, action, snapshot, status, ui, totals, waitView, ready, settled, visible, click, type,
-  fillSaas, home, account, switchFamily, logout, login, createFamily, registerAndVerify, assertEmpty,
+  fillSaas, home, account, switchFamily, logout, login, createFamily, registerAndVerify, assertEmpty, assertCleared,
   phase(value) { phase = value; }, active(page) { activePage = page; },
   fail(error, label) { report.failed.push({ phase, check: label, message: cleanError(error.message), stack: cleanError(error.stack) }); process.exitCode = 1; }
 };

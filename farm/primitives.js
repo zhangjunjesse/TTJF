@@ -80,7 +80,9 @@ export class Workshop {
     const inverse = root.matrixWorld.clone().invert(), pieces = [];
     const remove = [];
     root.traverse(mesh => {
-      if (!mesh.isMesh || Array.isArray(mesh.material) || mesh.material.transparent || mesh.material.map || mesh.userData.keep) return;
+      // A static batch cannot retain a rig's skin weights, bone palette or
+      // expression targets. Leave deforming meshes attached to their live rig.
+      if (!mesh.isMesh || mesh.isSkinnedMesh || mesh.morphTargetInfluences?.length || Array.isArray(mesh.material) || mesh.material.transparent || mesh.material.map || mesh.userData.keep) return;
       const geom = mesh.geometry.index ? mesh.geometry.toNonIndexed() : mesh.geometry.clone();
       // Imported GLBs use KHR_mesh_quantization. Expand normalized integer
       // positions BEFORE transforming; writing metre coordinates back to an

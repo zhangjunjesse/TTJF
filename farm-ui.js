@@ -4,6 +4,12 @@
   var host, controller = null, surface = null, sceneState = 'loading', sceneError = '', sceneWasReady = false, tickKey = '', activeMode = '', visible = false, focusKey = '', pendingFocus = null, lighting = 'day', sceneEpoch = 0, navigationSnapshot = null, restoreNavigation = false;
   var CROP_NAMES = { carrot: '萝卜', strawberry: '草莓', sunflower: '向日葵' };
   var SLOT_NAMES = { fence: '围栏', path: '小路', entry: '门口', center: '院子中央', edge: '院子边缘', house: '小屋' };
+  var previewStage = null, previewLook = 'default', companionKey = '';
+  var festivalNames = ['星愿生日', '花园游会', '星光鼓手', '月光骑士', '灯火加冕'];
+  function dragonPortrait(stage, look, label) {
+    var at = Math.max(1, Math.min(5, Math.floor(Number(stage) || 1)));
+    return '<img class="pet-growth-portrait" src="assets/farm/portraits/bud-' + at + (look === 'festival' ? '-festival' : '') + '.webp" alt="' + e(label) + '">';
+  }
   function e(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
   function copy(value) { return JSON.parse(JSON.stringify(value)); }
   function find(rows, id) { for (var i = 0; rows && i < rows.length; i++) if (rows[i].id === id) return rows[i]; return null; }
@@ -51,10 +57,55 @@
     if (!s.initialized) return '<div class="farm-welcome-actions">' + b('farm-start', '开启我的小院', 'btn primary', '', locked) + '<small>成熟萝卜田×1 · 免费</small></div>';
     return '<div class="farm-toolbar" aria-label="农场日常操作">' + b('farm-harvest', toolArt('harvest') + '<span>收获' + (s.readyCount ? '<b>' + s.readyCount + '</b>' : '') + '</span>', 'farm-tool ' + (s.readyCount ? 'farm-tool-primary' : ''), '', locked || !s.readyCount, '收获所有成熟作物') + b('farm-seeds', toolArt('seeds') + '<span>播种</span>', 'farm-tool', '', locked || !s.emptyCount, '选择作物并播种') + b('farm-care', toolArt('care') + '<span>照料</span>', 'farm-tool', '', false, '照料伙伴和动物') + b(full ? 'farm-tab' : 'farm-open', full ? toolArt('build') + '<span>建设</span>' : host.icon('screen') + '<span>展开</span>', 'farm-tool', full ? 'build' : '', false, full ? '打开背包与建设' : '展开整个农场') + '</div>';
   }
+  function previewPanel(c, stages) {
+    if (previewStage === null) return '';
+    var selected = stages[previewStage - 1];
+    var dragon = c.pet.kind === 'plant';
+    var shortNames = dragon ? ['初醒', '晶叶', '踏星', '星翼', '守护'] : ['初见', '学员', '探员', '领航', '守护'];
+    var choices = stages.map(function (stage) {
+      return galleryChoice('farm-pet-stage', stage.stage, stage.stage === previewStage,
+        '<b>' + shortNames[stage.stage - 1] + '</b><span>' + stage.at + ' 分</span>', 'pet-stage-choice', '预览' + stage.name + '，' + stage.at + '成长值');
+    }).join('');
+    var looks = dragon ? '<div class="pet-look-choices" role="group" aria-label="试穿造型">' +
+      galleryChoice('farm-pet-look', 'default', previewLook === 'default', '成长装', 'pet-look-choice') +
+      galleryChoice('farm-pet-look', 'festival', previewLook === 'festival', '庆典装', 'pet-look-choice') + '</div>' : '';
+    var progress = selected.at > c.growth.xp ? '尚未解锁，还差 ' + (selected.at - c.growth.xp) + ' 成长值' : selected.stage === c.growth.stage ? '当前形态' : '已到达的形态';
+    return '<section id="pet-gallery" class="pet-preview-panel" aria-label="成长图鉴"><div class="pet-stage-choices" role="group" aria-label="预览成长形态">' +
+      choices + '</div><div class="pet-look-row"><p class="pet-preview-description" role="status"><b>' + e(selected.name) +
+      '</b><br>' + progress + '</p>' + looks + '</div><p class="pet-growth-rule">每获得 1 积分，增加 1 成长值 · 兑换不影响成长</p></section>';
+  }
+  function galleryChoice(action, id, selected, content, style, label) {
+    return b(action, content, style, id, false, label).replace('<button ', '<button aria-pressed="' + selected + '" ');
+  }
+  function companionTools() {
+    return '<div class="pet-home-interactions" aria-label="免费陪伴互动">' + b('farm-pet-touch', host.icon('heart') + '<span>摸摸</span>', 'btn pet-home-care') + [['feed', 'snack', '喂一口'], ['wash', 'water', '洗澡'], ['train', 'ball', '玩耍']].map(function (x) { return b('farm-pet-play', host.icon(x[1]) + '<span>' + x[2] + '</span>', 'btn pet-home-care', x[0]); }).join('') + '</div>';
+  }
+  function companionHeading(pet, growth, previewing) {
+    var progress = Math.max(0, Math.min(100, Math.round(growth.progress * 100) || 0));
+    var gallery = previewing ? b('farm-pet-current', host.icon('back') + '回到现在', 'pet-preview-entry').replace('<button ', '<button aria-expanded="true" aria-controls="pet-gallery" ') :
+      b('farm-pet-preview', '成长图鉴' + host.icon('chevron'), 'pet-preview-entry', null, false, '查看成长图鉴').replace('<button ', '<button aria-expanded="false" ');
+    var yard = previewing ? '' : b('farm-open', host.icon('home') + '<span>小院</span>', 'pet-yard-entry', null, false, '我的小院');
+    return '<header class="pet-home-heading"><div class="pet-growth-summary"><div class="pet-identity">' +
+      '<strong class="pet-name" title="' + e(pet.name) + '">' + e(pet.name) + '</strong><span class="pet-level">Lv.' + growth.level + ' · ' + e(growth.stageName) + '</span></div>' +
+      '<div class="pet-growth-line"><span class="pet-growth-numbers">成长值 <strong>' + growth.xp + '</strong> / ' + growth.nextAt + '</span>' +
+      '<div class="growth-track" role="progressbar" aria-label="本阶段成长进度" aria-valuemin="' + growth.previousAt + '" aria-valuemax="' + growth.nextAt + '" aria-valuenow="' + growth.xp + '"><div style="width:' + progress + '%"></div></div></div>' +
+      gallery + '</div>' + yard + '</header>';
+  }
   function home() {
-    var c = context(), s = status(), pet = c.pet, g = c.growth, next = s.nextUnlock;
+    var c = context(), s = status(), pet = c.pet, g = c.growth, stages = root.FamilyModel.growthStages(pet.kind), key = pet.kind + ':' + g.xp;
+    if (key !== companionKey) { companionKey = key; previewStage = null; }
     tickKey = timingKey(s);
-    return '<section class="companion-card farm-home-card" aria-label="伙伴的小农场"><div class="companion-heading">' + b('pet-growth', '<span id="home-feedback" class="pet-name" role="status" aria-live="polite" data-feedback="' + !!c.feedback + '">' + e(c.feedback || pet.name) + '</span><span class="pet-level">Lv.' + g.level + ' · ' + g.xp + ' 成长值</span>', 'pet-growth-entry', '', false, '查看' + pet.name + '的成长，' + g.stageName) + b('farm-tab', '<b>背包·建设</b>' + (next ? '<small>' + e('再成长' + next.remaining + '点') + '</small>' : ''), 'text-button farm-build-entry', 'build') + '</div><div class="growth-track" role="progressbar" aria-label="本阶段成长进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(g.progress * 100) + '"><div style="width:' + Math.round(g.progress * 100) + '%"></div></div><div class="farm-home-stage">' + surfaceMarkup('home') + '<div class="farm-scene-caption"><span class="farm-weather">' + host.icon('sun') + '小院时光</span><span class="farm-ready-status">' + e(shortStatus(s)) + '</span></div>' + retryNotice() + '<p id="pet-dialogue" class="pet-announcement" aria-live="polite"></p></div>' + toolbar(s, false) + '</section>';
+    var previewing = previewStage !== null;
+    var caption = '点点我，和我打个招呼';
+    if (previewing) {
+      caption = e(stages[previewStage - 1].name);
+      if (pet.kind === 'plant' && previewLook === 'festival') caption += ' · ' + festivalNames[previewStage - 1];
+    }
+    var feedback = '<p id="home-feedback" data-default-text="" role="status" aria-live="polite" data-feedback="' + !!c.feedback + '">' + e(c.feedback) + '</p>';
+    return '<section class="companion-card farm-home-card pet-home-card' + (previewing ? ' is-previewing' : '') + '" aria-label="我的成长伙伴">' +
+      companionHeading(pet, g, previewing) + '<div class="farm-home-stage pet-home-stage' + (c.petMessage ? ' pet-speaking' : '') + '">' + surfaceMarkup('home') +
+      '<div class="farm-scene-caption"><span>' + caption + '</span></div><p id="pet-dialogue" class="pet-announcement" aria-live="polite">' + e(c.petMessage || '') +
+      '</p>' + feedback + '</div>' + (previewing ? previewPanel(c, stages) : companionTools()) + '</section>';
   }
   function tabs(active) { return '<nav class="farm-tabs" aria-label="小院工具">' + [['fields', '田地'], ['animals', '动物'], ['build', '布置'], ['collection', '收藏']].map(function (t) { return b('farm-tab', t[1], 'farm-tab' + (active === t[0] ? ' active' : ''), t[0]).replace('<button ', '<button aria-pressed="' + (active === t[0]) + '" '); }).join('') + '</nav>'; }
   function plotLabel(plot) { return plot.status === 'locked' ? '未开放' : plot.status === 'empty' ? '空田' : plot.status === 'ready' ? (plot.welcomeGift ? '欢迎礼物' : '成熟啦') : timeLabel(plot.readyAt); }
@@ -115,7 +166,20 @@
   function handle(action, id) {
     if (!scopeReady() || action.indexOf('farm-') !== 0) return false;
     var s = status(), f = context().form, a, item, plotIds;
-    if (action === 'farm-zoom-in' || action === 'farm-zoom-out' || action === 'farm-camera-reset') {
+    if (action === 'farm-pet-preview' || action === 'farm-pet-stage' || action === 'farm-pet-current' || action === 'farm-pet-look') {
+      if (f || context().auth || context().view !== 'points') return true;
+      var openingOrClosing = action === 'farm-pet-current' || action === 'farm-pet-preview';
+      if (openingOrClosing) {
+        previewStage = action === 'farm-pet-preview' && previewStage === null ? Math.min(5, context().growth.stage + 1) : null;
+        previewLook = 'default';
+      } else if (previewStage === null) return true;
+      else if (action === 'farm-pet-stage' && /^[1-5]$/.test(String(id))) previewStage = Number(id);
+      else if (action === 'farm-pet-look' && context().pet.kind === 'plant' && (id === 'festival' || id === 'default')) previewLook = id;
+      else return true;
+      host.render();
+    }
+    else if (action === 'farm-pet-touch') host.touchPet();
+    else if (action === 'farm-zoom-in' || action === 'farm-zoom-out' || action === 'farm-camera-reset') {
       if (controller && controller.camera) controller.camera(action === 'farm-camera-reset' ? { reset: true } : { zoomBy: action === 'farm-zoom-in' ? 1.2 : 1 / 1.2 });
     }
     else if (action === 'farm-lighting') { lighting = lighting === 'night' ? 'day' : 'night'; host.render(); }
@@ -144,6 +208,7 @@
     if (!target || context().pending || context().auth) return;
     var s = status();
     if (target.type === 'pet') { host.touchPet(); return; }
+    if (!context().form) return;
     if (!s.initialized) { host.toast('开启小院后就能一起种田啦'); return; }
     if (context().form && context().form.kind === 'farm' && context().form.data.view === 'item') return;
     if (target.type === 'plot') open('plot', { plotId: target.id });
@@ -153,7 +218,13 @@
   }
   function viewInsets(target, mode) {
     var inset = { top: 0, right: 0, bottom: 0, left: 0 };
-    if (mode !== 'expanded' || !target.getBoundingClientRect) return inset;
+    if (!target.getBoundingClientRect) return inset;
+    if (mode === 'home') {
+      var stageBox = target.getBoundingClientRect(), caption = document.querySelector('.pet-home-stage .farm-scene-caption');
+      if (caption) inset.top = Math.max(0, caption.getBoundingClientRect().bottom - stageBox.top + 8);
+      return inset;
+    }
+    if (mode !== 'expanded') return inset;
     var box = target.getBoundingClientRect(), panel = document.querySelector('.farm-focus-panel'), header = document.querySelector('.farm-game-sheet .sheet-header'), tray = document.querySelector('.farm-yard-tray');
     if (header) inset.top = Math.max(0, header.getBoundingClientRect().bottom - box.top + 10);
     if (panel) {
@@ -179,23 +250,51 @@
     else if (info.error || info.webgl === false) { sceneState = 'unavailable'; sceneError = info.error || '3D画面暂不可用'; }
     if (sceneState === 'ready' && controller && controller.camera && restoreNavigation && navigationSnapshot) { restoreNavigation = false; controller.camera({ restore: navigationSnapshot }); navigationSnapshot = null; }
     if (sceneState === 'ready' && controller && controller.focus && pendingFocus) { var focus = pendingFocus; pendingFocus = null; controller.focus(focus); }
-    var controls = document.querySelectorAll('.farm-camera-button');
+    var controls = document.querySelectorAll('.farm-camera-button, .pet-rotate-button');
     for (var j = 0; j < controls.length; j++) controls[j].disabled = sceneState !== 'ready';
     var notices = document.querySelectorAll('.farm-scene-fallback');
-    for (var i = 0; i < notices.length; i++) { notices[i].hidden = sceneState === 'ready'; if (sceneState === 'unavailable') notices[i].innerHTML = '<div>' + art('flowerpot') + '<strong>3D画面暂不可用</strong><p>按钮操作可用。</p></div>'; }
+    for (var i = 0; i < notices.length; i++) {
+      var notice = notices[i];
+      notice.hidden = sceneState === 'ready';
+      if (sceneState !== 'unavailable') continue;
+      var c = context();
+      if (notice.parentNode.getAttribute('data-farm-scene') === 'home' && c.pet.kind === 'plant') {
+        var stage = previewStage || c.growth.stage;
+        var look = previewStage === null ? 'default' : previewLook;
+        var key = stage + ':' + look + ':' + c.pet.name;
+        if (notice.getAttribute('data-portrait') === key) continue;
+        notice.setAttribute('data-portrait', key);
+        var name = root.FamilyModel.growthStages('plant')[stage - 1].name;
+        notice.innerHTML = dragonPortrait(stage, look, c.pet.name + ' · ' + name) + '<span class="pet-still-caption">静态展示</span>';
+      } else {
+        notice.innerHTML = '<div>' + art('flowerpot') + '<strong>3D画面暂不可用</strong><p>按钮操作可用。</p></div>';
+      }
+    }
   }
   function beforeRender() { if (surface && surface.parentNode) surface.parentNode.removeChild(surface); }
+  function showCreditFrame(frame) {
+    var image = document.querySelector('[data-credit-scene]');
+    if (!image) return;
+    if (frame) { image.src = frame; image.setAttribute('data-scene-ready', 'true'); }
+    else { image.removeAttribute('src'); image.removeAttribute('data-scene-ready'); }
+  }
   function afterRender() {
     if (!scopeReady()) { if (controller) controller.pause(true); return; }
     var generation = sceneEpoch;
     var c = context(), nodes = document.querySelectorAll('[data-farm-scene]'), target = null;
     for (var i = 0; i < nodes.length; i++) { if (!c.form || (c.form.kind === 'farm' && nodes[i].closest('.sheet'))) target = nodes[i]; }
     visible = !!target && !c.auth && c.view === 'points';
-    if (!visible) { if (controller) controller.pause(true); return; }
+    if (!visible) { previewStage = null; if (controller) controller.pause(true); return; }
     var mode = target.getAttribute('data-farm-scene'), s = status(), preview = target.getAttribute('data-preview-item'), item = preview && find(s.catalog, preview);
     if (item && s.initialized) { s = copy(s); if (item.slot === 'house') s.houseLevel = item.id === 'house3' ? 3 : 2; else s.placements[item.slot] = item.id; }
     prepareFocus(c, mode, s, item);
-    var opts = { mode: mode, farm: s, pet: c.pet, growth: c.growth, viewInsets: viewInsets(target, mode), lighting: lighting, reducedMotion: c.reducedMotion, onSelect: function (target) { if (generation === sceneEpoch && scopeReady()) sceneSelect(target); }, onStatus: function (info) { if (generation === sceneEpoch && scopeReady()) showSceneStatus(info); } };
+    if (mode !== 'home') previewStage = null;
+    var sceneGrowth = c.growth;
+    if (previewStage !== null) { sceneGrowth = copy(c.growth); sceneGrowth.stage = previewStage; if (previewStage < 5) sceneGrowth.stars = 0; }
+    var opts = { mode: mode, farm: s, pet: c.pet, growth: sceneGrowth, companionView: { interactive: mode === 'home' && !c.form, preview: previewStage !== null, variant: previewStage !== null ? previewLook : 'default' }, viewInsets: viewInsets(target, mode), lighting: lighting, reducedMotion: c.reducedMotion,
+      credit: { enabled: mode === 'home' && !c.form && !!document.querySelector('[data-credit-scene]'), balance: c.earnedPoints },
+      onCreditFrame: function (frame) { if (generation === sceneEpoch && scopeReady() && visible) showCreditFrame(frame); },
+      onSelect: function (target) { if (generation === sceneEpoch && scopeReady()) sceneSelect(target); }, onStatus: function (info) { if (generation === sceneEpoch && scopeReady()) showSceneStatus(info); } };
     if (!surface) { surface = document.createElement('div'); surface.className = 'farm-render-surface'; }
     target.insertBefore(surface, target.firstChild);
     try {
@@ -209,20 +308,22 @@
   function timingKey(s) { var c = context(); return JSON.stringify([s.initialized, c.familyDay, s.animals.map(function (a) { return [a.id, a.caredToday, a.careCount]; }), s.plots.map(function (p) { return [p.status, Math.ceil((p.remainingMs || 0) / 60000)]; }), c.connected, c.pending, c.retry && c.retry.uncertain]); }
   function tick() { if (!scopeReady() || !root.FamilyModel.farmStatus) return; var c = context(); if (c.view !== 'points' || c.auth || (c.form && c.form.kind !== 'farm')) return; var next = timingKey(status()); if (next !== tickKey) { tickKey = next; host.render(); } }
   function react(kind, target) { if (controller) controller.react(kind, target); }
-  function complete(action) { if (/^farm\./.test(action.type)) { var s = status(); if (action.type === 'farm.harvest') { if (s.lastHarvest && s.lastHarvest.id === action.id) { var crops = s.lastHarvest.crops; host.toast(Object.keys(CROP_NAMES).filter(function (id) { return crops[id]; }).map(function (id) { return CROP_NAMES[id] + ' +' + crops[id]; }).join(' · ')); } else host.toast('收获结果已同步到背包'); } react(action.type === 'farm.harvest' ? 'harvest' : action.type === 'farm.animalCare' ? 'care' : 'celebrate', action.animalId); } }
+  function complete(action) { if (!scopeReady()) return; if (action.type === 'points.add') { react('earn', 'pet'); return; } if (/^farm\./.test(action.type)) { var s = status(); if (action.type === 'farm.harvest') { if (s.lastHarvest && s.lastHarvest.id === action.id) { var crops = s.lastHarvest.crops; host.toast(Object.keys(CROP_NAMES).filter(function (id) { return crops[id]; }).map(function (id) { return CROP_NAMES[id] + ' +' + crops[id]; }).join(' · ')); } else host.toast('收获结果已同步到背包'); } react(action.type === 'farm.harvest' ? 'harvest' : action.type === 'farm.animalCare' ? 'care' : 'celebrate', action.animalId); } }
   function releaseScene() {
     // A business station needs the single WebGL slot, but it is still the same
     // family session. Keep user view choices until the family boundary clears.
     if (controller && sceneWasReady && !restoreNavigation && controller.diagnostics) { var view = controller.diagnostics().camera; if (view && view.navigation) navigationSnapshot = copy(view.navigation); }
-    sceneEpoch++; if (controller) controller.dispose(); controller = null;
+    previewStage = null;
+    sceneEpoch++; showCreditFrame(null); if (controller) controller.dispose(); controller = null;
     if (surface && surface.parentNode) surface.parentNode.removeChild(surface);
     // A queued detail focus has not been shown yet. Keep it with focusKey;
     // prepareFocus replaces both when the user chooses a different view.
     surface = null; visible = false; activeMode = ''; sceneState = 'loading'; sceneError = ''; sceneWasReady = false; tickKey = '';
     restoreNavigation = !!navigationSnapshot;
   }
-  function dispose() { releaseScene(); navigationSnapshot = null; restoreNavigation = false; focusKey = ''; pendingFocus = null; lighting = 'day'; }
-  root.FamilyFarmUI = { setup: function (adapter) { host = adapter; }, home: home, panel: panel, handle: handle, beforeRender: beforeRender, afterRender: afterRender, tick: tick, react: react, complete: complete, releaseScene: releaseScene, dispose: dispose, status: status, diagnostics: function () { return { visible: visible, mode: activeMode, sceneState: sceneState, sceneError: sceneError, renderer: controller && controller.diagnostics ? controller.diagnostics() : null }; } };
+  function dispose() { releaseScene(); navigationSnapshot = null; restoreNavigation = false; focusKey = ''; pendingFocus = null; lighting = 'day'; previewStage = null; companionKey = ''; }
+  root.FamilyFarmUI = { setup: function (adapter) { host = adapter; }, home: home, panel: panel, handle: handle, beforeRender: beforeRender, afterRender: afterRender, tick: tick, react: react, complete: complete, releaseScene: releaseScene, dispose: dispose, status: status, diagnostics: function () { return { visible: visible, mode: activeMode, previewStage: previewStage, sceneState: sceneState, sceneError: sceneError, renderer: controller && controller.diagnostics ? controller.diagnostics() : null }; } };
+  root.FamilyFarmUI.dragonPortrait = dragonPortrait;
   document.addEventListener('visibilitychange', function () { if (controller) controller.pause(document.hidden || !visible || !scopeReady()); });
   root.addEventListener('pagehide', function () { if (controller) controller.pause(true); });
   root.addEventListener('pageshow', function () { if (host) afterRender(); });

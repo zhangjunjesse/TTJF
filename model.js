@@ -400,7 +400,7 @@
     validateRows(state.points, '加分记录', function (row) {
       text(row.name, '加分名称', true, 120);
       integer(row.points, '加分分值', 1);
-      text(row.reason, '加分原因', true);
+      text(row.reason, '加分原因', false);
       optionalId(row.itemId, '加分项标识');
       storedTimestamp(row.at);
     });
@@ -909,7 +909,7 @@
         itemId: previous ? previous.id : '',
         name: text(own.call(action, 'name') ? action.name : (previous ? previous.name : ''), '加分名称', true, 120),
         points: integer(own.call(action, 'points') ? action.points : (previous ? previous.points : undefined), '加分分值', 1),
-        reason: text(action.reason, '加分原因', true),
+        reason: text(action.reason, '加分原因', false),
         at: at
       };
       if (action.saveAsTemplate) {

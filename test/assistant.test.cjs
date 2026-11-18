@@ -50,9 +50,26 @@ test('points drafts keep concrete reasons and reject absent, decimal or negative
   assert.equal(result.action.payload.points, 5);
   assert.equal(result.action.payload.reason, '他刚才主动收好了书包');
   assert.deepEqual(M.totals(state), before);
-  for (const phrase of ['给五分','加-5分，整理书包','整理书包，给1.5分','表现好，给五分']) {
+  for (const phrase of ['给五分','加-5分，整理书包','整理书包，给1.5分']) {
     assert.equal(A.interpret(phrase, state, now).kind, 'clarify', phrase);
   }
+});
+test('named local awards accept an omitted reason without borrowing a template preset', () => {
+  const state = seed(), before = JSON.stringify(state);
+  for (const context of ['general', 'points']) {
+    for (const [sentence, name, reason] of [
+      ['行为：阅读，加5分', '阅读', ''],
+      ['自主阅读，加5分', '自主阅读', ''],
+      ['表现好，加5分', '表现好', '表现好'],
+      ['行为：阅读，原因：读完后分享了故事，加5分', '阅读', '读完后分享了故事']
+    ]) {
+      const result = A.interpret(sentence, state, now, {context});
+      assert.equal(result.kind, 'action', sentence + ': ' + JSON.stringify(result));
+      assert.deepEqual(result.action.payload, {name, points: 5, reason});
+      assert.doesNotMatch(result.summary, /undefined|null|·\s*$/);
+    }
+  }
+  assert.equal(JSON.stringify(state), before, 'parsing only creates a draft');
 });
 test('gift creation maps an explicit category and price', () => {
   const r = A.interpret('添加一个周末吃汉堡的礼品，六十分', seed(), now);
@@ -76,6 +93,26 @@ test('model cannot return a grant, configure the parent, or perform a final rede
   assert.equal(safe.action.payload.grant, undefined);
   assert.equal(safe.action.payload.saveAsTemplate, undefined, 'Saving a template must be the visible form choice, not a hidden AI field');
   assert.equal(safe.grant, undefined);
+});
+test('award normalization keeps reasons optional while validating names, amounts and reason types', () => {
+  const state = seed(), before = JSON.stringify(state);
+  for (const reason of [undefined, null, '', '   ', '表现好', '  独立读完一章  ']) {
+    const payload = {name: '阅读', points: 5};
+    if (reason !== undefined) payload.reason = reason;
+    const result = A.normalize({kind: 'action', action: {type: 'points.add', payload}}, state, now);
+    assert.equal(result.kind, 'action', JSON.stringify(result));
+    assert.equal(result.action.payload.reason, reason == null ? '' : reason.trim());
+    assert.match(result.summary, /阅读/);
+    assert.doesNotMatch(result.summary, /undefined|null|·\s*$/);
+  }
+  const preset = A.normalize({kind: 'action', action: {type: 'points.add', payload: {itemId: state.pointItems[0].id}}}, state, now);
+  assert.equal(preset.kind, 'action', JSON.stringify(preset));
+  assert.equal(preset.action.payload.reason, '');
+  for (const patch of [{name: ''}, {name: undefined}, {name: {toString: null}}, {points: undefined}, {points: 0}, {points: -1}, {points: 1.5}, {reason: 123}, {reason: {}}, {reason: {toString: null}}, {reason: 'x'.repeat(2001)}]) {
+    const payload = {name: '阅读', points: 5, ...patch};
+    assert.equal(A.normalize({kind: 'action', action: {type: 'points.add', payload}}, state, now).kind, 'clarify', JSON.stringify(patch));
+  }
+  assert.equal(JSON.stringify(state), before, 'validation never commits the award');
 });
 test('pet supplies reduce assistant balance and gift eligibility without exposing care ledgers', async () => {
   const state = M.apply(seed(), {id:'assistant-pet-buy',type:'pet.buy',itemId:'snack',quantity:10,expectedPoints:30}, now);
@@ -129,6 +166,31 @@ test('configured adapter submits minimal context, validates a mocked provider re
   delete state.parent;
   assert.equal(JSON.stringify(state), before);
 });
+test('configured provider may omit the reason but cannot omit the award name or positive integer amount', async () => {
+  const state = seed(), before = JSON.stringify(state);
+  state.pointItems[0].reason = 'PRIVATE_PRESET_REASON';
+  const snapshot = JSON.stringify(state);
+  for (const [payload, expected] of [
+    [{name: '阅读', points: 5}, 'action'],
+    [{name: '阅读', points: 5, reason: '  '}, 'action'],
+    [{points: 5}, 'clarify'],
+    [{name: '阅读'}, 'clarify'],
+    [{name: '阅读', points: 1.5}, 'clarify'],
+    [{name: '阅读', points: 5, reason: {}}, 'clarify']
+  ]) {
+    const service = createAssistantService({apiKey: 'test-key', fetch: provider(
+      {kind: 'action', action: {type: 'points.add', payload}},
+      (url, options) => assert.doesNotMatch(options.body, /PRIVATE_PRESET_REASON/)
+    )});
+    const result = await service.interpret('行为：阅读，加5分', state, now, {context: 'points'});
+    assert.equal(result.kind, expected, JSON.stringify(result));
+    assert.equal(result.mode, 'connected');
+    if (expected === 'action') assert.equal(result.action.payload.reason, '');
+    assert.equal(JSON.stringify(state), snapshot, 'provider output remains an editable draft');
+  }
+  state.pointItems[0].reason = JSON.parse(before).pointItems[0].reason;
+  assert.equal(JSON.stringify(state), before);
+});
 test('configured provider failure is explicit, keeps input actionable, and does not expose errors or secrets', async () => {
   const service = createAssistantService({apiKey:'secret-marker',fetch:async () => { throw new Error('secret-marker/private-url'); }});
   const result = await service.interpret('整理书包给五分', seed(), now);
@@ -160,7 +222,7 @@ test('in-form points context accepts a concrete reason and one amount without ch
     assert.equal(result.action.payload.points, 5);
     assert.match(result.action.payload.reason, /自己/);
   }
-  for (const sentence of ['给5分', '给我5分', '这次加5分', '表现好加5分', '整理书包加三点五分', '整理书包加5分，读书加3分', '停用自主阅读', '新增常用项：阅读，5分']) {
+  for (const sentence of ['给5分', '给我5分', '这次加5分', '整理书包加三点五分', '整理书包加5分，读书加3分', '停用自主阅读', '新增常用项：阅读，5分']) {
     assert.equal(A.interpret(sentence, state, now, {context:'points'}).kind, 'clarify', sentence);
   }
   state.childName = '小星(一)';

@@ -245,6 +245,9 @@ test('v14 same-session recovery restores ordinary drafts only after fresh state 
   const h = harness(); h.login();
   h.api.open('points', { name: '待核对的草稿', points: 5, reason: '普通原因', pin: '123456', answer: '654321', grant: 'secret-grant', password: 'secret-password' });
   h.api.action({ type: 'points.add', name: '待核对的草稿', points: 5, reason: '普通原因' }, '已保存');
+  assert.equal(h.ui().authPhase, 'confirm');
+  assert.equal(h.xhrs.some(x => x.url === '/api/parent/challenge'), false);
+  h.api.parent({});
   const auth = h.api.get().ui.auth, challenge = h.pending('/api/parent/challenge'); assert.ok(auth);
   auth.autoPin = '123456'; auth.tx.grant = 'old-grant';
   const writesBefore = h.xhrs.filter(x => x.method !== 'GET').length;

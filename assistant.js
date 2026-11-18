@@ -122,12 +122,16 @@
   function awardDraft(s, state, now, options) {
     if (invalidAmount(s) || /(?:扣|减)(?:除|去)?\s*[零〇一二两三四五六七八九十百\d]+\s*分(?!钟)/.test(s)) { return clarify('当前支持正整数加分；请核对分值，不会自动扣分。'); }
     var tokens = numberTokens(s), match, reason, name;
-    if (tokens.length !== 1) { return clarify(tokens.length ? '听到了多个分值，这次确认加多少分？' : '这次加多少分？请同时描述具体做了什么，例如“自己收好书包，加 5 分”。'); }
+    if (tokens.length !== 1) { return clarify(tokens.length ? '听到了多个分值，这次确认加多少分？' : '这次加多少分？请填写行为名称和分值，例如“行为：阅读，加 5 分”。'); }
     match = new RegExp('(?:加|给|奖励|记)(?:上|积分)?(?:他|她|孩子|' + escapeRegExp(state.childName) + ')?\\s*[零〇一二两三四五六七八九十百\\d]+\\s*分(?!钟)').exec(s);
     reason = match ? s.replace(match[0], '') : s.slice(0, tokens[0].index) + s.slice(tokens[0].index + tokens[0].text.length);
     reason = cleanPhrase(reason.replace(/^(请)?(帮我)?/, '').replace(new RegExp('^(?:给)?(?:孩子|他|她|' + escapeRegExp(state.childName) + ')[，,：: ]*(?=$|[，,：: ])'), '').replace(/^(?:因为|原因是|原因[:：])/, '').replace(/(?:，|,)?(?:谢谢|就好|就行)[。！!]?$/, ''));
-    if (!reason || /^(表现好|很棒|做得好|乖|谢谢|加分|奖励|积分|给我|给孩子|给他|给她|这次|再|帮我)$/.test(reason)) { return clarify('这次具体做了什么？补充原因后再确认加分。'); }
-    name = /书包/.test(reason) ? '主动整理书包' : (/阅读|读书/.test(reason) ? '自主阅读' : (/收拾|整理/.test(reason) ? '主动整理' : brief(reason, 32)));
+    if (!reason || /^(谢谢|加分|奖励|积分|给我|给孩子|给他|给她|这次|再|帮我)$/.test(reason)) { return clarify('这次加分的行为叫什么？填写行为名称即可，原因可以不填。'); }
+    match = /^(?:行为名称|行为|名称)\s*[:：]\s*(.*?)(?:[，,]\s*(?:原因|理由)\s*[:：]\s*(.*))?$/.exec(reason);
+    if (match) { name = cleanPhrase(match[1]); reason = cleanPhrase(match[2] || ''); }
+    else if (state.pointItems.some(function (item) { return item.name === reason; })) { name = reason; reason = ''; }
+    else { name = /书包/.test(reason) ? '主动整理书包' : (/阅读|读书/.test(reason) ? '自主阅读' : (/收拾|整理/.test(reason) ? '主动整理' : brief(reason, 32))); }
+    if (!name) { return clarify('请填写这次加分的行为名称，原因可以不填。'); }
     return normalize({kind:'action',action:{type:'points.add',payload:{name:name,points:tokens[0].value,reason:reason}}}, state, now, options);
   }
   function templateCandidates(state, s) {
@@ -191,8 +195,8 @@
       row = payload.itemId ? find(state.pointItems, payload.itemId) : null;
       if (row && payload.name === undefined) { payload.name = row.name; }
       if (row && payload.points === undefined) { payload.points = row.points; }
-      if (!trim(payload.reason) || /^(表现好|很棒|做得好|乖|谢谢|加分|奖励|积分|给我|给孩子|给他|给她|这次|再|帮我)$/.test(trim(payload.reason))) { return clarify('这次具体做了什么？补充原因后再确认加分。'); }
-      summary = '+' + payload.points + ' 分 · ' + payload.reason;
+      if (payload.reason === undefined || payload.reason === null) { payload.reason = ''; }
+      if (typeof payload.reason === 'string') { payload.reason = trim(payload.reason); }
     } else if (type === 'pointItem.save' && plain(p.item)) {
       payload = {item:copyFields(p.item, ['id','name','points','reason','enabled'])};
       if (options && options.targetId) {
@@ -235,6 +239,7 @@
     Object.keys(payload).forEach(function (key) { flat[key] = payload[key]; });
     try { M.apply(state, flat, now); }
     catch (error) { return clarify(error.message); }
+    if (type === 'points.add') { summary = '+' + payload.points + ' 分 · ' + payload.name + (payload.reason ? ' · ' + payload.reason : ''); }
     return base({kind:'action', action:{type:type,payload:payload}, title:title, summary:summary});
   }
   function interpret(input, state, suppliedNow, options) {
@@ -244,7 +249,7 @@
     if (scope === 'pointItems') { return templateDraft(s, state, now, options); }
     if (scope === 'points') {
       if (/常用|模板|停用|启用|改名|改为每次|改成每次/.test(s)) { return clarify('这看起来是在管理常用项，请使用常用加分项里的 AI 入口。'); }
-      if (/(?:然后|另外|顺便|同时|[；;]).*(?:提醒|加分|给.*分|礼品)/.test(s)) { return clarify('一次先记录一件事，请描述这次加分的原因和分值。'); }
+      if (/(?:然后|另外|顺便|同时|[；;]).*(?:提醒|加分|给.*分|礼品)/.test(s)) { return clarify('一次先记录一件事，请描述这次加分的行为名称和分值。'); }
       return awardDraft(s, state, now, options);
     }
     if (/常用加分项|常用项|加分模板|加分项|新增常用|添加常用/.test(s) || (/停用|启用|改名|更名/.test(s) && templateCandidates(state, s).length)) {
@@ -257,7 +262,7 @@
     if (!s) { return clarify('说一句你想做的事，也可以直接打字。'); }
     if (s.length > 1200) { return clarify('一次说一件事就好，请缩短到 1200 字以内。'); }
     if (/密码|验证码|验证题|核验题|解锁|忽略.*验证|绕过/.test(s)) { return clarify('家长验证需要在验证界面完成，我不会读取或代答。'); }
-    if (/(?:然后|另外|顺便|同时).*(?:提醒|加分|给.*分|礼品)/.test(s)) { return clarify('一次先处理一件事。请先说要添加的提醒，或这次加分的原因和分值。'); }
+    if (/(?:然后|另外|顺便|同时).*(?:提醒|加分|给.*分|礼品)/.test(s)) { return clarify('一次先处理一件事。请先说要添加的提醒，或这次加分的行为名称和分值。'); }
     if (/还差|差多少|够.*换/.test(s)) {
       list = candidates(state.rewards, s, 'name');
       return list.length === 1 ? query({type:'reward_gap',rewardId:list[0].id}, state, now) : clarify('想查哪个礼品？请说完整名称。');

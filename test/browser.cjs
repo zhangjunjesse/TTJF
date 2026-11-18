@@ -180,7 +180,11 @@ async function navigate(page, view) {
 }
 async function closeSheet(page) { await click(page, SELECTORS.close, { scroll: false }); }
 async function noSheet(page) { await page.waitForSelector('.sheet-overlay', { hidden: true, timeout: 6000 }); }
+async function confirmPoints(page) {
+  if ((await ui(page)).authPhase === 'confirm') await click(page, action('points-confirm'), { scroll: false });
+}
 async function verify(page, answer = PIN) {
+  await confirmPoints(page);
   await page.waitForSelector(SELECTORS.answer);
   await fill(page, SELECTORS.answer, answer);
   await click(page, SELECTORS.verify, { scroll: false });
@@ -191,6 +195,7 @@ async function submitProtected(page, answer = PIN) {
 }
 async function openCredit(page, values = {}) {
   await click(page, action('add-points'));
+  await click(page, action('points-new'));
   await fillForm(page, { name: '认真阅读', points: 5, reason: '主动分享今天读到的故事', ...values });
 }
 async function capture(page, name, version = 'v3') {
@@ -353,6 +358,7 @@ async function runSuite() {
         const before = await totals(page);
         await openCredit(page);
         await click(page, SELECTORS.submit, { scroll: false });
+        await confirmPoints(page);
         await page.waitForSelector(SELECTORS.answer);
         assert.deepEqual(await totals(page), before);
         assert.deepEqual(Model.totals((await env.api('/api/state')).body.state), before);
@@ -363,6 +369,7 @@ async function runSuite() {
         await click(page, action('parent-cancel'), { scroll: false });
         await fillForm(page, { points: 7, reason: '自己把书包收好了' });
         await click(page, SELECTORS.submit, { scroll: false });
+        await confirmPoints(page);
         const challenges = env.requests.filter(item => item.path === '/api/parent/challenge');
         assert.equal(challenges.length, 2, 'cancelled verification must request a new operation-bound challenge');
         assert.notDeepEqual(challenges[0].body.action, challenges[1].body.action);
@@ -376,6 +383,7 @@ async function runSuite() {
         const before = await totals(page);
         await openCredit(page, { reason: '第二笔也要独立核验' });
         await click(page, SELECTORS.submit, { scroll: false });
+        await confirmPoints(page);
         await page.waitForSelector(SELECTORS.answer);
         assert.deepEqual(await totals(page), before);
         await capture(page, 'points-second-verification');
@@ -669,7 +677,7 @@ async function runSuite() {
         await closeSheet(page); await noSheet(page);
         assert.equal((await totals(page)).earned, before.earned + 5);
       });
-      await check('Read-only balance queries use the real ledger; missing reasons clarify and gift sentences stay drafts', async () => {
+      await check('Read-only balance queries use the real ledger; missing behavior names clarify and gift sentences stay drafts', async () => {
         const before = await totals(page);
         await click(page, action('voice'));
         await fillForm(page, { speech: '还差多少分能换汉堡' });
@@ -691,8 +699,8 @@ async function runSuite() {
         await click(page, action('voice'));
         await fillForm(page, { speech: '给五分' });
         await click(page, SELECTORS.submit, { scroll: false });
-        assert.equal(await page.$('#editor-form [name="points"]'), null, 'Missing reason must not be invented');
-        assert.match(await page.$eval('.sheet', element => element.textContent), /原因|具体|为什么/);
+        assert.equal(await page.$('#editor-form [name="points"]'), null, 'Missing behavior name must not be invented');
+        assert.match(await page.$eval('.sheet', element => element.textContent), /行为.*名称/);
         await closeSheet(page); await noSheet(page);
         await click(page, action('voice'));
         await fillForm(page, { speech: '添加一个周末吃汉堡的礼品，六十分' });
@@ -808,6 +816,7 @@ async function runSuite() {
           const before = await totals(page);
           await openCredit(page, { reason: '离线演示首次设置家长密码' });
           await click(page, SELECTORS.submit, { scroll: false });
+          await confirmPoints(page);
           await page.waitForSelector('#parent-form [name="setupPin"]');
           assert.deepEqual(await totals(page), before);
           await fill(page, '#parent-form [name="setupPin"]', '654321');
@@ -889,6 +898,6 @@ async function runSuite() {
 
 module.exports = { ROOT, ARTIFACTS, PIN, FIXTURE_TIME, VIEWPORTS, SELECTORS, Model,
   launch, createEnvironment, delay, action, click, fill, fillForm, state, ui, totals,
-  connected, navigate, closeSheet, noSheet, verify, submitProtected, openCredit, capture,
+  connected, navigate, closeSheet, noSheet, confirmPoints, verify, submitProtected, openCredit, capture,
   metrics, reachable, bounded, sheet, runSuite };
 if (require.main === module) { runSuite().catch(error => { console.error(error); process.exitCode = 1; }); }
