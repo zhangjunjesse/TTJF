@@ -1271,6 +1271,21 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
 .short-form-viewport .sheet.global-dialog .sheet-footer { min-height: 0; padding-block: 3px; }
 .short-form-viewport .sheet.global-dialog .sheet-body { padding-block: 6px; }
 
+/* A validation message shares the field row so it cannot take height from the PIN. */
+.short-form-viewport #parent-form {
+  display: grid;
+  grid-template: "error fields" minmax(0, 1fr)
+                 "actions actions" auto / fit-content(35%) minmax(0, 1fr);
+}
+.short-form-viewport #parent-error {
+  grid-area: error;
+  align-self: center;
+  margin: 0 0 0 12px;
+  max-height: 100%;
+}
+.short-form-viewport #parent-form > .sheet-body { grid-area: fields; }
+.short-form-viewport #parent-form > .sheet-footer { grid-area: actions; }
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }

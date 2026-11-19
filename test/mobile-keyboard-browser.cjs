@@ -200,6 +200,34 @@ async function editor() {
   assert.deepEqual(env.calls.slice(marker).filter(call => call.path === '/api/action'), []);
 }
 
+async function wrongPinRetry(before, marker) {
+  await keyboard({ height: 180, offsetTop: 90 }, 'resize', 'pin-retry-keyboard');
+  await typeVisible(B.SELECTORS.answer, '000000');
+  await click(page, Q.parentSubmit, { scroll: false });
+  await page.waitForFunction(() => { const error = document.querySelector('#parent-error'); return error && !error.hidden && error.textContent; });
+  await settleViewport();
+  assert.deepEqual(await Q.snapshot(page), before, 'A rejected PIN never changes the displayed family data');
+  const rejected = await env.api(page, '/api/state');
+  assert.equal(rejected.status, 200); assert.deepEqual(rejected.body.state, before, 'A rejected PIN never changes the persisted family data');
+  assert.deepEqual(env.calls.slice(marker).filter(call => call.path === '/api/action'), [], 'A rejected PIN never submits the points action');
+  const text = await page.$eval('#parent-error', node => {
+    const range = document.createRange(); range.selectNodeContents(node);
+    return { value: node.textContent.trim(), rect: range.getBoundingClientRect().toJSON() };
+  });
+  progress('Wrong PIN is rejected without writing family data', {
+    input: await measure(B.SELECTORS.answer), error: await measure('#parent-error'), text
+  });
+  await Q.shot(page, 'pin-wrong-answer');
+  await visible(B.SELECTORS.answer, 'Wrong PIN can be corrected with the keyboard open', true);
+  const error = await visible('#parent-error', 'PIN error and input are visible together');
+  assert.equal(text.value, '验证未通过', 'The real PIN rejection is displayed');
+  within(text.rect, error.rect.top, error.rect.bottom, 'The complete PIN error text is not clipped');
+  assert.ok(text.rect.left >= error.rect.left - 1 && text.rect.right <= error.rect.right + 1, 'The PIN error text fits its container');
+  await visible('.sheet-footer ' + a('parent-cancel'), 'Return action remains reachable after a wrong PIN');
+  await visible(Q.parentSubmit, 'Verify action remains reachable after a wrong PIN');
+  await typeVisible(B.SELECTORS.answer, Q.PIN);
+}
+
 async function pin() {
   const before = await Q.snapshot(page), marker = env.calls.length;
   const keyboardHeight = LANDSCAPE_PIN ? 195 : 360, reopenedHeight = LANDSCAPE_PIN ? 195 : 320;
@@ -225,6 +253,7 @@ async function pin() {
   await keyboard({ height: reopenedHeight, offsetTop: LANDSCAPE_PIN ? 90 : 108 }, 'resize', 'pin-keyboard-reopened');
   await visible(B.SELECTORS.answer, 'PIN remains editable', true);
   await visible(Q.parentSubmit, 'Global verify action with the reopened keyboard');
+  if (LANDSCAPE_PIN) await wrongPinRetry(before, marker);
   await click(page, Q.parentSubmit, { scroll: false }); await Q.settled(page); await B.noSheet(page);
   const after = await Q.snapshot(page);
   assert.equal(Q.M.totals(after).earned, Q.M.totals(before).earned + 5);
