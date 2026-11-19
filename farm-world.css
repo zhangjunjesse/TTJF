@@ -628,6 +628,12 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   box-shadow: var(--farm-shadow);
 }
 .sheet:not(.farm-game-sheet) > .sheet-grip { width: 36px; height: 3px; background: #c5ad7d; }
+.sheet-overlay, .saas-main {
+  position: fixed;
+  top: clamp(0px, var(--form-viewport-top, 0px), var(--form-covered-height, 0px));
+  bottom: auto;
+  --app-height: var(--form-height, 100vh);
+}
 .sheet:not(.farm-game-sheet) > .sheet-header {
   min-height: 76px;
   padding: 9px 16px 12px;
@@ -1059,12 +1065,16 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   body[data-world-route]:not([data-world-route="farm"]) .app-shell { background: transparent; }
   body[data-world-route]:not([data-world-route="farm"]).sheet-open .app-shell { visibility: hidden; }
   body[data-world-route]:not([data-world-route="farm"]) .sheet-overlay:not(.global-dialog-overlay) { align-items: flex-end; padding: 0; }
+  /* Give the covered part of the screen back to the form before shrinking the editor. */
+  .sheet-overlay, .saas-main {
+    --form-scene: max(0px, calc(var(--world-mobile-scene) - var(--form-covered-height, 0px)));
+  }
   body[data-world-route]:not([data-world-route="farm"]) .sheet-overlay:not(.global-dialog-overlay) > .sheet-backdrop { background: transparent; }
   body[data-world-route]:not([data-world-route="farm"]) .sheet:not(.global-dialog) {
     width: 100%;
     max-width: 100%;
-    height: calc(var(--app-height, 100vh) - var(--world-mobile-scene));
-    max-height: calc(var(--app-height, 100vh) - var(--world-mobile-scene));
+    height: calc(var(--app-height, 100vh) - var(--form-scene));
+    max-height: calc(var(--app-height, 100vh) - var(--form-scene));
     margin: 0;
     border-radius: 24px 24px 0 0;
     border-bottom: 0;
@@ -1079,10 +1089,10 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   .sheet:not(.farm-game-sheet) .sheet-save { padding-inline: 12px; }
   .behavior-picker-body { padding: 16px 18px 12px; }
   .picker-footer { padding: 10px 18px; }
-  .saas-main { display: block; padding: var(--world-mobile-scene) 0 0; padding-bottom: 0; }
+  .saas-main { display: block; padding: var(--form-scene) 0 0; padding-bottom: 0; }
   .saas-card {
     width: 100%;
-    min-height: calc(var(--app-height, 100vh) - var(--world-mobile-scene));
+    min-height: calc(var(--app-height, 100vh) - var(--form-scene));
     max-width: none;
     margin: 0;
     padding: 25px 24px;
@@ -1223,7 +1233,7 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   .home-wide .credit-add .icon, .home-wide .credit-rewards .icon { width: 17px; height: 17px; }
 }
 
-/* A small visual viewport usually means a software keyboard or a short landscape. */
+/* Short layout viewport, including browsers that resize the layout for the keyboard. */
 @media (max-height: 620px) {
   :root { --world-gutter: 12px; --world-mobile-scene: 104px; }
   .world-caption { padding: 11px 16px; bottom: 22px; }
@@ -1250,6 +1260,16 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   .world-caption h2 { font-size: 18px; }
   .sheet:not(.farm-game-sheet) > .sheet-grip { display: none; }
 }
+
+/* A landscape keyboard can leave less than 200px for the PIN and both actions. */
+.short-form-viewport .global-dialog-overlay {
+  padding-top: max(4px, env(safe-area-inset-top));
+  padding-bottom: max(4px, calc(env(safe-area-inset-bottom) - var(--form-covered-height, 0px)));
+}
+.short-form-viewport .sheet.global-dialog { max-height: 100%; }
+.short-form-viewport .sheet.global-dialog > .sheet-header,
+.short-form-viewport .sheet.global-dialog .sheet-footer { min-height: 0; padding-block: 3px; }
+.short-form-viewport .sheet.global-dialog .sheet-body { padding-block: 6px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }

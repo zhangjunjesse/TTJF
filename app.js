@@ -1303,9 +1303,44 @@
     if (event.key === 'Escape' && (ui.form || ui.auth)) closeForm();
     if (event.key === 'Tab' && (ui.form || ui.auth)) { var sheetEl = document.querySelector('.sheet'), nodes = sheetEl ? sheetEl.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]') : []; nodes = Array.prototype.filter.call(nodes, function (node) { return node.getClientRects().length > 0; }); if (nodes.length) { var first = nodes[0], last = nodes[nodes.length - 1]; if (!sheetEl.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); } else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }
   });
+  // Safari may pan the visible area after it resizes. Move only the form and
+  // scroll its own content, so editing never resets the draft or the caret.
+  var formViewportFrame = 0;
+  function fitFormViewport() {
+    formViewportFrame = 0;
+    var viewport = window.visualViewport, root = document.documentElement;
+    // Keep the previous anchor while pinch-zooming so native panning still works.
+    if (viewport && Math.abs(viewport.scale - 1) >= 0.01) return;
+    if (viewport) root.style.setProperty('--form-viewport-top', Math.max(0, viewport.offsetTop) + 'px');
+
+    var field = document.activeElement;
+    if (!field || !/^(INPUT|TEXTAREA|SELECT)$/.test(field.tagName)) return;
+    var scroller = field.closest('.sheet-body, .behavior-picker-body, .saas-main');
+    if (!scroller) return;
+    var box = scroller.getBoundingClientRect(), input = field.getBoundingClientRect();
+    if (input.height > box.height) {
+      if (input.top >= box.bottom || input.bottom <= box.top) scroller.scrollTop += input.top - box.top;
+      return;
+    }
+    var margin = Math.min(8, (box.height - input.height) / 2);
+    if (input.top < box.top + margin) scroller.scrollTop += input.top - box.top - margin;
+    else if (input.bottom > box.bottom - margin) scroller.scrollTop += input.bottom - box.bottom + margin;
+  }
+  function scheduleFormViewport() {
+    if (!formViewportFrame) formViewportFrame = window.requestAnimationFrame(fitFormViewport);
+  }
   function fitViewport() {
     var root = document.documentElement, height = homeViewportHeight(), width = window.innerWidth;
-    if (root.style && root.style.setProperty) root.style.setProperty('--app-height', height + 'px');
+    var viewport = window.visualViewport;
+    if (root.style && root.style.setProperty) {
+      root.style.setProperty('--app-height', height + 'px');
+      // A pinch magnifies the form. Only space lost to the keyboard should shrink it.
+      var formHeight = viewport ? height * viewport.scale : height;
+      var covered = viewport ? Math.max(0, root.clientHeight - formHeight) : 0;
+      root.style.setProperty('--form-height', formHeight + 'px');
+      root.style.setProperty('--form-covered-height', covered + 'px');
+      if (root.classList) root.classList.toggle('short-form-viewport', formHeight < 260);
+    }
     var home = ui.view === 'points' && document.querySelector('.home-portrait');
     if (home && home.classList && home.classList.toggle) {
       home.classList.toggle('home-roomy', height >= 650);
@@ -1319,7 +1354,16 @@
     if (state && ui.view === 'points' && (ui.homeWide !== homeWide() || ui.homeItemLimit !== homeItemLimit()) && !ui.form && !ui.auth) render(false);
     if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();
   }
-  window.addEventListener('resize', fitViewport); if (window.visualViewport) window.visualViewport.addEventListener('resize', fitViewport);
+  function resizeViewport() {
+    fitViewport();
+    scheduleFormViewport();
+  }
+  window.addEventListener('resize', resizeViewport);
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resizeViewport);
+    window.visualViewport.addEventListener('scroll', scheduleFormViewport);
+  }
+  document.addEventListener('focusin', scheduleFormViewport);
   window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (!ui.auth && (!ui.form || ui.form.kind === 'petHub' || ui.form.kind === 'farm')) render(false); } } });
   if (!M) { document.getElementById('app').innerHTML = '<p class="loading-screen">数据模块未加载</p>'; return; }
   if (!saas) {
