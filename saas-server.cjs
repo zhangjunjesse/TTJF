@@ -20,7 +20,7 @@ const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json; charset=utf-8' });
 const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js',
-  '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css']);
+  '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css']);
 const ASSET_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.ogg']);
 const BUSINESS = new Set(['/api/state', '/api/meta', '/api/parent/challenge', '/api/parent/verify', '/api/action', '/api/assistant']);
 

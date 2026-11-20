@@ -97,6 +97,12 @@
     tickKey = timingKey(s);
     var previewing = previewStage !== null;
     var caption = '点点我，和我打个招呼';
+    if (!previewing && c.state && c.state.points) {
+      var latest = c.state.points.reduce(function (recent, row) {
+        return !recent || row.at >= recent.at ? row : recent;
+      }, null);
+      if (latest) caption = e(latest.name) + ' · 成长值 +' + e(latest.points);
+    }
     if (previewing) {
       caption = e(stages[previewStage - 1].name);
       if (pet.kind === 'plant' && previewLook === 'festival') caption += ' · ' + festivalNames[previewStage - 1];
@@ -285,6 +291,7 @@
     for (var i = 0; i < nodes.length; i++) { if (!c.form || (c.form.kind === 'farm' && nodes[i].closest('.sheet'))) target = nodes[i]; }
     visible = !!target && !c.auth && c.view === 'points';
     if (!visible) { previewStage = null; if (controller) controller.pause(true); return; }
+    if (!root.FamilyFarmScene && root.FamilyWorldUI && root.FamilyWorldUI.loadScene(afterRender)) return;
     var mode = target.getAttribute('data-farm-scene'), s = status(), preview = target.getAttribute('data-preview-item'), item = preview && find(s.catalog, preview);
     if (item && s.initialized) { s = copy(s); if (item.slot === 'house') s.houseLevel = item.id === 'house3' ? 3 : 2; else s.placements[item.slot] = item.id; }
     prepareFocus(c, mode, s, item);

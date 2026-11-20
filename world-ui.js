@@ -1,6 +1,26 @@
 /* Farm-world presentation only. Forms and server-authorized actions stay in their hosts. */
 (function (root) {
   'use strict';
+  var sceneSource = document.currentScript && document.currentScript.getAttribute('data-scene-src');
+  var sceneWaiters = [], sceneLoading = false, sceneFailed = false, waitingForSession = false;
+  // Both scene hosts share the download. Callbacks read the current route again
+  // so finishing a download can never restore a family or page the user left.
+  function loadScene(whenLoaded) {
+    if (!sceneSource || sceneFailed || root.FamilyFarmScene) return false;
+    if (sceneWaiters.indexOf(whenLoaded) < 0) sceneWaiters.push(whenLoaded);
+    if (!sceneLoading) {
+      sceneLoading = true;
+      var script = document.createElement('script');
+      script.src = sceneSource;
+      script.onload = script.onerror = function () {
+        sceneLoading = false;
+        sceneFailed = !root.FamilyFarmScene;
+        sceneWaiters.splice(0).forEach(function (resume) { resume(); });
+      };
+      document.head.appendChild(script);
+    }
+    return true;
+  }
   var controller = null, stage = null, surface = null, route = 'farm', projection = null, epoch = 0, resizeFrame = 0;
   var media = root.matchMedia ? root.matchMedia('(prefers-reduced-motion: reduce)') : null;
   var places = {
@@ -18,7 +38,7 @@
   var formPlaces = {
     behaviorPicker: 'points', points: 'points', 'point-list': 'points', pointItem: 'points',
     rewards: 'rewards', 'reward-list': 'rewards', reward: 'rewards', request: 'rewards', approve: 'rewards',
-    records: 'history', petGrowth: 'history', homeInbox: 'reminders', task: 'reminders', taskAction: 'reminders',
+    records: 'history', homeWeek: 'history', petGrowth: 'history', homeInbox: 'reminders', task: 'reminders', taskAction: 'reminders',
     petHub: 'companion', petBuy: 'companion', petConfig: 'companion',
     preferences: 'settings', profile: 'family', familySettings: 'family', parentConfig: 'authorization', voice: 'voice'
   };
@@ -67,6 +87,10 @@
   }
   function refresh() {
     if (!stage || stage.hidden || !projection) return;
+    if (!root.FamilyFarmScene && (waitingForSession || loadScene(refresh))) {
+      updateStatus({}, epoch);
+      return;
+    }
     var generation = epoch, options = {
       presentation: route, mode: 'home', farm: projection.farm, pet: projection.pet, growth: projection.growth,
       reducedMotion: !!(media && media.matches), viewInsets: insets(),
@@ -105,8 +129,9 @@
     if (stage) { stage.hidden = true; surface.textContent = ''; }
   }
   root.FamilyWorldUI = {
-    business: function (options) { show(businessRoute(options.view, options.kind, options.auth), options, 'business'); },
-    account: function (view) { show(accountPlaces[view] || 'welcome', publicProjection(), 'account'); },
+    business: function (options) { waitingForSession = false; show(businessRoute(options.view, options.kind, options.auth), options, 'business'); },
+    account: function (view) { waitingForSession = view === 'checking' || view === 'loading-family'; show(accountPlaces[view] || 'welcome', publicProjection(), 'account'); },
+    loadScene: loadScene,
     reset: reset,
     diagnostics: function () { return { route: route, visible: !!stage && !stage.hidden, renderer: controller && controller.diagnostics() }; }
   };

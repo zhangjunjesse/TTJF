@@ -114,7 +114,9 @@ async function setup() {
     return state && (state.ready || state.view === 'families');
   });
   if ((await Q.status(page)).view === 'families') await click(page, Q.sa('select-family', familyId));
-  await Q.ready(page, familyId); await Q.home(page); progress('Fixture ready');
+  await Q.ready(page, familyId); await Q.home(page);
+  if (CASE === 'award' || CASE === 'balance') await B.homeView(page, 'companion');
+  progress('Fixture ready');
 }
 async function openCustom(values = {}) {
   await click(page, a('add-points')); await click(page, a('points-new'));
@@ -434,6 +436,7 @@ async function retry() {
 async function balance() {
   async function wallet(earned, available) {
     await Q.home(page);
+    await B.homeView(page, 'companion');
     assert.equal(await page.$eval('[data-testid="earned-points"]', node => Number(node.textContent)), earned);
     assert.equal(await page.$eval('[data-testid="available-points"]', node => Number(node.textContent)), available);
     assert.match(await page.$eval('.credit-score', node => node.getAttribute('aria-label')), new RegExp('历史总积分' + earned + '，可兑换积分' + available));
