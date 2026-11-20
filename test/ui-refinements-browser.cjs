@@ -444,6 +444,7 @@ async function balance() {
   }
   await Q.check('An optional blank reason saves once with a template, survives reload, and has an honest empty-history label', async () => {
     await wallet(0, 0);
+    await B.homeView(page, 'points');
     const before = await sql(), marker = env.calls.length;
     await openCustom({ name: '合成喂猫', points: 20, reason: '' });
     await click(page, '#editor-form [name="saveAsTemplate"]');
@@ -457,6 +458,14 @@ async function balance() {
     assert.equal(after.state.pointItems.find(row => row.id === saved.itemId).reason, '');
     assert.deepEqual(M.totals(after.state), { earned: 20, spent: 0, available: 20 });
     assert.equal(recent(marker, '/api/action').filter(call => call.action && call.action.type === 'points.add').length, 1);
+    await Q.home(page);
+    assert.equal(await page.$eval('[data-home-mode="points"] [data-testid="available-points"]', n => n.textContent), '20');
+    const newest = await page.$eval('.points-recent-list li', n => n.textContent);
+    assert.match(newest, /合成喂猫/);
+    assert.match(newest, /\+20/);
+    await click(page, a('home-week'));
+    assert.match(await page.$eval('.points-detail-records', n => n.textContent), /合成喂猫/);
+    await Q.home(page);
     await page.reload({ waitUntil: 'load' });
     await page.waitForFunction(() => { const s = window.FamilySaas.status(); return s.ready || s.view === 'families'; });
     if ((await Q.status(page)).view === 'families') await click(page, Q.sa('select-family', familyId));
