@@ -1,0 +1,253 @@
+/* The points home shares the village's paper, sage and honey palette. */
+.points-home {
+  --points-ink: #3e4e34;
+  --points-muted: #766b55;
+  --points-line: #ddd0ae;
+  display: grid;
+  flex: none;
+  align-self: flex-start;
+  grid-template-columns: minmax(0, 1fr);
+  grid-auto-rows: max-content;
+  grid-template-areas: "intro" "wallet" "recent" "week" "behaviors";
+  align-content: start;
+  gap: 12px;
+  width: 100%;
+  max-width: 1160px;
+  min-width: 0;
+  margin: 0 auto;
+  padding: 14px 14px 24px;
+  color: var(--points-ink);
+}
+.points-home button { touch-action: manipulation; }
+.points-home-intro { grid-area: intro; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 4px 2px; }
+.points-home-intro h1 { margin: 2px 0 0; font-size: 25px; font-weight: 750; line-height: 1.2; letter-spacing: .01em; }
+.points-eyebrow { display: inline-flex; align-items: center; gap: 5px; color: var(--points-muted); font-size: 11px; font-weight: 550; line-height: 17px; letter-spacing: .05em; }
+.points-eyebrow .icon { width: 15px; height: 15px; }
+.points-home-date { padding-top: 6px; color: #6e624c; font-size: 13px; line-height: 19px; text-align: right; white-space: nowrap; }
+.points-home-date small { display: block; font-size: 11px; color: #7d715a; }
+.points-paper { min-width: 0; border: 1px solid var(--points-line); border-radius: 21px; background: #fffaf0; box-shadow: 0 2px 0 #b89b6030, 0 7px 20px #76634208; }
+.points-wallet { grid-area: wallet; position: relative; overflow: hidden; padding: 13px 16px 15px; background: radial-gradient(ellipse at 100% 0, #fff9df 0, transparent 66%), linear-gradient(125deg, #f7e9c4, #eee0b8); }
+.points-wallet::before { position: absolute; top: 67px; right: -16px; width: 82px; height: 166px; border: 1px solid #9eaa6d2e; border-radius: 100% 2% 100% 2%; transform: rotate(22deg); content: ""; pointer-events: none; }
+.points-wallet::after { position: absolute; top: 126px; right: 28px; width: 48px; height: 102px; border: 1px solid #9eaa6d26; border-radius: 2% 100% 2% 100%; transform: rotate(-24deg); content: ""; pointer-events: none; }
+.points-wallet > * { position: relative; z-index: 1; }
+.points-wallet-values { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 7px; margin: 6px 0 10px; }
+.points-balance-entry { display: block; width: 100%; min-width: 0; min-height: 108px; padding: 3px 0; border-radius: 8px; color: #3e4e34; text-align: left; }
+.points-wallet-label { display: block; color: #655b42; font-size: 13px; line-height: 19px; }
+.points-total-line { display: flex; align-items: baseline; gap: 5px; min-width: 0; }
+.points-total { min-width: 0; color: #384b2d; font-size: 55px; font-weight: 750; line-height: 1.12; letter-spacing: -.05em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.points-total.points-amount-long { font-size: clamp(20px, 6.1vw, 32px); line-height: 1.4; letter-spacing: -.035em; }
+.points-total-line > span { flex-shrink: 0; color: #6e6c44; font-size: 13px; }
+.points-balance-hint { display: flex; align-items: center; gap: 2px; color: #796b4b; font-size: 10px; line-height: 18px; }
+.points-balance-hint .icon { width: 12px; height: 12px; }
+.points-today { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 88px; min-height: 82px; padding: 8px 7px; border: 1px solid #c9bb885c; border-radius: 13px; background: #fffdf16e; }
+.points-today > span { color: #6c6645; font-size: 11px; }
+.points-today > strong { max-width: 100%; color: #587141; font-size: 24px; font-weight: 750; line-height: 1.4; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.points-today strong small { font-size: 10px; font-weight: 500; }
+.points-today > small { color: #786e51; font-size: 10px; }
+.points-available { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; min-width: 0; padding: 9px 0 12px; border-top: 1px solid #bba16a42; color: #655d43; font-size: 12px; line-height: 22px; }
+.points-available > strong { max-width: 100%; color: #4f6138; font-size: 22px; font-weight: 750; line-height: 24px; letter-spacing: -.03em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.points-available > small { font-size: 11px; }
+.points-main-actions { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 9px; }
+.points-main-actions .btn { display: flex; gap: 7px; min-width: 0; min-height: 49px; padding: 10px 9px; border-radius: 13px; font-size: 15px; line-height: 22px; }
+.points-main-actions .btn .icon { width: 19px; height: 19px; margin: 0; }
+.points-main-actions .points-add { border: 1px solid #425b2c; color: #fffcef; background: linear-gradient(#627f48, #516e39); box-shadow: inset 0 1px 0 #ffffff23, 0 2px 0 #3c512c32; }
+.points-main-actions .points-redeem { border: 1px solid #bb9e62; color: #6b542c; background: linear-gradient(#fff6de, #f0deb5); box-shadow: inset 0 1px 0 #fffdf6; }
+.points-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; }
+.points-section-heading h2 { margin: 0; color: #4b5139; font-size: 17px; font-weight: 700; line-height: 23px; letter-spacing: 0; }
+.points-section-link.text-button { gap: 2px; min-height: 48px; padding: 8px 0 8px 5px; color: #786444; font-size: 11px; line-height: 18px; }
+.points-section-link.text-button .icon { width: 14px; height: 14px; margin: 0; }
+.points-recent { grid-area: recent; padding: 6px 15px 4px; }
+.points-recent-list { margin: 0; padding: 0; list-style: none; }
+.points-recent-row { display: grid; grid-template-columns: 33px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-height: 58px; padding: 8px 0; border-top: 1px solid #dfd4ba7d; }
+.points-record-symbol { display: grid; place-items: center; width: 33px; height: 35px; border: 1px solid #d6ddbe; border-radius: 11px; color: #65804a; background: #ecf0dd; }
+.points-record-symbol.is-spent { border-color: #e7d4b0; color: #9a7543; background: #f5ebd6; }
+.points-record-symbol .icon { width: 18px; height: 18px; }
+.points-record-copy { min-width: 0; }
+.points-record-copy > strong { display: block; overflow: hidden; color: #504a38; font-size: 13px; font-weight: 650; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+.points-record-reason { display: block; overflow: hidden; max-width: 100%; margin-top: 1px; color: #8a7e64; font-size: 11px; line-height: 17px; text-overflow: ellipsis; white-space: nowrap; }
+.points-record-copy > small { display: block; margin-top: 2px; color: #81745b; font-size: 10px; line-height: 16px; }
+.points-record-amount { max-width: 152px; color: #5c7643; font-size: 19px; font-weight: 750; line-height: 24px; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.points-record-amount.is-spent { color: #9a794b; }
+.points-record-amount > small { font-size: 10px; font-weight: 500; }
+.points-records-empty { display: grid; place-items: center; gap: 4px; min-height: 142px; padding: 12px 0 20px; text-align: center; }
+.points-records-empty > span { color: #ad9c6b; }
+.points-records-empty .icon { width: 30px; height: 30px; }
+.points-records-empty > p { color: #75694e; font-size: 13px; }
+.points-records-empty > small { color: #8c8067; font-size: 11px; }
+.points-behaviors { grid-area: behaviors; padding: 7px 13px 13px; }
+.points-behaviors .points-section-heading { padding-inline: 2px; }
+.points-behavior-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.points-home .behavior-card { display: grid; grid-template-columns: 29px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 4px 8px; width: 100%; min-width: 0; min-height: 87px; height: auto; margin: 0; padding: 10px; border: 1px solid #dfd8bb; border-radius: 13px; background: linear-gradient(135deg, #f8f8eb, #f1f1df); box-shadow: inset 0 1px 0 #ffffffa6; text-align: left; }
+.points-home .behavior-symbol { grid-column: 1; grid-row: 1 / 3; display: grid; place-items: center; align-self: start; width: 29px; min-width: 29px; height: 31px; border: 1px solid #d3dbb7; border-radius: 10px; background: #e6ebd1; color: #75864c; }
+.points-home .behavior-symbol-1 { color: #9c7955; border-color: #e6d9bc; background: #f4ead4; }
+.points-home .behavior-symbol-2 { color: #a08c45; border-color: #e4dca7; background: #f5efc9; }
+.points-home .behavior-symbol-3 { color: #a07c6b; border-color: #e3cec0; background: #f3e4d9; }
+.points-home .behavior-symbol .icon { width: 17px; height: 17px; }
+.points-home .behavior-copy { display: block; grid-column: 2; grid-row: 1; min-width: 0; }
+.points-home .behavior-copy b { display: -webkit-box; overflow: hidden; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: #5c5b40; font-size: 12px; line-height: 18px; font-weight: 650; overflow-wrap: anywhere; }
+.points-home .behavior-copy small { display: none; }
+.points-home .behavior-card > strong { grid-column: 2; grid-row: 2; position: static; align-self: end; max-width: 100%; margin: 0; color: #68804a; font-size: 18px; font-weight: 750; line-height: 23px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.points-behaviors-empty { grid-column: 1 / -1; display: grid; grid-template-columns: 33px minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; gap: 3px 10px; min-height: 88px; padding: 12px; border: 1px dashed #d7c899; border-radius: 12px; background: #f7f4e5; text-align: left; }
+.points-behaviors-empty > span { grid-row: 1 / 3; color: #8b966a; }
+.points-behaviors-empty .icon { width: 27px; height: 27px; }
+.points-behaviors-empty > b { color: #6e6b4b; font-size: 12px; font-weight: 600; }
+.points-behaviors-empty > small { color: #8c7e5f; font-size: 10px; }
+.points-overview { grid-area: week; padding: 10px 15px 11px; }
+.points-overview .points-section-heading { align-items: flex-start; }
+.points-overview .points-section-heading h2 { margin-top: 1px; }
+.points-overview .points-section-heading .points-eyebrow { font-size: 10px; line-height: 15px; letter-spacing: .02em; }
+.points-week-totals { display: flex; align-items: baseline; gap: 25px; margin: 10px 0 14px; }
+.points-week-totals > span { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.points-week-totals strong { color: #617d45; font-size: 29px; font-weight: 750; line-height: 35px; letter-spacing: -.04em; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.points-week-totals > span:last-child > strong { color: #8d784a; font-size: 23px; }
+.points-week-totals small { color: #82765c; font-size: 10px; font-weight: 500; letter-spacing: 0; }
+.points-week-chart { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.points-week-chart > li { display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
+.points-day-number { display: block; width: 100%; color: #7d7856; font-size: 11px; line-height: 17px; font-variant-numeric: tabular-nums; text-align: center; overflow-wrap: anywhere; }
+.points-day-number.points-day-number-long { font-size: 8px; line-height: 12px; }
+.points-day-track { display: flex; align-items: flex-end; width: 100%; max-width: 26px; height: 67px; border-bottom: 1px solid #c7c69d; border-radius: 6px 6px 0 0; background: linear-gradient(0deg, #ecebd647, #f5f4e500); }
+.points-day-bar { display: block; width: 100%; min-height: 0; border-radius: 5px 5px 0 0; background: linear-gradient(#b1c391, #91a76f); box-shadow: inset 0 1px 0 #ffffff38; }
+.is-today .points-day-bar { background: linear-gradient(#7b9960, #5f7e46); }
+.points-day-label { color: #8a8068; font-size: 10px; line-height: 18px; }
+.is-today .points-day-label, .is-today .points-day-number { color: #57743b; font-weight: 650; }
+.points-week-note { display: flex; align-items: center; gap: 5px; margin-top: 13px; padding-top: 9px; border-top: 1px solid #e6deca; color: #8a7d5f; font-size: 10px; line-height: 17px; }
+.points-week-note .icon { flex-shrink: 0; width: 14px; height: 14px; color: #8e9f6f; }
+.points-home .points-small-amount, .points-week-detail .points-small-amount { font-size: 15px; line-height: 1.5; }
+
+/* The detail sheet uses the same analysis as the home chart. */
+.points-week-detail { min-width: 0; color: #4e4d36; }
+.points-summary-range { color: #786b50; font-size: 14px; font-weight: 600; }
+.points-summary-range > span { display: block; margin-top: 2px; font-size: 11px; font-weight: 400; }
+.points-summary-stats { display: grid; grid-template-columns: minmax(0, 1.25fr) repeat(2, minmax(0, 1fr)); gap: 8px; margin: 14px 0 22px; }
+.points-summary-stats > div { display: flex; flex-direction: column; justify-content: center; min-width: 0; min-height: 87px; padding: 11px 8px; border: 1px solid #ded1a9; border-radius: 14px; background: #f5efda; text-align: center; }
+.points-summary-stats strong { color: #647d43; font-size: 25px; line-height: 31px; font-weight: 750; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.points-summary-stats strong small { color: #8b8462; font-size: 13px; font-weight: 500; }
+.points-summary-stats span { margin-top: 4px; color: #887b5b; font-size: 11px; }
+.points-summary-section { margin-top: 22px; }
+.points-summary-section h3 { margin: 0 0 10px; color: #5d5d40; font-size: 16px; font-weight: 700; }
+.points-summary-days { border-top: 1px solid #ddd4b9; }
+.points-summary-day { min-width: 0; border-bottom: 1px solid #e3dbc5; }
+.points-day-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(70px, auto) 14px; align-items: center; gap: 11px; min-height: 52px; padding: 10px 4px; font-variant-numeric: tabular-nums; }
+summary.points-day-summary { cursor: pointer; list-style: none; touch-action: manipulation; }
+summary.points-day-summary::-webkit-details-marker { display: none; }
+.points-day-summary > span:first-child { display: flex; align-items: baseline; flex-wrap: wrap; gap: 5px; }
+.points-day-summary b { color: #6e644d; font-size: 13px; font-weight: 550; }
+.points-day-summary small { color: #95896d; font-size: 10px; font-weight: 400; }
+.points-day-summary > span:nth-child(2) { color: #84765a; font-size: 12px; text-align: right; }
+.points-day-summary > strong { max-width: 150px; color: #667e48; font-size: 14px; font-weight: 650; text-align: right; overflow-wrap: anywhere; }
+.points-day-summary .icon { width: 13px; height: 13px; color: #8a8567; transform: rotate(90deg); }
+.points-summary-day[open] { background: #f3f3e4; }
+.points-summary-day[open] .points-day-summary .icon { transform: rotate(-90deg); }
+.points-summary-day.is-empty .points-day-summary { opacity: .8; }
+.points-detail-records { margin: 0; padding: 0 11px 4px; list-style: none; }
+.points-detail-records li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 11px 0; border-top: 1px dashed #d9d9bb; }
+.points-detail-records li > div { min-width: 0; }
+.points-detail-records strong { display: block; color: #605d43; font-size: 13px; font-weight: 650; line-height: 20px; overflow-wrap: anywhere; }
+.points-detail-records p { margin: 3px 0; color: #807858; font-size: 12px; line-height: 19px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.points-detail-records time { display: block; margin-top: 3px; color: #998d6e; font-size: 10px; }
+.points-detail-records li > b { max-width: 130px; color: #6a814b; font-size: 16px; font-weight: 700; line-height: 22px; text-align: right; overflow-wrap: anywhere; }
+.points-detail-records li > b small { color: #9a8d6e; font-size: 10px; font-weight: 400; }
+.points-summary-behaviors { margin: 0; padding: 0; list-style: none; }
+.points-summary-behaviors li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-width: 0; padding: 12px 0; border-bottom: 1px solid #e5dcc6; }
+.points-summary-rank { display: grid; place-items: center; width: 22px; height: 25px; border: 1px solid #d4d9b4; border-radius: 8px; color: #7d8b58; background: #eef0dc; font-size: 11px; }
+.points-summary-behaviors li > div { min-width: 0; }
+.points-summary-behaviors strong { display: block; color: #675c44; font-size: 13px; line-height: 20px; font-weight: 650; overflow-wrap: anywhere; }
+.points-summary-behaviors small { display: block; margin-top: 3px; color: #8d8064; font-size: 10px; line-height: 16px; overflow-wrap: anywhere; }
+.points-summary-behaviors li > span:last-child { max-width: 115px; text-align: right; overflow-wrap: anywhere; }
+.points-summary-behaviors li > span b { color: #71834d; font-size: 13px; }
+.points-summary-behaviors li > span small { color: #9a8c69; font-variant-numeric: tabular-nums; }
+.points-summary-explainer, .points-summary-footnote { margin-top: 12px; color: #8d8064; font-size: 11px; line-height: 19px; }
+.points-summary-empty { padding: 18px 16px; border: 1px dashed #d6c79c; border-radius: 12px; color: #8a7a55; background: #f9f3e2; font-size: 13px; line-height: 22px; }
+.points-summary-records { margin-top: 17px; }
+
+@media (min-width: 700px) {
+  .points-home { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); grid-template-areas: "intro intro" "wallet week" "behaviors recent"; gap: 18px; padding: 24px 26px 32px; }
+  .points-home-intro { padding: 0 2px 5px; }
+  .points-home-intro h1 { font-size: 30px; }
+  .points-eyebrow { font-size: 12px; line-height: 20px; }
+  .points-home-date { font-size: 14px; }
+  .points-home-date small { font-size: 12px; }
+  .points-wallet { padding: 17px 21px 19px; }
+  .points-wallet-values { margin: 10px 0 13px; }
+  .points-balance-entry { min-height: 113px; }
+  .points-total { font-size: 65px; }
+  .points-today { width: 92px; min-height: 87px; }
+  .points-available { padding: 12px 0 15px; }
+  .points-main-actions .btn { min-height: 51px; font-size: 16px; }
+  .points-overview { padding: 17px 20px 13px; }
+  .points-section-heading h2 { font-size: 18px; line-height: 25px; }
+  .points-section-link.text-button { font-size: 12px; }
+  .points-week-totals { flex-wrap: wrap; gap: 8px 26px; margin: 15px 0 18px; }
+  .points-week-totals strong { font-size: 32px; }
+  .points-week-totals small { font-size: 11px; }
+  .points-day-track { height: 76px; max-width: 28px; }
+  .points-week-note { margin-top: 16px; font-size: 11px; }
+  .points-behaviors { padding: 10px 17px 17px; }
+  .points-behavior-grid { gap: 10px; margin-top: 5px; }
+  .points-home .behavior-card { min-height: 94px; padding: 11px; }
+  .points-home .behavior-copy b { font-size: 13px; line-height: 19px; }
+  .points-home .behavior-card > strong { font-size: 20px; }
+  .points-recent { padding: 10px 19px 6px; }
+  .points-recent-row { min-height: 66px; gap: 10px; }
+  .points-record-copy > strong { font-size: 14px; }
+  .points-record-copy > small { font-size: 11px; }
+  .points-record-amount { font-size: 20px; }
+}
+@media (min-width: 1050px) {
+  .points-home { gap: 21px; padding: 28px 34px 35px; }
+  .points-wallet { padding: 22px 26px 23px; }
+  .points-wallet-values { margin-block: 12px 17px; }
+  .points-total { font-size: 74px; }
+  .points-today { width: 105px; min-height: 93px; }
+  .points-today > strong { font-size: 28px; }
+  .points-overview { padding: 21px 25px 17px; }
+  .points-day-track { height: 92px; max-width: 32px; }
+  .points-week-totals { margin-block: 18px 21px; }
+  .points-week-note { margin-top: 18px; }
+  .points-behaviors { padding: 12px 22px 20px; }
+  .points-home .behavior-card { min-height: 100px; padding: 13px; }
+  .points-home .behavior-copy b { font-size: 14px; }
+  .points-recent { padding: 12px 24px 8px; }
+  .points-recent-row { min-height: 73px; }
+}
+@media (max-width: 359px) {
+  .points-home { gap: 10px; padding: 11px 10px 20px; }
+  .points-home-intro h1 { font-size: 23px; }
+  .points-wallet { padding-inline: 13px; }
+  .points-today { width: 76px; padding-inline: 5px; }
+  .points-total { font-size: 42px; }
+  .points-total.points-amount-long { font-size: 19px; }
+  .points-balance-hint { font-size: 9px; }
+  .points-record-amount { max-width: 107px; }
+  .points-home .behavior-card { grid-template-columns: 24px minmax(0, 1fr); column-gap: 6px; padding: 8px; }
+  .points-home .behavior-symbol { width: 24px; min-width: 24px; height: 27px; border-radius: 8px; }
+  .points-home .behavior-symbol .icon { width: 15px; height: 15px; }
+  .points-home .behavior-copy b { font-size: 11px; }
+}
+@media (min-width: 480px) and (max-height: 540px) {
+  .points-home { gap: 10px 14px; padding: 10px 18px 20px; }
+  .points-home-intro { padding: 0; }
+  .points-home-intro h1 { font-size: 22px; }
+  .points-home-date { padding-top: 0; font-size: 12px; line-height: 17px; }
+  .points-home-date small { font-size: 10px; }
+  .points-wallet { padding: 10px 14px 12px; }
+  .points-wallet-values { margin: 0 0 7px; }
+  .points-balance-entry { min-height: 80px; padding: 0; }
+  .points-total { font-size: 48px; line-height: 1.05; }
+  .points-today { width: 88px; min-height: 68px; padding-block: 5px; }
+  .points-today > strong { font-size: 22px; }
+  .points-available { padding: 7px 0 9px; }
+  .points-available > strong { font-size: 20px; }
+  .points-main-actions .btn { min-height: 48px; }
+  .points-overview { padding: 12px 16px; }
+  .points-week-totals { gap: 18px; margin: 6px 0 9px; }
+  .points-week-totals strong { font-size: 26px; line-height: 32px; }
+  .points-day-track { height: 38px; }
+  .points-week-note { margin-top: 8px; padding-top: 8px; }
+}
+@media (prefers-reduced-motion: reduce) { .points-home button { transition: none; } }
+@media (forced-colors: active) {
+  .points-paper, .points-home .btn, .points-home .behavior-card, .points-today, .points-summary-stats > div { border: 1px solid ButtonText; box-shadow: none; }
+  .points-day-bar { background: Highlight; }
+  .points-day-track { border-bottom-color: CanvasText; }
+}

@@ -24,7 +24,7 @@ const SCRIPT = FULL ? 'test/saas-full-browser.cjs' : 'test/saas-browser.cjs';
 const OUT = path.join(process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(ROOT, 'artifacts'), EVIDENCE_VERSION + (FULL ? '-full-browser' : '-browser'), RUN);
 const SOURCES = ['package.json', 'docs/saas-design.md', 'saas-server.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/auth.cjs', 'saas/families.cjs', 'saas/business.cjs', 'saas/mail.cjs', 'saas/migrations/001-initial.sql', 'saas-client.js', 'saas.css', 'app.js', 'model.js', 'styles.css', 'index.html', 'runtime.js', 'farm-ui.js', 'farm-scene.js', 'test/saas-browser.cjs', 'test/saas-full-browser.cjs', 'test/browser.cjs', 'assistant.js', 'assistant-service.cjs', 'saas/lifecycle.cjs', 'saas/network.cjs', 'saas/maintenance.cjs', 'saas/migrations/002-lifecycle.sql', 'package-lock.json', 'docs/saas-completion.md'];
 const sha = file => crypto.createHash('sha256').update(fs.readFileSync(path.resolve(ROOT, file))).digest('hex');
-SOURCES.push('saas/sqlite.cjs', 'tools/saas-db.cjs', 'world-ui.js', 'farm-world.css', 'farm/scene.js', 'farm/world-stations.js');
+SOURCES.push('saas/sqlite.cjs', 'tools/saas-db.cjs', 'world-ui.js', 'farm-world.css', 'farm/scene.js', 'farm/world-stations.js', 'home-points.js', 'home-points.css');
 const hashes = () => Object.fromEntries(SOURCES.filter(file => fs.existsSync(path.join(ROOT, file))).map(file => [file, sha(file)]));
 const cleanError = value => String(value).replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, '[database URL redacted]').replace(/#(verify|reset|invite)=[^\s"']+/g, '#$1=[token redacted]');
 const report = {
@@ -441,6 +441,7 @@ async function run() {
   });
   await check('Farm welcome harvest→exchange→place→plant→8h harvest uses real HTTP and leaves the family ledger unchanged', async () => {
     const ledger = await totals(page);
+    await B.homeView(page, 'companion');
     await click(page, action('farm-open')); await click(page, action('farm-start')); await settled(page); assert.equal((await ui(page)).farmStatus.readyCount, 1);
     await click(page, action('farm-open')); await click(page, action('farm-harvest')); await settled(page); assert.equal((await ui(page)).farmStatus.inventory.carrot, 3);
     await click(page, action('farm-tab', 'build')); await click(page, action('farm-item', 'flowerpot'));
@@ -450,6 +451,7 @@ async function run() {
     const planted = await snapshot(page), count = planted.farm.plots.filter(plot => plot.cropId === 'carrot').length;
     assert.equal(count, 6); assert.equal((await ui(page)).farmStatus.readyCount, 0);
     env.clock(env.now() + H8); await page.reload({ waitUntil: 'load' }); await ready(page, familyA);
+    await B.homeView(page, 'companion');
     await click(page, action('farm-open')); await click(page, action('farm-harvest')); await settled(page); assert.equal((await ui(page)).farmStatus.inventory.carrot, count * 3);
     assert.deepEqual(await totals(page), ledger); assert.equal((await ui(page)).farmStatus.readyCount, 0);
     const completed = await snapshot(page); await env.restart(); await page.reload({ waitUntil: 'load' }); await ready(page, familyA);
@@ -623,8 +625,14 @@ async function run() {
       await page.setViewport({ width, height, deviceScaleFactor: 1 }); await B.delay(150);
       await audit(page, name + '-login', ['#saas-email', '#saas-password', submit]);
       await login(page, ownerEmail, NEW_PASSWORD, familyA); await ready(page, familyA);
-      await page.waitForFunction(() => { const s = window.FamilyFarmScene && window.FamilyFarmScene.diagnostics(); return s && s.instances.length === 1 && s.instances[0].ready; }, { timeout: 20000 });
-      await audit(page, name + '-home', [action('add-points'), action('farm-open'), action('preferences')]);
+      const homeMode = await page.$eval('#main [data-home-mode]', node => node.dataset.homeMode);
+      await page.waitForFunction(expected => {
+        const scene = window.FamilyFarmScene && window.FamilyFarmScene.diagnostics();
+        const farm = window.FamilyFarmUI && window.FamilyFarmUI.diagnostics();
+        return expected === 'companion' ? scene && scene.instances.length === 1 && scene.instances[0].ready :
+          (!scene || scene.instances.length === 0) && farm && farm.renderer === null;
+      }, { timeout: 20000 }, homeMode);
+      await audit(page, name + '-home', [action('add-points'), action(homeMode === 'companion' ? 'farm-open' : 'jump-rewards'), action('preferences')]);
       await account(page); await audit(page, name + '-account', [sa('families'), sa('members'), sa('logout')]);
       await click(page, sa('members')); await page.waitForSelector('#saas-form[data-saas-form="invitation"]');
       await audit(page, name + '-members', ['#saas-email', submit]); await logout(page);

@@ -8,7 +8,8 @@ const vm = require('node:vm');
 const M = require('../model.js');
 const ROOT = path.resolve(__dirname, '..');
 const source = name => fs.readFileSync(path.join(ROOT, name), 'utf8');
-const APP = source('app.js'), CLIENT = source('saas-client.js'), FARM = source('farm-ui.js');
+const APP = source('app.js'), CLIENT = source('saas-client.js'), FARM = source('farm-ui.js'), HOME = source('home-points.js');
+const HOME_PREFERENCE = 'ttjf-device-home-v1';
 const NOW = new Date('2026-11-16T08:00:00Z');
 const copy = value => JSON.parse(JSON.stringify(value));
 const USER = { id: 'user-one', email: 'owner@example.test', verified: true };
@@ -57,7 +58,7 @@ function harness(options = {}) {
   class Reader { constructor() { readers.push(this); this.readyState = 0; } readAsArrayBuffer() { this.readyState = 1; } abort() { this.aborted = true; } }
   class Image { constructor() { images.push(this); this.naturalWidth = this.naturalHeight = 256; } }
   class Speech { start() {} abort() { calls.recognitionAbort++; if (this.onend) this.onend(); } }
-  const storage = { getItem(key) { calls.reads.push(key); if (options.storageThrows) throw Error('blocked'); if (Object.hasOwn(stored, key)) return stored[key]; if (key === 'ttjf-saas-device-sound-v1' || key === 'ttjf-saas-auth-change-v1') return null; return JSON.stringify(options.cache || snapshot('family-a').state); }, setItem(key, value) { calls.writes.push([key, value]); if (options.storageThrows) throw Error('blocked'); stored[key] = value; if (options.onWrite) options.onWrite(key, value); } };
+  const storage = { getItem(key) { calls.reads.push(key); if (options.storageThrows) throw Error('blocked'); if (Object.hasOwn(stored, key)) return stored[key]; if (key === 'ttjf-saas-device-sound-v1' || key === 'ttjf-saas-auth-change-v1' || key === HOME_PREFERENCE) return null; return JSON.stringify(options.cache || snapshot('family-a').state); }, setItem(key, value) { calls.writes.push([key, value]); if (options.storageThrows) throw Error('blocked'); stored[key] = value; if (options.onWrite) options.onWrite(key, value); } };
   class Channel { constructor(name) { this.name = name; channels.push(this); } postMessage(value) { if (options.onBroadcast) options.onBroadcast(value); } }
   const model = Object.assign({}, M, {
     createSeed() { calls.seed++; if (options.legacy) return M.createSeed(NOW); throw Error('SaaS tried to seed'); },
@@ -79,6 +80,7 @@ function harness(options = {}) {
   vm.createContext(context);
   vm.runInContext(CLIENT, context, { filename: 'saas-client.js' });
   vm.runInContext(FARM, context, { filename: 'farm-ui.js' });
+  vm.runInContext(HOME, context, { filename: 'home-points.js' });
   const originalDispose = window.FamilyFarmUI.dispose;
   window.FamilyFarmUI.dispose = function () { calls.disposed++; originalDispose(); };
   // Expose existing functions for invoking asynchronous browser entry points; do
@@ -109,7 +111,7 @@ test('v13 auth-first bootstrap never reads origin business caches or creates a s
   for (const storageThrows of [false, true]) {
     const h = harness({ storageThrows });
     assert.equal(h.state(), null);
-    assert.deepEqual(h.calls.reads, ['ttjf-saas-auth-change-v1']); assert.deepEqual(h.calls.writes, []); assert.equal(h.calls.seed, 0); assert.equal(h.calls.normalize, 0);
+    assert.deepEqual(h.calls.reads.filter(key => key !== HOME_PREFERENCE), ['ttjf-saas-auth-change-v1']); assert.deepEqual(h.calls.writes, []); assert.equal(h.calls.seed, 0); assert.equal(h.calls.normalize, 0);
     assert.deepEqual(h.xhrs.map(x => x.url), ['/api/session']);
     h.pending('/api/session').respond(200, { authenticated: false });
     assert.match(h.html(), /登录/); assert.doesNotMatch(h.html(), /甲私有孩子/);
@@ -145,7 +147,7 @@ test('v13 empty-account create retries use one requestId and never initialize lo
   const first = h.pending('/api/families'); assert.equal(first.headers['X-CSRF-Token'], 'csrf-user-one');
   first.ontimeout(); h.submit('create', { name: '新家庭', childName: '小星' });
   assert.equal(h.pending('/api/families').body.requestId, first.body.requestId);
-  assert.equal(h.state(), null); assert.equal(h.calls.seed, 0); assert.deepEqual(h.calls.reads, ['ttjf-saas-auth-change-v1']);
+  assert.equal(h.state(), null); assert.equal(h.calls.seed, 0); assert.deepEqual(h.calls.reads.filter(key => key !== HOME_PREFERENCE), ['ttjf-saas-auth-change-v1']);
 });
 
 test('v13 every business request has scope headers and all late success, conflict, 401 and timeout effects are ignored', () => {
@@ -159,7 +161,7 @@ test('v13 every business request has scope headers and all late success, conflic
     held.forEach(x => { assert.equal(x.aborted, true); if (code === 0) x.ontimeout(); else x.respond(code, { ...snapshot('family-a'), code: code === 401 ? 'AUTH_REQUIRED' : 'CONFLICT', grant: 'old-grant' }); });
     assert.equal(effects, 0); assert.equal(h.state().childName, '乙私有孩子'); assert.equal(h.html(), before);
     assert.deepEqual(copy(h.window.FamilySaas.status()), scope); assert.equal(h.ui().pending, false);
-    assert.ok(h.calls.reads.every(key => key === 'ttjf-saas-device-sound-v1' || key === 'ttjf-saas-auth-change-v1')); assert.deepEqual(h.calls.writes, []);
+    assert.ok(h.calls.reads.every(key => key === 'ttjf-saas-device-sound-v1' || key === 'ttjf-saas-auth-change-v1' || key === HOME_PREFERENCE)); assert.deepEqual(h.calls.writes, []);
   }
 });
 
@@ -232,7 +234,7 @@ test('v13 runtime flag is explicit and legacy bootstrap still accepts its local 
   const h = harness({ legacy: true }); assert.equal(h.window.FamilySaas, undefined);
   assert.ok(h.calls.reads.includes('little-steps-demo-v1')); assert.ok(h.state().tasks.length); assert.equal(h.calls.normalize, 1);
   assert.equal(h.xhrs.some(x => x.url === '/api/session'), false); assert.equal(h.pending('/api/state').headers['X-Family-ID'], undefined);
-  const index = source('index.html'); const files = ['runtime.js', 'saas-client.js', 'model.js', 'farm-ui.js', 'app.js'];
+  const index = source('index.html'); const files = ['runtime.js', 'saas-client.js', 'model.js', 'farm-ui.js', 'home-points.js', 'app.js'];
   for (let i = 1; i < files.length; i++) assert.ok(index.indexOf('src="' + files[i - 1] + '"') < index.indexOf('src="' + files[i] + '"'));
   const runtime = { window: {} }; vm.runInNewContext(source('runtime.js'), runtime); assert.equal(runtime.window.__TTJF_SAAS__, false);
 });
@@ -355,11 +357,30 @@ test('v14 SaaS calendar, reminders, points timestamps and midnight follow Shangh
   } finally { if (before === undefined) delete process.env.TZ; else process.env.TZ = before; }
 });
 
+test('an open seven-day summary rolls forward at Shanghai midnight with no new ledger revision', () => {
+  const h = harness(); h.login();
+  const family = snapshot('family-a', 2);
+  const oldest = '本周起始日的阅读', time = '2026-11-10T12:00:00Z';
+  family.state = M.apply(family.state, { type: 'points.add', id: 'week-start', name: oldest, points: 3 }, time, 'Asia/Shanghai');
+  h.api.sync(); h.pending('/api/state').respond(200, family);
+  h.click('home-week', '', true);
+  const summary = () => h.html().split('data-testid="home-week-summary"')[1] || '';
+  assert.match(summary(), /11月10日 — 11月16日/);
+  assert.ok(summary().includes(oldest));
+
+  h.advance(8 * 3600 * 1000);
+  h.intervals.forEach(tick => tick());
+  assert.equal(h.ui().form, 'homeWeek');
+  assert.equal(h.api.get().revision, 2);
+  assert.match(summary(), /11月11日 — 11月17日/);
+  assert.ok(!summary().includes(oldest));
+});
+
 test('v14 only the nonprivate device sound boolean persists across refresh and logout stops playback', () => {
   const stored = {}, h = harness({ stored }); h.login(); h.click('sound', '', true); assert.equal(h.api.get().ui.sound, true); assert.equal(stored['ttjf-saas-device-sound-v1'], 'true');
   h.window.FamilySaas.logout(); assert.equal(h.api.get().ui.sound, false); assert.ok(h.audio.includes('complete')); h.pending('/api/auth/logout').respond(200, { ok: true });
   const refreshed = harness({ stored }); refreshed.login(); assert.equal(refreshed.api.get().ui.sound, true);
-  assert.ok(refreshed.calls.reads.every(key => key === 'ttjf-saas-device-sound-v1' || key === 'ttjf-saas-auth-change-v1'));
+  assert.ok(refreshed.calls.reads.every(key => key === 'ttjf-saas-device-sound-v1' || key === 'ttjf-saas-auth-change-v1' || key === HOME_PREFERENCE));
   assert.ok(h.calls.writes.every(([key, value]) => key === 'ttjf-saas-device-sound-v1' ? value === 'true' || value === 'false' : key === 'ttjf-saas-auth-change-v1' && !/user|family|@|csrf/.test(value)));
   const blocked = harness({ storageThrows: true }); blocked.login(); blocked.click('sound', '', true); hide(blocked); show(blocked); completeResume(blocked); assert.equal(blocked.api.get().ui.sound, true);
 });

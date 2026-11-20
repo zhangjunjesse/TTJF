@@ -30,6 +30,17 @@ const SELECTORS = {
 const delay = (ms = 100) => new Promise(resolve => setTimeout(resolve, ms));
 const action = (name, id) => 'button[data-action="' + name + '"]' + (id === undefined ? '' : '[data-id="' + id + '"]');
 
+async function homeView(page, mode) {
+  assert.ok(['points', 'companion'].includes(mode), 'Unknown home view');
+  const selector = '#main [data-home-mode]';
+  await page.waitForSelector(selector);
+  if (await page.$eval(selector, node => node.dataset.homeMode) !== mode) {
+    await click(page, action('home-view', mode));
+  }
+  await page.waitForFunction(expected => document.querySelector('#main [data-home-mode]')?.dataset.homeMode === expected,
+    { timeout: 6000 }, mode);
+}
+
 async function launch() {
   return puppeteer.launch({
     executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
@@ -319,7 +330,7 @@ async function runSuite() {
             await navigate(page, view);
             const nav = await reachable(page, SELECTORS.nav);
             assert.equal(nav.length, 2);
-            assert.deepEqual(nav.map(item => item.text), ['积分', '提醒']);
+            assert.deepEqual(nav.map(item => item.text), ['首页', '提醒']);
             report.layouts.push(await bounded(page, name + '-' + view));
             await reachable(page, view === 'points' ? action('add-points') : action('task-new'));
             await capture(page, name + '-' + view);
@@ -897,7 +908,7 @@ async function runSuite() {
 }
 
 module.exports = { ROOT, ARTIFACTS, PIN, FIXTURE_TIME, VIEWPORTS, SELECTORS, Model,
-  launch, createEnvironment, delay, action, click, fill, fillForm, state, ui, totals,
+  launch, createEnvironment, delay, action, homeView, click, fill, fillForm, state, ui, totals,
   connected, navigate, closeSheet, noSheet, confirmPoints, verify, submitProtected, openCredit, capture,
   metrics, reachable, bounded, sheet, runSuite };
 if (require.main === module) { runSuite().catch(error => { console.error(error); process.exitCode = 1; }); }

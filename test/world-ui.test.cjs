@@ -23,12 +23,13 @@ function node() {
     getAttribute(name) { return this.attributes[name] || null; } };
 }
 function fixture(options = {}) {
-  const app = node(), body = node(), focus = node(), nodes = {}, controllers = [], frames = new Map();
+  const app = node(), body = node(), focus = node(), nodes = {}, controllers = [], frames = new Map(), scripts = [];
   let frameId = 0, panel = options.panel || null, stage;
   const document = emitter({ body, hidden: false, activeElement: focus,
     getElementById: id => id === 'app' ? app : id === 'world-stage' ? stage || null : null,
     querySelector: selector => ['.sheet', '.saas-card', '.reminders-screen'].includes(selector) ? panel : null,
-    createElement() {
+    createElement(tag) {
+      if (tag === 'script') return {};
       stage = node();
       for (const selector of ['.world-stage-surface', '.world-scene-fallback', '.world-eyebrow', 'h2', '.world-caption p']) nodes[selector] = node();
       nodes['.world-stage-surface'].querySelector = selector => selector === 'canvas' ? nodes.canvas || null : null;
@@ -50,10 +51,15 @@ function fixture(options = {}) {
       nodes.canvas = node(); controllers.push(controller); return controller;
     } }
   });
-  if (options.sceneMissing) delete window.FamilyFarmScene;
+  const scene = window.FamilyFarmScene;
+  if (options.lazy) {
+    document.currentScript = { getAttribute: () => 'farm-scene.js' };
+    document.head = { appendChild: script => scripts.push(script) };
+  }
+  if (options.sceneMissing || options.lazy) delete window.FamilyFarmScene;
   vm.runInNewContext(SOURCE, { window, document }, { filename: 'world-ui.js' });
   function flush() { const batch = [...frames.values()]; frames.clear(); batch.forEach(callback => callback()); }
-  return { window, document, body, media, focus, nodes, controllers, frames, flush,
+  return { window, document, body, media, focus, nodes, controllers, frames, flush, scripts, scene,
     api: window.FamilyWorldUI, stage: () => stage, panel(value) { panel = value; } };
 }
 function business(kind, extra = {}) {
@@ -67,7 +73,7 @@ test('world host maps every supported business and account state to its required
   const forms = {
     points: ['behaviorPicker', 'points', 'point-list', 'pointItem'],
     reminders: ['homeInbox', 'task', 'taskAction'], rewards: ['rewards', 'reward-list', 'reward', 'request', 'approve'],
-    history: ['records', 'petGrowth'], companion: ['petHub', 'petBuy', 'petConfig'],
+    history: ['records', 'homeWeek', 'petGrowth'], companion: ['petHub', 'petBuy', 'petConfig'],
     settings: ['preferences', 'unknown-form'], family: ['profile', 'familySettings'],
     voice: ['voice'], authorization: ['parentConfig'], farm: ['farm']
   };
@@ -92,6 +98,22 @@ test('world host maps every supported business and account state to its required
     'verify', 'reset', 'error', 'family-error', 'logout', 'logout-error', 'logout-wait', 'unknown-view']) {
     f.api.account(view); assert.equal(f.api.diagnostics().route, 'welcome', view);
   }
+});
+
+test('a late scene download follows the current route and never restores a previous family', () => {
+  const f = fixture({ lazy: true });
+  f.api.account('checking'); f.api.account('loading-family'); f.api.business(business(null));
+  assert.equal(f.scripts.length, 0);
+  f.api.business(business('records')); f.api.business(business('preferences'));
+  assert.equal(f.scripts.length, 1);
+  assert.equal(f.scripts[0].src, 'farm-scene.js');
+  f.api.reset();
+  f.window.FamilyFarmScene = f.scene;
+  f.scripts[0].onload();
+  assert.equal(f.controllers.length, 0);
+  f.api.account('login');
+  assert.equal(f.controllers.length, 1);
+  assert.equal(f.controllers[0].options.farm.plots.length, 0);
 });
 
 test('scope reset releases the private renderer and ignores its late status before an anonymous account mount', () => {

@@ -199,6 +199,7 @@ async function runTest() {
     const state = M.apply(M.createSeed(new Date(B.FIXTURE_TIME)), { id: 'contrast-farm-start', type: 'farm.start' }, new Date(B.FIXTURE_TIME));
     env = await B.createEnvironment(browser, { state }); page = await env.newPage({ width: 390, height: 844 });
     page.setDefaultTimeout(5000); page.setDefaultNavigationTimeout(10000); await env.load(page);
+    await B.homeView(page, 'companion');
     await audit('home-primary', '.credit-add');
     // Audit the button as one composited control, including every nested text run
     // and the redeemable badge fill under the button's active brightness filter.

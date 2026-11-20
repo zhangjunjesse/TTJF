@@ -54,6 +54,7 @@ async function renderer() {
   return page.evaluate(() => window.FamilyDemo.getUI().farmRender.renderer);
 }
 async function readyScene(mode = 'home') {
+  if (mode === 'home') await B.homeView(page, 'companion');
   await page.waitForFunction(expected => {
     const view = window.FamilyDemo && window.FamilyDemo.getUI(), d = view && view.farmRender, r = d && d.renderer;
     return d && d.mode === expected && r && r.ready && r.webgl && r.drawCalls > 0;
@@ -170,6 +171,7 @@ async function reloadFamily() {
   await page.waitForFunction(() => { const s = window.FamilySaas.status(); return s.ready || s.view === 'families'; });
   if ((await Q.status(page)).view === 'families') await click(page, Q.sa('select-family', familyId));
   await Q.ready(page, familyId);
+  await B.homeView(page, 'companion');
   if (CASE !== 'portraits') await readyScene();
 }
 async function fixtureAction(action) {
@@ -193,6 +195,7 @@ async function setup() {
   await Q.registerAndVerify(page, email);
   familyId = await Q.createFamily(page, '合成伙伴首页-' + CASE, CHILD);
   await Q.home(page);
+  await B.homeView(page, 'companion');
   if (CASE !== 'portraits') await readyScene();
   progress('Fixture ready');
 }

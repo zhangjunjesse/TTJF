@@ -9,7 +9,7 @@ COPY --chown=node:node saas-server.cjs assistant-service.cjs assistant.js model.
 COPY --chown=node:node saas ./saas
 COPY --chown=node:node tools/saas-data.cjs ./tools/saas-data.cjs
 COPY --chown=node:node tools/saas-db.cjs ./tools/saas-db.cjs
-COPY --chown=node:node index.html styles.css app.js runtime.js saas-client.js saas.css pet.js pet.css farm-ui.js farm.css farm-scene.js world-ui.js farm-world.css manifest.webmanifest ./
+COPY --chown=node:node index.html styles.css app.js runtime.js saas-client.js saas.css pet.js pet.css farm-ui.js farm.css farm-scene.js world-ui.js farm-world.css home-points.js home-points.css manifest.webmanifest ./
 COPY --chown=node:node assets ./assets
 RUN mkdir -p /app/data && chown node:node /app/data
 ENV SQLITE_FILE=/app/data/ttjf.sqlite

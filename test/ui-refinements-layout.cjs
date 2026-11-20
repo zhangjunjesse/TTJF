@@ -43,6 +43,9 @@ async function main() {
       page = await env.newPage({ width, height });
       page.setDefaultTimeout(8000);
       await env.load(page);
+      // This group measures the full companion dashboard and its actual pet.
+      // A phone now opens points first, so enter the measured view through UI.
+      await B.homeView(page, 'companion');
       await page.waitForFunction(() => {
         const img = document.querySelector('[data-credit-scene]');
         return img && img.complete && img.naturalWidth > 0;
