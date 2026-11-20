@@ -22,6 +22,7 @@
     "test:world:contrast": "node test/world-contrast-browser.cjs",
     "test:farm-context:browser": "node test/farm-context-browser.cjs",
     "test:ui:layout": "node test/ui-refinements-layout.cjs",
+    "test:ui:keyboard": "node test/mobile-keyboard-browser.cjs",
     "test:ui:flows": "node test/ui-refinements-browser.cjs",
     "test:ui:credit": "node test/farm-credit-browser.cjs",
     "test:pet-home:browser": "node test/pet-home-browser.cjs"

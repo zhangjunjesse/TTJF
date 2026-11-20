@@ -28,6 +28,7 @@
 - `npm run test:world`：场景宿主路由、匿名投影、生命周期与降级回归；已纳入 `npm test`。`npm run test:world:browser` 默认运行 points 组，通过 `WORLD_TEST_CASE` 选择各独立短组，范围见 `docs/threejs-farm-world.md`。组件 renderer 支持 `TEST_CASE_PATTERN` 分组及 `TEST_ARTIFACT_DIR`，未选择项明确报告，不覆盖历史图像。
 - `npm run test:world:contrast`：真实控件渐变、交互状态和禁用状态；`npm run test:farm-context:browser`：真实 WebGL 丢失/恢复，`FARM_CONTEXT_CASE` 分别选 `switching`（默认）、`loading-first`、`restoring-first`、`dispose`。各组独立执行并落盘。
 - `npm run test:ui:flows`：真实临时 SQLite 的加分确认、常用模板、兑换记录、指令和重试；`UI_REFINEMENT_CASE` 分别选 `award`（默认）、`template`、`history`、`voice`、`retry`、`balance`（空原因加分、保存常用、刷新与历史总积分/可兑换积分）。`npm run test:ui:layout` 用 `UI_LAYOUT_WIDTH`、`UI_LAYOUT_HEIGHT` 指定视口，检查首页占屏、触控命中、卡片、输入和弹框，`UI_LAYOUT_CASE=long` 运行长积分布局。`npm run test:ui:credit` 检查共用渲染器的积分宝箱、降级及资源释放。各入口使用 `TEST_ARTIFACT_DIR` 保存独立证据。
+- `npm run test:ui:keyboard` 在真实 SaaS 表单上模拟手机键盘压缩、移动可见区域。用 `MOBILE_KEYBOARD_CASE=award|template|reminder|pin|pin-landscape` 分别检查立即加分（默认）、常用行为、提醒和竖屏/横屏家长 PIN。系统输入法和 Safari 真机需单独验收。
 - `TEST_ARTIFACT_DIR` 可把本轮证据写到独立目录；避免覆盖历史验收。详细范围和本次已知失败基线见 `docs/sqlite-verification.md`。
 - `npm run test:pet-home:browser` 通过隔离的 SaaS/SQLite 测试伙伴首页。`PET_HOME_CASE=home|preview|rotation|scope|touch|portraits` 选择场景，`PET_HOME_WIDTH`、`PET_HOME_HEIGHT` 选择手机或平板视口。`portraits` 检查 WebGL 不可用时的十套形态、成长足迹和伙伴设置。实体 iPad/Safari 需单独验收。
 - `farm/forest-bud/` 提供晶叶龙的模型、动作和成长装扮。改动形象后运行 `npm run build:farm` 和 `node tools/render-dragon-portraits.cjs`，同步实时模型与 `assets/farm/portraits/` 的静态图。
