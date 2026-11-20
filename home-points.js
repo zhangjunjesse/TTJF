@@ -24,17 +24,24 @@
   }
   function kindLabel(kind) { return { points: '加分', redemption: '礼品兑换', purchase: '道具购买' }[kind]; }
 
-  function recentRecords(state, today, zone) {
-    var rows = [], order = 0;
-    [['points', state.points], ['redemption', state.redemptions], ['purchase', state.petPurchases || []]].forEach(function (source) {
-      source[1].forEach(function (record) {
-        rows.push({ id: record.id, kind: source[0], name: record.name, reason: record.reason || record.note || '',
-          points: record.points, at: record.at, timestamp: new Date(record.at).getTime(), order: order++,
+  function ledgerRecords(state) {
+    var rows = [], actionIndexes = Object.create(null);
+    state.appliedActions.forEach(function (id, index) { actionIndexes[id] = index; });
+    [['points', state.points, 'points-'], ['redemption', state.redemptions, 'redeem-'], ['purchase', state.petPurchases || [], 'purchase-']].forEach(function (source, sourceOrder) {
+      source[1].forEach(function (record, index) {
+        var actionId = record.id.indexOf(source[2]) === 0 ? record.id.slice(source[2].length) : '';
+        var actionIndex = actionIndexes[actionId];
+        rows.push({ id: record.id, kind: source[0], itemId: record.itemId, name: record.name, reason: record.reason || record.note || '',
+          points: record.points, at: record.at, timestamp: new Date(record.at).getTime(), order: index, sourceOrder: sourceOrder,
+          actionIndex: actionIndex === undefined ? -1 : actionIndex,
           positive: source[0] === 'points', kindLabel: kindLabel(source[0]) });
       });
     });
-    rows.sort(function (a, b) { return b.timestamp - a.timestamp || a.order - b.order; });
-    return rows.slice(0, 3).map(function (row) { row.timeLabel = displayTime(row.at, today, zone); return row; });
+    // Only equal recorded times use saved action order. Unmatched legacy rows follow
+    // matched rows, then keep category priority and newest append within each ledger.
+    // Category priority is a display fallback, not an inferred cross-ledger chronology.
+    rows.sort(function (a, b) { return b.timestamp - a.timestamp || b.actionIndex - a.actionIndex || a.sourceOrder - b.sourceOrder || b.order - a.order; });
+    return rows;
   }
   function groupBehaviors(records, pointItems) {
     var byKey = Object.create(null), names = Object.create(null), items = Object.create(null), groups = [];
@@ -66,7 +73,7 @@
   function analyze(options) {
     options = options || {};
     var state = options.state, zone = options.zone, now = options.now === undefined ? new Date() : options.now;
-    var today = M.dateKey(options.today === undefined ? now : options.today, zone), totals = M.totals(state);
+    var today = M.dateKey(options.today === undefined ? now : options.today, zone), totals = M.totals(state), ledger = ledgerRecords(state);
     var days = [], byDay = Object.create(null), records = [], earned = 0, count = 0, activeDays = 0;
     for (var i = -6; i <= 0; i += 1) {
       var key = M.addDays(today, i, zone), parts = M.calendarParts(key, zone);
@@ -76,8 +83,10 @@
     }
     var startAt = new Date(M.calendarTimestamp(days[0].key, '00:00', zone)).getTime();
     var endAt = new Date(M.calendarTimestamp(M.addDays(today, 1, zone), '00:00', zone)).getTime();
-    state.points.forEach(function (record) {
-      var timestamp = new Date(record.at).getTime();
+    // Daily detail and behavior metadata inherit the same newest-first ledger order.
+    ledger.forEach(function (record) {
+      if (record.kind !== 'points') return;
+      var timestamp = record.timestamp;
       if (timestamp < startAt || timestamp >= endAt) return;
       var day = byDay[M.dateKey(record.at, zone)];
       if (!day) return;
@@ -86,11 +95,10 @@
     });
     days.forEach(function (day) {
       if (day.count) activeDays += 1;
-      day.records.sort(function (a, b) { return b.timestamp - a.timestamp; });
     });
     return { today: today, zone: zone, from: days[0].key, to: today, rangeLabel: shortDate(days[0].key) + ' — ' + shortDate(today),
       totals: totals, earned: earned, count: count, activeDays: activeDays, todayEarned: days[6].points, todayCount: days[6].count,
-      days: days, behaviors: groupBehaviors(records, state.pointItems), recent: recentRecords(state, today, zone) };
+      days: days, behaviors: groupBehaviors(records, state.pointItems), recent: ledger.slice(0, 3).map(function (row) { row.timeLabel = displayTime(row.at, today, zone); return row; }) };
   }
   function summaryFor(options) { return options.summary || analyze(options); }
   function amountClass(value) { return String(value).length > 7 ? ' points-amount-long' : ''; }
@@ -136,7 +144,7 @@
       var rows = day.records.map(function (record) {
         return '<li><div><strong>' + esc(record.name) + '</strong>' + (record.reason ? '<p>' + esc(record.reason) + '</p>' : '') + '<time datetime="' + esc(record.at) + '">' + M.calendarParts(record.at, summary.zone).time + '</time></div><b class="' + (String(record.points).length > 8 ? 'points-small-amount' : '') + '">+' + record.points + '<small> 分</small></b></li>';
       }).join('');
-      return '<details class="points-summary-day"' + (open ? ' open' : '') + '><summary class="points-day-summary">' + heading + draw(options, 'chevron') + '</summary><ol class="points-detail-records">' + rows + '</ol></details>';
+      return '<details class="points-summary-day" data-date="' + esc(day.key) + '"' + (open ? ' open' : '') + '><summary class="points-day-summary">' + heading + draw(options, 'chevron') + '</summary><ol class="points-detail-records">' + rows + '</ol></details>';
     }).join('');
     var ranked = summary.behaviors.slice(0, 5).map(function (group, index) {
       return '<li><span class="points-summary-rank" aria-hidden="true">' + (index + 1) + '</span><div><strong>' + esc(group.name) + '</strong><small>' + esc(group.source + (group.description ? ' · ' + group.description : '')) + '</small></div><span><b>' + group.count + ' 次</b><small>+' + group.points + ' 分</small></span></li>';

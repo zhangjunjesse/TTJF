@@ -1,7 +1,7 @@
 'use strict';
 
 // One bounded group per process, using synthetic users and a fresh SQLite file.
-// DEVICE_HOME_CASE=phone|phone-landscape|desktop-screen|tablet|preferences|storage
+// DEVICE_HOME_CASE=phone|phone-landscape|desktop-screen|tablet|preferences|storage|sync
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,11 +9,11 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, action: a, click, ui, snapshot } = Q;
 const CASE = process.env.DEVICE_HOME_CASE || 'phone';
-const CASES = ['phone', 'phone-landscape', 'desktop-screen', 'tablet', 'preferences', 'storage'];
+const CASES = ['phone', 'phone-landscape', 'desktop-screen', 'tablet', 'preferences', 'storage', 'sync'];
 assert.ok(CASES.includes(CASE), 'Unknown DEVICE_HOME_CASE');
 const KEY = 'ttjf-device-home-v1';
 const SOURCES = ['test/device-home-browser.cjs', 'test/browser.cjs', 'test/saas-browser.cjs',
-  'home-points.js', 'home-points.css', 'app.js', 'farm-ui.js', 'world-ui.js', 'farm-world.css', 'styles.css', 'index.html'];
+  'home-points.js', 'home-points.css', 'app.js', 'saas-client.js', 'farm-ui.js', 'world-ui.js', 'farm-world.css', 'styles.css', 'index.html'];
 const hashes = () => Object.fromEntries(SOURCES.map(file => [file,
   crypto.createHash('sha256').update(fs.readFileSync(path.join(Q.ROOT, file))).digest('hex')]));
 const email = 'device-home-' + CASE + '-' + Q.RUN + '@example.test';
@@ -118,7 +118,7 @@ async function pointsControls() {
 }
 async function setup() {
   Q.phase('device-home-' + CASE); progress('Creating isolated SQLite fixture');
-  env = await Q.initialize(); env.clock(Date.parse('2026-11-20T04:30:00Z'));
+  env = await Q.initialize(); env.clock(Date.parse(CASE === 'sync' ? '2026-11-19T04:30:00Z' : '2026-11-20T04:30:00Z'));
   const tablet = CASE === 'tablet', landscape = CASE === 'phone-landscape';
   const width = tablet ? 768 : landscape ? 1024 : 390, height = tablet ? 1024 : landscape ? 430 : 844;
   page = await env.newPage({ width, height, controlledClock: true, storageUnavailable: CASE === 'storage' }); Q.active(page);
@@ -238,13 +238,117 @@ async function storage() {
     await unchanged(before, marker, 'unavailable preference storage');
   });
 }
+async function sync() {
+  let sequence = 0;
+  async function remoteAction(target, input, protectedAction = true) {
+    const before = await env.api(target, '/api/state');
+    assert.equal(before.status, 200);
+    const action = { ...input, id: 'device-home-sync-' + (++sequence) };
+    let grant;
+    if (protectedAction) {
+      const challenge = await env.api(target, '/api/parent/challenge', 'POST', { revision: before.body.revision, action });
+      assert.equal(challenge.status, 200, JSON.stringify(challenge.body));
+      const verified = await env.api(target, '/api/parent/verify', 'POST', { challengeId: challenge.body.challengeId, answer: Q.PIN });
+      assert.equal(verified.status, 200, JSON.stringify(verified.body)); grant = verified.body.grant;
+    }
+    const saved = await env.api(target, '/api/action', 'POST', { revision: before.body.revision, action, grant });
+    assert.equal(saved.status, 200, JSON.stringify(saved.body));
+    return saved.body;
+  }
+  const week = '[data-testid="home-week-summary"]';
+  const daySummary = index => week + ' .points-summary-day:nth-child(' + index + ') > summary';
+  const readSummary = () => page.$eval(week, root => {
+    const number = node => Number(node.textContent.match(/\d+/)[0]);
+    return {
+      stats: [...root.querySelectorAll('.points-summary-stats > div > strong')].map(number),
+      days: [...root.querySelectorAll('.points-summary-day')].map(day => ({
+        date: day.querySelector('.points-day-summary b').textContent,
+        count: number(day.querySelector('.points-day-summary > span:nth-child(2)')),
+        points: number(day.querySelector('.points-day-summary > strong')),
+        open: day.tagName === 'DETAILS' ? day.open : null,
+        records: [...day.querySelectorAll('.points-detail-records > li')].map(row => ({
+          name: row.querySelector('strong').textContent, reason: row.querySelector('p')?.textContent || '',
+          time: row.querySelector('time').textContent, points: number(row.querySelector('b'))
+        }))
+      })),
+      behaviors: [...root.querySelectorAll('.points-summary-behaviors > li')].map(row => ({
+        name: row.querySelector('strong').textContent,
+        count: number(row.querySelector('b')), points: number(row.querySelector('span:last-child > small'))
+      }))
+    };
+  });
+  const readPosition = () => page.evaluate(() => ({
+    form: window.FamilyDemo.getUI().form,
+    focusedDate: document.activeElement?.matches('.points-summary-day > summary')
+      ? document.activeElement.querySelector('b').textContent : null,
+    scrollTop: document.querySelector('.sheet-body').scrollTop
+  }));
+  Q.report.boundaries.push('The sync case submits a real PIN-authorized API award using a second isolated browser session, then waits for the normal five-second browser poll; it does not inject a state, a response, or a refresh event.');
+  await check('An open seven-day summary follows a remote award through polling and preserves expanded dates, focus and scroll', async () => {
+    await remoteAction(page, { type: 'parent.setup', method: 'pin', pin: Q.PIN, confirmPin: Q.PIN }, false);
+    await remoteAction(page, { type: 'points.add', name: '合成昨天已完成', points: 3, reason: '保留昨天展开的明细' });
+    await env.setClock(Date.parse('2026-11-20T04:30:00Z'));
+    await remoteAction(page, { type: 'points.add', name: '合成今天已完成', points: 5, reason: '保留今天关闭的明细' });
+    await reload();
+    const other = await env.newPage({ width: 390, height: 844, controlledClock: true });
+    await other.goto(env.origin, { waitUntil: 'load' }); await Q.waitView(other, 'login');
+    await Q.login(other, email, Q.PASSWORD, familyId); await Q.ready(other, familyId);
+    assert.notEqual(other.browserContext(), page.browserContext(), 'the remote endpoint has an independent login session');
+    await click(page, a('home-week')); await page.waitForSelector(week);
+    const baseline = await readSummary();
+    assert.deepEqual(baseline.stats, [8, 2, 2]);
+    assert.deepEqual(baseline.days.slice(0, 2).map(day => [day.date, day.open]), [['11月20日', true], ['11月19日', false]]);
+    await click(page, daySummary(1)); await click(page, daySummary(2));
+    await page.$eval('.sheet-body', body => { body.scrollTop = Math.min(96, body.scrollHeight - body.clientHeight); });
+    const before = await readSummary(), position = await readPosition(), beforeUI = await ui(page);
+    assert.deepEqual(before.days.slice(0, 2).map(day => day.open), [false, true]);
+    assert.equal(position.focusedDate, '11月19日', 'a real summary activation keeps keyboard focus on the selected date');
+    assert.ok(position.scrollTop > 0, 'the summary has a nonzero scroll position to preserve');
+    const responses = [], reads = [];
+    const receive = response => {
+      if (new URL(response.url()).pathname !== '/api/state' || response.request().method() !== 'GET') return;
+      reads.push(response.json().then(body => responses.push({ status: response.status(), revision: body.revision,
+        familyId: body.familyId, hasRemoteAward: body.state?.points.some(row => row.name === '合成远端轮询加分') || false })));
+    };
+    page.on('response', receive);
+    try {
+      const saved = await remoteAction(other, { type: 'points.add', name: '合成远端轮询加分', points: 7,
+        reason: '另一台设备刚完成的鼓励', at: '2026-11-20T04:29:00.000Z' });
+      assert.equal(saved.revision, beforeUI.revision + 1);
+      await page.waitForFunction(expected => window.FamilyDemo.getUI().revision === expected &&
+        window.FamilyDemo.getState().points.some(row => row.name === '合成远端轮询加分'), { timeout: 8000, polling: 50 }, saved.revision);
+      await Promise.all(reads);
+      const after = await readSummary(), afterPosition = await readPosition(), receivedUI = await ui(page);
+      report.sync = { before, position, after, afterPosition, responses, beforeRevision: beforeUI.revision,
+        remoteRevision: saved.revision, receivedRevision: receivedUI.revision,
+        receivedInLedger: (await snapshot(page)).points.some(row => row.name === '合成远端轮询加分') };
+      progress('Remote award received by the open summary');
+      await Q.shot(page, 'sync-open-summary-after-poll');
+      assert.ok(responses.some(row => row.status === 200 && row.familyId === familyId && row.revision === saved.revision && row.hasRemoteAward),
+        'the real browser poll receives the committed award and its exact family revision');
+      assert.equal(afterPosition.form, 'homeWeek', 'the same summary stays open without closing or reopening');
+      assert.deepEqual(after.stats, [15, 3, 2], 'the open summary displays the new earned points, award count and active days');
+      assert.deepEqual(after.days.slice(0, 2).map(day => [day.date, day.count, day.points]),
+        [['11月20日', 2, 12], ['11月19日', 1, 3]], 'the open summary updates its actual per-day totals');
+      assert.deepEqual(after.days[0].records.find(row => row.name === '合成远端轮询加分'),
+        { name: '合成远端轮询加分', reason: '另一台设备刚完成的鼓励', time: '12:29', points: 7 });
+      assert.deepEqual(after.behaviors.find(row => row.name === '合成远端轮询加分'),
+        { name: '合成远端轮询加分', count: 1, points: 7 }, 'the open behavior ranking includes the new award');
+      assert.deepEqual(after.days.map(day => [day.date, day.open]), before.days.map(day => [day.date, day.open]),
+        'polling preserves the user-selected expanded and collapsed dates');
+      assert.equal(afterPosition.focusedDate, position.focusedDate, 'polling keeps keyboard focus on the selected date');
+      assert.ok(Math.abs(afterPosition.scrollTop - position.scrollTop) <= 1, 'polling preserves the summary scroll position');
+      assert.deepEqual(await sql(), { revision: saved.revision, state: saved.state }, 'reading the open summary does not create any extra family write');
+    } finally { page.off('response', receive); }
+  });
+}
 async function run() {
   Q.report.boundaries.push('Device home tests use isolated desktop Chromium contexts and explicit viewport/screen metrics; physical iPad/Safari and OS rotation remain unverified.');
   let deadline;
   try {
     await Promise.race([(async () => {
       await setup();
-      await ({ phone, 'desktop-screen': phone, 'phone-landscape': landscape, tablet, preferences, storage })[CASE]();
+      await ({ phone, 'desktop-screen': phone, 'phone-landscape': landscape, tablet, preferences, storage, sync })[CASE]();
       assert.deepEqual(Q.report.pageErrors, []);
       assert.deepEqual(hashes(), report.sourceHashes, 'sources changed during device-home evidence run');
       progress('Case complete');

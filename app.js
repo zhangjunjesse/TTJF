@@ -220,6 +220,7 @@
     }
     connected = !local; if (connected) serverReached = true; persist(); updateConnectionStatus(); return true;
   }
+  function canRefreshLedgerView() { return !ui.auth && (!ui.form || ['homeWeek', 'petHub', 'farm'].indexOf(ui.form.kind) >= 0); }
   function sync() {
     if (!scopeReady() || local || syncBusy || pending) return;
     syncBusy = true;
@@ -234,7 +235,7 @@
         }
         if (retryTx && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
         refreshParentEditor();
-        if (changed && !ui.auth && (!ui.form || ui.form.kind === 'petHub' || ui.form.kind === 'farm')) render(false); else renderReminder();
+        if (changed && canRefreshLedgerView()) render(false); else renderReminder();
         updateConnectionStatus();
       } else if (status !== 200 || !result.state || !result.state.tasks || typeof result.revision !== 'number') {
         connected = false; updateConnectionStatus();
@@ -1113,11 +1114,33 @@
     var nested = auth || ui.stack.length > 0, dialogClass = auth ? ' global-dialog ' + (ui.auth.phase === 'confirm' ? 'points-confirm-dialog' : 'parent-dialog') : '';
     return '<div class="sheet-overlay' + (auth ? ' global-dialog-overlay' : '') + '"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet' + dialogClass + '" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"' + (auth ? ' data-auth-phase="' + ui.auth.phase + '" aria-describedby="parent-dialog-prompt"' : '') + '><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div class="sheet-nav-start">' + button(auth ? 'parent-cancel' : 'form-close', icon(nested ? 'back' : 'close'), 'icon-button', '', auth ? '返回修改' : nested ? '返回上一级' : '关闭面板') + '</div><div class="sheet-heading"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div><div class="sheet-nav-actions">' + (actions || '') + '</div></header>' + content + '</section></div>';
   }
+  function homeWeekView(sheetEl) {
+    var view = { days: {}, focusDate: null };
+    Array.prototype.forEach.call(sheetEl.querySelectorAll('details.points-summary-day[data-date]'), function (dayEl) {
+      var date = dayEl.getAttribute('data-date');
+      view.days[date] = dayEl.open;
+      if (dayEl.querySelector('summary') === document.activeElement) view.focusDate = date;
+    });
+    return view;
+  }
+  function restoreHomeWeekView(view) {
+    if (!view) return false;
+    var target = null;
+    Array.prototype.forEach.call(document.querySelectorAll('.sheet details.points-summary-day[data-date]'), function (dayEl) {
+      var date = dayEl.getAttribute('data-date');
+      if (typeof view.days[date] === 'boolean') dayEl.open = view.days[date];
+      if (date === view.focusDate) target = dayEl.querySelector('summary');
+    });
+    if (!target) return false;
+    try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
+    return true;
+  }
   function render(reset) {
     if (!scopeReady()) return;
     if (!ui.homeMode) ui.homeMode = initialHomeMode();
     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
     var oldSheet = document.querySelector('.sheet'), oldBody = document.querySelector('.sheet-body'), oldKind = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-form-kind') : '', oldAuthPhase = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-auth-phase') : '', nextKind = (ui.auth ? 'parent:' : '') + (ui.form ? ui.form.kind : ''), sameSheet = !!oldSheet && oldKind === nextKind, key = sameSheet ? focusKey(document.activeElement) : ui.form && ui.form.focusKey, sheetScroll = sameSheet && oldBody ? oldBody.scrollTop : ui.form && ui.form.scrollTop || 0;
+    var weekView = sameSheet && nextKind === 'homeWeek' ? homeWeekView(oldSheet) : null;
     var homeRefresh = !reset && ui.view === 'points' && !oldSheet && !ui.form && !ui.auth && old && old.querySelector && old.querySelector('[data-home-mode="' + ui.homeMode + '"]'), homeKey = homeRefresh ? focusKey(document.activeElement) : null;
     var selection = sameSheet && document.activeElement && typeof document.activeElement.selectionStart === 'number' ? { start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd } : null;
     document.body.className = 'view-' + ui.view + (ui.form || ui.auth ? ' sheet-open' : '') + (ui.display ? ' display-mode' : '');
@@ -1134,7 +1157,11 @@
     if (ui.view === 'points' && !ui.form && !ui.auth && notice.className.indexOf('visible') >= 0) toast(notice.textContent);
     if (ui.auth) { restorePlayFocus(sameSheet && oldAuthPhase === ui.auth.phase ? key : null); }
     else if (ui.form && ui.form.kind === 'homeInbox') focusInbox();
-    else if (ui.form && ['points', 'behaviorPicker', 'point-list', 'pointItem', 'records', 'homeWeek', 'preferences', 'rewards', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) { restorePlayFocus(key); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll; if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} } }
+    else if (ui.form && ['points', 'behaviorPicker', 'point-list', 'pointItem', 'records', 'homeWeek', 'preferences', 'rewards', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) {
+      if (!restoreHomeWeekView(weekView)) restorePlayFocus(key);
+      var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll;
+      if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} }
+    }
     else if (oldSheet && !ui.form && !ui.auth && ui.homeFocus) restorePlayFocus(ui.homeFocus);
     else if (homeRefresh && homeKey && homeKey.action) restorePlayFocus(homeKey);
     refreshPetPurchase(); fitViewport();
@@ -1416,7 +1443,7 @@
     window.visualViewport.addEventListener('scroll', scheduleFormViewport);
   }
   document.addEventListener('focusin', scheduleFormViewport);
-  window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (!ui.auth && (!ui.form || ui.form.kind === 'petHub' || ui.form.kind === 'farm')) render(false); } } });
+  window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (canRefreshLedgerView()) render(false); } } });
   if (!M) { document.getElementById('app').innerHTML = '<p class="loading-screen">数据模块未加载</p>'; return; }
   if (!saas) {
     state = readStore(KEY, null); if (!state || state.version !== 1 || !state.tasks) state = M.createSeed(new Date());
@@ -1439,6 +1466,6 @@
     else document.getElementById('app').innerHTML = '<p class="loading-screen">账号模块未加载 · 请刷新</p>';
   } else { persist(); loadMeta(); render(false); sync(); }
   var lastDay = today();
-  setInterval(function () { if (!scopeReady()) return; sync(); renderReminder(); if (Farm && farmIsVisible()) Farm.tick(); if (lastDay !== today()) { lastDay = today(); if (!ui.auth && (!ui.form || (local && ui.form.kind === 'petHub'))) render(false); } }, 5000);
+  setInterval(function () { if (!scopeReady()) return; sync(); renderReminder(); if (Farm && farmIsVisible()) Farm.tick(); if (lastDay !== today()) { lastDay = today(); if (!ui.auth && (!ui.form || ui.form.kind === 'homeWeek' || (local && ui.form.kind === 'petHub'))) render(false); } }, 5000);
   window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { if (!scopeReady()) return { ready: false, view: 'account', connected: false, revision: 0, form: null, auth: false, pending: false, aiBusy: false, screenAwake: false, farmView: null, farmStatus: null, farmRender: Farm ? Farm.diagnostics() : null }; return { ready: true, view: ui.view, homeMode: ui.homeMode, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeItemLimit()).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: saas || local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches, farmView: ui.form && ui.form.kind === 'farm' ? ui.form.data.view : null, farmStatus: Farm && M.farmStatus ? Farm.status() : null, farmRender: Farm ? Farm.diagnostics() : null }; } };
 }());

@@ -357,6 +357,25 @@ test('v14 SaaS calendar, reminders, points timestamps and midnight follow Shangh
   } finally { if (before === undefined) delete process.env.TZ; else process.env.TZ = before; }
 });
 
+test('an open seven-day summary rolls forward at Shanghai midnight with no new ledger revision', () => {
+  const h = harness(); h.login();
+  const family = snapshot('family-a', 2);
+  const oldest = '本周起始日的阅读', time = '2026-11-10T12:00:00Z';
+  family.state = M.apply(family.state, { type: 'points.add', id: 'week-start', name: oldest, points: 3 }, time, 'Asia/Shanghai');
+  h.api.sync(); h.pending('/api/state').respond(200, family);
+  h.click('home-week', '', true);
+  const summary = () => h.html().split('data-testid="home-week-summary"')[1] || '';
+  assert.match(summary(), /11月10日 — 11月16日/);
+  assert.ok(summary().includes(oldest));
+
+  h.advance(8 * 3600 * 1000);
+  h.intervals.forEach(tick => tick());
+  assert.equal(h.ui().form, 'homeWeek');
+  assert.equal(h.api.get().revision, 2);
+  assert.match(summary(), /11月11日 — 11月17日/);
+  assert.ok(!summary().includes(oldest));
+});
+
 test('v14 only the nonprivate device sound boolean persists across refresh and logout stops playback', () => {
   const stored = {}, h = harness({ stored }); h.login(); h.click('sound', '', true); assert.equal(h.api.get().ui.sound, true); assert.equal(stored['ttjf-saas-device-sound-v1'], 'true');
   h.window.FamilySaas.logout(); assert.equal(h.api.get().ui.sound, false); assert.ok(h.audio.includes('complete')); h.pending('/api/auth/logout').respond(200, { ok: true });

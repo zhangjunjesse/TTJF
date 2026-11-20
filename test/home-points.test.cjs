@@ -102,6 +102,116 @@ test('recent entries combine all ledger types and sort by recorded time without 
   assert.equal(JSON.stringify(state), before);
 });
 
+test('same-minute awards show the latest successful entry on home and in seven-day detail', () => {
+  const at = M.calendarTimestamp('2026-11-21', '00:04', zone);
+  let state = empty();
+  for (let index = 1; index <= 4; index += 1) {
+    state = M.apply(state, {
+      id: 'same-minute-' + index, type: 'points.add', name: '第' + index + '次鼓励', points: index, at
+    }, new Date(new Date(now).getTime() + index * 1000), zone);
+  }
+  const before = JSON.stringify(state), summary = Home.analyze({ state, now, zone });
+  assert.equal(state.points.length, 4);
+  assert.deepEqual(summary.recent.map(row => row.name), ['第4次鼓励', '第3次鼓励', '第2次鼓励']);
+  assert.deepEqual(summary.days[6].records.map(row => row.name), ['第4次鼓励', '第3次鼓励', '第2次鼓励', '第1次鼓励']);
+  const html = Home.render({ state, summary }), detail = Home.summaryBody({ summary });
+  assert.ok(!html.includes('第1次鼓励'), 'the three home entries include the latest award');
+  for (const content of [html, detail]) {
+    assert.ok(content.indexOf('第4次鼓励') < content.indexOf('第3次鼓励'));
+    assert.ok(content.indexOf('第3次鼓励') < content.indexOf('第2次鼓励'));
+  }
+  assert.deepEqual([summary.earned, summary.count], [10, 4]);
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('equal-time awards, redemptions and purchases follow their saved domain action order', () => {
+  const at = '2026-11-20T16:04:00.000Z';
+  let state = M.apply(empty(), {
+    id: 'prepare-gift', type: 'reward.save', reward: { id: 'test-gift', name: '彩虹铅笔', points: 2 }
+  }, at, zone);
+  for (let index = 1; index <= 4; index += 1) {
+    state = M.apply(state, { id: 'mixed-award-' + index, type: 'points.add', name: '连续鼓励' + index, points: 10, at }, at, zone);
+  }
+  state = M.apply(state, { id: 'mixed-gift', type: 'reward.redeem', rewardId: 'test-gift' }, at, zone);
+  state = M.apply(state, { id: 'mixed-supply', type: 'pet.buy', itemId: 'snack', quantity: 1, expectedPoints: 3 }, at, zone);
+  let summary = Home.analyze({ state, now, zone });
+  assert.deepEqual(summary.recent.map(row => row.id), ['purchase-mixed-supply', 'redeem-mixed-gift', 'points-mixed-award-4']);
+  assert.deepEqual(summary.recent.map(row => row.kind), ['purchase', 'redemption', 'points']);
+  assert.deepEqual(summary.recent.map(row => row.positive), [false, false, true]);
+  assert.deepEqual([summary.earned, summary.count, summary.totals.available], [40, 4, 35]);
+
+  state = M.apply(state, { id: 'mixed-final', type: 'points.add', name: '最后鼓励', points: 3, at }, at, zone);
+  const before = JSON.stringify(state);
+  summary = Home.analyze({ state, now, zone });
+  assert.deepEqual(summary.recent.map(row => row.id), ['points-mixed-final', 'purchase-mixed-supply', 'redeem-mixed-gift']);
+  assert.equal(summary.days[6].records[0].id, 'points-mixed-final');
+  assert.equal(JSON.stringify(state), before);
+});
+
+test('actual recorded time takes priority over action order even within one displayed minute', () => {
+  let state = empty();
+  const records = [
+    ['later-time', '2026-11-20T16:04:50.000Z'],
+    ['earlier-time', '2026-11-20T16:04:10.000Z'],
+    ['earlier-tie', '2026-11-20T16:04:10.000Z']
+  ];
+  for (const [id, at] of records) {
+    state = M.apply(state, { id, type: 'points.add', name: id, points: 2, at }, now, zone);
+  }
+  const summary = Home.analyze({ state, now, zone });
+  const expected = ['points-later-time', 'points-earlier-tie', 'points-earlier-time'];
+  assert.deepEqual(summary.recent.map(row => row.id), expected);
+  assert.deepEqual(summary.days[6].records.map(row => row.id), expected);
+  assert.deepEqual(summary.recent.map(row => row.timeLabel), Array(3).fill('今天 00:04'));
+});
+
+test('legacy equal-time records use reverse ledger order and stable category priority', () => {
+  const state = empty(), at = '2026-11-20T16:04:00.000Z';
+  state.points = [point('zz-old-award', at, 10), point('aa-new-award', at, 10)];
+  state.redemptions = [redemption('zz-old-gift', at), redemption('aa-new-gift', at)];
+  state.petPurchases = ['zz-old-supply', 'aa-new-supply'].map(id => ({
+    id, at, itemId: 'snack', name: '小零食', quantity: 1, unitPoints: 2, points: 2
+  }));
+  const before = JSON.stringify(state), summary = Home.analyze({ state, now, zone });
+  assert.deepEqual(summary.recent.map(row => row.id), ['aa-new-award', 'zz-old-award', 'aa-new-gift']);
+  assert.deepEqual(summary.days[6].records.map(row => row.id), ['aa-new-award', 'zz-old-award']);
+  assert.equal(JSON.stringify(state), before);
+  const funding = [point('historical-funding', '2026-11-01T08:00:00.000Z', 20)];
+  const spending = Home.analyze({ state: { ...state, points: funding }, now, zone });
+  assert.deepEqual(spending.recent.map(row => row.id), ['aa-new-gift', 'zz-old-gift', 'aa-new-supply']);
+  const supplies = Home.analyze({ state: { ...state, points: funding, redemptions: [] }, now, zone });
+  assert.deepEqual(supplies.recent.map(row => row.id), ['aa-new-supply', 'zz-old-supply', 'historical-funding']);
+});
+
+test('partially recorded action history has a consistent order without inventing legacy chronology', () => {
+  const state = empty(), at = '2026-11-20T16:04:00.000Z';
+  state.points = [point('points-logged-first', at, 10), point('points-unlogged', at, 10)];
+  state.redemptions = [redemption('redeem-logged-last', at), redemption('legacy-gift', at)];
+  state.appliedActions = ['logged-first', 'logged-last'];
+  const before = JSON.stringify(state), summary = Home.analyze({ state, now, zone });
+  assert.deepEqual(summary.recent.map(row => row.id), ['redeem-logged-last', 'points-logged-first', 'points-unlogged']);
+  assert.deepEqual(summary.days[6].records.map(row => row.id), ['points-logged-first', 'points-unlogged']);
+  assert.equal(JSON.stringify(state), before);
+  state.points.push(point('legacy-later-time', '2026-11-20T16:04:01.000Z', 1));
+  assert.equal(Home.analyze({ state, now, zone }).recent[0].id, 'legacy-later-time');
+});
+
+test('behavior summaries use the latest equal-time saved name and reason after a template is deleted', () => {
+  const at = '2026-11-20T16:04:00.000Z';
+  let state = M.apply(empty(), { id: 'prepare-reading', type: 'pointItem.save', item: { id: 'reading', name: '阅读', points: 5 } }, at, zone);
+  state = M.apply(state, { id: 'reading-first', type: 'points.add', itemId: 'reading', name: '最初名称', reason: '最初原因', at }, at, zone);
+  state = M.apply(state, { id: 'reading-last', type: 'points.add', itemId: 'reading', name: '最近名称', reason: '最近原因', at }, at, zone);
+  state = M.apply(state, { id: 'remove-reading', type: 'pointItem.delete', itemId: 'reading' }, at, zone);
+  for (const candidate of [state, { ...state, appliedActions: [] }]) {
+    const before = JSON.stringify(candidate), summary = Home.analyze({ state: candidate, now, zone });
+    assert.equal(summary.behaviors.length, 1);
+    assert.equal(summary.behaviors[0].name, '最近名称');
+    assert.equal(summary.behaviors[0].description, '最近原因');
+    assert.deepEqual([summary.behaviors[0].count, summary.behaviors[0].points], [2, 10]);
+    assert.equal(JSON.stringify(candidate), before);
+  }
+});
+
 test('spending today does not count as encouragement or create invented chart data', () => {
   const state = empty();
   state.points = [point('older', '2026-11-01T08:00:00.000Z', 20)];
@@ -137,7 +247,7 @@ test('home and detail render saved content as text and preserve action entrances
   assert.match(html, /data-testid="earned-points"/);
   assert.match(html, /data-testid="available-points"/);
   assert.match(detail, /data-testid="home-week-summary"/);
-  assert.match(detail, /<details class="points-summary-day" open>/);
+  assert.match(detail, /<details class="points-summary-day" data-date="2026-11-21" open>/);
   assert.match(detail, /<time datetime="2026-11-20T16:01:00.000Z">00:01<\/time>/);
   assert.match(detail, /&lt;script&gt;alert\(3\)&lt;\/script&gt;/);
   assert.match(html, /class="points-record-reason"/);
