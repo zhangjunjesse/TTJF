@@ -1,0 +1,18 @@
+{
+  "task": "form_ui_test",
+  "at": "2026-11-18T13:09:25.5616606Z",
+  "file": "test/ui-refinements-browser.cjs",
+  "status": "Complete",
+  "verified": [
+    "node --check test/ui-refinements-browser.cjs",
+    "mock aiForm 1/1 passed, sourceStable true",
+    "mock aiFormPartial 1/1 passed, sourceStable true"
+  ],
+  "reports": [
+    "mock-aiForm-20261118130708707/v15-browser/20261118130709091-20304/report.json",
+    "mock-aiFormPartial-20261118130806204/v15-browser/20261118130806601-29032/report.json"
+  ],
+  "liveModelCalled": false,
+  "privateConfigurationRead": false,
+  "fixtureFix": "Synthetic email lowercased for camel-case test names; initial failed setup evidence retained"
+}

@@ -1,0 +1,31 @@
+森林芽龙产品接入：实现和组件验证已完成；统一build与真实产品页面验收由root负责。
+所有者：product_dragon；2026-11-18
+独占修改：farm/companions.js、farm/companion-interactions.js、test/companion-interactions.test.cjs。
+新增：farm/forest-bud/{companion,resources,measure,cpu-skin,pet-life,butterfly}.js、body/{body,tail}.js、face/{face,eyes}.js。
+wardrobe.js与dragon-forms.js由product_growth负责；scene.js与Workshop防误烘焙由product_scene负责。
+
+已完成
+- plant统一工厂接入批准v5主体/表情/叶翼/26站尾骨/蝴蝶，capy原有外观与动作路径保留。
+- 真实pet/feed/wash/train/celebrate沿用；食物解析真实颈部/表情/成长变换后的muzzle锚点。
+- 每个实例自己的生活调度和时钟；自主look/sniff/groom/stretch/doze、被点醒招呼、减少动态和暂停后恢复。
+- 持物时groom优先空手，双手持物时用sniff；共享互动后再更新持物朝向。
+- 几何/材质/DataTexture/骨骼texture全部登记Workshop，显式dispose与Workshop.dispose组合只释放一次。
+- WebGL1使用相同尾骨的CPU蒙皮，不让GLSL1进入Three r160 GPU skin shader；支持减少动态静止。
+- frameProfile来自真姿态采样；measurePoints返回当前root-local动态采样。成长/宿主scale更新SkinnedMesh逆绑定后才采样，避免尾长/取景错误。
+- 低档细分保留完整轮廓与26骨架：三角 stage1 296260→103304；stage3 307902→114946；stage5 308614→115658；体表高差<0.00008。
+- 只缓存固定头皮与投影CPU数值，不共享网格/材质/纹理/骨骼/响应/睡眠状态；头部重建由约719ms降到约74–88ms（单独Node采样）。
+
+实际检查
+- node --check 已覆盖新增关键模块与companions.js；通过。
+- node --test test/companion-interactions.test.cjs：37/37通过，日志 interactions-all.txt。
+- 包含plant/capy五阶段动作/恢复/reduced/资源；自主生活/中断/独立时钟；骨骼动态取样与释放；WebGL1 CPU；低档轮廓和骨架回归。
+- git diff --check（本次范围）通过。
+- source扫描无http资源、fetch、FontLoader、requestAnimationFrame或setTimeout；模型资源/数据纹理本地生成，帧循环由既有宿主管理。
+- 未在此子任务运行build或实际产品Edge验收，由root和scene/growth agent负责，不将其结果冒称已通过。
+
+证据
+interactions-all.txt：最新完整37项组件结果。
+life-and-lifecycle.txt：自主/资源/CPU/低档6项分组结果。
+quality-metrics.txt：高低密度三阶段真网格指标与profile边界。
+head-template-timings.txt：只缓存CPU数据后的头部构建实测。
+已知测试运行提示：现有package.json未声明type:module，Node会输出MODULE_TYPELESS_PACKAGE_JSON warning；测试不失败，未修改包模式。

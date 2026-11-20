@@ -1,0 +1,33 @@
+{
+  "stage": 5,
+  "angle": "three-quarter",
+  "checks": [
+    {
+      "stage": 5,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 199,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 146,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 5,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 206,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 153,
+        "textures": 5
+      }
+    }
+  ],
+  "errors": []
+}

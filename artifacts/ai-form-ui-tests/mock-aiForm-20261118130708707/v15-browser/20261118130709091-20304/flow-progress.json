@@ -1,0 +1,13 @@
+{
+  "case": "aiForm",
+  "message": "Case complete",
+  "at": "2026-11-18T13:07:32.758Z",
+  "checks": [
+    {
+      "phase": "ui-refinement-aiForm",
+      "label": "A new common behavior uses model form generation and keeps twenty minutes and five points in an unsaved draft",
+      "result": "passed",
+      "milliseconds": 3718
+    }
+  ]
+}

@@ -1,0 +1,1853 @@
+{
+  "schemaVersion": 1,
+  "startedAt": "2026-11-20T05:22:57.687Z",
+  "replayCommand": "node --test --test-reporter=spec test/saas-action-audit.test.cjs",
+  "invocation": {
+    "executable": "D:\\soft_install\\nodejs\\node.exe",
+    "execArgv": [],
+    "argv": [
+      "D:\\soft_install\\nodejs\\node.exe",
+      "D:\\Documents\\ChatGPT\\TTJF\\test\\saas-action-audit.test.cjs"
+    ]
+  },
+  "nodeVersion": "v22.17.0",
+  "scope": "Real local HTTP and SQLite; disposable database file; synthetic users only.",
+  "provenance": "Expanded the independent 27-type / 98-variant audit to include point template deletion.",
+  "result": "passed",
+  "sourceHashes": {
+    "assistant-service.cjs": "1a86a9c5c9430288f5d946847874c6c374f8146ca137428aece23ae97f81fef3",
+    "assistant.js": "6b5bea103b356d925ac6c2eafa4f8256d861c0bc20badba6980bcdfc808475d5",
+    "model.js": "3fbdae8dfca7b4d7a5edcdf9c73841e3bc99ca90e37f1267003af63d6bf6359d",
+    "package-lock.json": "4a9cb3694fffce550592c99b9b521d734f69bfe05e4de963810f29c86b659650",
+    "package.json": "6de5a1140a8c290a01fda0c6a10fe13f76093a5a1a1b71543f48e4eb4cd45d2b",
+    "saas-server.cjs": "9cc69a9536f0132ec926fa99d34bfc87cf673c3b2cea32927485a302e51a6720",
+    "saas/auth.cjs": "13615365a194fac302ba2ecde158c239217bcd8b515ad7f007fb31c35fdf540a",
+    "saas/business.cjs": "88bd507ce58bf3a708d8e68533e34eef8faba360d5a7df90bc8e5bb9cb5d4756",
+    "saas/families.cjs": "87b6d61a0281d414caf6d2c990126f3b8564fac518738f05281e9dea0a219956",
+    "saas/initial-account.cjs": "f91940aaef98a092a81e4963f9c1e4dabd7fac30dabd0992e8af52ba1c250bfe",
+    "saas/lifecycle.cjs": "88dd96b9ec58c7f71a145d354130c6c31d155aa2d29f6707a4813780788a77dc",
+    "saas/mail.cjs": "12a181dec05985884447ce0fc1c6021d5536967ae8de4eaa5459f1172caa25c6",
+    "saas/maintenance.cjs": "321925fffb3568203aa56c2df4d6ca533bdb816f4f7c475a74931aac91d49a03",
+    "saas/migrations/001-initial.sql": "5edb06c41736432769dd0acefde8103845e52cbfd2ac3e24e0d893395f0e658d",
+    "saas/migrations/002-lifecycle.sql": "83a10072cf0e06678d732af96c3368bfcaf45e628220db6e7afe031cc535ef2b",
+    "saas/network.cjs": "73197a59292ed171361916e6e6cacb07991459dd3ab63be5f78be5384e67849b",
+    "saas/security.cjs": "720fc68bf46e8cbaa877fb64988edfb57b4efd4d97d060cf150627c1a9817a81",
+    "saas/sqlite.cjs": "b83e1b5e6d3e170704d7df32d87371f27b10e7f2cc0164195e83615250a1b309",
+    "saas/store.cjs": "6bb8a015a0eb7a66f8f1b4035737e91d4ac463af1fdd4ba043fbe87cbc8c09c7",
+    "saas/testing.cjs": "70bdf5d353f481744a62e9b7d217a411d8f84e6a61e51735c1c7f92ca64321b9",
+    "test/saas-action-audit.test.cjs": "fa3e3eff4175b566f5adb4c7ffe3f609092e293bb43da9de5bcaf79051d0313c"
+  },
+  "variants": [
+    {
+      "index": 1,
+      "label": "Owner initially configures PIN",
+      "type": "parent.setup",
+      "actionId": "audit-1",
+      "needsGrant": false,
+      "revisionBefore": 1,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 2
+    },
+    {
+      "index": 2,
+      "label": "Create point template",
+      "type": "pointItem.save",
+      "actionId": "audit-2",
+      "needsGrant": true,
+      "revisionBefore": 2,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 3
+    },
+    {
+      "index": 3,
+      "label": "Disable point template",
+      "type": "pointItem.save",
+      "actionId": "audit-3",
+      "needsGrant": true,
+      "revisionBefore": 3,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 4
+    },
+    {
+      "index": 4,
+      "label": "Rename, change points and reenable template",
+      "type": "pointItem.save",
+      "actionId": "audit-4",
+      "needsGrant": true,
+      "revisionBefore": 4,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 5
+    },
+    {
+      "index": 5,
+      "label": "Award points and save template",
+      "type": "points.add",
+      "actionId": "audit-5",
+      "needsGrant": true,
+      "revisionBefore": 5,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 6
+    },
+    {
+      "index": 6,
+      "label": "Configure companion",
+      "type": "pet.configure",
+      "actionId": "audit-6",
+      "needsGrant": false,
+      "revisionBefore": 6,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 7
+    },
+    {
+      "index": 7,
+      "label": "Buy old supplies before starting farm",
+      "type": "pet.buy",
+      "actionId": "audit-7",
+      "needsGrant": true,
+      "revisionBefore": 7,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 8
+    },
+    {
+      "index": 8,
+      "label": "Consume old supply",
+      "type": "pet.care",
+      "actionId": "audit-8",
+      "needsGrant": false,
+      "revisionBefore": 8,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 9
+    },
+    {
+      "index": 9,
+      "label": "Free wash",
+      "type": "pet.care",
+      "actionId": "audit-9",
+      "needsGrant": false,
+      "revisionBefore": 9,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 10
+    },
+    {
+      "index": 10,
+      "label": "Free training",
+      "type": "pet.care",
+      "actionId": "audit-10",
+      "needsGrant": false,
+      "revisionBefore": 10,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 11
+    },
+    {
+      "index": 11,
+      "label": "Select unlocked old scene",
+      "type": "pet.scene",
+      "actionId": "audit-11",
+      "needsGrant": false,
+      "revisionBefore": 11,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 12
+    },
+    {
+      "index": 12,
+      "label": "Create near-term reminder",
+      "type": "task.save",
+      "actionId": "audit-12",
+      "needsGrant": true,
+      "revisionBefore": 12,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 13
+    },
+    {
+      "index": 13,
+      "label": "Acknowledge reminder",
+      "type": "task.ack",
+      "actionId": "audit-13",
+      "needsGrant": false,
+      "revisionBefore": 13,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 14
+    },
+    {
+      "index": 14,
+      "label": "Snooze reminder exactly ten minutes",
+      "type": "task.snooze",
+      "actionId": "audit-14",
+      "needsGrant": false,
+      "revisionBefore": 14,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 15
+    },
+    {
+      "index": 15,
+      "label": "Complete task",
+      "type": "task.toggle",
+      "actionId": "audit-15",
+      "needsGrant": false,
+      "revisionBefore": 15,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 16
+    },
+    {
+      "index": 16,
+      "label": "Undo task completion",
+      "type": "task.toggle",
+      "actionId": "audit-16",
+      "needsGrant": false,
+      "revisionBefore": 16,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 17
+    },
+    {
+      "index": 17,
+      "label": "Soft delete task",
+      "type": "task.delete",
+      "actionId": "audit-17",
+      "needsGrant": true,
+      "revisionBefore": 17,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 18
+    },
+    {
+      "index": 18,
+      "label": "Restore task",
+      "type": "task.restore",
+      "actionId": "audit-18",
+      "needsGrant": true,
+      "revisionBefore": 18,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 19
+    },
+    {
+      "index": 19,
+      "label": "Edit task title and note",
+      "type": "task.save",
+      "actionId": "audit-19",
+      "needsGrant": true,
+      "revisionBefore": 19,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 20
+    },
+    {
+      "index": 20,
+      "label": "Create future event",
+      "type": "task.save",
+      "actionId": "audit-20",
+      "needsGrant": true,
+      "revisionBefore": 20,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 21
+    },
+    {
+      "index": 21,
+      "label": "Create daily reward",
+      "type": "reward.save",
+      "actionId": "audit-21",
+      "needsGrant": true,
+      "revisionBefore": 21,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 22
+    },
+    {
+      "index": 22,
+      "label": "Rename and disable reward",
+      "type": "reward.save",
+      "actionId": "audit-22",
+      "needsGrant": true,
+      "revisionBefore": 22,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 23
+    },
+    {
+      "index": 23,
+      "label": "Reenable reward",
+      "type": "reward.save",
+      "actionId": "audit-23",
+      "needsGrant": true,
+      "revisionBefore": 23,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 24
+    },
+    {
+      "index": 24,
+      "label": "Request reward",
+      "type": "redemption.request",
+      "actionId": "audit-24",
+      "needsGrant": false,
+      "revisionBefore": 24,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 25
+    },
+    {
+      "index": 25,
+      "label": "Cancel request",
+      "type": "redemption.cancel",
+      "actionId": "audit-25",
+      "needsGrant": false,
+      "revisionBefore": 25,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 26
+    },
+    {
+      "index": 26,
+      "label": "Request reward again",
+      "type": "redemption.request",
+      "actionId": "audit-26",
+      "needsGrant": false,
+      "revisionBefore": 26,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 27
+    },
+    {
+      "index": 27,
+      "label": "Approve reward request",
+      "type": "redemption.approve",
+      "actionId": "audit-27",
+      "needsGrant": true,
+      "revisionBefore": 27,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 28
+    },
+    {
+      "index": 28,
+      "label": "Direct parent-approved redemption",
+      "type": "reward.redeem",
+      "actionId": "audit-28",
+      "needsGrant": true,
+      "revisionBefore": 28,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 29
+    },
+    {
+      "index": 29,
+      "label": "Update month-end and preferred reward",
+      "type": "settings.update",
+      "actionId": "audit-29",
+      "needsGrant": true,
+      "revisionBefore": 29,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 30
+    },
+    {
+      "index": 30,
+      "label": "Update child name and synthetic image",
+      "type": "profile.update",
+      "actionId": "audit-30",
+      "needsGrant": true,
+      "revisionBefore": 30,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 31
+    },
+    {
+      "index": 31,
+      "label": "Change PIN verification to arithmetic",
+      "type": "parent.configure",
+      "actionId": "audit-31",
+      "needsGrant": true,
+      "revisionBefore": 31,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 32
+    },
+    {
+      "index": 32,
+      "label": "Change arithmetic verification back to PIN",
+      "type": "parent.configure",
+      "actionId": "audit-32",
+      "needsGrant": true,
+      "revisionBefore": 32,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 33
+    },
+    {
+      "index": 33,
+      "label": "Start farm and receive one welcome batch",
+      "type": "farm.start",
+      "actionId": "audit-33",
+      "needsGrant": false,
+      "revisionBefore": 33,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 34
+    },
+    {
+      "index": 34,
+      "label": "Harvest welcome batch",
+      "type": "farm.harvest",
+      "actionId": "audit-34",
+      "needsGrant": false,
+      "revisionBefore": 34,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 35
+    },
+    {
+      "index": 35,
+      "label": "Exchange crops for flowerpot",
+      "type": "farm.exchange",
+      "actionId": "audit-35",
+      "needsGrant": false,
+      "revisionBefore": 35,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 36
+    },
+    {
+      "index": 36,
+      "label": "Place flowerpot",
+      "type": "farm.place",
+      "actionId": "audit-36",
+      "needsGrant": false,
+      "revisionBefore": 36,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 37
+    },
+    {
+      "index": 37,
+      "label": "Remove placed flowerpot",
+      "type": "farm.place",
+      "actionId": "audit-37",
+      "needsGrant": false,
+      "revisionBefore": 37,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 38
+    },
+    {
+      "index": 38,
+      "label": "Feed chicken",
+      "type": "farm.animalCare",
+      "actionId": "audit-38",
+      "needsGrant": false,
+      "revisionBefore": 38,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 39
+    },
+    {
+      "index": 39,
+      "label": "Pet unlocked rabbit",
+      "type": "farm.animalCare",
+      "actionId": "audit-39",
+      "needsGrant": false,
+      "revisionBefore": 39,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 40
+    },
+    {
+      "index": 40,
+      "label": "Cycle 1: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-40",
+      "needsGrant": false,
+      "revisionBefore": 40,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 41
+    },
+    {
+      "index": 41,
+      "label": "Cycle 1: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-41",
+      "needsGrant": false,
+      "revisionBefore": 41,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 42
+    },
+    {
+      "index": 42,
+      "label": "Cycle 1: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-42",
+      "needsGrant": false,
+      "revisionBefore": 42,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 43
+    },
+    {
+      "index": 43,
+      "label": "Cycle 1: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-43",
+      "needsGrant": false,
+      "revisionBefore": 43,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 44
+    },
+    {
+      "index": 44,
+      "label": "Cycle 2: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-44",
+      "needsGrant": false,
+      "revisionBefore": 44,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 45
+    },
+    {
+      "index": 45,
+      "label": "Cycle 2: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-45",
+      "needsGrant": false,
+      "revisionBefore": 45,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 46
+    },
+    {
+      "index": 46,
+      "label": "Cycle 2: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-46",
+      "needsGrant": false,
+      "revisionBefore": 46,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 47
+    },
+    {
+      "index": 47,
+      "label": "Cycle 2: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-47",
+      "needsGrant": false,
+      "revisionBefore": 47,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 48
+    },
+    {
+      "index": 48,
+      "label": "Cycle 3: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-48",
+      "needsGrant": false,
+      "revisionBefore": 48,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 49
+    },
+    {
+      "index": 49,
+      "label": "Cycle 3: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-49",
+      "needsGrant": false,
+      "revisionBefore": 49,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 50
+    },
+    {
+      "index": 50,
+      "label": "Cycle 3: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-50",
+      "needsGrant": false,
+      "revisionBefore": 50,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 51
+    },
+    {
+      "index": 51,
+      "label": "Cycle 3: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-51",
+      "needsGrant": false,
+      "revisionBefore": 51,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 52
+    },
+    {
+      "index": 52,
+      "label": "Cycle 4: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-52",
+      "needsGrant": false,
+      "revisionBefore": 52,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 53
+    },
+    {
+      "index": 53,
+      "label": "Cycle 4: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-53",
+      "needsGrant": false,
+      "revisionBefore": 53,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 54
+    },
+    {
+      "index": 54,
+      "label": "Cycle 4: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-54",
+      "needsGrant": false,
+      "revisionBefore": 54,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 55
+    },
+    {
+      "index": 55,
+      "label": "Cycle 4: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-55",
+      "needsGrant": false,
+      "revisionBefore": 55,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 56
+    },
+    {
+      "index": 56,
+      "label": "Cycle 5: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-56",
+      "needsGrant": false,
+      "revisionBefore": 56,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 57
+    },
+    {
+      "index": 57,
+      "label": "Cycle 5: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-57",
+      "needsGrant": false,
+      "revisionBefore": 57,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 58
+    },
+    {
+      "index": 58,
+      "label": "Cycle 5: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-58",
+      "needsGrant": false,
+      "revisionBefore": 58,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 59
+    },
+    {
+      "index": 59,
+      "label": "Cycle 5: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-59",
+      "needsGrant": false,
+      "revisionBefore": 59,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 60
+    },
+    {
+      "index": 60,
+      "label": "Cycle 6: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-60",
+      "needsGrant": false,
+      "revisionBefore": 60,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 61
+    },
+    {
+      "index": 61,
+      "label": "Cycle 6: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-61",
+      "needsGrant": false,
+      "revisionBefore": 61,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 62
+    },
+    {
+      "index": 62,
+      "label": "Cycle 6: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-62",
+      "needsGrant": false,
+      "revisionBefore": 62,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 63
+    },
+    {
+      "index": 63,
+      "label": "Cycle 6: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-63",
+      "needsGrant": false,
+      "revisionBefore": 63,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 64
+    },
+    {
+      "index": 64,
+      "label": "Cycle 7: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-64",
+      "needsGrant": false,
+      "revisionBefore": 64,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 65
+    },
+    {
+      "index": 65,
+      "label": "Cycle 7: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-65",
+      "needsGrant": false,
+      "revisionBefore": 65,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 66
+    },
+    {
+      "index": 66,
+      "label": "Cycle 7: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-66",
+      "needsGrant": false,
+      "revisionBefore": 66,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 67
+    },
+    {
+      "index": 67,
+      "label": "Cycle 7: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-67",
+      "needsGrant": false,
+      "revisionBefore": 67,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 68
+    },
+    {
+      "index": 68,
+      "label": "Cycle 8: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-68",
+      "needsGrant": false,
+      "revisionBefore": 68,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 69
+    },
+    {
+      "index": 69,
+      "label": "Cycle 8: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-69",
+      "needsGrant": false,
+      "revisionBefore": 69,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 70
+    },
+    {
+      "index": 70,
+      "label": "Cycle 8: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-70",
+      "needsGrant": false,
+      "revisionBefore": 70,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 71
+    },
+    {
+      "index": 71,
+      "label": "Cycle 8: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-71",
+      "needsGrant": false,
+      "revisionBefore": 71,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 72
+    },
+    {
+      "index": 72,
+      "label": "Cycle 9: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-72",
+      "needsGrant": false,
+      "revisionBefore": 72,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 73
+    },
+    {
+      "index": 73,
+      "label": "Cycle 9: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-73",
+      "needsGrant": false,
+      "revisionBefore": 73,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 74
+    },
+    {
+      "index": 74,
+      "label": "Cycle 9: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-74",
+      "needsGrant": false,
+      "revisionBefore": 74,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 75
+    },
+    {
+      "index": 75,
+      "label": "Cycle 9: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-75",
+      "needsGrant": false,
+      "revisionBefore": 75,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 76
+    },
+    {
+      "index": 76,
+      "label": "Cycle 10: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-76",
+      "needsGrant": false,
+      "revisionBefore": 76,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 77
+    },
+    {
+      "index": 77,
+      "label": "Cycle 10: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-77",
+      "needsGrant": false,
+      "revisionBefore": 77,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 78
+    },
+    {
+      "index": 78,
+      "label": "Cycle 10: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-78",
+      "needsGrant": false,
+      "revisionBefore": 78,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 79
+    },
+    {
+      "index": 79,
+      "label": "Cycle 10: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-79",
+      "needsGrant": false,
+      "revisionBefore": 79,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 80
+    },
+    {
+      "index": 80,
+      "label": "Cycle 11: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-80",
+      "needsGrant": false,
+      "revisionBefore": 80,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 81
+    },
+    {
+      "index": 81,
+      "label": "Cycle 11: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-81",
+      "needsGrant": false,
+      "revisionBefore": 81,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 82
+    },
+    {
+      "index": 82,
+      "label": "Cycle 11: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-82",
+      "needsGrant": false,
+      "revisionBefore": 82,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 83
+    },
+    {
+      "index": 83,
+      "label": "Cycle 11: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-83",
+      "needsGrant": false,
+      "revisionBefore": 83,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 84
+    },
+    {
+      "index": 84,
+      "label": "Cycle 12: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-84",
+      "needsGrant": false,
+      "revisionBefore": 84,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 85
+    },
+    {
+      "index": 85,
+      "label": "Cycle 12: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-85",
+      "needsGrant": false,
+      "revisionBefore": 85,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 86
+    },
+    {
+      "index": 86,
+      "label": "Cycle 12: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-86",
+      "needsGrant": false,
+      "revisionBefore": 86,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 87
+    },
+    {
+      "index": 87,
+      "label": "Cycle 12: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-87",
+      "needsGrant": false,
+      "revisionBefore": 87,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 88
+    },
+    {
+      "index": 88,
+      "label": "Cycle 13: plant carrot",
+      "type": "farm.plant",
+      "actionId": "audit-88",
+      "needsGrant": false,
+      "revisionBefore": 88,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 89
+    },
+    {
+      "index": 89,
+      "label": "Cycle 13: plant strawberry",
+      "type": "farm.plant",
+      "actionId": "audit-89",
+      "needsGrant": false,
+      "revisionBefore": 89,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 90
+    },
+    {
+      "index": 90,
+      "label": "Cycle 13: plant sunflower",
+      "type": "farm.plant",
+      "actionId": "audit-90",
+      "needsGrant": false,
+      "revisionBefore": 90,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 91
+    },
+    {
+      "index": 91,
+      "label": "Cycle 13: harvest six mature plots",
+      "type": "farm.harvest",
+      "actionId": "audit-91",
+      "needsGrant": false,
+      "revisionBefore": 91,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 92
+    },
+    {
+      "index": 92,
+      "label": "Exchange crops for picnic",
+      "type": "farm.exchange",
+      "actionId": "audit-92",
+      "needsGrant": false,
+      "revisionBefore": 92,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 93
+    },
+    {
+      "index": 93,
+      "label": "Exchange crops for rabbitstatue",
+      "type": "farm.exchange",
+      "actionId": "audit-93",
+      "needsGrant": false,
+      "revisionBefore": 93,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 94
+    },
+    {
+      "index": 94,
+      "label": "Exchange crops for mailbox",
+      "type": "farm.exchange",
+      "actionId": "audit-94",
+      "needsGrant": false,
+      "revisionBefore": 94,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 95
+    },
+    {
+      "index": 95,
+      "label": "Exchange crops for trellis",
+      "type": "farm.exchange",
+      "actionId": "audit-95",
+      "needsGrant": false,
+      "revisionBefore": 95,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 96
+    },
+    {
+      "index": 96,
+      "label": "Exchange crops for windmill",
+      "type": "farm.exchange",
+      "actionId": "audit-96",
+      "needsGrant": false,
+      "revisionBefore": 96,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 97
+    },
+    {
+      "index": 97,
+      "label": "Exchange crops for house2",
+      "type": "farm.exchange",
+      "actionId": "audit-97",
+      "needsGrant": false,
+      "revisionBefore": 97,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 98
+    },
+    {
+      "index": 98,
+      "label": "Exchange crops for house3",
+      "type": "farm.exchange",
+      "actionId": "audit-98",
+      "needsGrant": false,
+      "revisionBefore": 98,
+      "checks": [
+        "cross-family request denied without private projection",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response"
+      ],
+      "result": "passed",
+      "revisionAfter": 99
+    },
+    {
+      "index": 99,
+      "label": "Delete used point template",
+      "type": "pointItem.delete",
+      "actionId": "audit-99",
+      "needsGrant": true,
+      "revisionBefore": 99,
+      "checks": [
+        "cross-family request denied without private projection",
+        "sensitive action denied without one-use grant",
+        "authorized command accepted with bound identity and one revision",
+        "same-content replay at stale revision has no second effect",
+        "same action ID with altered content rejected",
+        "SQLite state and revision exactly match accepted response",
+        "one-use grant consumed after commit"
+      ],
+      "result": "passed",
+      "revisionAfter": 100
+    }
+  ],
+  "boundaries": [
+    "This verifies backend consumers, not every visible browser entry point.",
+    "Uses the fixture clock; 104 hours of crop growth are simulated, not a physical waiting period.",
+    "No requests to existing ports 4178 or 4180; no real family JSON or developer mailbox is read.",
+    "No external email delivery, cloud AI request, production deployment, billing, or device claim.",
+    "New account/family lifecycle APIs are outside this 28-type business-action matrix."
+  ],
+  "databasePath": "C:\\Users\\ADMINI~1\\AppData\\Local\\Temp\\ttjf-saas-test-lYeBaE\\test.sqlite",
+  "httpAddress": {
+    "host": "127.0.0.1",
+    "port": 53790
+  },
+  "clockStart": "2026-11-16T14:30:00.000Z",
+  "summary": {
+    "uniqueActionTypes": 28,
+    "committedVariants": 99,
+    "protectedTypes": 13,
+    "protectedVariants": 20,
+    "checks": 535,
+    "receiptCount": 99,
+    "finalRevision": 100,
+    "otherFamilyUnchanged": true,
+    "allThreeCrops": true,
+    "allPaidFarmCatalogItems": true,
+    "houseLevel": 3,
+    "elapsedCropHoursSimulated": 104,
+    "ledger": {
+      "earned": 600,
+      "spent": 16,
+      "available": 584
+    }
+  },
+  "types": [
+    "farm.animalCare",
+    "farm.exchange",
+    "farm.harvest",
+    "farm.place",
+    "farm.plant",
+    "farm.start",
+    "parent.configure",
+    "parent.setup",
+    "pet.buy",
+    "pet.care",
+    "pet.configure",
+    "pet.scene",
+    "pointItem.delete",
+    "pointItem.save",
+    "points.add",
+    "profile.update",
+    "redemption.approve",
+    "redemption.cancel",
+    "redemption.request",
+    "reward.redeem",
+    "reward.save",
+    "settings.update",
+    "task.ack",
+    "task.delete",
+    "task.restore",
+    "task.save",
+    "task.snooze",
+    "task.toggle"
+  ],
+  "clockEnd": "2026-11-21T00:10:39.000Z",
+  "finishedAt": "2026-11-20T05:23:09.078Z",
+  "finalSourceHashes": {
+    "assistant-service.cjs": "1a86a9c5c9430288f5d946847874c6c374f8146ca137428aece23ae97f81fef3",
+    "assistant.js": "6b5bea103b356d925ac6c2eafa4f8256d861c0bc20badba6980bcdfc808475d5",
+    "model.js": "3fbdae8dfca7b4d7a5edcdf9c73841e3bc99ca90e37f1267003af63d6bf6359d",
+    "package-lock.json": "4a9cb3694fffce550592c99b9b521d734f69bfe05e4de963810f29c86b659650",
+    "package.json": "6de5a1140a8c290a01fda0c6a10fe13f76093a5a1a1b71543f48e4eb4cd45d2b",
+    "saas-server.cjs": "9cc69a9536f0132ec926fa99d34bfc87cf673c3b2cea32927485a302e51a6720",
+    "saas/auth.cjs": "13615365a194fac302ba2ecde158c239217bcd8b515ad7f007fb31c35fdf540a",
+    "saas/business.cjs": "88bd507ce58bf3a708d8e68533e34eef8faba360d5a7df90bc8e5bb9cb5d4756",
+    "saas/families.cjs": "87b6d61a0281d414caf6d2c990126f3b8564fac518738f05281e9dea0a219956",
+    "saas/initial-account.cjs": "f91940aaef98a092a81e4963f9c1e4dabd7fac30dabd0992e8af52ba1c250bfe",
+    "saas/lifecycle.cjs": "88dd96b9ec58c7f71a145d354130c6c31d155aa2d29f6707a4813780788a77dc",
+    "saas/mail.cjs": "12a181dec05985884447ce0fc1c6021d5536967ae8de4eaa5459f1172caa25c6",
+    "saas/maintenance.cjs": "321925fffb3568203aa56c2df4d6ca533bdb816f4f7c475a74931aac91d49a03",
+    "saas/migrations/001-initial.sql": "5edb06c41736432769dd0acefde8103845e52cbfd2ac3e24e0d893395f0e658d",
+    "saas/migrations/002-lifecycle.sql": "83a10072cf0e06678d732af96c3368bfcaf45e628220db6e7afe031cc535ef2b",
+    "saas/network.cjs": "73197a59292ed171361916e6e6cacb07991459dd3ab63be5f78be5384e67849b",
+    "saas/security.cjs": "720fc68bf46e8cbaa877fb64988edfb57b4efd4d97d060cf150627c1a9817a81",
+    "saas/sqlite.cjs": "b83e1b5e6d3e170704d7df32d87371f27b10e7f2cc0164195e83615250a1b309",
+    "saas/store.cjs": "6bb8a015a0eb7a66f8f1b4035737e91d4ac463af1fdd4ba043fbe87cbc8c09c7",
+    "saas/testing.cjs": "70bdf5d353f481744a62e9b7d217a411d8f84e6a61e51735c1c7f92ca64321b9",
+    "test/saas-action-audit.test.cjs": "fa3e3eff4175b566f5adb4c7ffe3f609092e293bb43da9de5bcaf79051d0313c"
+  },
+  "sourceStable": true
+}

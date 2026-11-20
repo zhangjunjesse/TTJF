@@ -1,0 +1,34 @@
+{
+  "stage": 1,
+  "angle": "three-quarter",
+  "action": "pet",
+  "checks": [
+    {
+      "stage": 1,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 170,
+      "shaderErrors": [],
+      "programs": 27,
+      "memory": {
+        "geometries": 120,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 1,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 183,
+      "shaderErrors": [],
+      "programs": 29,
+      "memory": {
+        "geometries": 133,
+        "textures": 5
+      }
+    }
+  ],
+  "errors": []
+}

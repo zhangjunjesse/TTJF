@@ -1,0 +1,301 @@
+{
+  "finishedAt": "2026-11-18T11:30:07.477Z",
+  "scope": [
+    "farm/dragon-forms.js",
+    "farm/forest-bud/wardrobe.js"
+  ],
+  "sourceStable": true,
+  "sourceHashes": {
+    "farm/dragon-forms.js": "f541f2ee474521f4b076b64d8f97b5597b8e9cb10b8aabd0e95ed7b953594639",
+    "farm/forest-bud/wardrobe.js": "e67fe81dc22344aab1e036a1349b99dac01deb4554c4f84ff0846985d495fa18",
+    "farm/forest-bud/companion.js": "8238bb19d9d7e40b431321ba454d33fa6660782fa4e1f58477ea8f1a89a0a679",
+    "farm/companions.js": "084f90a06dd6e5d4b11c6a24f178452a09facc2503c30d941ed4e62775e35fce"
+  },
+  "renderedLooks": [
+    {
+      "stage": 1,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 170,
+      "shaderErrors": [],
+      "programs": 24,
+      "memory": {
+        "geometries": 117,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 1,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 183,
+      "shaderErrors": [],
+      "programs": 26,
+      "memory": {
+        "geometries": 130,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 2,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 178,
+      "shaderErrors": [],
+      "programs": 30,
+      "memory": {
+        "geometries": 125,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 2,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 202,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 149,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 3,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 186,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 133,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 3,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 198,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 145,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 4,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 194,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 141,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 4,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 196,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 143,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 5,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 201,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 148,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 5,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 208,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 155,
+        "textures": 5
+      }
+    }
+  ],
+  "smoke": [
+    {
+      "stage": 1,
+      "looks": [
+        {
+          "variant": "default",
+          "signature": "0c582cee6328f84676287d43e4bea480319d7b227614b0833c29d81c4992da50",
+          "anatomy": "bb664675b096ff5a35cb846096cbeaf829437a393cbba1ce1cf5f820d1aa9395",
+          "heldProps": 0,
+          "anatomyHeight": 2.8291025161743164
+        },
+        {
+          "variant": "festival",
+          "signature": "d47af3a42e8244792bb9b4ea0b95d8408d6f36cefaac240c5c367fa84de57114",
+          "anatomy": "bb664675b096ff5a35cb846096cbeaf829437a393cbba1ce1cf5f820d1aa9395",
+          "heldProps": 1,
+          "anatomyHeight": 2.8291025161743164
+        }
+      ],
+      "checks": [
+        "finite geometry/transforms",
+        "same anatomy across clothes",
+        "distinct drawable looks",
+        "palm contact through five interactions",
+        "idempotent complete resource cleanup"
+      ]
+    },
+    {
+      "stage": 2,
+      "looks": [
+        {
+          "variant": "default",
+          "signature": "f64b425bc7325d5acd443953a926b369ed7c895b610a62ea827e44af92e5a7ca",
+          "anatomy": "bf05dc6c13be80273ea059edd957f70c19a4775bb6b18fbb5584662bb0d85b12",
+          "heldProps": 0,
+          "anatomyHeight": 3.0607409477233887
+        },
+        {
+          "variant": "festival",
+          "signature": "a1a203436deed247d2e95c50a3acb64ee7d77b45995c54ea0607e6d3120ecd1c",
+          "anatomy": "bf05dc6c13be80273ea059edd957f70c19a4775bb6b18fbb5584662bb0d85b12",
+          "heldProps": 1,
+          "anatomyHeight": 3.0607409477233887
+        }
+      ],
+      "checks": [
+        "finite geometry/transforms",
+        "same anatomy across clothes",
+        "distinct drawable looks",
+        "palm contact through five interactions",
+        "idempotent complete resource cleanup"
+      ]
+    },
+    {
+      "stage": 3,
+      "looks": [
+        {
+          "variant": "default",
+          "signature": "53fc03585996e66d9fd064e2fc74e3d199398bfd25802c29d9059a2ad9b9d3f9",
+          "anatomy": "8a2a3f5a42f2916e863f82dd9dbc5b8316302e8e6bd5ecdd5b6401652d5efa52",
+          "heldProps": 0,
+          "anatomyHeight": 3.298708915710449
+        },
+        {
+          "variant": "festival",
+          "signature": "2e09dccf97ae114b91b6f1c7e280b33dfbda2b6f7eb76ed3f2cf35d40ddb14b7",
+          "anatomy": "8a2a3f5a42f2916e863f82dd9dbc5b8316302e8e6bd5ecdd5b6401652d5efa52",
+          "heldProps": 2,
+          "anatomyHeight": 3.298708915710449
+        }
+      ],
+      "checks": [
+        "finite geometry/transforms",
+        "same anatomy across clothes",
+        "distinct drawable looks",
+        "palm contact through five interactions",
+        "idempotent complete resource cleanup"
+      ]
+    },
+    {
+      "stage": 4,
+      "looks": [
+        {
+          "variant": "default",
+          "signature": "eba04eb69fead7f1efc55231a5018d3fca49225fd9ac1c74f32a8d26335c94df",
+          "anatomy": "89147d0357c440069f2c9c89007e1263a9fd917e94559f0ba04719d9940bad2b",
+          "heldProps": 1,
+          "anatomyHeight": 3.615849256515503
+        },
+        {
+          "variant": "festival",
+          "signature": "227b2be235395d1f7b3dfa3b9b02c1f0e70ac9cb47c80ec880d4e8e45a0b77e3",
+          "anatomy": "89147d0357c440069f2c9c89007e1263a9fd917e94559f0ba04719d9940bad2b",
+          "heldProps": 2,
+          "anatomyHeight": 3.615849256515503
+        }
+      ],
+      "checks": [
+        "finite geometry/transforms",
+        "same anatomy across clothes",
+        "distinct drawable looks",
+        "palm contact through five interactions",
+        "idempotent complete resource cleanup"
+      ]
+    },
+    {
+      "stage": 5,
+      "looks": [
+        {
+          "variant": "default",
+          "signature": "432aa58152f466ce310949b5618a728d105ed701c0561430c475d6351242513a",
+          "anatomy": "3ecabbe60eeabac1631b62e2413a9da9a926a152a71b1903f073f1c6c83fed03",
+          "heldProps": 1,
+          "anatomyHeight": 3.9191854000091553
+        },
+        {
+          "variant": "festival",
+          "signature": "884bc4ba74e8bc9508bc2ae4909a5b8f68a113132a0ef1a137b93db1d5a407ff",
+          "anatomy": "3ecabbe60eeabac1631b62e2413a9da9a926a152a71b1903f073f1c6c83fed03",
+          "heldProps": 1,
+          "anatomyHeight": 3.9191854000091553
+        }
+      ],
+      "checks": [
+        "finite geometry/transforms",
+        "same anatomy across clothes",
+        "distinct drawable looks",
+        "palm contact through five interactions",
+        "idempotent complete resource cleanup"
+      ]
+    }
+  ],
+  "earnedStars": [
+    {
+      "stars": 0,
+      "visibleBadge": false,
+      "stage": 5
+    },
+    {
+      "stars": 2,
+      "visibleBadge": true,
+      "stage": 5
+    }
+  ],
+  "visualReview": {
+    "newborn": "Full approved curled-horn, leaf-wing, pear-body and long-tail form; no shell.",
+    "allStages": "All ten neutral screenshots opened across iterations; final front views reviewed after round-body garment correction.",
+    "back": "pass-03-stage-5-default-back.png and festival: split cape clears the central tail root.",
+    "greeting": "pass-05-stage-1-festival-three-quarter-pet.png: held star tilts outward when its paw rises."
+  },
+  "limits": [
+    "Isolated component renderer; product integration screenshots owned by root.",
+    "Desktop Edge/WebGL; no physical iPad/Safari claim.",
+    "Earlier pass-01-stage-1 fixture failed because the evidence HTML lacked an explicit body; corrected in pass-02. A later capture hit an HTML file lock; content-addressed fixture HTML fixed the harness. These runs are not counted as passed."
+  ]
+}

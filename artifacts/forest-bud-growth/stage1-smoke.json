@@ -1,0 +1,26 @@
+[
+  {
+    "variant": "default",
+    "ms": 1158,
+    "meshes": 170,
+    "invalid": 0,
+    "height": 2.8291025161743164,
+    "wardrobe": 1,
+    "held": {
+      "left": false,
+      "right": false
+    }
+  },
+  {
+    "variant": "festival",
+    "ms": 1157,
+    "meshes": 183,
+    "invalid": 0,
+    "height": 2.8291025161743164,
+    "wardrobe": 1,
+    "held": {
+      "left": true,
+      "right": false
+    }
+  }
+]

@@ -1,0 +1,50 @@
+TAP version 13
+# (node:36052) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Documents/ChatGPT/TTJF/farm/primitives.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to D:\\Documents\\ChatGPT\\TTJF\\package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: forest-bud life visits all awake gestures, rests between them, then wakes with a stretch
+ok 1 - forest-bud life visits all awake gestures, rests between them, then wakes with a stretch
+  ---
+  duration_ms: 13.4891
+  type: 'test'
+  ...
+# Subtest: forest-bud life attention fades the current nap, reduced motion rests, and directors do not share a clock
+ok 2 - forest-bud life attention fades the current nap, reduced motion rests, and directors do not share a clock
+  ---
+  duration_ms: 0.9977
+  type: 'test'
+  ...
+# Subtest: forest-bud autonomous body and eyes wake for real care, recover, and leave another companion untouched
+ok 3 - forest-bud autonomous body and eyes wake for real care, recover, and leave another companion untouched
+  ---
+  duration_ms: 2713.239
+  type: 'test'
+  ...
+# Subtest: forest-bud dynamic measurements use deformed tail vertices and release owned skeleton textures exactly once
+ok 4 - forest-bud dynamic measurements use deformed tail vertices and release owned skeleton textures exactly once
+  ---
+  duration_ms: 652.5983
+  type: 'test'
+  ...
+# Subtest: forest-bud WebGL1 fallback animates the same tail without a visible GPU-skinned mesh
+ok 5 - forest-bud WebGL1 fallback animates the same tail without a visible GPU-skinned mesh
+  ---
+  duration_ms: 793.9122
+  type: 'test'
+  ...
+# Subtest: forest-bud low density preserves the approved silhouette and skeleton while reducing mesh triangles
+ok 6 - forest-bud low density preserves the approved silhouette and skeleton while reducing mesh triangles
+  ---
+  duration_ms: 2403.9219
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 6712.8504

@@ -1,0 +1,8 @@
+{
+  "stage": 1,
+  "angle": "three-quarter",
+  "checks": [],
+  "errors": [
+    "Cannot read properties of null (reading 'appendChild')"
+  ]
+}

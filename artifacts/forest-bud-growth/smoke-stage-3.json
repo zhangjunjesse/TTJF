@@ -1,0 +1,26 @@
+{
+  "stage": 3,
+  "looks": [
+    {
+      "variant": "default",
+      "signature": "53fc03585996e66d9fd064e2fc74e3d199398bfd25802c29d9059a2ad9b9d3f9",
+      "anatomy": "8a2a3f5a42f2916e863f82dd9dbc5b8316302e8e6bd5ecdd5b6401652d5efa52",
+      "heldProps": 0,
+      "anatomyHeight": 3.298708915710449
+    },
+    {
+      "variant": "festival",
+      "signature": "2e09dccf97ae114b91b6f1c7e280b33dfbda2b6f7eb76ed3f2cf35d40ddb14b7",
+      "anatomy": "8a2a3f5a42f2916e863f82dd9dbc5b8316302e8e6bd5ecdd5b6401652d5efa52",
+      "heldProps": 2,
+      "anatomyHeight": 3.298708915710449
+    }
+  ],
+  "checks": [
+    "finite geometry/transforms",
+    "same anatomy across clothes",
+    "distinct drawable looks",
+    "palm contact through five interactions",
+    "idempotent complete resource cleanup"
+  ]
+}

@@ -1,0 +1,10 @@
+(node:30132) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Documents/ChatGPT/TTJF/farm/primitives.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to D:\Documents\ChatGPT\TTJF\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"quality":"high","stage":1,"buildMs":1172,"triangles":296260,"meshes":139,"bones":[26],"bodyHeight":2.8291025161743164,"frameMin":[-1.3454691171646118,0,-2.3430469036102295],"frameMax":[1.2237272262573242,3.278406858444214,1.0392404794692993],"radius":2.3436254788247846}
+{"quality":"high","stage":3,"buildMs":1876,"triangles":307902,"meshes":155,"bones":[26],"bodyHeight":3.298708915710449,"frameMin":[-1.4794434309005737,0,-2.9214813709259033],"frameMax":[1.4851129055023193,3.952766180038452,1.1817744970321655],"radius":2.9222378219560508}
+{"quality":"high","stage":5,"buildMs":2339,"triangles":308614,"meshes":168,"bones":[26],"bodyHeight":3.9191854000091553,"frameMin":[-2.2965705394744873,0,-3.6321473121643066],"frameMax":[2.3076441287994385,4.919365882873535,1.3564525842666626],"radius":3.6331591529700646}
+{"quality":"low","stage":1,"buildMs":422,"triangles":103304,"meshes":139,"bones":[26],"bodyHeight":2.829070806503296,"frameMin":[-1.3454691171646118,0,-2.343766450881958],"frameMax":[1.2236347198486328,3.2714860439300537,1.0425152778625488],"radius":2.343793346375257}
+{"quality":"low","stage":3,"buildMs":883,"triangles":114946,"meshes":155,"bones":[26],"bodyHeight":3.2986350059509277,"frameMin":[-1.4797954559326172,0,-2.9224002361297607],"frameMax":[1.4863395690917969,3.943256378173828,1.1854054927825928],"radius":2.9224354002515285}
+{"quality":"low","stage":5,"buildMs":1054,"triangles":115658,"meshes":168,"bones":[26],"bodyHeight":3.9191229343414307,"frameMin":[-2.2969722747802734,0,-3.6333115100860596],"frameMax":[2.308650493621826,4.905706405639648,1.3607555627822876],"radius":3.633358546323364}

@@ -1,0 +1,40 @@
+{
+  "stage": 2,
+  "angle": "three-quarter",
+  "action": "",
+  "sourceHashes": {
+    "farm/dragon-forms.js": "f541f2ee474521f4b076b64d8f97b5597b8e9cb10b8aabd0e95ed7b953594639",
+    "farm/forest-bud/wardrobe.js": "e67fe81dc22344aab1e036a1349b99dac01deb4554c4f84ff0846985d495fa18",
+    "farm/forest-bud/companion.js": "8238bb19d9d7e40b431321ba454d33fa6660782fa4e1f58477ea8f1a89a0a679",
+    "farm/companions.js": "084f90a06dd6e5d4b11c6a24f178452a09facc2503c30d941ed4e62775e35fce"
+  },
+  "checks": [
+    {
+      "stage": 2,
+      "variant": "default",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 178,
+      "shaderErrors": [],
+      "programs": 30,
+      "memory": {
+        "geometries": 125,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 2,
+      "variant": "festival",
+      "angle": "three-quarter",
+      "invalid": 0,
+      "meshes": 202,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 149,
+        "textures": 5
+      }
+    }
+  ],
+  "errors": []
+}

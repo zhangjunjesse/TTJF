@@ -1,0 +1,97 @@
+{
+  "browser": "Microsoft Edge / Chromium, real rendered DOM and hit-tested mouse",
+  "evidenceBoundary": "XHR responses, challenge grants, and five-second polling ticks are controlled client fixtures. These tests do not claim backend security or iPad Safari compatibility.",
+  "passed": 8,
+  "coverage": [
+    {
+      "id": "C1",
+      "old": "HTTP writes blocked before the first successful state sync",
+      "current": "Initial sync hold/failure blocks public and protected writes, preserves draft, then permits fresh verification",
+      "result": "passed"
+    },
+    {
+      "id": "C2",
+      "old": "Explicit file mode permits local-only actions without requests",
+      "current": "Actual source file:// page publicly completes/persists a reminder without any XHR; packaged export is separately checked",
+      "result": "passed"
+    },
+    {
+      "id": "C3",
+      "old": "Only one outstanding polling GET, resumes after completion or timeout",
+      "current": "Actual polling callback and XHR timeout preserve single-flight behavior",
+      "result": "passed"
+    },
+    {
+      "id": "C4",
+      "old": "Delayed older GET cannot roll back a successful POST",
+      "current": "Public reminder completion followed by old GET cannot roll back revision, memory, or storage",
+      "result": "passed"
+    },
+    {
+      "id": "C5",
+      "old": "Reward price sync refreshes confirmation and requires a second click",
+      "current": "Pending redemption approval refreshes price, preserves note, requires review and new per-operation verification before spending",
+      "result": "passed"
+    },
+    {
+      "id": "C6",
+      "old": "Timeout/conflict/retry reuses action ID and books once",
+      "current": "Lost committed award response keeps ID; conflict or polling reconciliation must reveal exactly one award; next award gets a new ID and verification",
+      "result": "passed"
+    },
+    {
+      "id": "C7",
+      "old": "Uncommitted conflict retry keeps ID while advancing revision",
+      "current": "Concurrent public change preserves award draft/ID and requires a fresh challenge tied to the new revision",
+      "result": "passed"
+    },
+    {
+      "id": "C8",
+      "old": "New v0.3 regression for a connection lost after startup",
+      "current": "Timeout, 503, and malformed snapshots visibly disconnect and block writes without losing the draft; a valid snapshot restores usability",
+      "result": "passed"
+    }
+  ],
+  "version": "v15",
+  "sourceHashes": {
+    "app.js": "bc4a6edea8e95a82f700946810c8abe9dceb3ea7c936c4c0c5b8247b671ae07f",
+    "model.js": "975d93fb82f5f29087631f6a9e7357fb52ff3f317bd5dd8951b5226b60384091",
+    "styles.css": "bc24bc27225cfdc2990db6f2bbb752af134d9b80ec9ac00a43ae36154ac7c11e",
+    "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+    "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235",
+    "index.html": "829595eeab4da624a9b3b532cb7b3bf513819091efb4391d9a38dda07b5150dd"
+  },
+  "runs": [
+    {
+      "tested": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C8",
+        "C7"
+      ],
+      "passed": [
+        "C1",
+        "C2",
+        "C3",
+        "C4",
+        "C5",
+        "C6",
+        "C8",
+        "C7"
+      ],
+      "sourceHashes": {
+        "app.js": "bc4a6edea8e95a82f700946810c8abe9dceb3ea7c936c4c0c5b8247b671ae07f",
+        "model.js": "975d93fb82f5f29087631f6a9e7357fb52ff3f317bd5dd8951b5226b60384091",
+        "styles.css": "bc24bc27225cfdc2990db6f2bbb752af134d9b80ec9ac00a43ae36154ac7c11e",
+        "pet.js": "40a074b596583dfa4686e4b086599bc0be47473d58c66aacd59f0f20ecda8095",
+        "pet.css": "aa3419beed1bf3b5743141fbfe6f2b70f38311bf2417c9ba0fcf830a2c9f7235",
+        "index.html": "829595eeab4da624a9b3b532cb7b3bf513819091efb4391d9a38dda07b5150dd"
+      },
+      "at": "2026-11-18T11:24:03.525Z"
+    }
+  ]
+}

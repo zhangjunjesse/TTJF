@@ -1,0 +1,912 @@
+{
+  "group": "runtime",
+  "webgl1": true,
+  "noFloat": false,
+  "stage": 5,
+  "preview": false,
+  "width": 366,
+  "height": 310,
+  "startedAt": "2026-11-18T11:05:31.682Z",
+  "status": "failed",
+  "checks": [],
+  "snapshots": [
+    {
+      "label": "initial",
+      "renderer": {
+        "id": "family-farm-1",
+        "canvasId": "family-farm-1-canvas",
+        "mode": "home",
+        "presentation": "farm",
+        "ready": true,
+        "webgl": true,
+        "error": null,
+        "disposed": false,
+        "paused": false,
+        "documentHidden": false,
+        "contextLost": false,
+        "running": false,
+        "fps": 0,
+        "frameCount": 6,
+        "dpr": 1,
+        "width": 366,
+        "height": 310,
+        "drawCalls": 194,
+        "triangles": 499873,
+        "memory": {
+          "geometries": 174,
+          "textures": 7,
+          "programs": 32
+        },
+        "bodyScreenBounds": {
+          "x": 164.19131494111406,
+          "y": 152.09604092003394,
+          "width": 50.87462325161778,
+          "height": 109.43960524792419,
+          "left": 164.19131494111406,
+          "top": 152.09604092003394,
+          "right": 215.06593819273183,
+          "bottom": 261.53564616795813
+        },
+        "petScreenBounds": {
+          "x": 163.9059558160212,
+          "y": 126.26810103540906,
+          "width": 102.06929780500096,
+          "height": 136.48626787806353,
+          "left": 163.9059558160212,
+          "top": 126.26810103540906,
+          "right": 265.97525362102215,
+          "bottom": 262.7543689134726
+        },
+        "companion": {
+          "kind": "plant",
+          "stage": 5,
+          "interactive": true,
+          "preview": false,
+          "variant": "default",
+          "showcase": false,
+          "rotation": 0,
+          "yaw": -0.66,
+          "action": "",
+          "reaction": null
+        },
+        "station": null,
+        "hitTargets": [
+          {
+            "type": "house",
+            "id": "house",
+            "x": 108.41273389651782,
+            "y": 99.735607193287,
+            "width": 130.62116751924145,
+            "height": 116.01296221416908,
+            "left": 108.41273389651782,
+            "top": 99.735607193287,
+            "right": 239.0339014157593,
+            "bottom": 215.74856940745607,
+            "center": {
+              "x": 173.72331765613856,
+              "y": 157.74208830037153
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p1",
+            "x": 278.98020064638456,
+            "y": 196.6662513846903,
+            "width": 67.27695050672895,
+            "height": 40.794695071888384,
+            "left": 278.98020064638456,
+            "top": 196.6662513846903,
+            "right": 346.2571511531135,
+            "bottom": 237.46094645657868,
+            "center": {
+              "x": 312.61867589974906,
+              "y": 217.0635989206345
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p2",
+            "x": 348.7736201433146,
+            "y": 199.4856862769894,
+            "width": 80.98272105095515,
+            "height": 42.78974158931064,
+            "left": 348.7736201433146,
+            "top": 199.4856862769894,
+            "right": 429.75634119426974,
+            "bottom": 242.27542786630005,
+            "center": {
+              "x": 389.2649806687922,
+              "y": 220.88055707164472
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p3",
+            "x": 420.7995374632918,
+            "y": 202.48833628568002,
+            "width": 98.9339237716739,
+            "height": 44.97074459468135,
+            "left": 420.7995374632918,
+            "top": 202.48833628568002,
+            "right": 519.7334612349657,
+            "bottom": 247.45908088036137,
+            "center": {
+              "x": 470.26649934912876,
+              "y": 224.9737085830207
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p4",
+            "x": 275.5088082015675,
+            "y": 212.50590132041395,
+            "width": 81.59681112860761,
+            "height": 52.68004062448665,
+            "left": 275.5088082015675,
+            "top": 212.50590132041395,
+            "right": 357.1056193301751,
+            "bottom": 265.1859419449006,
+            "center": {
+              "x": 316.3072137658713,
+              "y": 238.84592163265728
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p5",
+            "x": 358.36031208184266,
+            "y": 216.43221990860965,
+            "width": 101.55412935004921,
+            "height": 55.889342165952286,
+            "left": 358.36031208184266,
+            "top": 216.43221990860965,
+            "right": 459.9144414318919,
+            "bottom": 272.32156207456194,
+            "center": {
+              "x": 409.1373767568673,
+              "y": 244.3768909915858
+            }
+          },
+          {
+            "type": "plot",
+            "id": "p6",
+            "x": 444.3126059075276,
+            "y": 220.66227943254117,
+            "width": 128.2698864149623,
+            "height": 59.469398721885426,
+            "left": 444.3126059075276,
+            "top": 220.66227943254117,
+            "right": 572.5824923224899,
+            "bottom": 280.1316781544266,
+            "center": {
+              "x": 508.44754911500877,
+              "y": 250.39697879348387
+            }
+          },
+          {
+            "type": "slot",
+            "id": "entry",
+            "x": 203.01919902774694,
+            "y": 202.4540567127323,
+            "width": 35.564518211761424,
+            "height": 26.379108324161678,
+            "left": 203.01919902774694,
+            "top": 202.4540567127323,
+            "right": 238.58371723950836,
+            "bottom": 228.83316503689397,
+            "center": {
+              "x": 220.80145813362765,
+              "y": 215.64361087481313
+            }
+          },
+          {
+            "type": "slot",
+            "id": "center",
+            "x": 8.56293976359476,
+            "y": 259.49543775012836,
+            "width": 74.2750455653181,
+            "height": 51.284047343492716,
+            "left": 8.56293976359476,
+            "top": 259.49543775012836,
+            "right": 82.83798532891285,
+            "bottom": 310.7794850936211,
+            "center": {
+              "x": 45.7004625462538,
+              "y": 285.1374614218747
+            }
+          },
+          {
+            "type": "slot",
+            "id": "edge",
+            "x": 610.9899680980594,
+            "y": 206.06086193180852,
+            "width": 116.09846469284514,
+            "height": 97.33046400961564,
+            "left": 610.9899680980594,
+            "top": 206.06086193180852,
+            "right": 727.0884327909046,
+            "bottom": 303.39132594142416,
+            "center": {
+              "x": 669.039200444482,
+              "y": 254.72609393661634
+            }
+          },
+          {
+            "type": "slot",
+            "id": "fence",
+            "x": 281.0770955037947,
+            "y": 175.18252780890194,
+            "width": 50.94730468665921,
+            "height": 18.078430617683267,
+            "left": 281.0770955037947,
+            "top": 175.18252780890194,
+            "right": 332.0244001904539,
+            "bottom": 193.2609584265852,
+            "center": {
+              "x": 306.5507478471243,
+              "y": 184.22174311774359
+            }
+          },
+          {
+            "type": "slot",
+            "id": "path",
+            "x": 122.74104069753058,
+            "y": 271.13791179490204,
+            "width": 68.72552103009865,
+            "height": 57.32135153420859,
+            "left": 122.74104069753058,
+            "top": 271.13791179490204,
+            "right": 191.46656172762923,
+            "bottom": 328.4592633291106,
+            "center": {
+              "x": 157.1038012125799,
+              "y": 299.79858756200633
+            }
+          },
+          {
+            "type": "animal",
+            "id": "chicken",
+            "x": 642.1907154895323,
+            "y": 342.25807736084244,
+            "width": 198.08350946192013,
+            "height": 137.6931794215688,
+            "left": 642.1907154895323,
+            "top": 342.25807736084244,
+            "right": 840.2742249514524,
+            "bottom": 479.95125678241124,
+            "center": {
+              "x": 741.2324702204924,
+              "y": 411.10466707162686
+            }
+          },
+          {
+            "type": "animal",
+            "id": "rabbit",
+            "x": 12.332676918612716,
+            "y": 206.12834611531625,
+            "width": 49.612921950138954,
+            "height": 40.81270788609291,
+            "left": 12.332676918612716,
+            "top": 206.12834611531625,
+            "right": 61.94559886875167,
+            "bottom": 246.94105400140916,
+            "center": {
+              "x": 37.13913789368219,
+              "y": 226.53470005836272
+            }
+          },
+          {
+            "type": "pet",
+            "id": "pet",
+            "x": 159.7214904903627,
+            "y": 173.00613707844883,
+            "width": 67.82212972368532,
+            "height": 93.77458851625482,
+            "left": 159.7214904903627,
+            "top": 173.00613707844883,
+            "right": 227.54362021404802,
+            "bottom": 266.78072559470365,
+            "center": {
+              "x": 193.63255535220537,
+              "y": 219.89343133657624
+            }
+          }
+        ],
+        "selected": null,
+        "reducedMotion": true,
+        "camera": {
+          "zoom": 1,
+          "target": {
+            "x": -2.2,
+            "y": 1.72395278186287,
+            "z": 2.7
+          },
+          "yaw": 0.5,
+          "viewHeight": 8.32133319234752,
+          "projection": "perspective",
+          "viewInsets": {
+            "top": 35,
+            "right": 0,
+            "bottom": 64,
+            "left": 0
+          },
+          "canPan": false,
+          "navigation": {
+            "x": 0,
+            "z": 0,
+            "zoom": 1,
+            "focus": null
+          }
+        },
+        "lighting": "day",
+        "credit": {
+          "enabled": false,
+          "failed": false
+        },
+        "world": {
+          "width": 80,
+          "depth": 80,
+          "terrain": "continuous"
+        },
+        "shadows": {
+          "enabled": true,
+          "type": "PCFSoftShadowMap",
+          "mapSize": 2048
+        },
+        "maxFps": 30,
+        "maxDpr": 1.25,
+        "externalAssetRequests": 0,
+        "contextVersion": 1
+      },
+      "scene": {
+        "version": "1.2.0",
+        "threeRevision": "160",
+        "activeCount": 0,
+        "canvasCount": 1,
+        "instances": [
+          {
+            "id": "family-farm-1",
+            "canvasId": "family-farm-1-canvas",
+            "mode": "home",
+            "presentation": "farm",
+            "ready": true,
+            "webgl": true,
+            "error": null,
+            "disposed": false,
+            "paused": false,
+            "documentHidden": false,
+            "contextLost": false,
+            "running": false,
+            "fps": 0,
+            "frameCount": 6,
+            "dpr": 1,
+            "width": 366,
+            "height": 310,
+            "drawCalls": 194,
+            "triangles": 499873,
+            "memory": {
+              "geometries": 174,
+              "textures": 7,
+              "programs": 32
+            },
+            "bodyScreenBounds": {
+              "x": 164.19131494111406,
+              "y": 152.09604092003394,
+              "width": 50.87462325161778,
+              "height": 109.43960524792419,
+              "left": 164.19131494111406,
+              "top": 152.09604092003394,
+              "right": 215.06593819273183,
+              "bottom": 261.53564616795813
+            },
+            "petScreenBounds": {
+              "x": 163.9059558160212,
+              "y": 126.26810103540906,
+              "width": 102.06929780500096,
+              "height": 136.48626787806353,
+              "left": 163.9059558160212,
+              "top": 126.26810103540906,
+              "right": 265.97525362102215,
+              "bottom": 262.7543689134726
+            },
+            "companion": {
+              "kind": "plant",
+              "stage": 5,
+              "interactive": true,
+              "preview": false,
+              "variant": "default",
+              "showcase": false,
+              "rotation": 0,
+              "yaw": -0.66,
+              "action": "",
+              "reaction": null
+            },
+            "station": null,
+            "hitTargets": [
+              {
+                "type": "house",
+                "id": "house",
+                "x": 108.41273389651782,
+                "y": 99.735607193287,
+                "width": 130.62116751924145,
+                "height": 116.01296221416908,
+                "left": 108.41273389651782,
+                "top": 99.735607193287,
+                "right": 239.0339014157593,
+                "bottom": 215.74856940745607,
+                "center": {
+                  "x": 173.72331765613856,
+                  "y": 157.74208830037153
+                }
+              },
+              {
+                "type": "plot",
+                "id": "p1",
+                "x": 278.98020064638456,
+                "y": 196.6662513846903,
+                "width": 67.27695050672895,
+                "height": 40.794695071888384,
+                "left": 278.98020064638456,
+                "top": 196.6662513846903,
+                "right": 346.2571511531135,
+                "bottom": 237.46094645657868,
+                "center": {
+                  "x": 312.61867589974906,
+                  "y": 217.0635989206345
+                }
+              },
+              {
+                "type": "plot",
+                "id": "p2",
+                "x": 348.7736201433146,
+                "y": 199.4856862769894,
+                "width": 80.98272105095515,
+                "height": 42.78974158931064,
+                "left": 348.7736201433146,
+                "top": 199.4856862769894,
+                "right": 429.75634119426974,
+                "bottom": 242.27542786630005,
+                "center": {
+                  "x": 389.2649806687922,
+                  "y": 220.88055707164472
+                }
+              },
+              {
+                "type": "plot",
+                "id": "p3",
+                "x": 420.7995374632918,
+                "y": 202.48833628568002,
+                "width": 98.9339237716739,
+                "height": 44.97074459468135,
+                "left": 420.7995374632918,
+                "top": 202.48833628568002,
+                "right": 519.7334612349657,
+                "bottom": 247.45908088036137,
+                "center": {
+                  "x": 470.26649934912876,
+                  "y": 224.9737085830207
+                }
+              },
+              {
+                "type": "plot",
+                "id": "p4",
+                "x": 275.5088082015675,
+                "y": 212.50590132041395,
+                "width": 81.59681112860761,
+                "height": 52.68004062448665,
+                "left": 275.5088082015675,
+                "top": 212.50590132041395,
+                "right": 357.1056193301751,
+                "bottom": 265.1859419449006,
+                "center": {
+                  "x": 316.3072137658713,
+                  "y": 238.84592163265728
+                }
+              },
+              {
+                "type": "plot",
+                "id": "p5",
+                "x": 358.36031208184266,
+                "y": 216.43221990860965,
+                "width": 101.55412935004921,
+                "height": 55.889342165952286,
+                "left": 358.36031208184266,
+                "top": 216.43221990860965,
+                "right": 459.9144414318919,
+                "bottom": 272.32156207456194,
+                "center": {
+                  "x": 409.1373767568673,
+                  "y": 244.3768909915858
+                }
+              },
+              {
+                "type": "plot",
+                "id": "p6",
+                "x": 444.3126059075276,
+                "y": 220.66227943254117,
+                "width": 128.2698864149623,
+                "height": 59.469398721885426,
+                "left": 444.3126059075276,
+                "top": 220.66227943254117,
+                "right": 572.5824923224899,
+                "bottom": 280.1316781544266,
+                "center": {
+                  "x": 508.44754911500877,
+                  "y": 250.39697879348387
+                }
+              },
+              {
+                "type": "slot",
+                "id": "entry",
+                "x": 203.01919902774694,
+                "y": 202.4540567127323,
+                "width": 35.564518211761424,
+                "height": 26.379108324161678,
+                "left": 203.01919902774694,
+                "top": 202.4540567127323,
+                "right": 238.58371723950836,
+                "bottom": 228.83316503689397,
+                "center": {
+                  "x": 220.80145813362765,
+                  "y": 215.64361087481313
+                }
+              },
+              {
+                "type": "slot",
+                "id": "center",
+                "x": 8.56293976359476,
+                "y": 259.49543775012836,
+                "width": 74.2750455653181,
+                "height": 51.284047343492716,
+                "left": 8.56293976359476,
+                "top": 259.49543775012836,
+                "right": 82.83798532891285,
+                "bottom": 310.7794850936211,
+                "center": {
+                  "x": 45.7004625462538,
+                  "y": 285.1374614218747
+                }
+              },
+              {
+                "type": "slot",
+                "id": "edge",
+                "x": 610.9899680980594,
+                "y": 206.06086193180852,
+                "width": 116.09846469284514,
+                "height": 97.33046400961564,
+                "left": 610.9899680980594,
+                "top": 206.06086193180852,
+                "right": 727.0884327909046,
+                "bottom": 303.39132594142416,
+                "center": {
+                  "x": 669.039200444482,
+                  "y": 254.72609393661634
+                }
+              },
+              {
+                "type": "slot",
+                "id": "fence",
+                "x": 281.0770955037947,
+                "y": 175.18252780890194,
+                "width": 50.94730468665921,
+                "height": 18.078430617683267,
+                "left": 281.0770955037947,
+                "top": 175.18252780890194,
+                "right": 332.0244001904539,
+                "bottom": 193.2609584265852,
+                "center": {
+                  "x": 306.5507478471243,
+                  "y": 184.22174311774359
+                }
+              },
+              {
+                "type": "slot",
+                "id": "path",
+                "x": 122.74104069753058,
+                "y": 271.13791179490204,
+                "width": 68.72552103009865,
+                "height": 57.32135153420859,
+                "left": 122.74104069753058,
+                "top": 271.13791179490204,
+                "right": 191.46656172762923,
+                "bottom": 328.4592633291106,
+                "center": {
+                  "x": 157.1038012125799,
+                  "y": 299.79858756200633
+                }
+              },
+              {
+                "type": "animal",
+                "id": "chicken",
+                "x": 642.1907154895323,
+                "y": 342.25807736084244,
+                "width": 198.08350946192013,
+                "height": 137.6931794215688,
+                "left": 642.1907154895323,
+                "top": 342.25807736084244,
+                "right": 840.2742249514524,
+                "bottom": 479.95125678241124,
+                "center": {
+                  "x": 741.2324702204924,
+                  "y": 411.10466707162686
+                }
+              },
+              {
+                "type": "animal",
+                "id": "rabbit",
+                "x": 12.332676918612716,
+                "y": 206.12834611531625,
+                "width": 49.612921950138954,
+                "height": 40.81270788609291,
+                "left": 12.332676918612716,
+                "top": 206.12834611531625,
+                "right": 61.94559886875167,
+                "bottom": 246.94105400140916,
+                "center": {
+                  "x": 37.13913789368219,
+                  "y": 226.53470005836272
+                }
+              },
+              {
+                "type": "pet",
+                "id": "pet",
+                "x": 159.7214904903627,
+                "y": 173.00613707844883,
+                "width": 67.82212972368532,
+                "height": 93.77458851625482,
+                "left": 159.7214904903627,
+                "top": 173.00613707844883,
+                "right": 227.54362021404802,
+                "bottom": 266.78072559470365,
+                "center": {
+                  "x": 193.63255535220537,
+                  "y": 219.89343133657624
+                }
+              }
+            ],
+            "selected": null,
+            "reducedMotion": true,
+            "camera": {
+              "zoom": 1,
+              "target": {
+                "x": -2.2,
+                "y": 1.72395278186287,
+                "z": 2.7
+              },
+              "yaw": 0.5,
+              "viewHeight": 8.32133319234752,
+              "projection": "perspective",
+              "viewInsets": {
+                "top": 35,
+                "right": 0,
+                "bottom": 64,
+                "left": 0
+              },
+              "canPan": false,
+              "navigation": {
+                "x": 0,
+                "z": 0,
+                "zoom": 1,
+                "focus": null
+              }
+            },
+            "lighting": "day",
+            "credit": {
+              "enabled": false,
+              "failed": false
+            },
+            "world": {
+              "width": 80,
+              "depth": 80,
+              "terrain": "continuous"
+            },
+            "shadows": {
+              "enabled": true,
+              "type": "PCFSoftShadowMap",
+              "mapSize": 2048
+            },
+            "maxFps": 30,
+            "maxDpr": 1.25,
+            "externalAssetRequests": 0,
+            "contextVersion": 1
+          }
+        ]
+      },
+      "gpu": {
+        "version": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+        "floatVertexTextures": true,
+        "resources": {
+          "Buffer": {
+            "live": 607,
+            "created": 607,
+            "deleted": 0
+          },
+          "Texture": {
+            "live": 9,
+            "created": 9,
+            "deleted": 0
+          },
+          "Program": {
+            "live": 32,
+            "created": 32,
+            "deleted": 0
+          },
+          "Framebuffer": {
+            "live": 1,
+            "created": 1,
+            "deleted": 0
+          },
+          "Renderbuffer": {
+            "live": 1,
+            "created": 1,
+            "deleted": 0
+          }
+        },
+        "programs": [
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": false,
+            "log": "Vertex shader is not compiled.\n"
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": false,
+            "log": "Vertex shader is not compiled.\n"
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": false,
+            "log": "Vertex shader is not compiled.\n"
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": true,
+            "log": ""
+          },
+          {
+            "linked": false,
+            "log": "Vertex shader is not compiled.\n"
+          },
+          {
+            "linked": true,
+            "log": ""
+          }
+        ],
+        "errors": [
+          1282
+        ]
+      }
+    }
+  ],
+  "screenshots": [],
+  "errors": [],
+  "shaderErrors": [
+    "THREE.WebGLProgram: Shader Error 0 - VALIDATE_STATUS false\n\nProgram Info Log: Vertex shader is not compiled.\nVERTEX\n\nERROR: 0:285: 'textureSize' : no matching overloaded function found\nERROR: 0:285: 'x' :  field selection requires structure or vector on left hand side\nERROR: 0:285: '=' : cannot convert from 'const mediump float' to 'highp int'\nERROR: 0:287: '%' : integer modulus operator supported in GLSL ES 3.00 and above only\nERROR: 0:289: 'texelFetch' : no matching overloaded function found\nERROR: 0:289: '=' : dimension mismatch\nERROR: 0:289: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:290: 'texelFetch' : no matching overloaded function found\nERROR: 0:290: '=' : dimension mismatch\nERROR: 0:290: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:291: 'texelFetch' : no matching overloaded function found\nERROR: 0:291: '=' : dimension mismatch\nERROR: 0:291: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:292: 'texelFetch' : no matching overloaded function found\nERROR: 0:292: '=' : dimension mismatch\nERROR: 0:292: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\n\n  280: #ifdef USE_SKINNING\n  281: \tuniform mat4 bindMatrix;\n  282: \tuniform mat4 bindMatrixInverse;\n  283: \tuniform highp sampler2D boneTexture;\n  284: \tmat4 getBoneMatrix( const in float i ) {\n> 285: \t\tint size = textureSize( boneTexture, 0 ).x;\n  286: \t\tint j = int( i ) * 4;\n  287: \t\tint x = j % size;\n  288: \t\tint y = j / size;\n  289: \t\tvec4 v1 = texelFetch( boneTexture, ivec2( x, y ), 0 );\n  290: \t\tvec4 v2 = texelFetch( boneTexture, ivec2( x + 1, y ), 0 );\n  291: \t\tvec4 v3 = texelFetch( boneTexture, ivec2( x + 2, y ), 0 );\n",
+    "THREE.WebGLProgram: Shader Error 1282 - VALIDATE_STATUS false\n\nProgram Info Log: Vertex shader is not compiled.\nVERTEX\n\nERROR: 0:308: 'textureSize' : no matching overloaded function found\nERROR: 0:308: 'x' :  field selection requires structure or vector on left hand side\nERROR: 0:308: '=' : cannot convert from 'const mediump float' to 'highp int'\nERROR: 0:310: '%' : integer modulus operator supported in GLSL ES 3.00 and above only\nERROR: 0:312: 'texelFetch' : no matching overloaded function found\nERROR: 0:312: '=' : dimension mismatch\nERROR: 0:312: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:313: 'texelFetch' : no matching overloaded function found\nERROR: 0:313: '=' : dimension mismatch\nERROR: 0:313: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:314: 'texelFetch' : no matching overloaded function found\nERROR: 0:314: '=' : dimension mismatch\nERROR: 0:314: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:315: 'texelFetch' : no matching overloaded function found\nERROR: 0:315: '=' : dimension mismatch\nERROR: 0:315: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\n\n  303: #ifdef USE_SKINNING\n  304: \tuniform mat4 bindMatrix;\n  305: \tuniform mat4 bindMatrixInverse;\n  306: \tuniform highp sampler2D boneTexture;\n  307: \tmat4 getBoneMatrix( const in float i ) {\n> 308: \t\tint size = textureSize( boneTexture, 0 ).x;\n  309: \t\tint j = int( i ) * 4;\n  310: \t\tint x = j % size;\n  311: \t\tint y = j / size;\n  312: \t\tvec4 v1 = texelFetch( boneTexture, ivec2( x, y ), 0 );\n  313: \t\tvec4 v2 = texelFetch( boneTexture, ivec2( x + 1, y ), 0 );\n  314: \t\tvec4 v3 = texelFetch( boneTexture, ivec2( x + 2, y ), 0 );\n",
+    "THREE.WebGLProgram: Shader Error 1282 - VALIDATE_STATUS false\n\nProgram Info Log: Vertex shader is not compiled.\nVERTEX\n\nERROR: 0:306: 'textureSize' : no matching overloaded function found\nERROR: 0:306: 'x' :  field selection requires structure or vector on left hand side\nERROR: 0:306: '=' : cannot convert from 'const mediump float' to 'highp int'\nERROR: 0:308: '%' : integer modulus operator supported in GLSL ES 3.00 and above only\nERROR: 0:310: 'texelFetch' : no matching overloaded function found\nERROR: 0:310: '=' : dimension mismatch\nERROR: 0:310: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:311: 'texelFetch' : no matching overloaded function found\nERROR: 0:311: '=' : dimension mismatch\nERROR: 0:311: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:312: 'texelFetch' : no matching overloaded function found\nERROR: 0:312: '=' : dimension mismatch\nERROR: 0:312: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:313: 'texelFetch' : no matching overloaded function found\nERROR: 0:313: '=' : dimension mismatch\nERROR: 0:313: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\n\n  301: #ifdef USE_SKINNING\n  302: \tuniform mat4 bindMatrix;\n  303: \tuniform mat4 bindMatrixInverse;\n  304: \tuniform highp sampler2D boneTexture;\n  305: \tmat4 getBoneMatrix( const in float i ) {\n> 306: \t\tint size = textureSize( boneTexture, 0 ).x;\n  307: \t\tint j = int( i ) * 4;\n  308: \t\tint x = j % size;\n  309: \t\tint y = j / size;\n  310: \t\tvec4 v1 = texelFetch( boneTexture, ivec2( x, y ), 0 );\n  311: \t\tvec4 v2 = texelFetch( boneTexture, ivec2( x + 1, y ), 0 );\n  312: \t\tvec4 v3 = texelFetch( boneTexture, ivec2( x + 2, y ), 0 );\n",
+    "THREE.WebGLProgram: Shader Error 1282 - VALIDATE_STATUS false\n\nProgram Info Log: Vertex shader is not compiled.\nVERTEX\n\nERROR: 0:285: 'textureSize' : no matching overloaded function found\nERROR: 0:285: 'x' :  field selection requires structure or vector on left hand side\nERROR: 0:285: '=' : cannot convert from 'const mediump float' to 'highp int'\nERROR: 0:287: '%' : integer modulus operator supported in GLSL ES 3.00 and above only\nERROR: 0:289: 'texelFetch' : no matching overloaded function found\nERROR: 0:289: '=' : dimension mismatch\nERROR: 0:289: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:290: 'texelFetch' : no matching overloaded function found\nERROR: 0:290: '=' : dimension mismatch\nERROR: 0:290: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:291: 'texelFetch' : no matching overloaded function found\nERROR: 0:291: '=' : dimension mismatch\nERROR: 0:291: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\nERROR: 0:292: 'texelFetch' : no matching overloaded function found\nERROR: 0:292: '=' : dimension mismatch\nERROR: 0:292: '=' : cannot convert from 'const mediump float' to 'highp 4-component vector of float'\n\n  280: #ifdef USE_SKINNING\n  281: \tuniform mat4 bindMatrix;\n  282: \tuniform mat4 bindMatrixInverse;\n  283: \tuniform highp sampler2D boneTexture;\n  284: \tmat4 getBoneMatrix( const in float i ) {\n> 285: \t\tint size = textureSize( boneTexture, 0 ).x;\n  286: \t\tint j = int( i ) * 4;\n  287: \t\tint x = j % size;\n  288: \t\tint y = j / size;\n  289: \t\tvec4 v1 = texelFetch( boneTexture, ivec2( x, y ), 0 );\n  290: \t\tvec4 v2 = texelFetch( boneTexture, ivec2( x + 1, y ), 0 );\n  291: \t\tvec4 v3 = texelFetch( boneTexture, ivec2( x + 2, y ), 0 );\n"
+  ],
+  "requests": [],
+  "sourceHashes": {
+    "farm-scene.js": "b896a79567c063a18d8e81f56bb1dd2168dcb1880d843fcd9c1750b332499caa",
+    "farm/scene.js": "ae7f9249ff6e9a2ca7d72607e9b590d2d2a6a8291e93c7c8dbd251612e9fe680",
+    "farm/primitives.js": "63c74ac6f40565d961262484a781411ec7d9dc4453aaf92837f41426306444e4",
+    "farm/companions.js": "633a1dfa4566dc12b0ea236630d4ae023e6e74d61c292c034fdad733acad23c7",
+    "test/dragon-renderer-browser.cjs": "8eac9db90b2fd5e0c31f6744ea68dc52763490ab051ece9ec29e5bbbc0848ebd"
+  },
+  "boundaries": [
+    "Native headless desktop Edge WebGL, with WebGL2 disabled when requested; no physical iPad/Safari claim.",
+    "NO_FLOAT withholds OES_texture_float from the native WebGL1 renderer to exercise its actual CPU-skin fallback.",
+    "Tracked WebGL allocations and renderer.info are lifetime evidence, not measurements of physical RAM, VRAM or device thermals.",
+    "The isolated example-data fixture has no family storage or economic API; screenshots require visual review."
+  ],
+  "failure": "AssertionError [ERR_ASSERTION]: [{\"linked\":true,\"log\":\"\"},{\"linked\":false,\"log\":\"Vertex shader is not compiled.\\n\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":false,\"log\":\"Vertex shader is not compiled.\\n\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":false,\"log\":\"Vertex shader is not compiled.\\n\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":true,\"log\":\"\"},{\"linked\":false,\"log\":\"Vertex shader is not compiled.\\n\"},{\"linked\":true,\"log\":\"\"}]\n    at healthy (D:\\Documents\\ChatGPT\\TTJF\\test\\dragon-renderer-browser.cjs:54:10)\n    at async open (D:\\Documents\\ChatGPT\\TTJF\\test\\dragon-renderer-browser.cjs:113:3)\n    at async run (D:\\Documents\\ChatGPT\\TTJF\\test\\dragon-renderer-browser.cjs:209:5)",
+  "sourceHashesAfter": {
+    "farm-scene.js": "b896a79567c063a18d8e81f56bb1dd2168dcb1880d843fcd9c1750b332499caa",
+    "farm/scene.js": "ae7f9249ff6e9a2ca7d72607e9b590d2d2a6a8291e93c7c8dbd251612e9fe680",
+    "farm/primitives.js": "63c74ac6f40565d961262484a781411ec7d9dc4453aaf92837f41426306444e4",
+    "farm/companions.js": "633a1dfa4566dc12b0ea236630d4ae023e6e74d61c292c034fdad733acad23c7",
+    "test/dragon-renderer-browser.cjs": "8eac9db90b2fd5e0c31f6744ea68dc52763490ab051ece9ec29e5bbbc0848ebd"
+  },
+  "finishedAt": "2026-11-18T11:05:37.131Z"
+}

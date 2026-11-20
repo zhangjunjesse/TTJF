@@ -1,0 +1,7 @@
+(node:33628) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Documents/ChatGPT/TTJF/farm/forest-bud/body/body.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to D:\Documents\ChatGPT\TTJF\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+{"i":0,"body":314.2449,"head":718.1797000000001}
+{"i":1,"body":226.66980000000012,"head":722.7011}
+{"i":2,"body":207.29739999999993,"head":718.5917}

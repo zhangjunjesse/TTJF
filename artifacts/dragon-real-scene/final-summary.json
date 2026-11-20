@@ -1,0 +1,54 @@
+{
+  "bundleHash": "c9f2db1bc3de29589865f8300d96b02eceff8089f4bc40ec250f2534841b9f2b",
+  "sourceStable": true,
+  "performance": {
+    "elapsedMs": 2219,
+    "frames": 64,
+    "observedFps": 28.841820639927896,
+    "reportedFps": 30,
+    "drawCalls": 195,
+    "triangles": 312199
+  },
+  "release": {
+    "contextLost": true,
+    "version": null,
+    "floatVertexTextures": false,
+    "resources": {
+      "Buffer": {
+        "live": 0,
+        "invalidatedByContextLoss": 3,
+        "created": 3994,
+        "deleted": 3991
+      },
+      "Texture": {
+        "live": 0,
+        "invalidatedByContextLoss": 4,
+        "created": 51,
+        "deleted": 47
+      },
+      "Program": {
+        "live": 0,
+        "invalidatedByContextLoss": 8,
+        "created": 191,
+        "deleted": 183
+      },
+      "Framebuffer": {
+        "live": 0,
+        "invalidatedByContextLoss": 0,
+        "created": 1,
+        "deleted": 1
+      },
+      "Renderbuffer": {
+        "live": 0,
+        "invalidatedByContextLoss": 0,
+        "created": 1,
+        "deleted": 1
+      }
+    },
+    "programs": [],
+    "errors": [],
+    "traceErrors": [],
+    "traceErrorCounts": {}
+  },
+  "runtimeErrors": []
+}

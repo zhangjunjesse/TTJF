@@ -1,0 +1,34 @@
+{
+  "stage": 5,
+  "angle": "back",
+  "action": "",
+  "checks": [
+    {
+      "stage": 5,
+      "variant": "default",
+      "angle": "back",
+      "invalid": 0,
+      "meshes": 199,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 146,
+        "textures": 5
+      }
+    },
+    {
+      "stage": 5,
+      "variant": "festival",
+      "angle": "back",
+      "invalid": 0,
+      "meshes": 206,
+      "shaderErrors": [],
+      "programs": 31,
+      "memory": {
+        "geometries": 153,
+        "textures": 5
+      }
+    }
+  ],
+  "errors": []
+}

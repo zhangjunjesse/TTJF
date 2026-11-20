@@ -1,0 +1,13 @@
+{
+  "case": "aiFormPartial",
+  "message": "Case complete",
+  "at": "2026-11-18T13:08:30.752Z",
+  "checks": [
+    {
+      "phase": "ui-refinement-aiFormPartial",
+      "label": "An incomplete model form fills the known behavior, asks for its score, and preserves a manual reason without saving",
+      "result": "passed",
+      "milliseconds": 2295
+    }
+  ]
+}

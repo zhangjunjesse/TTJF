@@ -1,0 +1,55 @@
+{
+  "evidenceTag": "untagged",
+  "startedAt": "2026-11-18T11:01:45.785Z",
+  "sourceHashes": {
+    "farm-scene.js": "dca8edd7a256cf1c22ab631ca4dad759df36a960cb3b02d7bf43b8594ed7f24c",
+    "farm/scene.js": "ae7f9249ff6e9a2ca7d72607e9b590d2d2a6a8291e93c7c8dbd251612e9fe680",
+    "farm/garden.js": "2c8257041002c71cd0d9287047125965522d912825d4d37a5f3e8bc62ea23b61",
+    "farm/companions.js": "633a1dfa4566dc12b0ea236630d4ae023e6e74d61c292c034fdad733acad23c7",
+    "farm/primitives.js": "63c74ac6f40565d961262484a781411ec7d9dc4453aaf92837f41426306444e4",
+    "farm/models.js": "d69008d81a51aeefcb988ed2f087a359a774b6e99c5184f23236989190950b56",
+    "farm/verify-v12.cjs": "5088d87d4f87ed58c64caeaad3e719ce44b3229f2c279782f5ba7e55470436a8",
+    "farm/verification/v12-fixture.html": "9b9b43af2d6b21535e92d3341a4904829cb81f013634866ef844d8657c601123"
+  },
+  "checks": [
+    {
+      "label": "New renderer loads a continuous world with actual shadow mapping",
+      "result": "passed"
+    }
+  ],
+  "scenes": [],
+  "screenshots": [],
+  "errors": [],
+  "network": [],
+  "visualStatus": "pending-image-review",
+  "boundaries": [
+    "Desktop headless Edge with emulated viewport/touch; no physical iPad/Safari claim.",
+    "Isolated component fixture with example data, not the live family app.",
+    "Mechanical checks and diagnostic flags do not establish visual parity. Review actual captured images against artifacts/v12-reference.",
+    "Day/night are visual modes only. Their rendered light and material changes require image review, not only a diagnostics string."
+  ],
+  "webglVersion": "WebGL 1.0 (OpenGL ES 2.0 Chromium)",
+  "skipped": [
+    "Both companions and three growth stages use the same live renderer; images recorded for review",
+    "Day and night update the same renderer and keep the farm geometry",
+    "Real mouse dragging pans the expanded camera without selecting a target",
+    "Wheel and visible buttons zoom the same camera, and reset restores the initial framing",
+    "An actual plot click still selects correctly after camera browsing",
+    "Both species and view modes stabilize GPU resource allocation after warmup",
+    "Pause and resume stop drawing and recover the same canvas",
+    "390px portrait retains world scale and supports a real touch pan",
+    "320px portrait retains world scale and supports a real touch pan"
+  ],
+  "finishedAt": "2026-11-18T11:01:50.356Z",
+  "finalSourceHashes": {
+    "farm-scene.js": "dca8edd7a256cf1c22ab631ca4dad759df36a960cb3b02d7bf43b8594ed7f24c",
+    "farm/scene.js": "ae7f9249ff6e9a2ca7d72607e9b590d2d2a6a8291e93c7c8dbd251612e9fe680",
+    "farm/garden.js": "2c8257041002c71cd0d9287047125965522d912825d4d37a5f3e8bc62ea23b61",
+    "farm/companions.js": "633a1dfa4566dc12b0ea236630d4ae023e6e74d61c292c034fdad733acad23c7",
+    "farm/primitives.js": "63c74ac6f40565d961262484a781411ec7d9dc4453aaf92837f41426306444e4",
+    "farm/models.js": "d69008d81a51aeefcb988ed2f087a359a774b6e99c5184f23236989190950b56",
+    "farm/verify-v12.cjs": "5088d87d4f87ed58c64caeaad3e719ce44b3229f2c279782f5ba7e55470436a8",
+    "farm/verification/v12-fixture.html": "9b9b43af2d6b21535e92d3341a4904829cb81f013634866ef844d8657c601123"
+  },
+  "sourceStable": true
+}

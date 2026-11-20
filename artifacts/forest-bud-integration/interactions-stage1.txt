@@ -1,0 +1,50 @@
+TAP version 13
+# (node:34612) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Documents/ChatGPT/TTJF/farm/primitives.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to D:\\Documents\\ChatGPT\\TTJF\\package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: plant stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 1 - plant stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 1361.7029
+  type: 'test'
+  ...
+# Subtest: plant stage 1: reduced motion keeps each care cue static and clears it on completion
+ok 2 - plant stage 1: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 1091.5236
+  type: 'test'
+  ...
+# Subtest: plant stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 3 - plant stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 1468.574
+  type: 'test'
+  ...
+# Subtest: capybara stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 4 - capybara stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 33.561
+  type: 'test'
+  ...
+# Subtest: capybara stage 1: reduced motion keeps each care cue static and clears it on completion
+ok 5 - capybara stage 1: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 23.3932
+  type: 'test'
+  ...
+# Subtest: capybara stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 6 - capybara stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 19.4816
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 4117.4303

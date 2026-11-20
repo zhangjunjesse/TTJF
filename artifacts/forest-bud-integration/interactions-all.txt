@@ -1,0 +1,236 @@
+TAP version 13
+# (node:344) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///D:/Documents/ChatGPT/TTJF/farm/primitives.js is not specified and it doesn't parse as CommonJS.
+# Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+# To eliminate this warning, add "type": "module" to D:\\Documents\\ChatGPT\\TTJF\\package.json.
+# (Use `node --trace-warnings ...` to show where the warning was created)
+# Subtest: plant stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 1 - plant stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 2427.2496
+  type: 'test'
+  ...
+# Subtest: plant stage 1: reduced motion keeps each care cue static and clears it on completion
+ok 2 - plant stage 1: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 899.2124
+  type: 'test'
+  ...
+# Subtest: plant stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 3 - plant stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 1269.5661
+  type: 'test'
+  ...
+# Subtest: plant stage 2: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 4 - plant stage 2: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 501.0416
+  type: 'test'
+  ...
+# Subtest: plant stage 2: reduced motion keeps each care cue static and clears it on completion
+ok 5 - plant stage 2: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 533.5255
+  type: 'test'
+  ...
+# Subtest: plant stage 2: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 6 - plant stage 2: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 884.0212
+  type: 'test'
+  ...
+# Subtest: plant stage 3: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 7 - plant stage 3: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 449.6793
+  type: 'test'
+  ...
+# Subtest: plant stage 3: reduced motion keeps each care cue static and clears it on completion
+ok 8 - plant stage 3: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 491.0755
+  type: 'test'
+  ...
+# Subtest: plant stage 3: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 9 - plant stage 3: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 904.625
+  type: 'test'
+  ...
+# Subtest: plant stage 4: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 10 - plant stage 4: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 444.6759
+  type: 'test'
+  ...
+# Subtest: plant stage 4: reduced motion keeps each care cue static and clears it on completion
+ok 11 - plant stage 4: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 444.0899
+  type: 'test'
+  ...
+# Subtest: plant stage 4: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 12 - plant stage 4: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 911.4752
+  type: 'test'
+  ...
+# Subtest: plant stage 5: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 13 - plant stage 5: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 461.2924
+  type: 'test'
+  ...
+# Subtest: plant stage 5: reduced motion keeps each care cue static and clears it on completion
+ok 14 - plant stage 5: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 475.6228
+  type: 'test'
+  ...
+# Subtest: plant stage 5: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 15 - plant stage 5: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 879.3317
+  type: 'test'
+  ...
+# Subtest: capybara stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 16 - capybara stage 1: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 31.8967
+  type: 'test'
+  ...
+# Subtest: capybara stage 1: reduced motion keeps each care cue static and clears it on completion
+ok 17 - capybara stage 1: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 22.1295
+  type: 'test'
+  ...
+# Subtest: capybara stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 18 - capybara stage 1: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 19.5587
+  type: 'test'
+  ...
+# Subtest: capybara stage 2: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 19 - capybara stage 2: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 25.3367
+  type: 'test'
+  ...
+# Subtest: capybara stage 2: reduced motion keeps each care cue static and clears it on completion
+ok 20 - capybara stage 2: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 28.2553
+  type: 'test'
+  ...
+# Subtest: capybara stage 2: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 21 - capybara stage 2: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 23.9283
+  type: 'test'
+  ...
+# Subtest: capybara stage 3: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 22 - capybara stage 3: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 25.1971
+  type: 'test'
+  ...
+# Subtest: capybara stage 3: reduced motion keeps each care cue static and clears it on completion
+ok 23 - capybara stage 3: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 24.642
+  type: 'test'
+  ...
+# Subtest: capybara stage 3: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 24 - capybara stage 3: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 22.3961
+  type: 'test'
+  ...
+# Subtest: capybara stage 4: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 25 - capybara stage 4: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 23.7559
+  type: 'test'
+  ...
+# Subtest: capybara stage 4: reduced motion keeps each care cue static and clears it on completion
+ok 26 - capybara stage 4: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 23.1925
+  type: 'test'
+  ...
+# Subtest: capybara stage 4: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 27 - capybara stage 4: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 20.6776
+  type: 'test'
+  ...
+# Subtest: capybara stage 5: care actions have distinct cues and poses, and replacement/completion restores the model
+ok 28 - capybara stage 5: care actions have distinct cues and poses, and replacement/completion restores the model
+  ---
+  duration_ms: 21.5091
+  type: 'test'
+  ...
+# Subtest: capybara stage 5: reduced motion keeps each care cue static and clears it on completion
+ok 29 - capybara stage 5: reduced motion keeps each care cue static and clears it on completion
+  ---
+  duration_ms: 21.7718
+  type: 'test'
+  ...
+# Subtest: capybara stage 5: repeated care frames reuse scene resources and Workshop releases all owned resources
+ok 30 - capybara stage 5: repeated care frames reuse scene resources and Workshop releases all owned resources
+  ---
+  duration_ms: 22.8135
+  type: 'test'
+  ...
+# Subtest: feeding approaches the posed muzzle; ball play and growth remain distinct from legacy yard acknowledgement
+ok 31 - feeding approaches the posed muzzle; ball play and growth remain distinct from legacy yard acknowledgement
+  ---
+  duration_ms: 21.1968
+  type: 'test'
+  ...
+# Subtest: forest-bud life visits all awake gestures, rests between them, then wakes with a stretch
+ok 32 - forest-bud life visits all awake gestures, rests between them, then wakes with a stretch
+  ---
+  duration_ms: 1.3841
+  type: 'test'
+  ...
+# Subtest: forest-bud life attention fades the current nap, reduced motion rests, and directors do not share a clock
+ok 33 - forest-bud life attention fades the current nap, reduced motion rests, and directors do not share a clock
+  ---
+  duration_ms: 0.468
+  type: 'test'
+  ...
+# Subtest: forest-bud autonomous body and eyes wake for real care, recover, and leave another companion untouched
+ok 34 - forest-bud autonomous body and eyes wake for real care, recover, and leave another companion untouched
+  ---
+  duration_ms: 1396.6993
+  type: 'test'
+  ...
+# Subtest: forest-bud dynamic measurements use deformed tail vertices and release owned skeleton textures exactly once
+ok 35 - forest-bud dynamic measurements use deformed tail vertices and release owned skeleton textures exactly once
+  ---
+  duration_ms: 520.6151
+  type: 'test'
+  ...
+# Subtest: forest-bud WebGL1 fallback animates the same tail without a visible GPU-skinned mesh
+ok 36 - forest-bud WebGL1 fallback animates the same tail without a visible GPU-skinned mesh
+  ---
+  duration_ms: 514.7936
+  type: 'test'
+  ...
+# Subtest: forest-bud low density preserves the approved silhouette and skeleton while reducing mesh triangles
+ok 37 - forest-bud low density preserves the approved silhouette and skeleton while reducing mesh triangles
+  ---
+  duration_ms: 1773.7542
+  type: 'test'
+  ...
+1..37
+# tests 37
+# suites 0
+# pass 37
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 16782.8139
