@@ -66,7 +66,7 @@ function boundedResult(value) {
 function messagesOf(turns) {
   const messages = [];
   for (const turn of turns) {
-    messages.push({ role: 'user', text: turn.text, turnId: turn.turn_id });
+    messages.push({ role: 'user', text: turn.text, turnId: turn.turn_id, ...(turn.failed_at ? { failed: true, retryable: true } : {}) });
     if (turn.result) {
       messages.push({ role: 'assistant', text: outputText(turn.result), result: turn.result, turnId: turn.turn_id,
         ...(turn.actions.length && turn.actions.every(item => item.status === 'committed') ? { committed: true } : {}) });
@@ -111,7 +111,7 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
   }
   async function snapshot(client, family, who, chat, page = null) {
     const turns = (await client.query(`SELECT * FROM saas_assistant_turns WHERE family_id=$1 AND user_id=$2 AND generation=$3
-      AND completed_at IS NOT NULL AND sequence<$4 ORDER BY sequence DESC LIMIT $5`,
+      AND (completed_at IS NOT NULL OR failed_at IS NOT NULL) AND sequence<$4 ORDER BY sequence DESC LIMIT $5`,
       [...scope(family, who), chat.generation, page ? page.before : Number.MAX_SAFE_INTEGER, VISIBLE_TURNS + 1])).rows;
     const hasMore = turns.length > VISIBLE_TURNS, visible = turns.slice(0, VISIBLE_TURNS).reverse();
     const nextCursor = hasMore ? Buffer.from(JSON.stringify({ generation: chat.generation, before: visible[0].sequence })).toString('base64url') : null;
@@ -127,6 +127,10 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
         if (pending) body.messages.push({ role: 'user', text: pending.text, turnId: chat.pending_turn_id, pending: true });
       }
     }
+    const last = visible.at(-1);
+    if (!page && !body.pending && last && last.failed_at) {
+      body.retryTurn = { generation: chat.generation, turnId: last.turn_id, text: last.text, context: last.context };
+    }
     return body;
   }
   async function changed(client, family, who, chat, code = 'ASSISTANT_CHAT_CHANGED') {
@@ -139,6 +143,7 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
       const page = pageCursor(body.cursor);
       await rate(client, who, family, 'assistant-read', 120);
       const chat = await getChat(client, family, who);
+      if (chat.pending_turn_id && +chat.pending_expires_at <= +at()) await failPending(client, family, who, chat, 'ASSISTANT_INTERRUPTED');
       if ((body.generation !== undefined && body.generation !== chat.generation) || (page && page.generation !== chat.generation)) {
         return changed(client, family, who, chat);
       }
@@ -171,10 +176,10 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
       [leaseId, family.id, who.user.id, who.session.token_hash, new Date(+at() + 30000)]);
     return leaseId;
   }
-  async function discardPending(client, family, who, chat) {
+  async function failPending(client, family, who, chat, code) {
     if (!chat.pending_turn_id) return;
-    await client.query(`DELETE FROM saas_assistant_turns WHERE family_id=$1 AND user_id=$2 AND generation=$3
-      AND turn_id=$4 AND completed_at IS NULL`, [...scope(family, who), chat.generation, chat.pending_turn_id]);
+    await client.query(`UPDATE saas_assistant_turns SET failed_at=$5,failure_code=$6 WHERE family_id=$1 AND user_id=$2 AND generation=$3
+      AND turn_id=$4 AND completed_at IS NULL`, [...scope(family, who), chat.generation, chat.pending_turn_id, at(), code]);
     await client.query(`UPDATE saas_assistant_chats SET pending_turn_id=NULL,pending_expires_at=NULL
       WHERE family_id=$1 AND user_id=$2 AND generation=$3`, [...scope(family, who), chat.generation]);
     chat.pending_turn_id = null; chat.pending_expires_at = null;
@@ -208,12 +213,15 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
       const reply = failure(409, 'ASSISTANT_CHAT_BUSY', '上一条消息还在处理中，请稍后重试', await snapshot(client, family, who, chat));
       reply.body.retryAfter = 1; reply.headers = { 'Retry-After': '1' }; return { reply };
     }
-    await discardPending(client, family, who, chat);
+    await failPending(client, family, who, chat, 'ASSISTANT_INTERRUPTED');
     await rate(client, who, family, 'assistant', 12);
     if (!Number.isSafeInteger(chat.sequence + 1)) return { reply: failure(409, 'ASSISTANT_CHAT_LIMIT', '请清空会话后重新开始') };
     const leaseId = await acquireLease(client, family, who), sequence = chat.sequence + 1, sampled = at();
-    await client.query(`INSERT INTO saas_assistant_turns(family_id,user_id,generation,turn_id,sequence,input_digest,text,source_revision,family_day,created_at)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`, [...scope(family, who), chat.generation, input.turnId, sequence, input.digest, input.text, family.revision, familyDay(sampled), sampled]);
+    await client.query(`INSERT INTO saas_assistant_turns(family_id,user_id,generation,turn_id,sequence,input_digest,text,source_revision,family_day,created_at,context)
+      VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+      ON CONFLICT(family_id,user_id,generation,turn_id) DO UPDATE SET sequence=excluded.sequence,
+        source_revision=excluded.source_revision,family_day=excluded.family_day,failed_at=NULL,failure_code=NULL`,
+      [...scope(family, who), chat.generation, input.turnId, sequence, input.digest, input.text, family.revision, familyDay(sampled), sampled, input.context]);
     await client.query(`UPDATE saas_assistant_chats SET sequence=$3,pending_turn_id=$4,pending_expires_at=$5,updated_at=$6 WHERE family_id=$1 AND user_id=$2`,
       [...scope(family, who), sequence, input.turnId, new Date(+sampled + 30000), sampled]);
     const turns = await loadContext(client, family, who, chat, input.text);
@@ -237,7 +245,7 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
       return changed(client, family, who, chat);
     }
     if (!output || family.revision !== started.revision || familyDay(at()) !== started.day) {
-      await discardPending(client, family, who, chat);
+      await failPending(client, family, who, chat, output ? 'ASSISTANT_STATE_CHANGED' : 'ASSISTANT_UNAVAILABLE');
       if (output) return changed(client, family, who, chat, 'ASSISTANT_STATE_CHANGED');
       return failure(503, 'ASSISTANT_UNAVAILABLE', '暂时无法处理这句话，请重试', await snapshot(client, family, who, chat));
     }
@@ -246,8 +254,8 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
     const drafting = actions.length > 0;
     const cancelling = output.cancelDraft === true && isDraftCancellation(input.text);
     const draft = cancelling ? null : drafting ? context : chat.draft;
-    const contextResult = cancelling ? null : drafting ? context : chat.draft ? chat.context_result :
-      output.kind === 'clarify' ? context : chat.context_result;
+    const contextResult = cancelling ? null : drafting ? context : chat.context_result ||
+      (output.kind === 'clarify' ? context : null);
     await client.query(`UPDATE saas_assistant_turns SET result=$5,actions=$6,completed_at=$7
       WHERE family_id=$1 AND user_id=$2 AND generation=$3 AND turn_id=$4`, [...scope(family, who), chat.generation, input.turnId, output, actions, at()]);
     const updated = (await client.query(`UPDATE saas_assistant_chats SET draft=$3,context_result=$4,pending_turn_id=NULL,pending_expires_at=NULL,updated_at=$5

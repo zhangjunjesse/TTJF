@@ -677,7 +677,10 @@
     var editor = assistantEditor(result);
     if (!editor) { toast('无法办理这项操作，请在助手中重新选择'); return false; }
     rememberDraft();
-    if (ui.form && ui.form.kind === editor.kind && (ui.form.data.id || '') === (editor.data.id || '')) {
+    var sameTarget = ui.form && ['id','itemId','rewardId','requestId','taskId'].every(function (field) {
+      return (ui.form.data[field] || '') === (editor.data[field] || '');
+    });
+    if (sameTarget && ui.form.kind === editor.kind && editor.kind !== 'assistantReview') {
       // A partially filled form can contain a reason or time the parent didn't ask to replace.
       Object.keys(editor.patch).forEach(function (key) { ui.form.data[key] = editor.patch[key]; });
       ui.form.openedRevision = revision;
@@ -690,7 +693,14 @@
   function assistantEditor(result) {
     var a = result.action || {}, p = a.payload || a, previous, patch, kind;
     if (result.kind === 'form' && result.form === 'pointItem') { kind = 'pointItem'; patch = result.fields || {}; previous = {points:'', enabled:true}; }
-    else if (a.type === 'points.add') { kind = 'points'; patch = Object.assign({itemId:''}, p); }
+    else if (a.type === 'points.add') {
+      kind = 'points'; patch = Object.assign({itemId:''}, p);
+      if (patch.itemId) {
+        var rule = find(state.pointItems, patch.itemId);
+        if (!rule || !rule.enabled) return null;
+        patch = Object.assign({name:rule.name, points:rule.points}, patch);
+      }
+    }
     else if (a.type === 'task.save') { kind = 'task'; patch = p.task; previous = patch && find(state.tasks, patch.id); }
     else if (a.type === 'reward.save') { kind = 'reward'; patch = p.reward; previous = patch && find(state.rewards, patch.id); }
     else if (a.type === 'pointItem.save') { kind = 'pointItem'; patch = p.item; previous = patch && find(state.pointItems, patch.id); }

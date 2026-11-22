@@ -169,6 +169,21 @@ async function lifecycle() {
     await page.waitForFunction(() => !FamilyAssistantPanel.getState().busy && document.querySelector('#assistant-chat-log').textContent.includes('等待后的答复'), { timeout: 5000 });
     assert.equal(await page.evaluate(() => __qaRequests.some(call => call.url.endsWith('/turn'))), false); await draftUntouched();
   });
+  await check('A failed turn from another device restores the original text and context for explicit retry', async () => {
+    const original = await page.evaluate(() => {
+      const turn = {generation:__qaSnapshot.generation,turnId:'00000000-0000-4000-8000-000000000099',text:'查看之前的提醒',context:{view:'reminders',form:'task',targetId:'original-task'}};
+      __qaSnapshot.messages.push({role:'user',text:turn.text,turnId:turn.turnId,failed:true});
+      __qaSnapshot.retryTurn = turn; FamilyAssistantPanel.refresh(); return turn;
+    });
+    await page.waitForSelector(a('retry'), { visible:true });
+    assert.equal((await state()).pendingTurnId, original.turnId);
+    assert.equal(await page.evaluate(() => __qaRequests.some(call => call.url.endsWith('/turn'))), false);
+    await write('下一条消息'); assert.equal(await page.$eval('#assistant-chat-send', node => node.disabled), false);
+    await page.click(a('retry')); await ready();
+    assert.deepEqual(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).map(call => call.body)), [original]);
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '下一条消息');
+    assert.equal((await state()).pendingTurnId, '');
+  });
 }
 async function drafts() {
   await fixture();

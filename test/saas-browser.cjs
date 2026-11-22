@@ -24,7 +24,7 @@ const SCRIPT = FULL ? 'test/saas-full-browser.cjs' : 'test/saas-browser.cjs';
 const OUT = path.join(process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(ROOT, 'artifacts'), EVIDENCE_VERSION + (FULL ? '-full-browser' : '-browser'), RUN);
 const SOURCES = ['package.json', 'docs/saas-design.md', 'saas-server.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/auth.cjs', 'saas/families.cjs', 'saas/business.cjs', 'saas/mail.cjs', 'saas/migrations/001-initial.sql', 'saas-client.js', 'saas.css', 'app.js', 'model.js', 'styles.css', 'index.html', 'runtime.js', 'farm-ui.js', 'farm-scene.js', 'test/saas-browser.cjs', 'test/saas-full-browser.cjs', 'test/browser.cjs', 'assistant.js', 'assistant-service.cjs', 'saas/lifecycle.cjs', 'saas/network.cjs', 'saas/maintenance.cjs', 'saas/migrations/002-lifecycle.sql', 'package-lock.json', 'docs/saas-completion.md'];
 const sha = file => crypto.createHash('sha256').update(fs.readFileSync(path.resolve(ROOT, file))).digest('hex');
-SOURCES.push('saas/sqlite.cjs', 'tools/saas-db.cjs', 'world-ui.js', 'farm-world.css', 'farm/scene.js', 'farm/world-stations.js', 'home-points.js', 'home-points.css');
+SOURCES.push('saas/assistant-chat.cjs', 'saas/migrations/003-assistant-chat.sql', 'assistant-panel.js', 'assistant-panel.css', 'assistant-chat.cjs', 'assistant-tools.cjs', 'config/assistant/system.md', 'config/assistant/tools.json', 'config/assistant/legacy-system.md', 'config/assistant/point-item-create-system.md', 'saas/sqlite.cjs', 'tools/saas-db.cjs', 'world-ui.js', 'farm-world.css', 'farm/scene.js', 'farm/world-stations.js', 'home-points.js', 'home-points.css');
 const hashes = () => Object.fromEntries(SOURCES.filter(file => fs.existsSync(path.join(ROOT, file))).map(file => [file, sha(file)]));
 const cleanError = value => String(value).replace(/postgres(?:ql)?:\/\/[^\s"']+/gi, '[database URL redacted]').replace(/#(verify|reset|invite)=[^\s"']+/g, '#$1=[token redacted]');
 const report = {
@@ -337,7 +337,7 @@ async function registerAndVerify(page, email) {
 }
 async function audit(page, name, primary = []) {
   const measured = await page.evaluate(() => {
-    const root = document.querySelector('.sheet') || document.querySelector('.saas-card') || document.querySelector('.app-shell') || document.body;
+    const root = document.querySelector('.assistant-panel-host:not([hidden]) .assistant-panel') || document.querySelector('.sheet') || document.querySelector('.saas-card') || document.querySelector('.app-shell') || document.body;
     const controls = [...root.querySelectorAll('button,input:not([type="hidden"]):not([type="file"]):not([type="checkbox"]),select,textarea')].filter(node => {
       const r = node.getBoundingClientRect(); return r.width && r.height && getComputedStyle(node).visibility !== 'hidden';
     }).map(node => {

@@ -155,7 +155,9 @@ async function run() {
   Q.report.continueAfterGroupFailure = true; Q.report.selection = process.env.SAAS_FULL_GROUPS || 'all'; Q.report.persistence = []; Q.report.failureContexts = [];
   Q.report.boundaries.push('Full-suite assistant uses the real local instruction parser through HTTP with apiKey explicitly empty; no external AI provider is called. One named input throws a controlled provider failure to verify the HTTP503 recovery path.', 'Reminder cases control browser Date/performance offsets and the injected server clock while real foreground timers run; not device background notification validation.', 'Speech recognition API is deliberately unavailable to verify the typing fallback; no microphone or external speech provider is tested.');
   const localAssistant = createAssistantService({ apiKey: '' });
-  env = await Q.initialize({ assistantService: { status: localAssistant.status, interpret: (...args) => { if (args[0] === '合成服务故障') throw new Error('Synthetic provider failure'); return localAssistant.interpret(...args); } } });
+  const withFailure = method => (...args) => { if (args[0] === '合成服务故障') throw new Error('Synthetic provider failure'); return localAssistant[method](...args); };
+  env = await Q.initialize({ assistantService: { status: localAssistant.status, chatStatus: localAssistant.chatStatus,
+    interpret: withFailure('interpret'), chat: withFailure('chat') } });
   env.clock(Date.parse('2026-11-16T04:30:00Z'));
   page = await env.newPage({ controlledClock: true }); Q.active(page);
   await page.evaluateOnNewDocument(() => { window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined; });
@@ -411,29 +413,88 @@ async function run() {
   });
 
   await group('assistant-export', async () => {
-    async function interpret(text) { await Q.home(page); await click(page, a('voice')); await form({ speech: text }); await click(page, save); await page.waitForFunction(() => !window.FamilyDemo.getUI().aiBusy); }
+    const chatAction = name => 'button[data-assistant-action="' + name + '"]';
+    async function closeAssistant() {
+      if (await page.evaluate(() => window.FamilyAssistantPanel && window.FamilyAssistantPanel.isOpen())) await click(page, chatAction('close'));
+    }
+    async function openAssistant(keepContext = false) {
+      await closeAssistant(); if (!keepContext) await Q.home(page);
+      await click(page, a('assistant-open'));
+      await page.waitForFunction(() => { const s = window.FamilyAssistantPanel.getState(); return s.open && s.loaded && !s.busy; }, { timeout: 10000 });
+      await page.waitForSelector('#assistant-chat-input', { visible: true });
+    }
+    async function interpret(text, keepContext = false) {
+      await openAssistant(keepContext); await type(page, '#assistant-chat-input', text);
+      const response = page.waitForResponse(result => result.request().method() === 'POST' && new URL(result.url()).pathname === '/api/assistant/chat/turn');
+      await click(page, '#assistant-chat-send'); const result = await response;
+      assert.equal(result.status(), 200, 'conversation turn returns a draft');
+      await page.waitForFunction(() => !window.FamilyAssistantPanel.getState().busy);
+      return result.json();
+    }
+    async function applyDraft() {
+      await page.waitForSelector('.assistant-current-draft ' + chatAction('apply'), { visible: true });
+      await click(page, '.assistant-current-draft ' + chatAction('apply'));
+      await page.waitForFunction(() => !window.FamilyAssistantPanel.isOpen());
+    }
     await Q.check('HTTP assistant proposals only populate editable points/reminder/gift drafts', async () => {
-      const initial = await sql(); await interpret('他刚刚主动收好了书包，给五分'); await page.waitForSelector('[name="reason"]'); assert.deepEqual(await sql(), initial);
+      const initial = await sql(), proposed = await interpret('他刚刚主动收好了书包，给五分');
+      assert.equal(proposed.draft.result.action.type, 'points.add'); assert.deepEqual(await sql(), initial);
+      await applyDraft(); await page.waitForSelector('[name="reason"]'); assert.deepEqual(await sql(), initial);
       assert.equal(Number(await page.$eval('[name="points"]', node => node.value)), 5); await authorize('AI point proposal confirmed');
-      const afterPoints = await sql(); await interpret('明天早上七点半提醒带水杯'); await page.waitForSelector('[name="title"]'); assert.deepEqual(await sql(), afterPoints);
+      const afterPoints = await sql(); await interpret('明天早上七点半提醒带水杯'); assert.deepEqual(await sql(), afterPoints);
+      await applyDraft(); await page.waitForSelector('[name="title"]'); assert.deepEqual(await sql(), afterPoints);
       assert.equal(await page.$eval('[name="date"]', node => node.value), day(1)); await authorize('AI reminder proposal confirmed');
-      const afterReminder = await sql(); await interpret('添加一个周末吃汉堡的礼品，六十分'); await page.waitForSelector('[name="category"]'); assert.deepEqual(await sql(), afterReminder);
+      const afterReminder = await sql(); await interpret('添加一个周末吃汉堡的礼品，六十分'); assert.deepEqual(await sql(), afterReminder);
+      await applyDraft(); await page.waitForSelector('[name="category"]'); assert.deepEqual(await sql(), afterReminder);
       assert.equal(await page.$eval('[name="category"]', node => node.value), 'weekend'); await authorize('AI gift proposal confirmed');
-      assert.ok(calls('/api/assistant').length >= 3); assert.deepEqual(await totals(page), { earned: 5, spent: 0, available: 5 });
-      await interpret('我还有多少积分'); await page.waitForSelector('.assistant-answer'); assert.match(await page.$eval('.assistant-answer', node => node.textContent), /5/); await Q.audit(page, 'phone-assistant-answer');
+      assert.ok(calls('/api/assistant/chat/turn').length >= 3); assert.deepEqual(await totals(page), { earned: 5, spent: 0, available: 5 });
+      const answer = await interpret('我还有多少积分'); assert.equal(answer.messages.at(-1).result.data.available, 5);
+      await page.waitForFunction(() => { const rows = document.querySelectorAll('.assistant-message:not(.assistant-message-user) .assistant-message-text'); return rows.length && /可用\s*5/.test(rows[rows.length-1].textContent); });
+      await Q.audit(page, 'phone-assistant-answer'); await closeAssistant();
     });
     await Q.check('Unavailable speech falls back to text and a controlled assistant HTTP503 keeps the draft unwritten', async () => {
-      await Q.home(page); await click(page, a('voice')); await click(page, a('listen'));
-      assert.match(await page.$eval('.sheet', node => node.textContent), /文字|不支持|不可用/);
-      await form({ speech: '合成服务故障' }); const before = await sql();
-      const response = page.waitForResponse(result => new URL(result.url()).pathname === '/api/assistant'); await click(page, save); assert.equal((await response).status(), 503);
-      await page.waitForFunction(() => !window.FamilyDemo.getUI().aiBusy); assert.deepEqual(await sql(), before); assert.equal((await ui(page)).form, 'voice');
-      assert.equal(await page.$eval('[name="speech"]', node => node.value), '合成服务故障'); await Q.shot(page, 'assistant-failure-draft-retained');
+      await openAssistant();
+      assert.equal(await page.$eval(chatAction('voice'), node => node.disabled), true);
+      assert.match(await page.$eval(chatAction('voice'), node => node.title), /不支持|文字|不可用/);
+      assert.equal(await page.$eval('#assistant-chat-input', node => node.disabled), false);
+      await type(page, '#assistant-chat-input', '合成服务故障'); const before = await sql(), ids = [];
+      const record = request => { if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/assistant/chat/turn') { const sent = JSON.parse(request.postData()); ids.push({turnId:sent.turnId,context:sent.context}); } };
+      page.on('request', record);
+      try {
+        let response = page.waitForResponse(result => new URL(result.url()).pathname === '/api/assistant/chat/turn');
+        await click(page, '#assistant-chat-send'); assert.equal((await response).status(), 503);
+        await page.waitForFunction(() => !window.FamilyAssistantPanel.getState().busy);
+        assert.deepEqual(await sql(), before); assert.equal(await page.evaluate(() => window.FamilyAssistantPanel.isOpen()), true);
+        assert.match(await page.$eval('.assistant-message-user:last-of-type', node => node.textContent), /合成服务故障/);
+        assert.match(await page.$eval('#assistant-chat-error', node => node.textContent), /重试|稍后/);
+        await page.reload({waitUntil:'load'}); await selectAfterReload(); await openAssistant();
+        const restored = await env.api(page, '/api/assistant/chat/read', 'POST', {});
+        assert.equal(restored.status, 200); assert.equal(restored.body.messages.at(-1).failed, true);
+        assert.equal(restored.body.retryTurn.turnId, ids[0].turnId); assert.deepEqual(restored.body.retryTurn.context, ids[0].context);
+        assert.equal(ids.length, 1, 'refresh restores failure history without automatic model replay');
+        assert.match(await page.$eval('.assistant-message-user:last-of-type', node => node.textContent), /合成服务故障/);
+        response = page.waitForResponse(result => new URL(result.url()).pathname === '/api/assistant/chat/turn');
+        await click(page, chatAction('retry')); assert.equal((await response).status(), 503);
+        await page.waitForFunction(() => !window.FamilyAssistantPanel.getState().busy);
+        assert.equal(ids.length, 2); assert.equal(ids[0].turnId, ids[1].turnId, 'refresh retries retain their idempotency UUID');
+        assert.deepEqual(ids[0].context, ids[1].context, 'refresh retries retain the original context');
+        assert.deepEqual(await sql(), before); assert.match(await page.$eval('.assistant-message-user:last-of-type', node => node.textContent), /合成服务故障/);
+        await Q.shot(page, 'assistant-failure-draft-retained');
+        await type(page, '#assistant-chat-input', '现在积分多少');
+        assert.equal(await page.$eval('#assistant-chat-send', node => node.disabled), false, 'a failed old turn does not block a new message');
+        response = page.waitForResponse(result => new URL(result.url()).pathname === '/api/assistant/chat/turn');
+        await click(page, '#assistant-chat-send'); assert.equal((await response).status(), 200);
+        await page.waitForFunction(() => !window.FamilyAssistantPanel.getState().busy);
+        assert.equal(ids.length, 3); assert.notEqual(ids[2].turnId, ids[0].turnId); assert.deepEqual(await sql(), before);
+      } finally { page.off('request', record); await closeAssistant(); }
     });
     await Q.check('Context instruction creates a template without awarding and export matches only the current SQLite business state', async () => {
-      await templates(); await click(page, a('ai-toggle')); await form({ aiText: '添加一个整理书包的常用加分项，五分，原因是主动整理书包' }); await click(page, a('ai-fill', 'pointItems'));
-      await page.waitForFunction(() => !window.FamilyDemo.getUI().aiBusy); await page.waitForSelector('[name="name"]'); await authorize('context AI template save');
-      assert.equal((await totals(page)).earned, 5);
+      await closeAssistant(); await templates(); const beforeTemplate = await sql();
+      await interpret('添加一个整理书包的常用加分项，五分，原因是主动整理书包', true);
+      assert.deepEqual(await sql(), beforeTemplate); await applyDraft(); await page.waitForSelector('[name="name"]');
+      assert.equal(await page.$eval('[name="name"]', node => node.value), '整理书包');
+      assert.equal(Number(await page.$eval('[name="points"]', node => node.value)), 5); await authorize('context AI template save');
+      assert.equal((await totals(page)).earned, 5); await closeAssistant();
       await page.evaluate(() => { const native = URL.createObjectURL; window.__qaExport = null; URL.createObjectURL = function (blob) { if (blob.type === 'application/json') blob.text().then(text => { window.__qaExport = text; }); return native.call(URL, blob); }; });
       await preferences('export'); await page.waitForFunction(() => typeof window.__qaExport === 'string');
       const exported = JSON.parse(await page.evaluate(() => window.__qaExport)); assert.deepEqual(exported, (await sql()).state);

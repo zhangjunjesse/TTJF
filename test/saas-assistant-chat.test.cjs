@@ -128,7 +128,8 @@ test('assistant chat discards stale state or family-day model output and allows 
   const pending = turn(f, owner, initial.generation, '阅读加分', id); await entered.promise;
   await H.setup(f, owner, 'math'); f.clock.value += 86400000; release.resolve();
   const stale = await pending; assert.equal(stale.status, 409); assert.equal(stale.body.code, 'ASSISTANT_STATE_CHANGED');
-  assert.deepEqual(stale.body.messages, []); assert.equal(stale.body.draft, undefined);
+  assert.equal(stale.body.messages.length, 1); assert.equal(stale.body.messages[0].failed, true);
+  assert.equal(stale.body.retryTurn.turnId, id); assert.equal(stale.body.draft, undefined);
   const retried = await turn(f, owner, initial.generation, '阅读加分', id);
   assert.equal(retried.status, 200); assert.equal(retried.body.draft.sourceRevision, 2);
   assert.equal(retried.body.draft.familyDay, '2026-11-17'); assert.equal(calls, 2);
@@ -258,8 +259,9 @@ test('assistant pending work is released during restore while completed conversa
   await backupDatabase({ databasePath: f.databasePath, output: snapshot });
   await restoreDatabase({ source: snapshot, output, appStopped: true });
   const restored = await createStore({ databasePath: output, migrate: false });
-  const rows = (await restored.database.query('SELECT text,completed_at FROM saas_assistant_turns')).rows;
-  assert.equal(rows.length, 1); assert.equal(rows[0].text, '保留的历史'); assert.ok(rows[0].completed_at);
+  const rows = (await restored.database.query('SELECT text,completed_at,failed_at,failure_code FROM saas_assistant_turns ORDER BY sequence')).rows;
+  assert.equal(rows.length, 2); assert.equal(rows[0].text, '保留的历史'); assert.ok(rows[0].completed_at);
+  assert.equal(rows[1].text, '未完成'); assert.ok(rows[1].failed_at); assert.equal(rows[1].failure_code, 'ASSISTANT_INTERRUPTED');
   assert.equal((await restored.database.query('SELECT pending_turn_id FROM saas_assistant_chats')).rows[0].pending_turn_id, null);
   await restored.close();
 });
@@ -319,4 +321,54 @@ test('assistant clarification and read-only steps preserve the current draft and
   const unchanged = (await H.request(f.server, 'GET', '/api/state', undefined, owner)).body;
   assert.equal(unchanged.revision, 2); assert.equal(M.totals(unchanged.state).earned, 0);
   assert.equal(cancelled.body.messages.length, 10, 'cancellation preserves all conversation originals');
+});
+
+
+test('assistant admitted failures preserve original wording and context across login, reveal no provider details, and retry with the same UUID', async t => {
+  let calls = 0, fail = true;
+  const f = await H.fixture(t, { assistantService: adapter(async () => { calls++; if (fail) throw new Error('PRIVATE_PROVIDER_SECRET'); return award(5); }) });
+  const owner = await H.family(f, await H.register(f, 'chat-failure-history@example.test'));
+  const initial = (await read(f, owner)).body, turnId = crypto.randomUUID(), context = { view: 'points', form: 'points', targetId: '' };
+  const failed = await turn(f, owner, initial.generation, '原始失败的加分请求', turnId, context);
+  assert.equal(failed.status, 503); assert.equal(JSON.stringify(failed.body).includes('PRIVATE_PROVIDER_SECRET'), false);
+  assert.deepEqual(failed.body.messages, [{ role: 'user', text: '原始失败的加分请求', turnId, failed: true, retryable: true }]);
+  assert.deepEqual(failed.body.retryTurn, { generation: initial.generation, turnId, text: '原始失败的加分请求', context });
+  const independent = await f.openDatabase(), second = await f.start({ database: independent });
+  const loggedIn = { ...await H.login(f, owner.email, H.PASSWORD, second), familyId: owner.familyId };
+  const restored = await read(f, loggedIn, second);
+  assert.deepEqual(restored.body.messages, failed.body.messages); assert.deepEqual(restored.body.retryTurn, failed.body.retryTurn);
+  assert.equal(calls, 1, 'reading a failed turn never replays it automatically');
+  const stored = (await f.database.query('SELECT text,context,failed_at,failure_code FROM saas_assistant_turns WHERE turn_id=$1', [turnId])).rows[0];
+  assert.equal(stored.text, '原始失败的加分请求'); assert.deepEqual(stored.context, context);
+  assert.ok(stored.failed_at); assert.equal(stored.failure_code, 'ASSISTANT_UNAVAILABLE');
+  fail = false;
+  const retried = await turn(f, loggedIn, restored.body.generation, restored.body.retryTurn.text, restored.body.retryTurn.turnId, restored.body.retryTurn.context, second);
+  assert.equal(retried.status, 200); assert.equal(calls, 2); assert.equal(retried.body.messages.length, 2);
+  assert.equal(retried.body.messages[0].failed, undefined); assert.equal(retried.body.retryTurn, undefined);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_assistant_turns WHERE turn_id=$1', [turnId])).rows[0].n, 1);
+  assert.equal((await H.request(f.server, 'GET', '/api/state', undefined, owner)).body.state.points.length, 0, 'successful draft retry still does not write business state');
+  assert.equal((await clear(f, loggedIn, restored.body.generation)).status, 200);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_assistant_turns WHERE family_id=$1', [owner.familyId])).rows[0].n, 0);
+});
+
+test('assistant interrupted turns become visible retryable history and a delayed old worker cannot overwrite a successful retry', async t => {
+  const entered = gate(), release = gate(); let calls = 0;
+  const f = await H.fixture(t, { assistantService: adapter(async () => {
+    calls++; if (calls === 1) { entered.resolve(); await release.promise; return award(5); } return award(7);
+  }) });
+  const owner = await H.family(f, await H.register(f, 'chat-interrupted@example.test'));
+  const initial = (await read(f, owner)).body, turnId = crypto.randomUUID();
+  const pending = turn(f, owner, initial.generation, '中断后重试的原话', turnId); await entered.promise;
+  f.clock.value += 31000;
+  const recovered = await read(f, owner);
+  assert.equal(recovered.status, 200); assert.equal(recovered.body.pending, undefined);
+  assert.equal(recovered.body.messages[0].text, '中断后重试的原话'); assert.equal(recovered.body.messages[0].failed, true);
+  const retry = recovered.body.retryTurn;
+  const completed = await turn(f, owner, retry.generation, retry.text, retry.turnId, retry.context);
+  assert.equal(completed.status, 200); assert.equal(completed.body.draft.result.action.payload.points, 7);
+  release.resolve(); const late = await pending;
+  assert.equal(late.status, 409); assert.equal(late.body.code, 'ASSISTANT_CHAT_CHANGED');
+  const final = (await read(f, owner)).body;
+  assert.equal(final.messages.length, 2); assert.equal(final.draft.result.action.payload.points, 7);
+  assert.equal((await f.database.query('SELECT count(*) AS n FROM saas_assistant_turns WHERE turn_id=$1', [turnId])).rows[0].n, 1);
 });

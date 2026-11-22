@@ -1,6 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { createAssistantService } = require('../assistant-service.cjs');
+const { executeTool } = require('../assistant-tools.cjs');
 const Q = require('./saas-browser.cjs');
 const { B, action, click } = Q;
 const selector = name => '[data-assistant-action="' + name + '"]';
@@ -8,8 +9,11 @@ const entry = '[data-action="assistant-open"]';
 
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
-  assert.ok(['phone', 'tablet', 'landscape'].includes(device));
-  const env = await Q.initialize({assistantService:createAssistantService({apiKey:''})});
+  assert.ok(['phone', 'tablet', 'landscape', 'template'].includes(device));
+  const assistant = createAssistantService({apiKey:''});
+  if (device === 'template') assistant.chat = async (text, state, now) =>
+    executeTool('draft_award', {itemId:'reading-rule'}, state, now, {text,enforceIntent:true});
+  const env = await Q.initialize({assistantService:assistant});
   const size = device === 'tablet' ? {width:1024,height:768} : device === 'landscape' ? {width:844,height:390} : {width:390,height:844};
   const page = await env.newPage({...size,controlledClock:true});
   Q.active(page);
@@ -21,12 +25,35 @@ async function run() {
     revision:initial.body.revision, action:{id:'assistant-test-pin',type:'parent.setup',method:'pin',pin:Q.PIN,confirmPin:Q.PIN}
   });
   assert.equal(setup.status, 200);
+  if (device === 'template') {
+    const rule = {id:'assistant-test-template',type:'pointItem.save',item:{id:'reading-rule',name:'独立阅读',points:8,reason:'上次的情况',enabled:true}};
+    const revision = setup.body.revision;
+    const challenge = await env.api(page, '/api/parent/challenge', 'POST', {revision, action:rule});
+    assert.equal(challenge.status, 200);
+    const verified = await env.api(page, '/api/parent/verify', 'POST', {challengeId:challenge.body.challengeId,answer:Q.PIN});
+    assert.equal(verified.status, 200);
+    const saved = await env.api(page, '/api/action', 'POST', {revision,action:rule,grant:verified.body.grant});
+    assert.equal(saved.status, 200);
+  }
   await page.reload({waitUntil:'load'}); await Q.ready(page, family);
   const ledger = async () => (await env.api(page, '/api/state')).body.state.points;
   const open = async () => {
     await click(page, entry);
     await page.waitForSelector('#assistant-chat-input', {visible:true});
   };
+  if (device === 'template') {
+    await Q.check('an award identified only by rule ID opens with that rule’s name and score', async () => {
+      await click(page, action('all-behaviors')); await click(page, action('points-new'));
+      await B.fillForm(page, {name:'整理桌面',points:'5',reason:'另一件事'});
+      await open(); await B.fill(page, '#assistant-chat-input', '今天按独立阅读的规则加分'); await click(page, '#assistant-chat-send');
+      await page.waitForSelector(selector('apply'), {visible:true}); await click(page, selector('apply'));
+      const values = await page.$eval('#editor-form', form => Object.fromEntries(new FormData(form)));
+      assert.equal(values.itemId, 'reading-rule'); assert.equal(values.name, '独立阅读');
+      assert.equal(values.points, '8'); assert.equal(values.reason, '');
+      assert.deepEqual(await ledger(), []); assert.deepEqual(Q.report.pageErrors, []);
+    });
+    return;
+  }
   if (device !== 'phone') {
     await Q.check(device === 'tablet' ? 'iPad-sized home keeps the companion visible beside the assistant' : 'landscape keyboard leaves the chat composer and send button tappable', async () => {
       if (device === 'tablet') await click(page, action('home-view', 'companion'));

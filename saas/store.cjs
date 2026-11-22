@@ -20,7 +20,7 @@ const REQUIRED_COLUMNS = {
   saas_parent_grants: ['token_hash', 'family_id', 'user_id', 'session_hash', 'revision', 'action_receipt', 'expires_at'],
   saas_assistant_leases: ['id', 'family_id', 'user_id', 'session_hash', 'expires_at'],
   saas_assistant_chats: ['family_id', 'user_id', 'generation', 'sequence', 'draft', 'context_result', 'pending_turn_id', 'pending_expires_at', 'created_at', 'updated_at'],
-  saas_assistant_turns: ['family_id', 'user_id', 'generation', 'turn_id', 'sequence', 'input_digest', 'text', 'result', 'actions', 'source_revision', 'family_day', 'created_at', 'completed_at'],
+  saas_assistant_turns: ['family_id', 'user_id', 'generation', 'turn_id', 'sequence', 'input_digest', 'text', 'context', 'result', 'actions', 'source_revision', 'family_day', 'created_at', 'completed_at', 'failed_at', 'failure_code'],
   saas_rate_limits: ['scope', 'count', 'expires_at']
 };
 async function assertDatabaseSchema(database) {

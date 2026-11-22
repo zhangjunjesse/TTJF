@@ -12,7 +12,7 @@ const JSON_COLUMNS = new Map([
   ['saas_parent_challenges', new Set(['action_receipt'])],
   ['saas_parent_grants', new Set(['action_receipt'])],
   ['saas_assistant_chats', new Set(['draft', 'context_result'])],
-  ['saas_assistant_turns', new Set(['result', 'actions'])]
+  ['saas_assistant_turns', new Set(['result', 'actions', 'context'])]
 ]);
 const TRANSACTION_CONTROL = new Set(['BEGIN', 'COMMIT', 'END', 'ROLLBACK', 'SAVEPOINT', 'RELEASE']);
 

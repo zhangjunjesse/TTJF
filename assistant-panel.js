@@ -3,7 +3,7 @@
   'use strict';
   var doc = root.document, config = {}, host = null, box = null, input = null, log = null;
   var opened = false, scope = '', epoch = 0, sequence = 0, active = null, poll = 0, frame = 0;
-  var generation = '', messages = [], draft = null, serverPending = null, pendingTurn = null;
+  var generation = '', messages = [], draft = null, serverPending = null, pendingTurn = null, failedTurnId = '';
   var hasMore = false, nextCursor = null, historyExpanded = false;
   var loaded = false, text = '', notice = '', error = '', retry = '', confirming = false;
   var opener = null, openingContext, hasOpeningContext = false, voice = null, voiceEpoch = 0;
@@ -107,6 +107,7 @@
     var html = '<article class="assistant-message' + (own ? ' assistant-message-user' : '') + (currentDraft ? ' assistant-message-current' : '') + '"><span class="assistant-sr-only">' + (own ? '你：' : '家长助手：') + '</span>' + (source ? '<span class="assistant-message-source">' + esc(source) + '</span>' : '') + '<div class="assistant-message-content">';
     var content = own ? message.text : supplementalText(message, currentDraft ? draft.result : result);
     if (content) html += '<p class="assistant-message-text">' + esc(content) + '</p>';
+    if (own && message.failed) html += '<span class="assistant-message-source">这条消息未完成</span>';
     if (currentDraft) html += currentDraftHTML();
     if (!own && result && !currentDraft) parts(result).forEach(function (part, index) {
       if (part.kind === 'route') html += routeCard(part, messageIndex, index, false);
@@ -137,7 +138,7 @@
     doc.getElementById('assistant-chat-status').textContent = status;
     doc.getElementById('assistant-panel-context').textContent = contextLabel();
     doc.getElementById('assistant-panel-context').hidden = !contextLabel();
-    doc.getElementById('assistant-chat-send').disabled = !loaded || !trim(text) || busy() || confirming || !!pendingTurn && retry === 'turn';
+    doc.getElementById('assistant-chat-send').disabled = !loaded || !trim(text) || busy() || confirming || uncertainTurn();
     doc.getElementById('assistant-chat-send').setAttribute('aria-busy', String(sending));
     host.querySelector('[data-assistant-action="clear"]').disabled = !loaded || clearing;
     var microphone = host.querySelector('[data-assistant-action="voice"]');
@@ -203,9 +204,17 @@
     if (earlier) historyExpanded = true;
     draft = snapshot.draft && snapshot.draft.generation === generation ? copy(snapshot.draft) : null;
     serverPending = snapshot.pending ? copy(snapshot.pending) : null;
+    if (!earlier) {
+      var saved = snapshot.retryTurn;
+      if (failedTurnId && pendingTurn && pendingTurn.turnId === failedTurnId) pendingTurn = null;
+      failedTurnId = '';
+      if (saved && saved.generation === generation && !serverPending && !hasTurn(saved.turnId, 'assistant')) {
+        pendingTurn = copy(saved); failedTurnId = saved.turnId;
+      }
+    }
     if (pendingTurn && (pendingTurn.generation !== generation || hasTurn(pendingTurn.turnId, 'assistant'))) pendingTurn = null;
     error = ''; retry = '';
-    if (pendingTurn && !serverPending) { error = '这条消息的结果还未确认，可以重试。'; retry = 'turn'; }
+    if (pendingTurn && !serverPending) { error = failedTurnId ? '这条消息未完成，可以重试，也可以发送新消息。' : '这条消息的结果还未确认，可以重试。'; retry = 'turn'; }
     renderConversation(!wasLoaded); if (earlier) log.scrollTop = top + log.scrollHeight - height;
     scheduleRead(); growInput();
     if (previousGeneration && (changed || cleared) && typeof config.onCleared === 'function') config.onCleared(previousGeneration);
@@ -213,7 +222,7 @@
   function failed(status, result, kind) {
     var snapshot = snapshotOf(result);
     if (snapshot && status === 409 && result.code !== 'ASSISTANT_CHAT_BUSY') {
-      accept(snapshot); pendingTurn = null; notice = result.code === 'ASSISTANT_DRAFT_STALE' ? '这份草稿已变化，请核对最新内容。' : '对话已更新，已同步最新内容。'; renderConversation(true); return;
+      pendingTurn = null; accept(snapshot); notice = result.code === 'ASSISTANT_DRAFT_STALE' ? '这份草稿已变化，请核对最新内容。' : '对话已更新，已同步最新内容。'; renderConversation(true); return;
     }
     if (snapshot) accept(snapshot);
     error = status === 0 ? '连接未完成，消息会保留，可以重试。' : result.code === 'ASSISTANT_CHAT_BUSY' ? '另一条消息正在整理，稍后可以重试。' : status === 401 ? '请重新登录后再打开助手。' : status === 429 ? '消息发得有点快，请稍后再试。' : status >= 500 ? '助手暂时没有回应，可以稍后重试。' : '这次没有完成，请重试。';
@@ -245,15 +254,16 @@
     return hex.slice(0, 8) + '-' + hex.slice(8, 12) + '-' + hex.slice(12, 16) + '-' + hex.slice(16, 20) + '-' + hex.slice(20);
   }
   function sendTurn(turn) {
-    error = ''; retry = ''; notice = ''; voiceNote = ''; pendingTurn = turn; draft = null;
+    error = ''; retry = ''; notice = ''; voiceNote = ''; failedTurnId = ''; pendingTurn = turn; draft = null;
     operation('turn', { generation: turn.generation, turnId: turn.turnId, text: turn.text, context: turn.context }, function (status, result) {
       var snapshot = snapshotOf(result);
       if (status === 200 && snapshot) accept(snapshot); else failed(status, result, 'turn');
     });
     renderConversation(true);
   }
+  function uncertainTurn() { return pendingTurn && pendingTurn.turnId !== failedTurnId && retry === 'turn'; }
   function send() {
-    if (!current() || !loaded || busy() || confirming || !trim(text) || pendingTurn && retry === 'turn') return;
+    if (!current() || !loaded || busy() || confirming || !trim(text) || uncertainTurn()) return;
     stopVoice();
     var turn;
     try { turn = { generation: generation, turnId: uuid(), text: trim(text), context: contextValue() }; }
@@ -375,7 +385,7 @@
   }
   function reset() {
     close({ restoreFocus: false, reason: 'reset' }); epoch++; cancelActive(); stopPoll(); stopVoice();
-    generation = ''; messages = []; draft = null; serverPending = null; pendingTurn = null; loaded = false;
+    generation = ''; messages = []; draft = null; serverPending = null; pendingTurn = null; failedTurnId = ''; loaded = false;
     hasMore = false; nextCursor = null; historyExpanded = false;
     text = ''; notice = ''; error = ''; retry = ''; confirming = false; opener = null; openingContext = null; hasOpeningContext = false; scope = ''; voiceNote = '';
     if (input) input.value = ''; renderConversation(false); updateControls();
