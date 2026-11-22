@@ -33,16 +33,37 @@ async function launcherLayout(page, name) {
     }));
     const stage = document.querySelector('#world-stage');
     const splitScene = document.body.dataset.worldRoute === 'reminders' && matchMedia('(min-width:701px) and (orientation:landscape)').matches;
+    const style = getComputedStyle(launcher), bounds = launcher.getBoundingClientRect();
+    const radius = (value, size) => value.endsWith('%') ? parseFloat(value) * size / 100 : parseFloat(value);
+    const corners = ['borderTopLeftRadius','borderTopRightRadius','borderBottomRightRadius','borderBottomLeftRadius'].map(key => {
+      const values = style[key].split(' ');
+      return [radius(values[0],bounds.width),radius(values[1] || values[0],bounds.height)];
+    });
+    const decoration = ['::before','::after'].filter(pseudo => {
+      const value = getComputedStyle(launcher,pseudo);
+      return value.content !== 'none' && value.content !== 'normal' && value.display !== 'none' && value.visibility !== 'hidden' && Number(value.opacity) > 0;
+    });
     return { viewport:{width:innerWidth,height:innerHeight}, nav:nav.getBoundingClientRect().toJSON(), controls,
       sceneBottom:splitScene && stage && rendered(stage) ? stage.getBoundingClientRect().bottom : null,
       entries:Array.from(document.querySelectorAll('[data-action="assistant-open"]')).filter(rendered).length,
       aria:launcher && { label:launcher.getAttribute('aria-label'), controls:launcher.getAttribute('aria-controls'), popup:launcher.getAttribute('aria-haspopup') },
+      orb:{button:launcher.matches('button.assistant-orb') && launcher.type === 'button', text:launcher.innerText.trim(),
+        children:Array.from(launcher.children).filter(rendered).map(node => node.tagName), decoration, corners,
+        background:style.backgroundImage, focusable:launcher.tabIndex === 0 && launcher.getAttribute('aria-hidden') !== 'true'},
       documentWidth:document.documentElement.scrollWidth };
   });
   Q.report.layouts.push({name,...value}); launcherProgress(name);
   assert.equal(value.entries, 1, name + ': one visible assistant entry');
   assert.deepEqual(value.controls.map(control => control.id), ['points','assistant','reminders'], name + ': navigation reading order');
   const launcher = value.controls[1].rect;
+  assert.ok(Math.abs(launcher.width - launcher.height) <= .5 && launcher.width <= 56, name + ': the entry is a compact circle');
+  assert.equal(value.orb.button, true, name + ': the sphere itself is the assistant button');
+  assert.equal(value.orb.text, '', name + ': the sphere has no visible label');
+  assert.deepEqual(value.orb.children, [], name + ': the sphere has no nested icon or ornament');
+  assert.deepEqual(value.orb.decoration, [], name + ': the sphere has no generated ring or ornament');
+  assert.ok(value.orb.corners.every(([x,y]) => x >= launcher.width / 2 - .5 && y >= launcher.height / 2 - .5), name + ': all edges form a circle');
+  assert.match(value.orb.background, /radial-gradient\(/, name + ': the sphere has light and shade');
+  assert.equal(value.orb.focusable, true, name + ': the sphere is available to the keyboard and accessibility tree');
   assert.ok(Math.abs(launcher.left + launcher.width / 2 - value.viewport.width / 2) <= 1.5, name + ': assistant is horizontally centered');
   assert.ok(launcher.top >= value.nav.top - 1 && launcher.bottom <= value.nav.bottom + 1, name + ': assistant stays inside the bottom navigation');
   assert.ok(Math.abs(value.viewport.height - value.nav.bottom) <= 1 && value.nav.top >= value.viewport.height - 160, name + ': navigation stays at the bottom');
@@ -61,6 +82,28 @@ async function launcherLayout(page, name) {
   assert.deepEqual(value.aria, {label:'打开家长助手',controls:'family-assistant-panel',popup:'dialog'});
   assert.ok(value.documentWidth <= value.viewport.width + 1, name + ': no horizontal overflow');
 }
+async function launcherStill(page, motion) {
+  await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:motion}]);
+  await page.mouse.move(1,1); await B.delay(200);
+  const inspect = () => page.$eval('.assistant-launcher', launcher => ({
+    rect:launcher.getBoundingClientRect().toJSON(),
+    styles:[launcher,...launcher.querySelectorAll('*')].flatMap((node,index) => [null,'::before','::after'].map(pseudo => {
+      const style = getComputedStyle(node,pseudo);
+      return {index,pseudo,animation:style.animationName,animationDuration:style.animationDuration,transitionDuration:style.transitionDuration,
+        transform:style.transform,opacity:style.opacity,filter:style.filter,background:style.backgroundImage,position:style.backgroundPosition,shadow:style.boxShadow};
+    })),
+    activeAnimations:launcher.getAnimations({subtree:true}).filter(animation => animation.playState === 'running' || animation.pending).length
+  }));
+  const first = await inspect(); await B.delay(300); const last = await inspect();
+  Q.report.assistantLauncher.motion = {...Q.report.assistantLauncher.motion,[motion]:{first,last}};
+  launcherProgress(motion + '-still');
+  assert.equal(first.activeAnimations + last.activeAnimations, 0, motion + ': the sphere has no running animations');
+  assert.deepEqual(first.styles.filter(style => style.animation !== 'none' && style.animationDuration.split(',').some(duration => parseFloat(duration) > 0)), [],
+    motion + ': the sphere and its decoration do not animate');
+  assert.deepEqual(last, first, motion + ': the idle sphere does not rotate, breathe or move');
+  if (motion === 'reduce') assert.deepEqual(first.styles.filter(style => style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)), [],
+    'reduced motion stops entry transitions');
+}
 async function launcherFlow(page, env, device, open) {
   Q.report.assistantLauncher = {case:device,boundary:'Real SaaS and isolated SQLite in desktop Chromium. Reduced motion is emulated; a physical tablet, Safari and OS keyboard are not verified.'};
   launcherProgress('fixture-ready');
@@ -77,22 +120,8 @@ async function launcherFlow(page, env, device, open) {
     await page.waitForFunction(() => FamilyDemo.getUI().view === 'points');
     await launcherLayout(page, 'returned-home');
   });
-  await Q.check(device + ': reduced motion keeps the centered entry still and opening, closing and keyboard activation restore focus', async () => {
-    await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'}]);
-    const ornament = '.assistant-launcher .assistant-orb';
-    const start = await page.$eval(ornament, node => getComputedStyle(node,'::before').transform);
-    await page.waitForFunction((selector, initial) => {
-      const style = getComputedStyle(document.querySelector(selector),'::before');
-      return style.animationName !== 'none' && style.transform !== initial;
-    }, {}, ornament, start);
-    await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
-    const moving = await page.$eval('.assistant-launcher', launcher => [launcher,...launcher.querySelectorAll('*')].flatMap((node,index) =>
-      [null,'::before','::after'].map(pseudo => {
-        const style = getComputedStyle(node, pseudo);
-        return {index,pseudo,animation:style.animationName,animationDuration:style.animationDuration,transitionDuration:style.transitionDuration};
-      })).filter(value => value.animation !== 'none' && value.animationDuration.split(',').some(duration => parseFloat(duration) > 0) ||
-        value.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)));
-    assert.deepEqual(moving, [], 'reduced motion stops entry animations, including decoration');
+  await Q.check(device + ': the sphere stays still in both motion preferences and pointer and keyboard activation restore focus', async () => {
+    await launcherStill(page, 'no-preference'); await launcherStill(page, 'reduce');
     await launcherLayout(page, 'reduced-motion-home'); await Q.shot(page, device + '-reduced-motion-entry');
     await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'family-assistant-panel', 'opening does not focus the keyboard');
@@ -100,6 +129,21 @@ async function launcherFlow(page, env, device, open) {
     await click(page, 'button' + selector('close'));
     await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-launcher'));
     await page.keyboard.press('Enter');
+    await page.waitForFunction(() => FamilyAssistantPanel.getState().open && FamilyAssistantPanel.getState().loaded);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-launcher'));
+    await page.focus('.bottom-nav [data-action="nav"][data-id="points"]');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.matches('.assistant-launcher')), true, 'Tab reaches the sphere after home');
+    const focus = await page.$eval('.assistant-launcher', node => {
+      const style = getComputedStyle(node); return {visible:node.matches(':focus-visible'),outline:style.outlineStyle,width:parseFloat(style.outlineWidth)};
+    });
+    assert.ok(focus.visible && focus.outline !== 'none' && focus.width >= 2, 'keyboard focus remains visible on the sphere');
+    await Q.shot(page, device + '-keyboard-entry');
+    await page.keyboard.press('Tab');
+    assert.equal(await page.evaluate(() => document.activeElement.matches('.bottom-nav [data-action="nav"][data-id="reminders"]')), true, 'Tab reaches reminders after the sphere');
+    await page.keyboard.down('Shift'); await page.keyboard.press('Tab'); await page.keyboard.up('Shift');
+    await page.keyboard.press('Space');
     await page.waitForFunction(() => FamilyAssistantPanel.getState().open && FamilyAssistantPanel.getState().loaded);
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-launcher'));

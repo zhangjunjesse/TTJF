@@ -10,78 +10,20 @@
   min-width: 0;
 }
 .assistant-dock .nav-item { margin: 0; }
-.assistant-launcher {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  min-height: 48px;
-  padding: 4px clamp(14px, 2vw, 20px) 4px 10px;
-  border: 1px solid #43756b;
-  border-radius: 999px;
-  color: #f0fff7;
-  background: radial-gradient(ellipse at 18% 0%, #457e77, transparent 62%), linear-gradient(115deg, #254d4b 0%, #193e3b 55%, #203c37 100%);
-  box-shadow: inset 0 1px 1px #c9f9d956, inset 0 -1px 1px #071e1fc4, 0 2px 5px #24463a33;
-  font: inherit;
-  font-weight: 700;
-  font-size: 15px;
-  line-height: 1;
-  white-space: nowrap;
-  touch-action: manipulation;
-  cursor: pointer;
-}
 .assistant-orb {
-  position: relative;
-  isolation: isolate;
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  width: 32px;
-  height: 32px;
+  display: block;
+  flex: 0 0 auto;
   border-radius: 50%;
-  color: #fffdeb;
-  background: radial-gradient(circle at 33% 19%, #ecfbcd, #69ddbf 23%, #357e87 51%, #284259 84%);
-  box-shadow: inset 0 0 0 1px #d4ffe28f, inset -2px -3px 5px #142d45a6, 0 0 7px #78dfc86b;
-  pointer-events: none;
+  background:
+    radial-gradient(ellipse 23% 16% at 32% 22%, #f3ffecd9, transparent),
+    radial-gradient(ellipse 49% 25% at 50% 91%, #7ac4a78c, transparent),
+    radial-gradient(circle at 34% 29%, #b8dfc4 0%, #78bda4 29%, #3c8978 56%, #205c54 78%, #184b46 100%);
+  box-shadow: 0 2px 3px #294d392e;
 }
-.assistant-orb::before {
-  content: "";
-  position: absolute;
-  inset: 2px;
-  border-radius: 50%;
-  background: conic-gradient(from -30deg, transparent 4%, #d9f6b4a6 18%, transparent 36%, #8dc5f9a1 55%, transparent 71%, #58e9bc80 84%, transparent);
-}
-.assistant-orb::after {
-  content: "";
-  position: absolute;
-  inset: 26% -12%;
-  border: 1px solid #d3fdec;
-  border-top-color: #c3f9e53b;
-  border-right-color: #ffe2a5;
-  border-radius: 50%;
-  transform: rotate(-32deg);
-  box-shadow: 0 1px 1px #113e507d;
-}
-.assistant-orb > :is(.icon, .assistant-icon) {
-  position: relative;
-  width: 48%;
-  height: 48%;
-  margin: 0;
-  fill: currentColor;
-  stroke-width: .9;
-  filter: drop-shadow(0 1px 1px #235454);
-}
-.assistant-sheet-entry .assistant-orb { width: 27px; height: 27px; }
-@media (prefers-reduced-motion: no-preference) {
-  .assistant-launcher .assistant-orb::before { animation: assistant-aurora 18s linear infinite; }
-  .assistant-launcher .assistant-orb::after { animation: assistant-orbit 9s ease-in-out infinite alternate; }
-  .assistant-panel-open .assistant-orb::before, .assistant-panel-open .assistant-orb::after { animation-play-state: paused; }
-}
-@keyframes assistant-aurora { to { transform: rotate(1turn); } }
-@keyframes assistant-orbit { to { transform: rotate(-20deg) scaleY(.82); } }
-@media (hover: hover) {
-  .assistant-launcher:hover { border-color: #779b88; box-shadow: inset 0 1px 1px #c9f9d96b, 0 2px 10px #2e74664d; }
-}
+.assistant-launcher, .assistant-sheet-entry { width: 48px; height: 48px; padding: 0; border: 0; }
+.assistant-launcher { justify-self: center; }
+.assistant-sheet-entry { display: grid; place-items: center; background: transparent; border-radius: 50%; }
+.assistant-sheet-entry .assistant-orb { width: 30px; height: 30px; }
 .assistant-launcher:focus-visible, .assistant-sheet-entry:focus-visible { outline: 3px solid #835b16; outline-offset: 2px; }
 /* The reminder list has its own side panel on landscape tablets. Keep the
    shared navigation aligned with the viewport and clear of the list. */
@@ -103,10 +45,8 @@
   }
 }
 @media (forced-colors: active) {
-  .assistant-launcher { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none; }
-  .assistant-orb { color: ButtonText; background: ButtonFace; box-shadow: none; }
-  .assistant-orb::before, .assistant-orb::after { display: none; }
-  .assistant-orb > :is(.icon, .assistant-icon) { filter: none; }
+  .assistant-orb { forced-color-adjust: none; background: ButtonText; box-shadow: none; }
+  .assistant-launcher:focus-visible, .assistant-sheet-entry:focus-visible { outline-color: Highlight; }
 }
 /* Kept outside #app so opening the assistant never replaces a form draft. */
 .assistant-panel-host { position: fixed; z-index: 130; top: 0; left: 0; width: 100%; height: 100%; color: #293e32; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }

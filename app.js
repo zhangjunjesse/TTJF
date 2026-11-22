@@ -646,8 +646,9 @@
     return '<nav class="bottom-nav' + (dock ? ' assistant-dock' : '') + '" aria-label="主要模块"><div class="main-tabs">' + tabs + '</div>' + voice + '</nav>';
   }
   function chatEntry(inDock) {
-    var orb = '<span class="assistant-orb" aria-hidden="true">' + icon('spark') + '</span>';
-    return button('assistant-open', orb + (inDock ? '<span>AI 助手</span>' : ''), inDock ? 'assistant-launcher' : 'icon-button assistant-sheet-entry', '', '打开家长助手').replace('<button ', '<button aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
+    var mark = inDock ? '' : '<span class="assistant-orb" aria-hidden="true"></span>';
+    return button('assistant-open', mark, inDock ? 'assistant-launcher assistant-orb' : 'assistant-sheet-entry', '', '打开家长助手')
+      .replace('<button ', '<button title="打开家长助手" aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
   }
   function assistantAvailable() {
     return scopeReady() && !ui.auth && !pending && !(ui.form && ui.form.kind === 'parentConfig');
