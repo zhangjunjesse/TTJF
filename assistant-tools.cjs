@@ -8,7 +8,7 @@ const ZONE = 'Asia/Shanghai';
 const ROUTES = Object.freeze({points:'积分',pointItems:'常用行为',rewards:'礼品',redemptions:'兑换记录',reminders:'提醒',family:'家庭管理',parent:'家长验证',partner:'伙伴',farm:'农场',profile:'孩子资料',settings:'设置'});
 const IMPLEMENTED = ['read_balance','read_ledger','read_week_summary','read_rules','read_rewards','read_requests','read_tasks','read_family_settings','read_guidance',
   'draft_award','draft_rule','draft_reward','draft_redemption_request','draft_redemption_approval','draft_redemption_cancel',
-  'draft_direct_redemption','draft_rule_delete','draft_reminder','draft_reminder_status','draft_settings','open_view','ask_clarification','respond_conversation'];
+  'draft_direct_redemption','draft_rule_delete','draft_reminder','draft_reminder_status','draft_settings','open_view','ask_clarification','respond_conversation','cancel_draft'];
 const contracts = new Map(configured.tools.map(tool => [tool.function.name, tool.function.parameters]));
 if (configured.version !== 1 || contracts.size !== IMPLEMENTED.length || IMPLEMENTED.some(name => !contracts.has(name))) {
   throw new Error('助手工具配置与服务端白名单不一致');
@@ -20,6 +20,7 @@ const copy = (value, keys) => Object.fromEntries(keys.filter(key => own(value, k
 const clarify = question => ({kind:'clarify',question});
 const answer = (title, text, query, data) => ({kind:'answer',title,answer:text,query,data});
 const entity = (list, id) => list.find(row => row.id === id);
+// Local fallback parser only; connected model execution does not classify text.
 function conversationTopic(text) {
   const value=clean(text);
   if (!value) return '';
@@ -37,19 +38,11 @@ function conversationTopic(text) {
   if (/聊(?:聊|一聊|天)|最近怎么样|你好吗|\bhow are you\b|\b(?:let's|can we) (?:chat|talk)\b/i.test(value)) return 'small_talk';
   return '';
 }
-function conversationReply(message,options={}) {
-  if (typeof message!=='string' || !message.trim() || message.length>2000 || !conversationTopic(options.text)) return clarify('具体记录和办理需要使用查询或候选工具；也可以问我是谁、有哪些功能或怎么使用。');
-  const text=message.trim(), checked=text.normalize('NFKC');
-  // Generic introductions may mention points, balances and confirmation. Only
-  // concrete amounts, personal live facts, grants and claimed writes are denied.
-  const amounts=/(?:[+-]?\d[\d,.]*|[零〇一二两三四五六七八九十百千万亿点]+)\s*(?:个)?(?:积分|分(?!钟)|points?\b|credits?\b)|(?:积分|余额|分值|balance|points?|credits?)\s*(?:为|是|[:：=]|is|of)?\s*(?:\d|[零〇一二两三四五六七八九十百千万亿])|\b(?:(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|hundred|thousand|million|and)\s+)+(?:points?|credits?)\b/i;
-  const counts=/(?:\d+|[零〇一二两三四五六七八九十百千万亿]+)\s*(?:个|条|笔|项)\s*(?:未完成的|待确认的)?(?:提醒|事项|记录|申请|礼品|规则)|\b\d+\s+(?:pending |unfinished )?(?:reminders?|requests?|records?|rewards?)\b/i;
-  const completed=/(?:已|已经)(?:经)?(?:替你|帮你|为你|给你)?(?:加分|记账|保存|兑换|扣分|申请|批准|审批|取消|删除|修改|设置|提交|验证|确认|更新|调整|入账|到账)|(?:保存|兑换|记账|验证|提交)(?:成功|完成)|我(?:这就|现在|马上|立即|会|将)?(?:直接|自动)?(?:帮你|为你|替你)?(?:加分|记账|扣分|保存|兑换|批准|提交)|\b(?:I|we)(?:'ve| have)?\s+(?:already\s+)?(?:saved|added|recorded|redeemed|approved|cancelled|canceled|updated|deleted|submitted|deducted)\b|\b(?:your|the)\s+(?:\w+\s+){0,3}(?:request|redemption|balance|reward|rule|reminder|changes?)\b.{0,45}\b(?:saved|approved|cancelled|canceled|updated|deleted|submitted|completed)\b|\bI (?:will|shall) (?:add|save|redeem|approve|submit)\b/i;
-  const liveFacts=/(?:你的|你家(?:孩子)?的|孩子的|当前|目前|现在)(?:可用|剩余|累计|总)?(?:积分|余额|分值|申请|提醒)(?:是|为|有|已|已经|够|不足|充足|满足|可兑换|还差|没有)|(?:你(?:家|的)?|孩子)?(?:今天|明天|本周|这周|现在|目前)(?:还)?没有(?:未完成的)?(?:提醒|事项|申请|记录)|记录(?:显示|表明)|(?:已经|已|现在).{0,8}(?:是家长|管理员|获得权限|获得授权|解锁|验证通过)|\byou (?:are now|have been|are) (?:verified|authorized|unlocked|an administrator)\b|\byou (?:currently |now )?have (?:enough|sufficient|no) (?:points?|credits?)\b|\bI (?:checked|looked up|verified) your\b|\byour (?:current |pending )?(?:balance|points?|reminders?|requests?|rewards?) (?:is|are|has|have)\b/i;
-  const protocol=/["'](?:kind|action|payload|query|grant|saveAsTemplate)["']\s*:|^(?:done|all set|completed|已完成|完成了|搞定了|办好了)[.!。！\s]*$/i;
-  if (amounts.test(checked) || counts.test(checked) || completed.test(checked) || liveFacts.test(checked) || protocol.test(checked)) return clarify('具体数字、当前状态和操作结果需要由应用核对。我可以解释功能，实际查询或办理请继续说明。');
-  return {kind:'answer',scope:'conversation',title:'家长助手',answer:text};
+function conversationReply(message) {
+  if (typeof message!=='string' || !message.trim() || message.length>18000) return clarify('回复文字的格式不符合要求，请重试。');
+  return {kind:'answer',scope:'conversation',title:'家长助手',answer:message};
 }
+// Local fallback parser only; connected cancellation uses cancel_draft.
 function isDraftCancellation(text) {
   if (typeof text!=='string') return false;
   const value=text.trim();
@@ -88,10 +81,6 @@ function sameDraftCorrection(text,draft) {
   if (type==='task.save') return /^(?:改成|改为|改到|调整为|设为)(?:今天|明天|后天|\d{4}[-年]|\d{1,2}月|早上|上午|下午|晚上|全天|[零〇一二两三四五六七八九十\d]+[:：点时])/.test(value);
   const rest=value.replace(/[零〇一二两三四五六七八九十百\d]+/g,'').replace(/不对|不是|不要|应该|规则|常用|行为|加分|积分|分值|改成|改为|调整为|设置为|设为|以后|每天|每日|每次|今天|这次|一次性|一次|只|就|实际|奖励|给|加|记|是|为|分|启用|停用|[，,。:：；;！!？?\s]/g,'');
   return !rest && (numericValues(value).length>0 || /不是规则|不是(?:今天|这次|以后|每天|每次)|以后每次|只(?:给|加|记)(?:这次|一次)/.test(value));
-}
-function rangeArgs(args,text,state) {
-  const period=periodFromText(text || ''), behavior=period?behaviorFromText(text,state):'';
-  return {...args,...(period?{period}:{}),...(behavior?{behavior}:{})};
 }
 function dateRange(now,period,days=7) {
   const parts=M.calendarParts(now,ZONE), back=period==='week'?(parts.weekday+6)%7:period==='last7'?6:days-1;
@@ -133,6 +122,11 @@ function valid(schema, value) {
     if ((schema.required || []).some(key => !own(value,key))) return false;
     return Object.keys(value).every(key => own(schema.properties,key) && valid(schema.properties[key],value[key]));
   }
+  if (schema.type === 'array') {
+    return Array.isArray(value) && value.length >= (schema.minItems || 0) &&
+      (schema.maxItems === undefined || value.length <= schema.maxItems) &&
+      (!schema.uniqueItems || new Set(value).size === value.length) && value.every(item => valid(schema.items,item));
+  }
   if (schema.type === 'integer' && (!Number.isSafeInteger(value) || value < schema.minimum || value > schema.maximum)) return false;
   if (schema.type === 'boolean' && typeof value !== 'boolean') return false;
   if (schema.type === 'string' && (typeof value !== 'string' || value.length > schema.maxLength || value.length < (schema.minLength || 0) ||
@@ -144,9 +138,18 @@ function validateCall(name, args) {
 }
 function toolDefinitions() { return JSON.parse(JSON.stringify(configured.tools)); }
 function joinSteps(steps) {
-  if (steps.length === 1) return steps[0];
-  return {kind:'steps',title:'逐项核对',summary:'查询按当前记录计算；候选需要逐项确认，尚未记账。',steps};
+  if (!Array.isArray(steps) || !steps.length || steps.length>6) return clarify('一次最多整理六项，请把复杂任务分开说。');
+  const cancelling=steps.some(row=>row.cancelDraft===true);
+  if (cancelling && steps.some(row=>row.kind==='action' || row.kind==='form')) return clarify('取消草稿和新建候选请分两次办理。');
+  const checked=steps.map((row,index)=>{
+    if (!row.deferred) return row;
+    if (!Array.isArray(row.after) || !row.after.length || !row.after.every(dependency=>Number.isSafeInteger(dependency) && dependency>=0 && dependency<index && steps[dependency].kind==='action')) return clarify('后续查询只能依赖前面的待确认操作。');
+    return row;
+  });
+  if (checked.length === 1) return checked[0];
+  return {kind:'steps',title:'逐项核对',summary:'查询按当前记录计算；候选需要逐项确认，尚未记账。',steps:checked,...(cancelling?{cancelDraft:true}:{})};
 }
+// Only the explicit local fallback parser uses text to infer sequencing.
 function deferFollowups(result,text) {
   if (result.kind!=='steps' || !/加完|加分后|记完|之后|然后|再(?:查|看|核对)/.test(text)) return result;
   const before=[];
@@ -161,7 +164,7 @@ function resolveFollowup(result,state,now,options={}) {
   const committed=new Set(Array.isArray(options.committedIndexes)?options.committedIndexes:[]);
   const steps=result.steps.map((row,index)=>{
     if (!plain(row) || row.kind!=='answer' || !Array.isArray(row.after) || !row.after.length || row.after.length>6) return row;
-    if (!row.after.every(dependency=>Number.isSafeInteger(dependency) && dependency>=0 && dependency<index && result.steps[dependency].kind==='action' && committed.has(dependency))) return row;
+    if (!row.after.every(dependency=>Number.isSafeInteger(dependency) && dependency>=0 && dependency<index && plain(result.steps[dependency]) && result.steps[dependency].kind==='action' && committed.has(dependency))) return row;
     const computed=queryResult(row.query,state,new Date(now));
     if (computed.kind!=='answer') return {...computed,after:row.after.slice(),deferred:false,mode:'local',source:'local',label:'请重新核对查询'};
     return {...computed,after:row.after.slice(),deferred:false,resolvedAt:new Date(now).toISOString(),mode:'local',source:'local',label:'已按最新记录核对'};
@@ -226,25 +229,21 @@ function read(name, args, state, now) {
   if (name === 'read_guidance') {
     if (args.topic==='week') {
       const summary=read('read_week_summary',copy(args,['period']),state,now);
-      return answer('根据已记录内容聊一聊',summary.answer+'\n这些只代表已经记录的内容，没记录也可能是漏记，不能据此判断孩子是否努力。可以和孩子一起聊聊哪里顺利、哪里需要帮助，再由家长决定下一步。',{type:'guidance',topic:'week',period:summary.query.period},summary.data);
+      return answer('已记录的情况',summary.answer,{type:'guidance',topic:'week',period:summary.query.period},summary.data);
     }
     const rows=args.behavior?namedMatches(state.pointItems.filter(row=>row.enabled),args.behavior,'name'):state.pointItems.filter(row=>row.enabled);
     const data=pageRows(rows.map(row=>copy(row,['id','name','points'])),args.limit || 6), facts=data.rows.length?data.rows.map(row=>row.name+'：已有规则每次 '+row.points+' 分').join('\n'):'当前没有匹配的常用行为规则。';
-    return answer('分值参考',facts+moreText(data)+'\n是否沿用已有规则由家长决定。若是新行为，可以先和孩子约定做到哪一步，再决定分值；这里只给参考，不会替你加分或新建规则。',{type:'guidance',topic:'points',...(args.behavior?{behavior:args.behavior}:{}),limit:data.limit},{...data,truncated:data.hasMore});
+    return answer('已有常用行为分值',facts+moreText(data),{type:'guidance',topic:'points',...(args.behavior?{behavior:args.behavior}:{}),limit:data.limit},{...data,truncated:data.hasMore});
   }
   return clarify('没有这个查询工具，请使用页面上的对应功能。');
 }
-function queryResult(query,state,now,options={}) {
+function queryResult(query,state,now) {
   if (!plain(query) || typeof query.type !== 'string') return clarify('请选择要查询的积分、流水、规则、礼品或提醒。');
   const mapping = {balance:'read_balance',ledger:'read_ledger',week:'read_week_summary',seven_days:'read_week_summary',rules:'read_rules',point_items:'read_rules',rewards:'read_rewards',requests:'read_requests',tasks:'read_tasks',settings:'read_family_settings',guidance:'read_guidance'};
   const args = {...query}; delete args.type;
-  if (query.type === 'redeemable') return executeTool('read_rewards',{...args,onlyEligible:true},state,now,options);
-  if (query.type === 'reward_gap') return executeTool('read_rewards',args,state,now,options);
-  return mapping[query.type] ? executeTool(mapping[query.type],args,state,now,options) : clarify('暂时不能查询这项内容，请打开对应界面。');
-}
-function sourceText(options) {
-  const messages = Array.isArray(options.messages) ? options.messages : [];
-  return messages.filter(row => row && row.role === 'user' && typeof (row.text || row.content) === 'string').slice(-8).map(row => row.text || row.content).concat(options.text || '').join('\n');
+  if (query.type === 'redeemable') return executeTool('read_rewards',{...args,onlyEligible:true},state,now);
+  if (query.type === 'reward_gap') return executeTool('read_rewards',args,state,now);
+  return mapping[query.type] ? executeTool(mapping[query.type],args,state,now) : clarify('暂时不能查询这项内容，请打开对应界面。');
 }
 function numericValues(text) {
   const digits = {'零':0,'〇':0,'一':1,'二':2,'两':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
@@ -276,35 +275,7 @@ function namedMatches(list,text,field) {
     return /阅读/.test(row[field]) && /读书/.test(text) || /读书/.test(row[field]) && /阅读/.test(text);
   });
 }
-function selectedId(options) {
-  const context = plain(options.context) ? options.context : {};
-  return clean(options.targetId || context.targetId);
-}
-function entityAllowed(list,id,field,options) {
-  const row = entity(list,id);
-  if (!row || row.deleted) return false;
-  if (!options.enforceIntent) return true;
-  const text = clean(options.text), matches = namedMatches(list,text,field);
-  if (matches.length) return matches.some(match=>match.id===id) && (matches.length===1 || selectedId(options)===id);
-  if (selectedId(options) === id) return true;
-  const draft = activeDraft(options), payload = draft && draft.action && draft.action.payload;
-  if (payload && [payload.itemId,payload.rewardId,payload.requestId,payload.taskId,payload.item && payload.item.id,payload.reward && payload.reward.id,payload.task && payload.task.id].includes(id)) return true;
-  if (/^(?:那|这个|那个|它|改|调整|设为|换|不对|不是|是|每次|这次|以后)|^[零〇一二两三四五六七八九十百\d]+\s*分/.test(text)) {
-    const prior = (options.messages || []).filter(message => message.role === 'user').slice(-1)[0];
-    const previous = prior && namedMatches(list,prior.text || prior.content || '',field);
-    return !!previous && previous.length === 1 && previous[0].id === id;
-  }
-  return false;
-}
 function noRedemption(text) { return /只查|只看|不兑|别兑|不要兑|先不兑|不申请|别申请|不要申请|不扣|别扣/.test(text); }
-function disallowedIntent(type,options) {
-  if (!options.enforceIntent) return '';
-  const text = clean(options.text), recurring = /以后|每次|每天|每日|规则|常用|模板/.test(text);
-  if ((type.startsWith('redemption.') || type === 'reward.redeem') && noRedemption(text)) return '这次只查询礼品资格，不会生成兑换操作。';
-  if (type === 'points.add' && (/不加分|不要加|别加分|先别加|不记账/.test(text) || recurring && !/今天|这次|刚才|一次性/.test(text))) return '这是以后使用的规则吗，还是这次实际加分？请先确认。';
-  if (type === 'pointItem.save' && /不是规则|不要规则|不存(?:为)?常用|只(?:加|记)这次|只(?:加|记)一次/.test(text)) return '这次只加分吗？请确认行为名称和分值。';
-  return '';
-}
 const actionSchemas = {
   'points.add':['draft_award',null], 'pointItem.save':['draft_rule','item'], 'reward.save':['draft_reward','reward'],
   'task.save':['draft_reminder','task'], 'redemption.request':['draft_redemption_request',null],
@@ -321,38 +292,22 @@ function actionPayloadValid(type,payload) {
   if (['task.toggle','task.ack','task.snooze'].includes(type)) return valid({type:'object',properties:{taskId:idSchema,...(type==='task.snooze'?{minutes:{type:'integer',minimum:10,maximum:10}}:{})},required:['taskId',...(type==='task.snooze'?['minutes']:[])]},payload);
   return false;
 }
-function normalizeAction(action,state,now,options={}) {
+function normalizeAction(action,state,now) {
   if (!plain(action) || Object.keys(action).some(key => !['type','payload'].includes(key)) || !plain(action.payload) || !actionPayloadValid(action.type,action.payload)) return clarify('候选操作的字段不符合要求，请重新描述或使用对应表单。');
-  const type = action.type, p = JSON.parse(JSON.stringify(action.payload)), intent = disallowedIntent(type,options);
-  if (intent) return clarify(intent);
+  const type = action.type, p = JSON.parse(JSON.stringify(action.payload));
   const references = [];
-  if (p.itemId) references.push([state.pointItems,p.itemId,'name']);
-  if (p.item && p.item.id) references.push([state.pointItems,p.item.id,'name']);
-  if (p.rewardId) references.push([state.rewards,p.rewardId,'name']);
-  if (p.reward && p.reward.id) references.push([state.rewards,p.reward.id,'name']);
-  if (p.taskId || p.task && p.task.id) references.push([state.tasks,p.taskId || p.task.id,'title']);
-  if (p.requestId) references.push([(state.requests || []).filter(row=>type!=='redemption.approve' || row.status==='pending'),p.requestId,'name']);
-  if (p.settings && p.settings.preferredReward) references.push([state.rewards,p.settings.preferredReward,'name']);
-  if (references.some(([list,id,field]) => !entityAllowed(list,id,field,options))) return clarify('没有唯一确定这次要处理的对象，请说完整名称，或从列表重新选择。');
-  if (options.enforceIntent) {
-    const score = type === 'points.add' ? p.points : (p.item || p.reward || {}).points;
-    const old = p.item && p.item.id ? entity(state.pointItems,p.item.id) : p.reward && p.reward.id ? entity(state.rewards,p.reward.id) : p.itemId ? entity(state.pointItems,p.itemId) : null;
-    const draft = activeDraft(options), prior = draft && (draft.fields || draft.action && (draft.action.payload.item || draft.action.payload.reward || draft.action.payload));
-    const current=numericValues(clean(options.text)), evidence=current.length?current:numericValues(sourceText(options));
-    if (score !== undefined && (current.length && !current.includes(score) || !evidence.includes(score) && !(old && old.points===score) && !(prior && prior.points===score))) return clarify('请明确这次使用的积分分值，时间和次数不会当作积分。');
-  }
-  if (type === 'points.add') {
-    if (options.enforceIntent && own(p,'reason')) {
-      const draft=activeDraft(options), prior=draft && draft.action && draft.action.type==='points.add' && draft.action.payload.reason;
-      const explicit=/(?:原因|理由)(?:是|为|[:：])|因为/.test(clean(options.text));
-      if (!explicit && prior!==p.reason || p.reason && !clean(options.text).includes(p.reason.trim()) && prior!==p.reason) delete p.reason;
-    }
-  }
+  if (p.itemId) references.push([state.pointItems,p.itemId]);
+  if (p.item && p.item.id) references.push([state.pointItems,p.item.id]);
+  if (p.rewardId) references.push([state.rewards,p.rewardId]);
+  if (p.reward && p.reward.id) references.push([state.rewards,p.reward.id]);
+  if (p.taskId || p.task && p.task.id) references.push([state.tasks,p.taskId || p.task.id]);
+  if (p.requestId) references.push([state.requests || [],p.requestId]);
+  if (p.settings && p.settings.preferredReward) references.push([state.rewards,p.settings.preferredReward]);
+  if (references.some(([list,id]) => { const row=entity(list,id); return !row || row.deleted; })) return clarify('目标已不存在，请从当前家庭重新选择。');
   if (type === 'redemption.approve' || type === 'reward.redeem') {
     const request = type==='redemption.approve' && entity(state.requests || [],p.requestId), reward = entity(state.rewards,request ? request.rewardId : p.rewardId);
     if (!reward || p.expectedPoints !== reward.points) return clarify('礼品价格或申请已变化，请按最新记录重新确认。');
   }
-  if (type==='task.save' && !p.task.id && !own(p.task,'time')) return clarify('希望几点提醒？也可以明确说全天提醒。');
   if (type==='pointItem.save' && !p.item.id && (!p.item.name || !p.item.points)) {
     const fields = copy(p.item,['name','points','reason','enabled']);
     const missing = ['name','points'].filter(key => !fields[key]);
@@ -374,44 +329,33 @@ function normalizeAction(action,state,now,options={}) {
   else if (p.itemId) summary=entity(state.pointItems,p.itemId).name+' · 历史积分保留';
   return {kind:'action',action:{type,payload:p},title:titles[type],summary};
 }
-function executeTool(name,args,state,now,options={}) {
+function executeTool(name,args,state,now) {
   if (!validateCall(name,args)) return clarify('工具名称或字段不符合要求，请重新描述。');
-  if (name==='respond_conversation') return conversationReply(args.message,options);
-  if (name.startsWith('read_')) return read(name,['read_week_summary','read_ledger','read_guidance'].includes(name)?rangeArgs(args,options.text,state):args,state,now);
+  if (name==='respond_conversation') return conversationReply(args.message);
+  if (name==='cancel_draft') return {kind:'answer',title:'草稿已取消',answer:'当前待确认草稿已取消，历史记录保留，账本没有变化。',cancelDraft:true};
+  if (name.startsWith('read_')) {
+    const readArgs={...args}; delete readArgs.after;
+    let result;
+    try { result=read(name,readArgs,state,now); }
+    catch (error) { return clarify(error.message); }
+    if (!args.after || result.kind!=='answer') return result;
+    return {kind:'answer',title:'确认后再核对',answer:'先确认前面的候选，完成后会按最新记录重新核对。',query:result.query,deferred:true,after:args.after.slice()};
+  }
   if (name==='open_view') return route(args.route);
   if (name==='ask_clarification') {
-    const question=clean(args.question);
-    return clarify(!question || /已保存|已加分|已扣|已兑换|验证通过|余额|可用\s*\d/.test(question) ? '请补充要处理的事项或明确目标。' : question);
+    return args.question.trim()?clarify(args.question):clarify('请补充要处理的事项或明确目标。');
   }
   const mappings={draft_award:['points.add',args],draft_rule:['pointItem.save',{item:args}],draft_reward:['reward.save',{reward:args}],draft_reminder:['task.save',{task:args}],draft_settings:['settings.update',{settings:args}],draft_redemption_request:['redemption.request',args],draft_redemption_cancel:['redemption.cancel',args],draft_rule_delete:['pointItem.delete',args]};
-  if (mappings[name]) { const [type,payload]=mappings[name]; return normalizeAction({type,payload},state,now,options); }
+  if (mappings[name]) { const [type,payload]=mappings[name]; return normalizeAction({type,payload},state,now); }
   if (name==='draft_redemption_approval' || name==='draft_direct_redemption') {
     const request = name==='draft_redemption_approval' && entity(state.requests || [],args.requestId), reward=entity(state.rewards,request ? request.rewardId : args.rewardId);
     if (!reward) return clarify('没有找到对应礼品或申请，请重新选择。');
-    return normalizeAction({type:request?'redemption.approve':'reward.redeem',payload:{...args,expectedPoints:reward.points}},state,now,options);
+    return normalizeAction({type:request?'redemption.approve':'reward.redeem',payload:{...args,expectedPoints:reward.points}},state,now);
   }
   const row=entity(state.tasks,args.taskId);
   if (!row || row.deleted) return clarify('这条提醒已不存在，请重新选择。');
   if ((args.operation==='done' && row.done) || (args.operation==='undo' && !row.done)) return answer('提醒状态',row.title+(row.done?'已经完成。':'已经是未完成状态。'),{type:'tasks',date:row.date,includeDone:true},{rows:[copy(row,['id','title','date','time','done'])]});
   const type={done:'task.toggle',undo:'task.toggle',ack:'task.ack',snooze:'task.snooze'}[args.operation];
-  return normalizeAction({type,payload:{taskId:args.taskId,...(type==='task.snooze'?{minutes:10}:{})}},state,now,options);
+  return normalizeAction({type,payload:{taskId:args.taskId,...(type==='task.snooze'?{minutes:10}:{})}},state,now);
 }
-function normalizeResult(candidate,state,now,options={}) {
-  if (!plain(candidate)) return clarify('没有理解清楚，请换个说法。');
-  if (candidate.kind==='steps') {
-    if (!Array.isArray(candidate.steps) || candidate.steps.length<1 || candidate.steps.length>6 || candidate.steps.some(row => !plain(row) || row.kind==='steps')) return clarify('一次最多整理六项，请把复杂任务分开说。');
-    return joinSteps(candidate.steps.map(row => normalizeResult(row,state,now,options)));
-  }
-  if (candidate.kind==='action') return normalizeAction(candidate.action,state,now,options);
-  if (candidate.kind==='form' && candidate.form==='pointItem') return normalizeAction({type:'pointItem.save',payload:{item:candidate.fields}},state,now,options);
-  if (candidate.kind==='conversation' || candidate.kind==='answer' && !candidate.query) {
-    const keys=candidate.kind==='conversation'?['kind','message']:['kind','scope','answer','title'];
-    if (Object.keys(candidate).some(key=>!keys.includes(key)) || candidate.scope!==undefined && candidate.scope!=='conversation') return clarify('普通交流不能包含操作、权限或业务结果字段。');
-    return conversationReply(candidate.kind==='conversation'?candidate.message:candidate.answer,options);
-  }
-  if (candidate.kind==='query' || candidate.kind==='answer') return queryResult(candidate.query,state,now,options);
-  if (candidate.kind==='route') return route(candidate.route);
-  if (candidate.kind==='clarify') return executeTool('ask_clarification',{question:candidate.question},state,now,options);
-  return clarify('请描述积分、常用行为、礼品或提醒，也可以打开对应界面。');
-}
-module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,normalizeResult,queryResult,joinSteps,deferFollowups,resolveFollowup,fitResult,isDraftCancellation,conversationTopic,conversationReply,readQueryFromText,sameDraftCorrection,activeDraft,namedMatches,numericValues,noRedemption};
+module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,queryResult,joinSteps,deferFollowups,resolveFollowup,fitResult,isDraftCancellation,conversationTopic,conversationReply,readQueryFromText,sameDraftCorrection,activeDraft,namedMatches,numericValues,noRedemption};

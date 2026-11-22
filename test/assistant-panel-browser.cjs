@@ -232,6 +232,21 @@ async function drafts() {
     await page.evaluate(() => { __qaSnapshot.messages.at(-1).text = '这次是临时加分，还没有设为常用行为。'; FamilyAssistantPanel.refresh(); }); await ready();
     assert.equal(await page.$eval('.assistant-message-current .assistant-message-text', node => node.textContent), '这次是临时加分，还没有设为常用行为。');
   });
+  await check('Model prose alongside a tool card is preserved once in both pending and historical messages', async () => {
+    const prose = '确认本次加分。';
+    await page.evaluate(answer => {
+      __qaInstallDraft(__qaSnapshot, '00000000-0000-4000-8000-000000000031', {kind:'steps',source:'model',
+        steps:[__qaAction,{kind:'answer',scope:'conversation',answer}]});
+      FamilyAssistantPanel.refresh();
+    }, prose); await ready();
+    assert.deepEqual(await page.$$eval('.assistant-message-current .assistant-step-note', nodes => nodes.map(node => node.textContent)), [prose]);
+    await page.evaluate(() => {
+      __qaInstallDraft(__qaSnapshot, '00000000-0000-4000-8000-000000000032', __qaAction);
+      FamilyAssistantPanel.refresh();
+    }); await ready();
+    const historical = await page.$$eval('.assistant-message:not(.assistant-message-current) .assistant-message-text', nodes => nodes.map(node => node.textContent));
+    assert.equal(historical.filter(text => text === prose).length, 1);
+  });
   await check('Failed synchronization disables a cached draft until a fresh read succeeds', async () => {
     await page.evaluate(() => { __qaModes.read = 'fail'; FamilyAssistantPanel.refresh(); }); await page.waitForFunction(() => !!FamilyAssistantPanel.getState().error);
     assert.equal(await page.$eval(a('apply'), node => node.disabled), true);

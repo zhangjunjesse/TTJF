@@ -299,21 +299,24 @@ test('assistant clarification and read-only steps preserve the current draft and
   const f = await H.fixture(t, { assistantService: adapter(async text => {
     if (text === '还缺什么') return { kind: 'clarify', question: '想核对哪一项？' };
     if (text === '顺便查一查') return { kind: 'steps', steps: [{ kind: 'answer', answer: '还没有积分' }, { kind: 'clarify', question: '还要查什么？' }] };
-    if (text === '伪造取消' || text === '取消这张草稿') return { kind: 'answer', answer: '取消说明', cancelDraft: true };
+    if (text === '聊聊取消') return { kind: 'answer', answer: '已取消是界面上可能显示的提示。' };
+    if (text === '把手头那张先作废吧') return { kind: 'steps', steps: [
+      { kind: 'answer', answer: '当前草稿已取消', cancelDraft: true }, { kind: 'answer', answer: '余额为零' }
+    ] };
     return award(5);
   }) });
   const owner = await H.family(f, await H.register(f, 'chat-preserve@example.test')); await H.setup(f, owner, 'math');
   const initial = (await read(f, owner)).body;
   const proposed = await turn(f, owner, initial.generation, '新增阅读加5分'), original = proposed.body.draft;
-  for (const text of ['还缺什么', '顺便查一查', '伪造取消']) {
+  for (const text of ['还缺什么', '顺便查一查', '聊聊取消']) {
     const checked = await turn(f, owner, initial.generation, text);
     assert.equal(checked.status, 200); assert.deepEqual(checked.body.draft, original);
   }
   const saved = (await f.database.query('SELECT context_result FROM saas_assistant_chats WHERE family_id=$1 AND user_id=$2', [owner.familyId, owner.userId])).rows[0];
   assert.equal(saved.context_result.turnId, original.turnId);
-  const cancelled = await turn(f, owner, initial.generation, '取消这张草稿');
+  const cancelled = await turn(f, owner, initial.generation, '把手头那张先作废吧');
   assert.equal(cancelled.status, 200); assert.equal(cancelled.body.draft, undefined);
-  assert.equal(cancelled.body.messages.at(-1).result.cancelDraft, true);
+  assert.equal(cancelled.body.messages.at(-1).result.steps[0].cancelDraft, true);
   const cleared = (await f.database.query('SELECT context_result FROM saas_assistant_chats WHERE family_id=$1 AND user_id=$2', [owner.familyId, owner.userId])).rows[0];
   assert.equal(cleared.context_result, null);
   const stale = await H.request(f.server, 'POST', '/api/parent/challenge', command(original), owner);

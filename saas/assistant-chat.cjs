@@ -2,7 +2,7 @@
 const crypto = require('node:crypto');
 const M = require('../model.js');
 const S = require('./security.cjs');
-const { resolveFollowup, isDraftCancellation } = require('../assistant-tools.cjs');
+const { resolveFollowup } = require('../assistant-tools.cjs');
 
 const VISIBLE_TURNS = 30;
 const MAX_RESULT_BYTES = 20000;
@@ -252,7 +252,8 @@ function createAssistantChats({ store, run, assistant, at, rate }) {
     const actions = resultActions(output), context = { generation: chat.generation, turnId: input.turnId, result: output,
       actions, sourceRevision: family.revision, familyDay: started.day };
     const drafting = actions.length > 0;
-    const cancelling = output.cancelDraft === true && isDraftCancellation(input.text);
+    const rows = output.kind === 'steps' ? output.steps : [output];
+    const cancelling = rows.some(row => row.kind === 'answer' && row.cancelDraft === true);
     const draft = cancelling ? null : drafting ? context : chat.draft;
     const contextResult = cancelling ? null : drafting ? context : chat.context_result ||
       (output.kind === 'clarify' ? context : null);

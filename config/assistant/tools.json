@@ -5,10 +5,22 @@
       "type": "function",
       "function": {
         "name": "read_balance",
-        "description": "实时查询当前家庭累计获得、已消费和可用积分。不包含未确认候选，不创建加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。",
+        "description": "实时查询当前家庭累计获得、已消费和可用积分。不包含未确认候选，不创建加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
           "required": [],
           "additionalProperties": false
         }
@@ -18,7 +30,7 @@
       "type": "function",
       "function": {
         "name": "read_ledger",
-        "description": "读取最近若干家庭日的真实积分流水，包含加分、礼品扣分与伙伴道具消费；条数有上限。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 period=week按上海周一到今天；last7为含今天的最近七日。behavior仅筛该行为加分；先全量匹配再截返回条数。",
+        "description": "读取最近若干家庭日的真实积分流水，包含加分、礼品扣分与伙伴道具消费；条数有上限。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 period=week按上海周一到今天；last7为含今天的最近七日。behavior仅筛该行为加分；先全量匹配再截返回条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -42,6 +54,17 @@
             "behavior": {
               "type": "string",
               "maxLength": 120
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
             }
           },
           "required": [],
@@ -53,7 +76,7 @@
       "type": "function",
       "function": {
         "name": "read_week_summary",
-        "description": "按上海家庭日只读汇总真实记录：period=week为本周周一到今天；period=last7为包含今天的最近七日，未指定默认last7。behavior可筛指定行为，只汇总该行为真实加分，不能把其他行为算入。返回真实日期范围，不写账。",
+        "description": "按上海家庭日只读汇总真实记录：period=week为本周周一到今天；period=last7为包含今天的最近七日，未指定默认last7。behavior可筛指定行为，只汇总该行为真实加分，不能把其他行为算入。返回真实日期范围，不写账。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -67,6 +90,17 @@
             "behavior": {
               "type": "string",
               "maxLength": 120
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
             }
           },
           "required": [],
@@ -78,7 +112,7 @@
       "type": "function",
       "function": {
         "name": "read_rules",
-        "description": "列出真实常用行为规则及每次默认分值；查询规则不是实际加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
+        "description": "列出真实常用行为规则及每次默认分值；查询规则不是实际加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -89,6 +123,17 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
             }
           },
           "required": [],
@@ -100,7 +145,7 @@
       "type": "function",
       "function": {
         "name": "read_rewards",
-        "description": "查询礼品分值、实时积分差额、日期和启停资格。只查不兑时使用本工具，绝不生成兑换候选。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
+        "description": "查询礼品分值、实时积分差额、日期和启停资格。只查不兑时使用本工具，绝不生成兑换候选。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -116,6 +161,17 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
             }
           },
           "required": [],
@@ -127,7 +183,7 @@
       "type": "function",
       "function": {
         "name": "read_requests",
-        "description": "读取真实礼品申请状态（待确认/已批准/已取消），不会批准或重复扣分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
+        "description": "读取真实礼品申请状态（待确认/已批准/已取消），不会批准或重复扣分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -144,6 +200,17 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
             }
           },
           "required": [],
@@ -155,7 +222,7 @@
       "type": "function",
       "function": {
         "name": "read_tasks",
-        "description": "读取某个上海家庭日的提醒/事项，默认今天未完成。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
+        "description": "读取某个上海家庭日的提醒/事项，默认今天未完成。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -171,6 +238,17 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
             }
           },
           "required": [],
@@ -182,10 +260,22 @@
       "type": "function",
       "function": {
         "name": "read_family_settings",
-        "description": "只读当前家庭的月末可兑换天数与心愿礼品设置；不读取账号、成员、密码、验证、照片或其他私密资料，不写设置。",
+        "description": "只读当前家庭的月末可兑换天数与心愿礼品设置；不读取账号、成员、密码、验证、照片或其他私密资料，不写设置。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
-          "properties": {},
+          "properties": {
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
           "required": [],
           "additionalProperties": false
         }
@@ -195,7 +285,7 @@
       "type": "function",
       "function": {
         "name": "read_guidance",
-        "description": "家庭成长管理的受控只读建议：points结合当前真实常用行为规则说明可供家长参考的已有分值，week结合最近七日记录描述已记录事实。不猜分值，不评价孩子是否懒惰，不诊断或代替家长决策，不生成规则或加分。 period=week针对本周上海周一至今天，last7为最近七日；按用户实际时间范围说明。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
+        "description": "读取供模型参考的真实常用行为分值或已记录的周汇总。points 查询现有规则分值，week 查询实际记录；工具只提供事实，建议内容由模型按系统提示词组织。period=week 为上海周一至今天，last7 为含今天的最近七日。返回清单有界，data.total 为匹配数，hasMore 标示还有记录。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -221,6 +311,17 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
             }
           },
           "required": [
@@ -234,7 +335,7 @@
       "type": "function",
       "function": {
         "name": "draft_award",
-        "description": "整理本次已明确的加分候选，需要具体行为和正整数积分，itemId必须真实且目标唯一。未明确提原因时必须省略reason，不能将行为复制为原因；原因可空，不把规则预设原因当成本次事实。未确认前不记账。",
+        "description": "准备一次性加分草稿，也可修改当前待确认的加分。行为和分值已知时直接传 name 和 points，不需要已有规则、itemId 或先查规则。若家长指定按一条已有规则加分，可用其真实 itemId。reason 只填家长明确给出的本次原因。确认前不记账。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -588,7 +689,7 @@
       "type": "function",
       "function": {
         "name": "ask_clarification",
-        "description": "提出一条简短必要的问题；不能包含声称保存成功、验证通过、余额或业务答案。",
+        "description": "向用户提出需要补充的信息或澄清问题；仅展示模型提供的文字。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -609,7 +710,7 @@
       "type": "function",
       "function": {
         "name": "respond_conversation",
-        "description": "普通非账本交流：自然回应问候、身份、能力、产品使用方法或友善闲聊。可以泛提积分、余额、规则、候选和确认流程；不能自由给出个人账本数字、实时资格或状态，不能声称已保存/已办理/已验证，也不能夹带操作或权限字段。此工具只显示经服务端检查的文字，不查询、不写数据。",
+        "description": "向用户展示模型的自然语言回复，支持问候、说明、讨论和建议。具体内容遵循系统提示词；文字不会查询、记账、授予权限或改变草稿状态。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -622,6 +723,19 @@
           "required": [
             "message"
           ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "cancel_draft",
+        "description": "取消当前助手待确认的草稿，保留已经保存的账本和历史记录。可与只读查询一起使用；与新建候选操作须分轮办理。",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": [],
           "additionalProperties": false
         }
       }

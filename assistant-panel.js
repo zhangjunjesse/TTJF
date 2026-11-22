@@ -105,13 +105,16 @@
     var own = message.role === 'user', result = message.result, currentDraft = !own && draft && message.turnId === draft.turnId;
     var source = own ? '' : sourceLabel(result || currentDraft && draft.result);
     var html = '<article class="assistant-message' + (own ? ' assistant-message-user' : '') + (currentDraft ? ' assistant-message-current' : '') + '"><span class="assistant-sr-only">' + (own ? '你：' : '家长助手：') + '</span>' + (source ? '<span class="assistant-message-source">' + esc(source) + '</span>' : '') + '<div class="assistant-message-content">';
-    var content = own ? message.text : supplementalText(message, currentDraft ? draft.result : result);
+    var rows = parts(currentDraft ? draft.result : result);
+    var conversation = !own && rows.some(function (part) { return part.kind === 'answer' && part.scope === 'conversation'; });
+    var content = own ? message.text : conversation ? '' : supplementalText(message, currentDraft ? draft.result : result);
     if (content) html += '<p class="assistant-message-text">' + esc(content) + '</p>';
     if (own && message.failed) html += '<span class="assistant-message-source">这条消息未完成</span>';
     if (currentDraft) html += currentDraftHTML();
-    if (!own && result && !currentDraft) parts(result).forEach(function (part, index) {
+    if (!own && result && !currentDraft) rows.forEach(function (part, index) {
       if (part.kind === 'route') html += routeCard(part, messageIndex, index, false);
       else if (part.kind === 'action' || part.kind === 'form') html += resultCard(part, index, false, !!message.committed);
+      else if (conversation && (part.answer || part.question)) html += '<p class="assistant-message-text">' + esc(part.answer || part.question) + '</p>';
     });
     return html + '</div></article>';
   }

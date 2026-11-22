@@ -14,7 +14,7 @@
 - 目标为一个 Node 服务进程和本机 SQLite。`data/`、环境文件、开发邮件、数据库及备份不得提交或暴露为静态资源。旧 `server.cjs` 单户 JSON 服务独立保留，不与 SaaS 自动合并。
 - 一个家庭一个孩子、一套账本。所有者/家长是成员角色；家庭必须恰有一个 owner。权限校验、版本判断、业务状态、一次性授权和回执须原子提交，重试不能重复记账。
 - SaaS 不在浏览器持久化业务数据或凭据；上海家庭日期和作物实际生长时长属于不同时间规则。
-- 家长助手的会话按账号和家庭存入 SQLite。系统提示词和工具协议在 `config/assistant/`，业务变更走原有表单和家长授权流程。通用模型聊天由 `AI_CHAT_ENABLED` 控制。
+- 家长助手的会话按账号和家庭存入 SQLite。联网聊天由模型根据 `config/assistant/system.md` 选择自然回答或工具，工具协议在同目录的 `tools.json`。业务变更走原有表单和家长授权流程。通用模型聊天由 `AI_CHAT_ENABLED` 控制。
 - 当前需求与范围以 `docs/sqlite-migration.md`、`docs/saas-completion.md` 和各业务设计决定为准。后者中的 PG 运行方案与历史验收由 SQLite 决定覆盖。
 - `farm/` 是 3D 场景源，`farm-scene.js` 是生成产物。存储改动不重建无关视觉资源。旧 `export/` 与历史 `artifacts/` 不代表当前 SaaS 交付。
 - `world-ui.js` 按业务表单/账号视图切换 Three.js 功能地点，`farm/world-stations.js` 定义地点实物，`farm-world.css` 统一全站呈现。功能场景不写业务数据；账号只使用匿名投影。农场与功能地点同时最多保留一个 WebGL 实例，家庭边界清理时释放视图状态。

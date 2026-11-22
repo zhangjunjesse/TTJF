@@ -10,21 +10,28 @@ const entry = '[data-action="assistant-open"]';
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
   assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting'].includes(device));
-  const introductions = {
+  const replies = {
     'hi':'你好！需要看积分余额、记录加分，还是设置规则和提醒？告诉我就行。',
-    '你是谁':'我是“小小向前”的家庭成长管理助手，可以帮你查看积分和提醒，也可以帮你整理待确认的加分草稿。'
+    '你是谁':'我是“小小向前”的家庭成长管理助手，可以帮你查看积分和提醒，也可以帮你整理待确认的加分草稿。',
+    '35+100等于多少':'35 + 100 = 135。',
+    '现在几点':null,
+    '给我的纸飞机起个名字':'叫「折翼号」怎么样？'
   };
   const assistant = createAssistantService(device === 'greeting' ? {
     apiKey:'test-only',chatEnabled:true,fetch:async (_url, options) => {
       const request = JSON.parse(options.body);
-      const {instruction} = JSON.parse(request.messages.at(-1).content);
-      const content = introductions[instruction];
+      const {instruction,context} = JSON.parse(request.messages.at(-1).content);
+      if (instruction === '现在几点') {
+        assert.match(context.localTime, /^\d{2}:\d{2}$/);
+        replies[instruction] = '现在是北京时间 ' + context.localTime + '。';
+      }
+      const content = replies[instruction];
       assert.ok(content, 'expected the current message in the model request');
       return Response.json({choices:[{finish_reason:'stop',message:{role:'assistant',content}}]});
     }
   } : {apiKey:''});
   if (device === 'template') assistant.chat = async (text, state, now) =>
-    executeTool('draft_award', {itemId:'reading-rule'}, state, now, {text,enforceIntent:true});
+    executeTool('draft_award', {itemId:'reading-rule'}, state, now);
   const env = await Q.initialize({assistantService:assistant});
   const size = device === 'tablet' ? {width:1024,height:768} : device === 'landscape' ? {width:844,height:390} : {width:390,height:844};
   const page = await env.newPage({...size,controlledClock:true});
@@ -54,16 +61,20 @@ async function run() {
     await page.waitForSelector('#assistant-chat-input', {visible:true});
   };
   if (device === 'greeting') {
-    await Q.check('ordinary model greetings and introductions remain attributed to AI after reopening', async () => {
+    await Q.check('greetings, arithmetic, current time and creative replies survive reopening with their model attribution', async () => {
       await open();
-      for (const [prompt, reply] of Object.entries(introductions)) {
+      for (const prompt of Object.keys(replies)) {
         await B.fill(page, '#assistant-chat-input', prompt); await click(page, '#assistant-chat-send');
+        await page.waitForFunction(count => document.querySelectorAll('.assistant-message-source').length === count, {}, Object.keys(replies).indexOf(prompt) + 1);
         await page.waitForFunction(expected => Array.from(document.querySelectorAll('.assistant-message')).some(row =>
-          row.querySelector('.assistant-message-source')?.textContent === 'AI' && row.textContent.includes(expected)), {}, reply);
+          row.querySelector('.assistant-message-source')?.textContent === 'AI' && row.textContent.includes(expected)), {}, replies[prompt]);
       }
       await page.reload({waitUntil:'load'}); await Q.ready(page, family); await open();
-      await page.waitForFunction(() => document.querySelectorAll('.assistant-message-source').length === 2);
-      assert.deepEqual(await page.$$eval('.assistant-message-source', rows => rows.map(row => row.textContent)), ['AI','AI']);
+      const expectedReplies = Object.values(replies);
+      await page.waitForFunction(count => document.querySelectorAll('.assistant-message-source').length === count, {}, expectedReplies.length);
+      const saved = await page.$$eval('.assistant-message-source', rows => rows.map(row => ({source:row.textContent, message:row.closest('.assistant-message').textContent})));
+      assert.deepEqual(saved.map(row => row.source), expectedReplies.map(() => 'AI'));
+      saved.forEach((row, index) => assert.ok(row.message.includes(expectedReplies[index])));
       assert.equal(await page.$(selector('apply')), null);
       assert.deepEqual(await ledger(), []); assert.deepEqual(Q.report.pageErrors, []);
     });
