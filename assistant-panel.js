@@ -30,7 +30,7 @@
     host = doc.createElement('div'); host.id = 'family-assistant-host'; host.className = 'assistant-panel-host'; host.hidden = true;
     host.innerHTML = '<div class="assistant-backdrop" data-assistant-action="close" aria-hidden="true"></div>' +
       '<section id="family-assistant-panel" class="assistant-panel" role="dialog" aria-modal="true" aria-labelledby="assistant-panel-title" aria-describedby="assistant-panel-description" tabindex="-1">' +
-      '<header class="assistant-panel-header"><span class="assistant-brand" aria-hidden="true">' + icon('spark') + '</span><div class="assistant-heading"><h2 id="assistant-panel-title">家长助手</h2><p id="assistant-panel-description" class="assistant-sr-only">查积分、整理草稿、打开页面</p></div>' +
+      '<header class="assistant-panel-header"><span class="assistant-brand assistant-orb" aria-hidden="true">' + icon('spark') + '</span><div class="assistant-heading"><h2 id="assistant-panel-title">家长助手</h2><p id="assistant-panel-description" class="assistant-sr-only">查积分、整理草稿、打开页面</p></div>' +
       button('clear', icon('clear') + '<span>清空</span>', 'assistant-tool assistant-clear', ' aria-label="清空助手对话"') + button('close', icon('close'), 'assistant-tool', ' aria-label="收起助手"') + '</header>' +
       '<div class="assistant-context" id="assistant-panel-context"></div><div id="assistant-chat-log" class="assistant-chat-log" role="log" aria-label="助手对话" aria-live="polite" aria-relevant="additions text"></div>' +
       '<div class="assistant-feedback" id="assistant-chat-feedback" hidden><p id="assistant-chat-error" role="alert"></p>' + button('retry', '重试', 'assistant-retry') + '</div>' +

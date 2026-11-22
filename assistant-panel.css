@@ -1,4 +1,113 @@
 @charset "UTF-8";
+/* Equal side tracks keep the assistant on the same axis in each main view. */
+.bottom-nav.assistant-dock .main-tabs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: clamp(4px, 2vw, 16px);
+  width: 100%;
+  max-width: 560px;
+  min-width: 0;
+}
+.assistant-dock .nav-item { margin: 0; }
+.assistant-launcher {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 4px clamp(14px, 2vw, 20px) 4px 10px;
+  border: 1px solid #43756b;
+  border-radius: 999px;
+  color: #f0fff7;
+  background: radial-gradient(ellipse at 18% 0%, #457e77, transparent 62%), linear-gradient(115deg, #254d4b 0%, #193e3b 55%, #203c37 100%);
+  box-shadow: inset 0 1px 1px #c9f9d956, inset 0 -1px 1px #071e1fc4, 0 2px 5px #24463a33;
+  font: inherit;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1;
+  white-space: nowrap;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+.assistant-orb {
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: #fffdeb;
+  background: radial-gradient(circle at 33% 19%, #ecfbcd, #69ddbf 23%, #357e87 51%, #284259 84%);
+  box-shadow: inset 0 0 0 1px #d4ffe28f, inset -2px -3px 5px #142d45a6, 0 0 7px #78dfc86b;
+  pointer-events: none;
+}
+.assistant-orb::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  border-radius: 50%;
+  background: conic-gradient(from -30deg, transparent 4%, #d9f6b4a6 18%, transparent 36%, #8dc5f9a1 55%, transparent 71%, #58e9bc80 84%, transparent);
+}
+.assistant-orb::after {
+  content: "";
+  position: absolute;
+  inset: 26% -12%;
+  border: 1px solid #d3fdec;
+  border-top-color: #c3f9e53b;
+  border-right-color: #ffe2a5;
+  border-radius: 50%;
+  transform: rotate(-32deg);
+  box-shadow: 0 1px 1px #113e507d;
+}
+.assistant-orb > :is(.icon, .assistant-icon) {
+  position: relative;
+  width: 48%;
+  height: 48%;
+  margin: 0;
+  fill: currentColor;
+  stroke-width: .9;
+  filter: drop-shadow(0 1px 1px #235454);
+}
+.assistant-sheet-entry .assistant-orb { width: 27px; height: 27px; }
+@media (prefers-reduced-motion: no-preference) {
+  .assistant-launcher .assistant-orb::before { animation: assistant-aurora 18s linear infinite; }
+  .assistant-launcher .assistant-orb::after { animation: assistant-orbit 9s ease-in-out infinite alternate; }
+  .assistant-panel-open .assistant-orb::before, .assistant-panel-open .assistant-orb::after { animation-play-state: paused; }
+}
+@keyframes assistant-aurora { to { transform: rotate(1turn); } }
+@keyframes assistant-orbit { to { transform: rotate(-20deg) scaleY(.82); } }
+@media (hover: hover) {
+  .assistant-launcher:hover { border-color: #779b88; box-shadow: inset 0 1px 1px #c9f9d96b, 0 2px 10px #2e74664d; }
+}
+.assistant-launcher:focus-visible, .assistant-sheet-entry:focus-visible { outline: 3px solid #835b16; outline-offset: 2px; }
+/* The reminder list has its own side panel on landscape tablets. Keep the
+   shared navigation aligned with the viewport and clear of the list. */
+@media (min-width: 701px) and (orientation: landscape) {
+  body[data-world-route="reminders"] {
+    --assistant-dock-height: calc(60px + env(safe-area-inset-bottom, 0px));
+  }
+  body[data-world-route="reminders"]:has(.assistant-dock) #world-stage { bottom: var(--assistant-dock-height); }
+  body[data-world-route="reminders"]:not(.sheet-open) .app-shell:has(.assistant-dock) {
+    height: calc(var(--app-height, 100vh) - 2 * var(--world-gutter) - var(--assistant-dock-height));
+  }
+  body[data-world-route="reminders"] .bottom-nav.assistant-dock {
+    position: fixed;
+    inset-inline: 0;
+    bottom: 0;
+    height: var(--assistant-dock-height);
+    min-height: var(--assistant-dock-height);
+    padding: 5px 12px calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+}
+@media (forced-colors: active) {
+  .assistant-launcher { border: 1px solid ButtonText; background: ButtonFace; color: ButtonText; box-shadow: none; }
+  .assistant-orb { color: ButtonText; background: ButtonFace; box-shadow: none; }
+  .assistant-orb::before, .assistant-orb::after { display: none; }
+  .assistant-orb > :is(.icon, .assistant-icon) { filter: none; }
+}
 /* Kept outside #app so opening the assistant never replaces a form draft. */
 .assistant-panel-host { position: fixed; z-index: 130; top: 0; left: 0; width: 100%; height: 100%; color: #293e32; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
 .assistant-panel-host[hidden], .assistant-panel-host [hidden] { display: none !important; }
@@ -12,7 +121,7 @@
 .assistant-icon { display: inline-block; flex: 0 0 auto; width: 23px; height: 23px; vertical-align: middle; pointer-events: none; }
 .assistant-panel h2, .assistant-panel h3, .assistant-panel p { margin: 0; }
 .assistant-panel-header { display: flex; flex: 0 0 auto; align-items: center; min-height: 82px; gap: 10px; padding: 12px 14px; padding-top: calc(12px + env(safe-area-inset-top)); border-bottom: 1px solid #dfe5d6; background: #f1f4e7; }
-.assistant-brand { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 42px; height: 42px; border: 1px solid #c8d7b1; border-radius: 15px; color: #46653e; background: #e3ecd3; }
+.assistant-brand { width: 34px; height: 34px; margin-inline: 4px; }
 .assistant-heading { flex: 1 1 auto; min-width: 0; }
 .assistant-heading h2 { color: #344b32; font-size: 19px; line-height: 26px; letter-spacing: 0; }
 .assistant-tool { display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; width: 48px; min-width: 48px; min-height: 48px; padding: 10px; border: 0; border-radius: 13px; color: #506447; background: transparent; }
@@ -89,7 +198,7 @@
 }
 @media (max-width: 360px) {
   .assistant-panel-header { gap: 7px; padding-inline: 10px; }
-  .assistant-brand { width: 35px; height: 38px; border-radius: 12px; }
+  .assistant-brand { width: 29px; height: 29px; margin-inline: 3px; }
   .assistant-heading h2 { font-size: 17px; }
   .assistant-chat-log { padding-inline: 14px; }
   .assistant-composer { padding-inline: 10px; }
@@ -97,7 +206,7 @@
 }
 .assistant-viewport-short .assistant-panel-header { min-height: 54px; padding-top: 5px; padding-bottom: 5px; }
 .assistant-viewport-short .assistant-heading p, .assistant-viewport-short .assistant-context, .assistant-viewport-short .assistant-composer-meta { display: none; }
-.assistant-viewport-short .assistant-brand { width: 35px; height: 35px; border-radius: 12px; }
+.assistant-viewport-short .assistant-brand { width: 28px; height: 28px; margin-inline: 3px; }
 .assistant-viewport-short .assistant-chat-log { padding-block: 10px; }
 .assistant-viewport-short .assistant-composer { padding-top: 5px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
 .assistant-viewport-short .assistant-feedback { max-height: 66px; margin-bottom: 3px; padding-block: 4px; }

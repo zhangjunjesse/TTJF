@@ -1,5 +1,7 @@
 'use strict';
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
 const { createAssistantService } = require('../assistant-service.cjs');
 const { executeTool } = require('../assistant-tools.cjs');
 const Q = require('./saas-browser.cjs');
@@ -7,9 +9,130 @@ const { B, action, click } = Q;
 const selector = name => '[data-assistant-action="' + name + '"]';
 const entry = '[data-action="assistant-open"]';
 
+function launcherProgress(stage) {
+  Q.report.assistantLauncher = { ...Q.report.assistantLauncher, stage, updatedAt:new Date().toISOString() };
+  fs.mkdirSync(Q.OUT, {recursive:true});
+  fs.writeFileSync(path.join(Q.OUT, 'launcher-progress.json'), JSON.stringify({
+    ...Q.report.assistantLauncher, checks:Q.report.checks, layouts:Q.report.layouts
+  }, null, 2) + '\n');
+}
+async function launcherLayout(page, name) {
+  const value = await page.evaluate(() => {
+    const rendered = node => !!node.getClientRects().length && getComputedStyle(node).visibility !== 'hidden';
+    const nav = document.querySelector('.bottom-nav'), launcher = nav.querySelector('.assistant-launcher');
+    const measure = node => {
+      const r = node.getBoundingClientRect();
+      const points = [[.5,.5],[.25,.5],[.75,.5],[.5,.25],[.5,.75]];
+      return { rect:r.toJSON(), hit:points.every(([x,y]) => {
+        const hit = document.elementFromPoint(r.left + r.width * x, r.top + r.height * y);
+        return !!hit && (hit === node || node.contains(hit));
+      }), disabled:node.disabled };
+    };
+    const controls = Array.from(nav.querySelectorAll('[data-action="nav"], .assistant-launcher')).map(node => ({
+      id:node.classList.contains('assistant-launcher') ? 'assistant' : node.dataset.id, ...measure(node)
+    }));
+    const stage = document.querySelector('#world-stage');
+    const splitScene = document.body.dataset.worldRoute === 'reminders' && matchMedia('(min-width:701px) and (orientation:landscape)').matches;
+    return { viewport:{width:innerWidth,height:innerHeight}, nav:nav.getBoundingClientRect().toJSON(), controls,
+      sceneBottom:splitScene && stage && rendered(stage) ? stage.getBoundingClientRect().bottom : null,
+      entries:Array.from(document.querySelectorAll('[data-action="assistant-open"]')).filter(rendered).length,
+      aria:launcher && { label:launcher.getAttribute('aria-label'), controls:launcher.getAttribute('aria-controls'), popup:launcher.getAttribute('aria-haspopup') },
+      documentWidth:document.documentElement.scrollWidth };
+  });
+  Q.report.layouts.push({name,...value}); launcherProgress(name);
+  assert.equal(value.entries, 1, name + ': one visible assistant entry');
+  assert.deepEqual(value.controls.map(control => control.id), ['points','assistant','reminders'], name + ': navigation reading order');
+  const launcher = value.controls[1].rect;
+  assert.ok(Math.abs(launcher.left + launcher.width / 2 - value.viewport.width / 2) <= 1.5, name + ': assistant is horizontally centered');
+  assert.ok(launcher.top >= value.nav.top - 1 && launcher.bottom <= value.nav.bottom + 1, name + ': assistant stays inside the bottom navigation');
+  assert.ok(Math.abs(value.viewport.height - value.nav.bottom) <= 1 && value.nav.top >= value.viewport.height - 160, name + ': navigation stays at the bottom');
+  if (value.sceneBottom !== null) assert.ok(value.sceneBottom <= value.nav.top + 1, name + ': the navigation leaves the scene caption visible');
+  for (const control of value.controls) {
+    const rect = control.rect;
+    assert.ok(rect.width >= 47.9 && rect.height >= 47.9, name + ': ' + control.id + ' has a 48px touch target');
+    assert.ok(rect.left >= -1 && rect.right <= value.viewport.width + 1 && rect.top >= -1 && rect.bottom <= value.viewport.height + 1,
+      name + ': ' + control.id + ' fits the viewport');
+    assert.equal(control.hit, true, name + ': ' + control.id + ' is hit-testable across its touch target');
+    assert.equal(control.disabled, false, name + ': ' + control.id + ' is enabled');
+  }
+  for (let i = 0; i < value.controls.length - 1; i++) {
+    assert.ok(value.controls[i].rect.right <= value.controls[i + 1].rect.left + 1, name + ': navigation touch targets do not overlap');
+  }
+  assert.deepEqual(value.aria, {label:'打开家长助手',controls:'family-assistant-panel',popup:'dialog'});
+  assert.ok(value.documentWidth <= value.viewport.width + 1, name + ': no horizontal overflow');
+}
+async function launcherFlow(page, env, device, open) {
+  Q.report.assistantLauncher = {case:device,boundary:'Real SaaS and isolated SQLite in desktop Chromium. Reduced motion is emulated; a physical tablet, Safari and OS keyboard are not verified.'};
+  launcherProgress('fixture-ready');
+  const before = await Q.snapshot(page), marker = env.calls.length;
+  await Q.check(device + ': centered assistant and both navigation tabs remain reachable in points, companion and reminders', async () => {
+    await B.homeView(page, 'points'); await launcherLayout(page, 'points-home');
+    await Q.shot(page, device + '-points-entry');
+    await B.homeView(page, 'companion'); await launcherLayout(page, 'companion-home');
+    await Q.shot(page, device + '-companion-entry');
+    await click(page, action('nav', 'reminders'), {scroll:false});
+    await page.waitForFunction(() => FamilyDemo.getUI().view === 'reminders');
+    await launcherLayout(page, 'reminders'); await Q.shot(page, device + '-reminders-entry');
+    await click(page, action('nav', 'points'), {scroll:false});
+    await page.waitForFunction(() => FamilyDemo.getUI().view === 'points');
+    await launcherLayout(page, 'returned-home');
+  });
+  await Q.check(device + ': reduced motion keeps the centered entry still and opening, closing and keyboard activation restore focus', async () => {
+    await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'}]);
+    const ornament = '.assistant-launcher .assistant-orb';
+    const start = await page.$eval(ornament, node => getComputedStyle(node,'::before').transform);
+    await page.waitForFunction((selector, initial) => {
+      const style = getComputedStyle(document.querySelector(selector),'::before');
+      return style.animationName !== 'none' && style.transform !== initial;
+    }, {}, ornament, start);
+    await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
+    const moving = await page.$eval('.assistant-launcher', launcher => [launcher,...launcher.querySelectorAll('*')].flatMap((node,index) =>
+      [null,'::before','::after'].map(pseudo => {
+        const style = getComputedStyle(node, pseudo);
+        return {index,pseudo,animation:style.animationName,animationDuration:style.animationDuration,transitionDuration:style.transitionDuration};
+      })).filter(value => value.animation !== 'none' && value.animationDuration.split(',').some(duration => parseFloat(duration) > 0) ||
+        value.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)));
+    assert.deepEqual(moving, [], 'reduced motion stops entry animations, including decoration');
+    await launcherLayout(page, 'reduced-motion-home'); await Q.shot(page, device + '-reduced-motion-entry');
+    await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'family-assistant-panel', 'opening does not focus the keyboard');
+    await Q.shot(page, device + '-assistant-open');
+    await click(page, 'button' + selector('close'));
+    await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-launcher'));
+    await page.keyboard.press('Enter');
+    await page.waitForFunction(() => FamilyAssistantPanel.getState().open && FamilyAssistantPanel.getState().loaded);
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-launcher'));
+    await launcherLayout(page, 'closed-assistant');
+  });
+  await Q.check(device + ': business editor keeps one nearby assistant entry and preserves the unsaved form', async () => {
+    await B.homeView(page, 'points');
+    await click(page, action('all-behaviors')); await click(page, action('points-new'));
+    await B.fillForm(page, {name:'入口回归草稿',points:'5',reason:'打开和关闭助手后保留'});
+    const draft = await page.$eval('#editor-form', form => Object.fromEntries(new FormData(form)));
+    const visibleEntries = await page.$$eval(entry, nodes => nodes.filter(node => node.getClientRects().length).map(node => ({
+      inSheet:!!node.closest('.sheet'), floating:node.classList.contains('assistant-launcher')
+    })));
+    assert.deepEqual(visibleEntries, [{inSheet:true,floating:false}], 'the sheet has one contextual entry');
+    await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
+    await click(page, 'button' + selector('close'));
+    await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-sheet-entry'));
+    assert.deepEqual(await page.$eval('#editor-form', form => Object.fromEntries(new FormData(form))), draft);
+    await Q.shot(page, device + '-editor-entry');
+    await Q.home(page); await launcherLayout(page, 'closed-editor');
+    assert.deepEqual(await Q.snapshot(page), before, 'entry and navigation interactions do not change family data');
+    assert.deepEqual(env.calls.slice(marker).filter(call => call.path === '/api/action'), [], 'entry interactions do not submit business actions');
+    assert.deepEqual(Q.report.pageErrors, []);
+  });
+  launcherProgress('passed');
+}
+
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
-  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting'].includes(device));
+  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'launcher-phone', 'launcher-tablet'].includes(device));
+  if (device.startsWith('launcher-')) {
+    Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
+  }
   const replies = {
     'hi':'你好！需要看积分余额、记录加分，还是设置规则和提醒？告诉我就行。',
     '你是谁':'我是“小小向前”的家庭成长管理助手，可以帮你查看积分和提醒，也可以帮你整理待确认的加分草稿。',
@@ -33,7 +156,7 @@ async function run() {
   if (device === 'template') assistant.chat = async (text, state, now) =>
     executeTool('draft_award', {itemId:'reading-rule'}, state, now);
   const env = await Q.initialize({assistantService:assistant});
-  const size = device === 'tablet' ? {width:1024,height:768} : device === 'landscape' ? {width:844,height:390} : {width:390,height:844};
+  const size = device === 'tablet' || device === 'launcher-tablet' ? {width:1024,height:768} : device === 'landscape' ? {width:844,height:390} : {width:390,height:844};
   const page = await env.newPage({...size,controlledClock:true});
   Q.active(page);
   page.setDefaultTimeout(7000);
@@ -60,6 +183,7 @@ async function run() {
     await click(page, entry);
     await page.waitForSelector('#assistant-chat-input', {visible:true});
   };
+  if (device.startsWith('launcher-')) { await launcherFlow(page, env, device, open); return; }
   if (device === 'greeting') {
     await Q.check('greetings, arithmetic, current time and creative replies survive reopening with their model attribution', async () => {
       await open();
@@ -122,7 +246,7 @@ async function run() {
     });
     return;
   }
-  await Q.check('phone has one floating entry, and opening chat does not focus or record audio', async () => {
+  await Q.check('phone opens its single assistant entry without focusing or recording audio', async () => {
     assert.equal(await page.$$eval(entry, nodes => nodes.filter(n => n.getClientRects().length).length), 1);
     await Q.shot(page, 'phone-entry');
     await open();

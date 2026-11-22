@@ -244,29 +244,6 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   box-shadow: inset 0 1px 0 #ffffef, 0 2px 0 rgba(102, 120, 61, .16);
 }
 .voice-entry { border-color: #d0b67f; background: linear-gradient(#fff6df, #eed9ad); color: #76592f; box-shadow: var(--farm-small-shadow); }
-.bottom-nav:has(.assistant-launcher) { position: relative; }
-.assistant-launcher {
-  position: absolute;
-  z-index: 2;
-  right: max(16px, env(safe-area-inset-right));
-  bottom: calc(100% + 8px);
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  min-height: 48px;
-  padding: 0 15px;
-  border: 1px solid #405e39;
-  border-radius: 24px;
-  background: #496941;
-  color: white;
-  box-shadow: 0 3px 10px rgba(53, 54, 30, .21);
-  font: inherit;
-  font-weight: 650;
-  cursor: pointer;
-}
-.assistant-launcher .icon { width: 21px; height: 21px; }
-.assistant-launcher:focus-visible, .assistant-sheet-entry:focus-visible { outline: 3px solid #835b16; outline-offset: 2px; }
-.app-shell:has(.assistant-launcher) .app-main { scroll-padding-bottom: 64px; }
 /* Keep the actual companion stage in view alongside the conversation on tablets. */
 @media (min-width: 900px) and (min-height: 520px) {
   .view-points:not(.sheet-open):has(#family-assistant-host:not([hidden])) #main:has([data-home-mode="companion"]) {

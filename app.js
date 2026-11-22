@@ -143,7 +143,6 @@
     snack: '<path d="M12 6c-5-6-12 2-8 10 3 8 5 3 8 5 3-2 5 3 8-5 4-8-3-16-8-10ZM12 6c0-3 2-4 4-4"/>',
     ball: '<circle cx="12" cy="12" r="9"/><path d="M3 12c7-3 11 1 15 7M9 3c-3 6 1 13 7 17m5-9c-4-1-8-6-9-8"/>',
     spark: '<path d="m12 2 2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8ZM20 2v4m-2-2h4"/>',
-    chat: '<path d="M20 14a4 4 0 0 1-4 4h-5l-5 3v-3a4 4 0 0 1-3-4V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4Z"/><path d="M7 8h9M7 12h6"/>',
     camera: '<path d="M8 5 9 2h6l1 3h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><circle cx="12" cy="13" r="5"/>',
     trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>'
   };
@@ -635,12 +634,20 @@
     if (ui.view === 'points') return '<header class="app-header home-header">' + button('profile-edit', '<span class="child-avatar">' + avatarImage(state.childAvatar, state.childName) + '<span class="avatar-camera-badge" aria-hidden="true">' + icon('camera') + '</span></span><span class="child-profile-copy"><strong>' + esc(state.childName) + '</strong><small class="profile-edit-hint">' + avatarAction + '</small><small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span>', 'child-profile home-profile', '', avatarAction + '，修改' + state.childName + '的昵称和头像') + homeModeSwitch() + '<div class="header-tools"><div id="home-inbox-slot">' + homeInboxButton() + '</div>' + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
     return '<header class="app-header"><div class="brand-mark" aria-hidden="true">' + icon('star') + '</div><div class="app-title"><h1>小小向前</h1><span class="date-label">' + niceDate(today()) + ' · 星期' + ['日', '一', '二', '三', '四', '五', '六'][M.calendarParts(appClock(), calendarZone()).weekday] + '<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span></div><div class="header-tools">' + (ui.display ? button('display', icon('close'), 'icon-button', '', '恢复自动锁定') : '') + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
   }
-  function navigation() {
-    var assistant = chat ? (!ui.form && !ui.auth ? chatEntry(true) : '') : button('voice', icon('mic') + '<span>指令</span>', 'voice-entry', '', '指令');
-    return '<nav class="bottom-nav" aria-label="主要模块"><div class="main-tabs">' + [['points', 'home', '首页'], ['reminders', 'calendar', '提醒']].map(function (item) { return button('nav', icon(item[1]) + '<span>' + item[2] + '</span>', 'nav-item ' + (ui.view === item[0] ? 'active' : ''), item[0], item[2]).replace('<button ', '<button aria-current="' + (ui.view === item[0] ? 'page' : 'false') + '" '); }).join('') + '</div>' + assistant + '</nav>';
+  function navTab(view, glyph, label) {
+    var current = ui.view === view;
+    return button('nav', icon(glyph) + '<span>' + label + '</span>', 'nav-item' + (current ? ' active' : ''), view, label)
+      .replace('<button ', '<button aria-current="' + (current ? 'page' : 'false') + '" ');
   }
-  function chatEntry(floating) {
-    return button('assistant-open', icon('chat') + (floating ? '<span>助手</span>' : ''), floating ? 'assistant-launcher' : 'icon-button assistant-sheet-entry', '', '打开家长助手').replace('<button ', '<button aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
+  function navigation() {
+    var dock = chat && !ui.form && !ui.auth;
+    var tabs = navTab('points', 'home', '首页') + (dock ? chatEntry(true) : '') + navTab('reminders', 'calendar', '提醒');
+    var voice = chat ? '' : button('voice', icon('mic') + '<span>指令</span>', 'voice-entry', '', '指令');
+    return '<nav class="bottom-nav' + (dock ? ' assistant-dock' : '') + '" aria-label="主要模块"><div class="main-tabs">' + tabs + '</div>' + voice + '</nav>';
+  }
+  function chatEntry(inDock) {
+    var orb = '<span class="assistant-orb" aria-hidden="true">' + icon('spark') + '</span>';
+    return button('assistant-open', orb + (inDock ? '<span>AI 助手</span>' : ''), inDock ? 'assistant-launcher' : 'icon-button assistant-sheet-entry', '', '打开家长助手').replace('<button ', '<button aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
   }
   function assistantAvailable() {
     return scopeReady() && !ui.auth && !pending && !(ui.form && ui.form.kind === 'parentConfig');
