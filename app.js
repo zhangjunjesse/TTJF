@@ -4,6 +4,7 @@
   var Farm = window.FamilyFarmUI, M = window.FamilyModel, KEY = 'little-steps-demo-v1', PREF = 'little-steps-preferences';
   var DRAFT = 'little-steps-drafts-v03', PRIVATE = 'little-steps-parent-private-v03', SOUND = 'ttjf-saas-device-sound-v1';
   var saas = window.__TTJF_SAAS__ === true, SaaS = window.FamilySaas;
+  var chat = saas ? window.FamilyAssistantPanel : null;
   var local = !saas && (location.protocol === 'file:' || window.__FAMILY_OFFLINE__ === true), state = null, revision = 0, connected = false, serverReached = false;
   var syncBusy = false, pending = false, retryTx = null, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
   var assistantSequence = 0, avatarSequence = 0, petTimer = null, familyDay = null, serverTime = 0, serverReceived = 0, avatarSelection = null;
@@ -29,6 +30,7 @@
   function scopeCurrent(token) { return !saas || !!(SaaS && SaaS.current(token) && scopeReady()); }
   function trackScope(dispose) { return saas && SaaS ? SaaS.track(dispose) : function () {}; }
   function clearFamily(keepAvatar) {
+    if (chat) chat.reset();
     if (!keepAvatar) discardAvatar();
     clearTimeout(toastTimer); clearTimeout(petTimer); toastTimer = null; petTimer = null;
     stopRecognition();
@@ -54,7 +56,7 @@
     Object.keys(value).forEach(function (key) { if (!/^(password|currentPassword|confirmPassword|pin|confirmPin|setupPin|setupConfirm|answer|grant|challenge|challengeId|autoPin|tx|action|actionId|signature|token|csrfToken)$/i.test(key)) out[key] = ordinary(value[key]); });
     return out;
   }
-  function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), openedRevision: f.openedRevision, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
+  function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), assistantDraft: f.assistantDraft && clone(f.assistantDraft), openedRevision: f.openedRevision, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
   function suspendFamily() {
     rememberDraft(); rememberSheetFocus();
     var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), scrollTop: main ? main.scrollTop : 0, revision: revision };
@@ -141,6 +143,7 @@
     snack: '<path d="M12 6c-5-6-12 2-8 10 3 8 5 3 8 5 3-2 5 3 8-5 4-8-3-16-8-10ZM12 6c0-3 2-4 4-4"/>',
     ball: '<circle cx="12" cy="12" r="9"/><path d="M3 12c7-3 11 1 15 7M9 3c-3 6 1 13 7 17m5-9c-4-1-8-6-9-8"/>',
     spark: '<path d="m12 2 2.8 7.2L22 12l-7.2 2.8L12 22l-2.8-7.2L2 12l7.2-2.8ZM20 2v4m-2-2h4"/>',
+    chat: '<path d="M20 14a4 4 0 0 1-4 4h-5l-5 3v-3a4 4 0 0 1-3-4V7a4 4 0 0 1 4-4h9a4 4 0 0 1 4 4Z"/><path d="M7 8h9M7 12h6"/>',
     camera: '<path d="M8 5 9 2h6l1 3h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><circle cx="12" cy="13" r="5"/>',
     trash: '<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>'
   };
@@ -280,6 +283,10 @@
   function showError(message) { var el = document.getElementById(ui.auth ? 'parent-error' : 'form-error'); if (el) { el.textContent = message; el.hidden = false; } else toast(message); }
   function isPublic(action) { return ['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene', 'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare'].indexOf(action.type) >= 0; }
   function conflict(tx, result) {
+    if (tx.assistantDraft && /^ASSISTANT_/.test(result.code || '')) {
+      tx.grant = null; retryTx = null; ui.auth = null;
+      render(false); showError('助手草稿已变化，请打开助手重新核对'); return;
+    }
     if (result.state) setSnapshot(result);
     if (ui.auth && ui.auth.tx === tx) ui.auth.autoPin = null;
     clearParentSecrets(tx);
@@ -350,12 +357,20 @@
     if (action.type === 'parent.configure' && meta.parent.configured === false) { if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); return; }
     if (!local && !connected) { showError('未连接 · 草稿已保留'); return; }
     rememberDraft();
+    var binding = ui.form && ui.form.assistantDraft;
+    if (binding && (binding.type !== action.type || binding.familyDay !== today() || binding.sourceRevision !== revision)) {
+      showError('助手草稿已变化，请打开助手重新核对'); return;
+    }
     if (ui.form && ui.form.openedRevision !== revision) {
       ui.form.openedRevision = revision; render(false); showError('记录已更新 · 待确认'); return;
     }
     var signature = JSON.stringify(action), tx;
-    if (retryTx && retryTx.signature === signature) tx = retryTx;
-    else { action.id = uid(); tx = { action: action, signature: signature, revision: revision, message: message, grant: null, previousGrowth: M.growth(state) }; }
+    if (retryTx && retryTx.signature === signature && (binding ? retryTx.action.id === binding.actionId : !retryTx.assistantDraft)) tx = retryTx;
+    else {
+      action.id = binding ? binding.actionId : uid();
+      tx = { action: action, signature: signature, revision: revision, message: message, grant: null, previousGrowth: M.growth(state) };
+      if (binding) tx.assistantDraft = { generation: binding.generation, turnId: binding.turnId };
+    }
     // A retry can be initiated from a newly reopened editor.
     tx.form = ui.form;
     if (!tx.uncertain) { tx.revision = revision; tx.previousGrowth = M.growth(state); tx.previousPetStatus = playStatus(); }
@@ -382,7 +397,7 @@
       if (auth.method === 'math') { var a = 12 + Math.floor(Math.random() * 18), b = 3 + Math.floor(Math.random() * 7); auth.question = a + ' × ' + b + ' = ?'; auth.localAnswer = String(a * b); }
       ready(); return;
     }
-    request('POST', '/api/parent/challenge', { revision: auth.tx.revision, action: auth.tx.action }, function (status, result) {
+    request('POST', '/api/parent/challenge', { revision: auth.tx.revision, action: auth.tx.action, assistantDraft: auth.tx.assistantDraft }, function (status, result) {
       if (ui.auth !== auth) return;
       auth.busy = false;
       if (status === 200 && result.challengeId) { auth.challengeId = result.challengeId; auth.method = result.method; auth.question = result.question || ''; auth.expiresAt = result.expiresAt; ready(); }
@@ -472,7 +487,7 @@
     }
     pending = true; retryTx = tx;
     if (ui.auth) ui.auth.phase = 'saving'; render(false);
-    request('POST', '/api/action', { revision: tx.revision, action: tx.action, grant: tx.grant || undefined }, function (status, result) {
+    request('POST', '/api/action', { revision: tx.revision, action: tx.action, grant: tx.grant || undefined, assistantDraft: tx.assistantDraft }, function (status, result) {
       pending = false;
       if (status === 200 && result.state) { setSnapshot(result); finishTransaction(tx); }
       else if (status === 409) conflict(tx, result);
@@ -511,6 +526,7 @@
     if (tx.action.type === 'pet.care') reactPet(ui.petReaction, message);
     if (tx.action.type === 'points.add' || tx.action.type === 'pet.care' || tx.action.type === 'pet.scene') { var hero = document.querySelector('.companion-scene'); if (hero) hero.focus(); }
     if (tx.action.type === 'redemption.approve') play('redeem');
+    if (tx.assistantDraft && chat && scopeReady() && !ui.auth) chat.open();
     if (tx.action.type === 'parent.configure') { clearParentSecrets(tx); loadMeta(); }
   }
   function draftKey(f) { return f.kind + ':' + (f.kind === 'points' || f.kind === 'petBuy' ? f.data.itemId || 'new' : f.data.id || f.data.rewardId || f.data.requestId || 'new'); }
@@ -519,7 +535,7 @@
     if (!ui.form || ui.auth) return;
     var values = fields(), f = ui.form;
     Object.keys(values).forEach(function (key) { if (['pin', 'confirmPin', 'setupPin', 'setupConfirm', 'answer'].indexOf(key) < 0) f.data[key] = values[key]; });
-    if (['points', 'petBuy', 'task', 'reward', 'pointItem', 'voice'].indexOf(f.kind) >= 0) { drafts[draftKey(f)] = clone(f.data); saveStore(DRAFT, drafts); }
+    if (!f.assistantDraft && ['points', 'petBuy', 'task', 'reward', 'pointItem', 'voice'].indexOf(f.kind) >= 0) { drafts[draftKey(f)] = clone(f.data); saveStore(DRAFT, drafts); }
   }
   function focusKey(element) { if (!element || !element.getAttribute) return null; return { tag: element.tagName, type: element.type || '', id: element.id || '', name: element.name || '', action: element.getAttribute('data-action') || '', dataId: element.getAttribute('data-id') || '' }; }
   function rememberSheetFocus() { if (!ui.form || ui.auth) return; var sheetEl = document.querySelector('.sheet'), body = document.querySelector('.sheet-body'); if (sheetEl && sheetEl.contains && sheetEl.contains(document.activeElement)) ui.form.focusKey = focusKey(document.activeElement); if (body) ui.form.scrollTop = body.scrollTop; }
@@ -620,7 +636,98 @@
     return '<header class="app-header"><div class="brand-mark" aria-hidden="true">' + icon('star') + '</div><div class="app-title"><h1>小小向前</h1><span class="date-label">' + niceDate(today()) + ' · 星期' + ['日', '一', '二', '三', '四', '五', '六'][M.calendarParts(appClock(), calendarZone()).weekday] + '<small id="connection-state" class="connection-state">' + (local || connected ? '' : serverReached ? '连接中断' : '连接中') + '</small></span></div><div class="header-tools">' + (ui.display ? button('display', icon('close'), 'icon-button', '', '恢复自动锁定') : '') + button('preferences', icon('settings'), 'icon-button', '', '设置') + '</div></header>';
   }
   function navigation() {
-    return '<nav class="bottom-nav" aria-label="主要模块"><div class="main-tabs">' + [['points', 'home', '首页'], ['reminders', 'calendar', '提醒']].map(function (item) { return button('nav', icon(item[1]) + '<span>' + item[2] + '</span>', 'nav-item ' + (ui.view === item[0] ? 'active' : ''), item[0], item[2]).replace('<button ', '<button aria-current="' + (ui.view === item[0] ? 'page' : 'false') + '" '); }).join('') + '</div>' + button('voice', icon('mic') + '<span>指令</span>', 'voice-entry', '', '指令') + '</nav>';
+    var assistant = chat ? (!ui.form && !ui.auth ? chatEntry(true) : '') : button('voice', icon('mic') + '<span>指令</span>', 'voice-entry', '', '指令');
+    return '<nav class="bottom-nav" aria-label="主要模块"><div class="main-tabs">' + [['points', 'home', '首页'], ['reminders', 'calendar', '提醒']].map(function (item) { return button('nav', icon(item[1]) + '<span>' + item[2] + '</span>', 'nav-item ' + (ui.view === item[0] ? 'active' : ''), item[0], item[2]).replace('<button ', '<button aria-current="' + (ui.view === item[0] ? 'page' : 'false') + '" '); }).join('') + '</div>' + assistant + '</nav>';
+  }
+  function chatEntry(floating) {
+    return button('assistant-open', icon('chat') + (floating ? '<span>助手</span>' : ''), floating ? 'assistant-launcher' : 'icon-button assistant-sheet-entry', '', '打开家长助手').replace('<button ', '<button aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
+  }
+  function assistantAvailable() {
+    return scopeReady() && !ui.auth && !pending && !(ui.form && ui.form.kind === 'parentConfig');
+  }
+  function clearAssistantEditors(generation) {
+    function belongs(form) { return form && form.assistantDraft && form.assistantDraft.generation === generation; }
+    if (retryTx && retryTx.assistantDraft && retryTx.assistantDraft.generation === generation) retryTx = null;
+    ui.stack = ui.stack.filter(function (form) { return !belongs(form); });
+    if (belongs(ui.form)) { ui.form = ui.stack.pop() || null; render(false); }
+  }
+  function assistantContext() {
+    var f = ui.form, d = f && f.data;
+    return { view: ui.view, form: f ? f.kind : '', targetId: d ? d.id || d.itemId || d.requestId || d.rewardId || '' : '' };
+  }
+  function openAssistantRoute(route) {
+    var routes = { points:'records', pointItems:'point-list', rewards:'rewards', redemptions:'homeInbox', partner:'petHub', settings:'preferences' };
+    if (Object.prototype.hasOwnProperty.call(routes, route)) openForm(routes[route], {});
+    else if (route === 'family') SaaS.openSettings();
+    else if (route === 'reminders') onAction('nav', 'reminders');
+    else if (route === 'parent') onAction('parent-config');
+    else if (route === 'profile') onAction('profile-edit');
+    else if (route === 'farm') onAction('farm-open');
+    else return false;
+    return true;
+  }
+  function applyAssistantCard(result, meta) {
+    if (!assistantAvailable() || !result) return false;
+    if (result.kind === 'route') return openAssistantRoute(result.route);
+    var draft = meta && meta.draft;
+    var binding = draft && draft.actions.filter(function (step) { return step.index === meta.index && step.status === 'pending'; })[0];
+    if (!binding || draft.sourceRevision !== revision || draft.familyDay !== today()) {
+      toast('家庭记录已变化，请在助手中重新核对'); sync(); return false;
+    }
+    var editor = assistantEditor(result);
+    if (!editor) { toast('无法办理这项操作，请在助手中重新选择'); return false; }
+    rememberDraft();
+    if (ui.form && ui.form.kind === editor.kind && (ui.form.data.id || '') === (editor.data.id || '')) {
+      // A partially filled form can contain a reason or time the parent didn't ask to replace.
+      Object.keys(editor.patch).forEach(function (key) { ui.form.data[key] = editor.patch[key]; });
+      ui.form.openedRevision = revision;
+    } else openForm(editor.kind, editor.data);
+    if (result.kind === 'form' && (result.missing || []).indexOf('points') >= 0 && !ui.form.data.templatePointsChosen && Number(ui.form.data.points) === 5) ui.form.data.points = '';
+    ui.form.assistantDraft = { generation:draft.generation, turnId:draft.turnId, sourceRevision:draft.sourceRevision, familyDay:draft.familyDay, type:binding.type, actionId:binding.actionId };
+    render(false);
+    return true;
+  }
+  function assistantEditor(result) {
+    var a = result.action || {}, p = a.payload || a, previous, patch, kind;
+    if (result.kind === 'form' && result.form === 'pointItem') { kind = 'pointItem'; patch = result.fields || {}; previous = {points:'', enabled:true}; }
+    else if (a.type === 'points.add') { kind = 'points'; patch = Object.assign({itemId:''}, p); }
+    else if (a.type === 'task.save') { kind = 'task'; patch = p.task; previous = patch && find(state.tasks, patch.id); }
+    else if (a.type === 'reward.save') { kind = 'reward'; patch = p.reward; previous = patch && find(state.rewards, patch.id); }
+    else if (a.type === 'pointItem.save') { kind = 'pointItem'; patch = p.item; previous = patch && find(state.pointItems, patch.id); }
+    else if (a.type === 'redemption.request') { kind = 'request'; patch = {rewardId:p.rewardId}; }
+    else if (a.type === 'redemption.approve') { kind = 'approve'; patch = {requestId:p.requestId, note:p.note || ''}; }
+    else if (['task.toggle','task.ack','task.snooze'].indexOf(a.type) >= 0) { kind = 'taskAction'; patch = {type:a.type, taskId:p.taskId, minutes:p.minutes, title:result.title || '处理提醒'}; }
+    else if (['pointItem.delete','redemption.cancel','reward.redeem','settings.update','task.delete','task.restore'].indexOf(a.type) >= 0) {
+      kind = 'assistantReview'; patch = {command:Object.assign({}, p, {type:a.type}), title:result.title || '核对操作'};
+    } else return null;
+    if (!patch || (patch.id && !previous)) return null;
+    return {kind:kind, patch:patch, data:Object.assign({}, previous || {}, patch)};
+  }
+  function assistantReviewBody(command) {
+    if (!command) return empty('请重新打开助手核对');
+    var target, rows = [];
+    if (command.type === 'reward.redeem') {
+      target = find(state.rewards, command.rewardId);
+      rows = [['直接兑换', target && target.name], ['本次扣分', (target && target.points) + ' 分'], ['可兑换积分', M.totals(state).available + ' 分']];
+    } else if (command.type === 'redemption.cancel') {
+      target = find(state.requests, command.requestId);
+      rows = [['取消待审批申请', target && target.name], ['本次扣分', '0 分']];
+    } else if (command.type === 'pointItem.delete') {
+      target = find(state.pointItems, command.itemId);
+      rows = [['删除常用行为', target && target.name], ['历史积分', '已记入的积分保留']];
+    } else if (command.type === 'settings.update') {
+      var settings = command.settings || {};
+      if (settings.monthEndDays !== undefined) rows.push(['月底可兑换天数', settings.monthEndDays]);
+      if (settings.preferredReward !== undefined) {
+        var reward = find(state.rewards, settings.preferredReward);
+        rows.push(['心愿礼品', reward ? reward.name : '未选择']);
+      }
+      return facts(rows);
+    } else {
+      target = find(state.tasks, command.taskId);
+      rows = [[command.type === 'task.restore' ? '恢复提醒' : '移除提醒', target && target.title]];
+    }
+    return target ? facts(rows) : empty('记录已更新，请返回助手重新核对');
   }
   function currentPet() { return state && state.pet || { kind: 'plant', name: '芽芽' }; }
   function reducedMotion() { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
@@ -808,6 +915,7 @@
     meta.assistant.label = result.label || '指令演示';
   }
   function contextAI(f, context) {
+    if (chat) return '';
     if (!f.aiOpen) return '';
     var creating = context === 'pointItemCreate';
     var placeholder = creating ? ' placeholder="例如：以后自己读书满二十分钟，奖励五分"' : '';
@@ -1054,16 +1162,22 @@
       else {
         body = (!initial ? facts([['当前方式', meta.parent.method === 'math' ? '算术题' : 'PIN']]) : '') + select('验证方式', 'method', method, [['pin', '6位 PIN'], ['math', '算术题']]) + field(initial ? '设置PIN' : '新PIN', 'pin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ') + field(initial ? '确认PIN' : '确认新PIN', 'confirmPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ');
       }
+    } else if (f.kind === 'assistantReview') {
+      title = d.title; submit = '确认办理'; body = assistantReviewBody(d.command);
     } else if (f.kind === 'voice') {
       title = '指令'; sub = assistantLabel('general'); submit = ui.assistantBusy ? '整理中' : '发送';
       body = '<div class="voice-box">' + button('listen', icon('mic') + (recognition ? '停止听写' : '听写'), 'btn voice-start') + '<p id="voice-status">' + (recognition ? '听写中' : '') + '</p></div>' + area('指令内容', 'speech', d.speech || '', 'required maxlength="1000"') + (d.answer ? '<div class="assistant-answer" role="status">' + esc(d.answer) + '</div>' : '');
     }
-    var isEditor = ['points', 'petBuy', 'request', 'approve', 'task', 'taskAction', 'reward', 'pointItem', 'point-list', 'profile', 'petConfig', 'familySettings', 'parentConfig', 'voice'].indexOf(f.kind) >= 0;
-    if (['points', 'pointItem', 'point-list'].indexOf(f.kind) >= 0) actions = button('ai-toggle', icon('spark'), 'icon-button' + (f.aiOpen ? ' active' : ''), '', '指令填写').replace('<button ', '<button aria-expanded="' + !!f.aiOpen + '" ') + actions;
+    var isEditor = ['points', 'petBuy', 'request', 'approve', 'task', 'taskAction', 'reward', 'pointItem', 'point-list', 'profile', 'petConfig', 'familySettings', 'parentConfig', 'assistantReview', 'voice'].indexOf(f.kind) >= 0;
+    if (!chat && ['points', 'pointItem', 'point-list'].indexOf(f.kind) >= 0) actions = button('ai-toggle', icon('spark'), 'icon-button' + (f.aiOpen ? ' active' : ''), '', '指令填写').replace('<button ', '<button aria-expanded="' + !!f.aiOpen + '" ') + actions;
     if (submit) {
       var submitBusy = pending || (f.kind === 'voice' && ui.assistantBusy) || (f.kind === 'profile' && f.avatarBusy);
       var submitLabel = f.kind === 'points' ? '核对加分' : f.kind === 'request' ? '申请兑换' : f.kind === 'approve' ? '确认兑换' : f.kind === 'petBuy' ? '确认购买' : /^保存|^设置/.test(submit) ? '保存' : submit;
       actions += '<button type="submit" form="editor-form" class="btn primary sheet-save" aria-label="' + esc(submit) + '" data-label="' + esc(submit) + '" aria-busy="' + !!submitBusy + '"' + (submitBusy || submitBlocked ? ' disabled' : '') + '>' + (pending ? '保存中' : f.kind === 'profile' && f.avatarBusy ? '处理中' : submitLabel) + '</button>';
+    }
+    if (f.assistantDraft) {
+      var message = f.kind === 'pointItem' && !d.points ? '请填写这项行为的默认分值。' : '助手草稿已填写，请核对后保存。';
+      body = '<p class="status-line" id="assistant-form-status" role="status">' + message + '</p>' + body;
     }
     var inside = '<p id="form-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div>' + (footer ? '<div class="sheet-footer">' + footer + '</div>' : '');
     return sheet(title, sub, isEditor ? '<form id="editor-form" class="sheet-form" novalidate>' + inside + '</form>' : inside, false, actions);
@@ -1111,6 +1225,7 @@
     return sheet(title, confirming ? '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true);
   }
   function sheet(title, sub, content, auth, actions) {
+    if (chat && !auth && assistantAvailable()) actions = chatEntry(false) + (actions || '');
     var nested = auth || ui.stack.length > 0, dialogClass = auth ? ' global-dialog ' + (ui.auth.phase === 'confirm' ? 'points-confirm-dialog' : 'parent-dialog') : '';
     return '<div class="sheet-overlay' + (auth ? ' global-dialog-overlay' : '') + '"><div class="sheet-backdrop" data-action="' + (auth ? 'parent-cancel' : 'form-close') + '"></div><section class="sheet' + dialogClass + '" data-form-kind="' + (auth ? 'parent:' : '') + (ui.form ? ui.form.kind : '') + '" role="dialog" aria-modal="true" aria-labelledby="sheet-title"' + (auth ? ' data-auth-phase="' + ui.auth.phase + '" aria-describedby="parent-dialog-prompt"' : '') + '><div class="sheet-grip" aria-hidden="true"></div><header class="sheet-header"><div class="sheet-nav-start">' + button(auth ? 'parent-cancel' : 'form-close', icon(nested ? 'back' : 'close'), 'icon-button', '', auth ? '返回修改' : nested ? '返回上一级' : '关闭面板') + '</div><div class="sheet-heading"><h2 id="sheet-title">' + title + '</h2>' + (sub ? '<p>' + esc(sub) + '</p>' : '') + '</div><div class="sheet-nav-actions">' + (actions || '') + '</div></header>' + content + '</section></div>';
   }
@@ -1137,6 +1252,8 @@
   }
   function render(reset) {
     if (!scopeReady()) return;
+    if (chat && chat.isOpen() && !assistantAvailable()) chat.close({restoreFocus:false});
+    var chatOpen = chat && chat.isOpen();
     if (!ui.homeMode) ui.homeMode = initialHomeMode();
     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
     var oldSheet = document.querySelector('.sheet'), oldBody = document.querySelector('.sheet-body'), oldKind = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-form-kind') : '', oldAuthPhase = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-auth-phase') : '', nextKind = (ui.auth ? 'parent:' : '') + (ui.form ? ui.form.kind : ''), sameSheet = !!oldSheet && oldKind === nextKind, key = sameSheet ? focusKey(document.activeElement) : ui.form && ui.form.focusKey, sheetScroll = sameSheet && oldBody ? oldBody.scrollTop : ui.form && ui.form.scrollTop || 0;
@@ -1155,15 +1272,16 @@
     }
     var notice = document.getElementById('toast');
     if (ui.view === 'points' && !ui.form && !ui.auth && notice.className.indexOf('visible') >= 0) toast(notice.textContent);
+    if (chatOpen) key = null;
     if (ui.auth) { restorePlayFocus(sameSheet && oldAuthPhase === ui.auth.phase ? key : null); }
-    else if (ui.form && ui.form.kind === 'homeInbox') focusInbox();
-    else if (ui.form && ['points', 'behaviorPicker', 'point-list', 'pointItem', 'records', 'homeWeek', 'preferences', 'rewards', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) {
+    else if (!chatOpen && ui.form && ui.form.kind === 'homeInbox') focusInbox();
+    else if (!chatOpen && ui.form && ['points', 'behaviorPicker', 'point-list', 'pointItem', 'records', 'homeWeek', 'preferences', 'rewards', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0) {
       if (!restoreHomeWeekView(weekView)) restorePlayFocus(key);
       var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = sheetScroll;
       if (selection && document.activeElement && document.activeElement.setSelectionRange) { try { document.activeElement.setSelectionRange(selection.start, selection.end); } catch (e) {} }
     }
-    else if (oldSheet && !ui.form && !ui.auth && ui.homeFocus) restorePlayFocus(ui.homeFocus);
-    else if (homeRefresh && homeKey && homeKey.action) restorePlayFocus(homeKey);
+    else if (!chatOpen && oldSheet && !ui.form && !ui.auth && ui.homeFocus) restorePlayFocus(ui.homeFocus);
+    else if (!chatOpen && homeRefresh && homeKey && homeKey.action) restorePlayFocus(homeKey);
     refreshPetPurchase(); fitViewport();
     var showsFarm = farmIsVisible();
     if (Farm && !showsFarm) Farm.releaseScene();
@@ -1176,6 +1294,7 @@
     if (Farm && showsFarm) Farm.afterRender();
   }
   function makeAction(f, v) {
+    if (f.kind === 'assistantReview') return clone(f.data.command);
     if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return action; }
     if (f.kind === 'petBuy') { var status = playStatus(), supply = status && find(status.catalog, f.data.itemId), quantity = Number(v.quantity); if (!supply || !isFinite(quantity) || quantity < 1 || quantity > 10 || quantity !== Math.floor(quantity)) throw new Error('数量无效'); return { type: 'pet.buy', itemId: supply.id, quantity: quantity, expectedPoints: quantity * supply.points }; }
     if (f.kind === 'request') return { type: 'redemption.request', rewardId: f.data.rewardId };
@@ -1205,15 +1324,9 @@
       if (result.result) result = result.result;
       rememberAssistantResult(result, 'general');
       if (result.kind !== 'action' || !result.action) { f.data.answer = assistantMessage(result); render(false); return; }
-      var a = result.action, p = a.payload || a, kind = '', data;
-      if (a.type === 'task.save') { kind = 'task'; data = p.task || p; if (data.id) { var previousTask = find(state.tasks, data.id); if (previousTask) { var patchTask = clone(data); data = clone(previousTask); Object.keys(patchTask).forEach(function (key) { data[key] = patchTask[key]; }); } } }
-      else if (a.type === 'points.add') { kind = 'points'; data = p; }
-      else if (a.type === 'reward.save') { kind = 'reward'; data = p.reward || p; if (data.id) { var previousReward = find(state.rewards, data.id); if (previousReward) { var patchReward = clone(data); data = clone(previousReward); Object.keys(patchReward).forEach(function (key) { data[key] = patchReward[key]; }); } } }
-      else if (a.type === 'pointItem.save' && p.item) { kind = 'pointItem'; data = p.item; if (data.id) { var previousItem = find(state.pointItems, data.id); if (previousItem) { var patchItem = clone(data); data = clone(previousItem); Object.keys(patchItem).forEach(function (key) { data[key] = patchItem[key]; }); } } }
-      else if (a.type === 'redemption.request') { kind = 'request'; data = { rewardId: p.rewardId }; }
-      else if (['task.toggle', 'task.ack', 'task.snooze'].indexOf(a.type) >= 0) { kind = 'taskAction'; data = { type: a.type, taskId: p.taskId, minutes: p.minutes, title: result.title || '处理提醒' }; }
-      else { f.data.answer = '指令不适用'; render(false); return; }
-      openForm(kind, data, false); render(false);
+      var editor = assistantEditor(result);
+      if (!editor) { f.data.answer = '指令不适用'; render(false); return; }
+      openForm(editor.kind, editor.data, false);
     }
     if (!local) { request('POST', '/api/assistant', { text: text, context: 'general' }, receive); }
     else { try { if (!window.FamilyAssistant) throw new Error('指令服务不可用'); receive(200, window.FamilyAssistant.interpret(text, assistantState(), new Date(), { context: 'general' })); } catch (e) { receive(400, { error: e.message }); } }
@@ -1255,6 +1368,10 @@
   function exportData() { var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = '家庭积分提醒-' + today() + '.json'; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); toast('记录已导出'); }
   function onAction(action, id, element) {
     if (!scopeReady()) return;
+    if (action === 'assistant-open' && chat && assistantAvailable()) {
+      rememberDraft(); rememberSheetFocus(); stopRecognition();
+      chat.open({trigger:element}); return;
+    }
     if (saas && action === 'saas-account') { SaaS.openSettings(); return; }
     if (saas && action === 'saas-logout') { SaaS.logout(); return; }
     if (action === 'pet-touch' && !ui.auth) { touchPet(); return; }
@@ -1378,6 +1495,7 @@
     try { var action = makeAction(ui.form, fields()), message = action.type === 'points.add' ? '已加 ' + action.points + ' 分。' : action.type === 'redemption.request' ? '申请已提交' : action.type === 'redemption.approve' ? '兑换成功 · −' + action.expectedPoints + ' 分' : '已保存。'; beginAction(action, message); } catch (e) { showError(errorText(e)); }
   });
   document.addEventListener('keydown', function (event) {
+    if (chat && chat.isOpen()) return;
     if (event.key === 'Enter' && event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { event.preventDefault(); if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; }
     if (event.key === 'Escape' && (ui.form || ui.auth)) closeForm();
     if (event.key === 'Tab' && (ui.form || ui.auth)) { var sheetEl = document.querySelector('.sheet'), nodes = sheetEl ? sheetEl.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),[tabindex="0"]') : []; nodes = Array.prototype.filter.call(nodes, function (node) { return node.getClientRects().length > 0; }); if (nodes.length) { var first = nodes[0], last = nodes[nodes.length - 1]; if (!sheetEl.contains(document.activeElement)) { event.preventDefault(); (event.shiftKey ? last : first).focus(); } else if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }
@@ -1445,6 +1563,18 @@
   document.addEventListener('focusin', scheduleFormViewport);
   window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (canRefreshLedgerView()) render(false); } } });
   if (!M) { document.getElementById('app').innerHTML = '<p class="loading-screen">数据模块未加载</p>'; return; }
+  if (chat) chat.init({
+    request:request, applyResult:applyAssistantCard, canOpen:assistantAvailable, context:assistantContext, onCleared:clearAssistantEditors,
+    scope:scopeToken,
+    contextLabel:function () {
+      var heading = document.getElementById('sheet-title');
+      return ui.form && heading ? heading.textContent : ui.view === 'reminders' ? '提醒' : '家庭首页';
+    },
+    restoreFocus:function () {
+      var el = document.querySelector('.sheet [data-action="assistant-open"], .assistant-launcher');
+      if (el) el.focus({preventScroll:true});
+    }
+  });
   if (!saas) {
     state = readStore(KEY, null); if (!state || state.version !== 1 || !state.tasks) state = M.createSeed(new Date());
     state = M.normalize(state);

@@ -67,27 +67,28 @@ function formAssistant() {
     return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(candidate) } }] }),
       { status: 200, headers: { 'Content-Type': 'application/json' } });
   };
-  const service = createAssistantService(FORM_LIVE ? { fetch: provider } : {
+  const service = createAssistantService(FORM_LIVE ? { fetch: provider, formOnly:true, chatEnabled:false } : { formOnly:true, chatEnabled:false,
     apiKey: 'synthetic-ui-form-key', baseUrl: 'https://ui-form.example.test/v1', model: 'synthetic-form-model', fetch: provider
   });
   assert.equal(service.status().mode, 'connected', 'UI_FORM_LIVE=1 requires a configured model; local fallback is not live verification');
-  return { status: service.status, interpret: async (...args) => {
-    const result = await service.interpret(...args); assistantResults.push(result); return result;
+  return { status: service.status, interpret: service.interpret, chat: async (...args) => {
+    const result = await service.chat(...args); assistantResults.push(result); return result;
   } };
 }
 async function setup() {
   Q.phase('ui-refinement-' + CASE);
   env = await Q.initialize({ assistantService: CASE === 'aiForm' || CASE === 'aiFormPartial' ? formAssistant() : {
     status: () => ({ mode: 'local', label: '合成指令测试' }),
-    interpret: async () => ({ mode: 'local', kind: 'action', action: { type: 'points.add',
+    interpret: async () => ({kind:'clarify',question:'请说明操作'}),
+    chat: async () => ({ mode: 'local', kind: 'action', action: { type: 'points.add',
       payload: { name: '合成语音行为', points: 11, reason: '完整读完故事并主动分享' } } })
   } });
   env.clock(Date.parse('2026-11-17T04:30:00Z'));
   page = await env.newPage({ controlledClock: true, width: 905, height: 768 }); Q.active(page);
   if (CASE === 'aiForm' || CASE === 'aiFormPartial') page.on('request', request => {
-    if (new URL(request.url()).pathname !== '/api/assistant') return;
+    if (new URL(request.url()).pathname !== '/api/assistant/chat/turn') return;
     const body = JSON.parse(request.postData());
-    formRequests.push({ keys: Object.keys(body).sort(), text: body.text, context: body.context, targetId: body.targetId });
+    formRequests.push({ keys: Object.keys(body).sort(), text: body.text, context: body.context });
   });
   page.setDefaultTimeout(7000);
   await page.evaluateOnNewDocument(() => { window.SpeechRecognition = undefined; window.webkitSpeechRecognition = undefined; });
@@ -324,15 +325,15 @@ async function openAIForm(text) {
     assert.equal(await page.$eval('#editor-form [name="points"]', node => node.value), '5');
     await B.fillForm(page, { reason: '合成手动预设原因' });
   }
-  await click(page, a('ai-toggle')); await B.fillForm(page, { aiText: text }); await click(page, a('ai-fill'));
-  await page.waitForFunction(() => {
-    const status = document.querySelector('#context-ai-status');
-    return !window.FamilyDemo.getUI().aiBusy && status && status.textContent.trim() && status.textContent !== '整理中';
-  }, { timeout: 18000 });
+  await click(page, a('assistant-open'));
+  await B.fill(page, '#assistant-chat-input', text); await click(page, '#assistant-chat-send');
+  await page.waitForSelector('[data-assistant-action="apply"]', {visible:true,timeout:18000});
+  assert.match(await page.$eval('#assistant-chat-log', node => node.textContent), new RegExp(text));
+  await click(page, '[data-assistant-action="apply"]');
   assert.equal(assistantResults.length, 1);
   assert.equal(assistantResults[0].mode, 'connected', 'The request traverses the configured model adapter');
   assert.deepEqual(modelChecks, [{ inputMode: 'pointItemCreate', instruction: text, familyContextExcluded: true }]);
-  assert.deepEqual(formRequests, [{ keys: ['context', 'targetId', 'text'], text, context: 'pointItemCreate', targetId: '' }]);
+  assert.deepEqual(formRequests, [{ keys: ['context', 'generation', 'text', 'turnId'], text, context: {view:'points',form:'pointItem',targetId:''} }]);
 }
 async function assertUnsavedForm(before, marker) {
   assert.equal((await ui(page)).form, 'pointItem'); assert.equal((await ui(page)).auth, false);
@@ -350,8 +351,7 @@ async function aiForm() {
     assert.equal(assistantResults[0].kind, 'action'); assert.equal(assistantResults[0].action.type, 'pointItem.save');
     const draft = await assertUnsavedForm(before, marker);
     assert.match(draft.name, /(?:20|二十)\s*分钟/); assert.match(draft.name, /读书|阅读/); assert.equal(draft.points, '5');
-    assert.match(await page.$eval('#context-ai-status', node => node.textContent), /草稿|填写/);
-    assert.equal(await page.$eval('#editor-form [name="aiText"]', node => node.value), FORM_INPUT);
+    assert.match(await page.$eval('#assistant-form-status', node => node.textContent), /草稿|填写/);
     Q.report.aiForm = { provider: FORM_LIVE ? 'live' : 'mock', instruction: FORM_INPUT, draft,
       modelChecks, unsaved: true, earnedPoints: M.totals(before.state).earned, committedActions: 0 };
     await Q.shot(page, 'ai-form-unsaved'); progress('Model-generated template draft verified without saving or awarding points');
@@ -367,7 +367,7 @@ async function aiFormPartial() {
     const draft = await assertUnsavedForm(before, marker);
     assert.match(draft.name, /(?:20|二十)\s*分钟/); assert.equal(draft.points, '', 'An unspecified score clears the initial default five');
     assert.equal(draft.reason, '合成手动预设原因');
-    assert.match(await page.$eval('#context-ai-status', node => node.textContent), /多少分|分值|积分/);
+    assert.match(await page.$eval('#assistant-form-status', node => node.textContent), /多少分|分值|积分/);
     Q.report.aiForm = { provider: 'mock', draft, missing: result.missing, modelChecks, unsaved: true, committedActions: 0 };
     await Q.shot(page, 'ai-form-partial'); progress('Partial form and missing-score prompt verified');
   });
@@ -394,7 +394,9 @@ async function history() {
 async function voice() {
   await Q.check('An HTTP assistant award proposal remains a draft and passes the same explicit review before PIN and persistence', async () => {
     const before = await sql(), marker = env.calls.length;
-    await click(page, a('voice')); await B.fillForm(page, { speech: '今天读完故事，加十一分' }); await click(page, save);
+    await click(page, a('assistant-open')); await B.fill(page, '#assistant-chat-input','今天读完故事，加十一分'); await click(page, '#assistant-chat-send');
+    await page.waitForSelector('[data-assistant-action="apply"]', {visible:true});
+    await click(page, '[data-assistant-action="apply"]');
     await page.waitForFunction(() => window.FamilyDemo.getUI().form === 'points');
     assert.equal(await page.$eval('[name="name"]', node => node.value), '合成语音行为');
     assert.deepEqual(await sql(), before); assert.deepEqual(recent(marker, '/api/parent/challenge'), []); assert.deepEqual(recent(marker, '/api/action'), []);

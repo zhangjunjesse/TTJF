@@ -6,6 +6,8 @@
 !package-lock.json
 !saas-server.cjs
 !assistant-service.cjs
+!assistant-chat.cjs
+!assistant-tools.cjs
 !assistant.js
 !model.js
 !index.html
@@ -23,6 +25,12 @@
 !farm-world.css
 !home-points.js
 !home-points.css
+!assistant-panel.js
+!assistant-panel.css
+!config/
+!config/assistant/
+!config/assistant/*.md
+!config/assistant/tools.json
 !manifest.webmanifest
 !saas/
 !saas/*.cjs

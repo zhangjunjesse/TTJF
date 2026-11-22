@@ -2,6 +2,7 @@
 const crypto = require('node:crypto');
 const M = require('../model.js');
 const S = require('./security.cjs');
+const { createAssistantChats } = require('./assistant-chat.cjs');
 // Private, immutable by callers: these are the existing daily business actions.
 const PUBLIC = new Set(['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel',
   'pet.configure', 'pet.care', 'pet.scene', 'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare']);
@@ -86,6 +87,8 @@ function createBusiness({ store, auth, now, assistant }) {
       await rate(client, who, family, 'challenge', 20);
       await failuresAllowed(client, family);
       S.command(body);
+      const binding = await chats.authorize(client, who, family, body);
+      if (binding && binding.error) { return binding.error; }
       if (body.revision !== family.revision) { return conflict(family, body.action); }
       if (!family.parent.configured) { return setupRequired(family); }
       if (body.action.type === 'parent.setup') { return conflict(family, body.action); }
@@ -150,6 +153,8 @@ function createBusiness({ store, auth, now, assistant }) {
       if (settingUp && family.role !== 'owner') { return error(403, 'OWNER_REQUIRED', '仅家庭所有者可首次设置家长验证'); }
       // Membership/session authorization above precedes every receipt read.
       const prior = (await client.query('SELECT receipt FROM saas_action_receipts WHERE family_id=$1 AND action_id=$2', [family.id, body.action.id])).rows[0];
+      const binding = await chats.authorize(client, who, family, body, { replay: !!prior });
+      if (binding && binding.error) { return binding.error; }
       if (prior || family.state.appliedActions.includes(body.action.id)) {
         if (prior && prior.receipt.algorithm === 'scrypt') { await failuresAllowed(client, family); }
         if (!prior || !await S.matchesReceipt(prior.receipt, body.action)) {
@@ -192,6 +197,7 @@ function createBusiness({ store, auth, now, assistant }) {
       await client.query('UPDATE saas_families SET state=$2,parent=$3,revision=$4,updated_at=$5 WHERE id=$1', [family.id, state, parent, revision, at()]);
       await client.query('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES($1,$2,$3,$4,$5)', [family.id, body.action.id, receipt, revision, at()]);
       if (grantHash) { await client.query('DELETE FROM saas_parent_grants WHERE token_hash=$1', [grantHash]); }
+      await chats.committed(client, who, { ...family, state, parent, revision }, binding, revision);
       return result(snapshot({ ...family, state, parent, revision }));
     });
   }
@@ -227,6 +233,7 @@ function createBusiness({ store, auth, now, assistant }) {
     // Never return delayed family-derived AI data to a revoked session/member.
     return run(ctx, async () => output);
   }
-  return { state, meta, challenge, verify, action, interpret };
+  const chats = createAssistantChats({ store, run, assistant, at, rate });
+  return { state, meta, challenge, verify, action, interpret, chatRead: chats.read, chatTurn: chats.turn, chatClear: chats.clear };
 }
 module.exports = { createBusiness };

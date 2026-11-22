@@ -51,7 +51,7 @@
       }
       done(status, result || {});
     }
-    x.open(method, url, true); x.timeout = url === '/api/assistant' ? 20000 : 10000;
+    x.open(method, url, true); x.timeout = url === '/api/assistant' || url === '/api/assistant/chat/turn' ? 20000 : 10000;
     x.setRequestHeader('Accept', 'application/json');
     if (family) x.setRequestHeader('X-Family-ID', family.id);
     if (method !== 'GET' && csrf) x.setRequestHeader('X-CSRF-Token', csrf);

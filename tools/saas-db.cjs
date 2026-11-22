@@ -62,6 +62,10 @@ async function restoreDatabase({ source, output, appStopped = false }) {
     const database = await createDatabase({ databasePath: stage, mustExist: true });
     try {
       await database.transaction(async client => {
+        // Pending provider work cannot survive an offline restore. Preserve
+        // completed conversation history while releasing the interrupted turn.
+        await client.query('DELETE FROM saas_assistant_turns WHERE completed_at IS NULL');
+        await client.query('UPDATE saas_assistant_chats SET pending_turn_id=NULL,pending_expires_at=NULL');
         for (const table of ['saas_assistant_leases', 'saas_parent_grants', 'saas_parent_challenges', 'saas_sessions', 'saas_email_tokens', 'saas_invitations']) {
           await client.query('DELETE FROM ' + table);
         }

@@ -191,7 +191,7 @@ test('restore never removes an existing staging directory entry when exclusive c
 test('init creates private real SMTP settings and bootstrap provisions SQLite with the configured account', async t => {
   const f = await H.fixture(t), directory = path.join(path.dirname(f.databasePath), 'isolated-project');
   const project = path.resolve(__dirname, '..');
-  for (const file of ['tools/saas-local.cjs', 'saas/initial-account.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql']) {
+  for (const file of ['tools/saas-local.cjs', 'saas/initial-account.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql', 'saas/migrations/003-assistant-chat.sql']) {
     fs.mkdirSync(path.dirname(path.join(directory, file)), { recursive: true });
     fs.copyFileSync(path.join(project, file), path.join(directory, file));
   }
@@ -225,7 +225,7 @@ test('init creates private real SMTP settings and bootstrap provisions SQLite wi
   assert.equal(result.databasePath, path.join(directory, 'data', 'ttjf.sqlite'));
   const raw = new DatabaseSync(result.databasePath, { readOnly: true });
   try {
-    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2]);
+    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3]);
     const account = raw.prepare('SELECT email,verified_at FROM saas_users').get();
     assert.equal(account.email, '391504704@qq.com');
     assert.ok(account.verified_at);

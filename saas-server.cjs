@@ -20,9 +20,10 @@ const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json; charset=utf-8' });
 const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js',
-  '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css']);
+  '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css', '/assistant-panel.js', '/assistant-panel.css']);
 const ASSET_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.ogg']);
-const BUSINESS = new Set(['/api/state', '/api/meta', '/api/parent/challenge', '/api/parent/verify', '/api/action', '/api/assistant']);
+const BUSINESS = new Set(['/api/state', '/api/meta', '/api/parent/challenge', '/api/parent/verify', '/api/action', '/api/assistant',
+  '/api/assistant/chat/read', '/api/assistant/chat/turn', '/api/assistant/chat/clear']);
 
 function configuredOrigin(value, production) {
   if (!value) { throw new Error('PUBLIC_ORIGIN is required for mail links and origin validation'); }
@@ -191,6 +192,9 @@ async function createSaasServer(options = {}) {
         case '/api/parent/verify': return business.verify(ctx, body);
         case '/api/action': return business.action(ctx, body);
         case '/api/assistant': return business.interpret(ctx, body);
+        case '/api/assistant/chat/read': return business.chatRead(ctx, body);
+        case '/api/assistant/chat/turn': return business.chatTurn(ctx, body);
+        case '/api/assistant/chat/clear': return business.chatClear(ctx, body);
       }
     }
     S.fail(404, 'NOT_FOUND', '接口不存在');
