@@ -87,7 +87,7 @@ function recentText(options) {
 function legacyNow(now) { const parts=M.calendarParts(now,T.ZONE); return new Date(parts.date+'T'+parts.time+':00'); }
 function applyCorrection(text,state,now,options) {
   const draft=T.activeDraft(options);
-  if (!draft || !/^(?:不对|不是|是|改|调整|设为|换|应该|那|每次|这次|只|以后|每天|[零〇一二两三四五六七八九十百\d]+\s*分)/.test(text)) return null;
+  if (!draft || !T.sameDraftCorrection(text,draft)) return null;
   const scores=T.numericValues(text), p=draft.fields || draft.action && draft.action.payload;
   if (!p) return null;
   const type=draft.kind==='form'?'pointItem.save':draft.action.type, source=p.item || p.reward || p.task || p;
@@ -124,11 +124,12 @@ function applyCorrection(text,state,now,options) {
 }
 function localSingle(text,state,now,options={}) {
   const fixed=preflight(text); if (fixed) return fixed;
+  const query=T.readQueryFromText(text,state); if (query) return T.queryResult(query,state,now,{...options,text});
   const correction=applyCorrection(text,state,now,options); if (correction) return correction;
   if (/^(?:你好|您好|嗨|hello|hi|谢谢)[！!。\s]*$/i.test(text) || /能帮.*什么|怎么用|有哪些功能/.test(text)) return {kind:'answer',title:'家长助手',answer:'可以帮你查积分和七日小结、整理本次加分、设置常用行为、核对礼品资格和提醒。候选由你确认后再保存。'};
   if (/该(?:给|加|奖)|(?:给|加)几分|(?:给|加).*多少分.*(?:合适|好)|分值.*(?:建议|合适)/.test(text)) return T.executeTool('read_guidance',{topic:'points',behavior:text.slice(0,120)},state,now);
-  if (/偷懒|懒惰|不努力|这周.*(?:评价|建议|分析)|(?:这周|最近).*(?:表现如何|表现怎么样|是否努力|是不是认真)/.test(text)) return T.executeTool('read_guidance',{topic:'week'},state,now);
-  if (/七日|7日|七天|7天|最近一周|本周.*(?:小结|总结)|一周.*(?:小结|总结)/.test(text) && !/规则|每次|提醒/.test(text)) return T.executeTool('read_week_summary',{},state,now);
+  if (/偷懒|懒惰|不努力|这周.*(?:评价|建议|分析)|(?:这周|最近).*(?:表现如何|表现怎么样|是否努力|是不是认真)/.test(text)) return T.executeTool('read_guidance',{topic:'week'},state,now,{...options,text});
+  if (/七日|7日|七天|7天|最近一周|本周.*(?:小结|总结)|一周.*(?:小结|总结)/.test(text) && !/规则|每次|提醒/.test(text)) return T.executeTool('read_week_summary',{},state,now,{...options,text});
   if (/流水|积分记录|加分记录|消费记录|收支|积分历史/.test(text) && !/添加|新增|修改|删除/.test(text)) return T.executeTool('read_ledger',{},state,now);
   if (/查看.*(?:家庭设置|积分设置)|(?:心愿礼品|月末天数|月底天数).*(?:多少|什么|几天)|月末.*(?:最后几天|多少天)/.test(text)) return T.executeTool('read_family_settings',{},state,now);
   if (/申请.*(?:状态|有哪些|记录)|(?:查看|看看|哪些|待审批|待确认).*(?:申请|审批)|^(?:申请|审批)记录/.test(text)) return T.executeTool('read_requests',{},state,now);
@@ -202,6 +203,16 @@ function tagged(result,source,label) {
   if (result.kind==='steps') result={...result,steps:result.steps.map(row=>({...row,...stamp}))};
   return {...result,...stamp};
 }
+function reusesUnrelatedDraft(result,text,options) {
+  const draft=T.activeDraft(options);
+  if (!draft || T.sameDraftCorrection(text,draft)) return false;
+  const prior=draft.fields || draft.action && draft.action.payload, old=prior && (prior.item || prior);
+  if (!old || !old.name) return false;
+  const core=old.name.replace(/^(?:(?:今天|这次|以后|每天|每日|自主|独立|自己|主动))+/,'').replace(/读书/g,'阅读');
+  if (core && text.replace(/读书/g,'阅读').includes(core)) return false;
+  const steps=result.kind==='steps'?result.steps:[result];
+  return steps.some(row=>row.kind==='action' && ['points.add','pointItem.save'].includes(row.action.type) && (row.action.payload.item || row.action.payload).name===old.name);
+}
 function createChat({apiKey,endpoint,model,fetchImpl,timeoutMs,readBounded,enabled,formOnly,interpret}) {
   function status() { return {enabled:!!enabled,mode:apiKey && enabled?'connected':'local',label:apiKey && enabled?'AI 家长助手':'本地助手',formOnly:!!apiKey && formOnly && !enabled}; }
   async function chat(text,state,suppliedNow,inputOptions={}) {
@@ -213,12 +224,13 @@ function createChat({apiKey,endpoint,model,fetchImpl,timeoutMs,readBounded,enabl
     if (fixed) return tagged(fixed,'local');
     if (T.isDraftCancellation(text)) return tagged({kind:'answer',answer:'当前待确认草稿已取消，历史记录保留，账本没有变化。',cancelDraft:true},'local');
     if (prior.committed && !T.activeDraft(options) && /^(?:改成|改为|改到|调整为|不对|不是|应该|分值改)/.test(text.trim())) return tagged(T.clarify('此前候选已办理，不能把它改成另一笔。查看或更正记录请打开对应界面；新增一笔请明确说明。'),'local');
+    const currentQuery=T.readQueryFromText(text,state);
     if (!apiKey || !enabled) {
-      if (apiKey && formOnly && context.form==='pointItem' && !context.targetId && !T.activeDraft(options) && !/查|余额|记录|小结|有哪些|什么|改为|改成|停用|启用/.test(text)) {
+      if (apiKey && formOnly && context.form==='pointItem' && !context.targetId && !T.activeDraft(options) && !currentQuery && !/查|余额|记录|小结|有哪些|什么|改为|改成|停用|启用/.test(text)) {
         const result=await interpret(text,state,now,{context:'pointItemCreate'});
         return {...result,source:result.mode==='connected'?'model':'local'};
       }
-      try { return tagged(localChat(text,state,now,options),'local'); }
+      try { return T.fitResult(tagged(localChat(text,state,now,options),'local'),state,now); }
       catch (_) { return tagged(T.clarify('请核对日期、时间和目标，或打开对应表单补充。'),'local'); }
     }
     const controller=new AbortController(), timer=setTimeout(()=>controller.abort(),timeoutMs);
@@ -244,11 +256,12 @@ function createChat({apiKey,endpoint,model,fetchImpl,timeoutMs,readBounded,enabl
         const candidate=JSON.parse(message.content.trim().replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''));
         result=T.normalizeResult(candidate,state,now,{...options,enforceIntent:true});
       }
-      return tagged(T.deferFollowups(result,text),'model');
-    } catch (_) {
+      if (!currentQuery && reusesUnrelatedDraft(result,text,options)) throw new Error('STALE_DRAFT_REPLAY');
+      return T.fitResult(tagged(T.deferFollowups(currentQuery?T.queryResult(currentQuery,state,now,options):result,text),'model'),state,now);
+    } catch (error) {
       // A local result remains useful, and is visibly distinguished from a
       // successful model request. No provider exception or credentials escape.
-      try { return tagged(localChat(text,state,now,options),'fallback','AI 暂不可用，已用本地规则整理'); }
+      try { return T.fitResult(tagged(localChat(text,state,now,options),'fallback',error.message==='STALE_DRAFT_REPLAY'?'AI 结果未采用，已按本轮描述整理':'AI 暂不可用，已用本地规则整理'),state,now); }
       catch (_) { return tagged(T.clarify('AI 暂时无法整理，请使用对应表单或稍后重试。'),'fallback','AI 暂不可用'); }
     } finally { clearTimeout(timer); }
   }

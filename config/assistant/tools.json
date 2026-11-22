@@ -18,7 +18,7 @@
       "type": "function",
       "function": {
         "name": "read_ledger",
-        "description": "读取最近若干家庭日的真实积分流水，包含加分、礼品扣分与伙伴道具消费；条数有上限。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。",
+        "description": "读取最近若干家庭日的真实积分流水，包含加分、礼品扣分与伙伴道具消费；条数有上限。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 period=week按上海周一到今天；last7为含今天的最近七日。behavior仅筛该行为加分；先全量匹配再截返回条数。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -26,6 +26,64 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 366
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "period": {
+              "type": "string",
+              "enum": [
+                "week",
+                "last7"
+              ]
+            },
+            "behavior": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_week_summary",
+        "description": "按上海家庭日只读汇总真实记录：period=week为本周周一到今天；period=last7为包含今天的最近七日，未指定默认last7。behavior可筛指定行为，只汇总该行为真实加分，不能把其他行为算入。返回真实日期范围，不写账。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "period": {
+              "type": "string",
+              "enum": [
+                "week",
+                "last7"
+              ]
+            },
+            "behavior": {
+              "type": "string",
+              "maxLength": 120
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_rules",
+        "description": "列出真实常用行为规则及每次默认分值；查询规则不是实际加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "includeDisabled": {
+              "type": "boolean"
             },
             "limit": {
               "type": "integer",
@@ -41,38 +99,8 @@
     {
       "type": "function",
       "function": {
-        "name": "read_week_summary",
-        "description": "按上海家庭日汇总含今天的最近七日加分、消费、净变化与已完成提醒，完全本地计算。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。",
-        "parameters": {
-          "type": "object",
-          "properties": {},
-          "required": [],
-          "additionalProperties": false
-        }
-      }
-    },
-    {
-      "type": "function",
-      "function": {
-        "name": "read_rules",
-        "description": "列出真实常用行为规则及每次默认分值；查询规则不是实际加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。",
-        "parameters": {
-          "type": "object",
-          "properties": {
-            "includeDisabled": {
-              "type": "boolean"
-            }
-          },
-          "required": [],
-          "additionalProperties": false
-        }
-      }
-    },
-    {
-      "type": "function",
-      "function": {
         "name": "read_rewards",
-        "description": "查询礼品分值、实时积分差额、日期和启停资格。只查不兑时使用本工具，绝不生成兑换候选。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。",
+        "description": "查询礼品分值、实时积分差额、日期和启停资格。只查不兑时使用本工具，绝不生成兑换候选。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -83,6 +111,11 @@
             },
             "onlyEligible": {
               "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
             }
           },
           "required": [],
@@ -94,7 +127,7 @@
       "type": "function",
       "function": {
         "name": "read_requests",
-        "description": "读取真实礼品申请状态（待确认/已批准/已取消），不会批准或重复扣分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。",
+        "description": "读取真实礼品申请状态（待确认/已批准/已取消），不会批准或重复扣分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -106,6 +139,11 @@
                 "cancelled",
                 "all"
               ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
             }
           },
           "required": [],
@@ -117,7 +155,7 @@
       "type": "function",
       "function": {
         "name": "read_tasks",
-        "description": "读取某个上海家庭日的提醒/事项，默认今天未完成。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。",
+        "description": "读取某个上海家庭日的提醒/事项，默认今天未完成。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -128,6 +166,11 @@
             },
             "includeDone": {
               "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
             }
           },
           "required": [],
@@ -152,7 +195,7 @@
       "type": "function",
       "function": {
         "name": "read_guidance",
-        "description": "家庭成长管理的受控只读建议：points结合当前真实常用行为规则说明可供家长参考的已有分值，week结合最近七日记录描述已记录事实。不猜分值，不评价孩子是否懒惰，不诊断或代替家长决策，不生成规则或加分。",
+        "description": "家庭成长管理的受控只读建议：points结合当前真实常用行为规则说明可供家长参考的已有分值，week结合最近七日记录描述已记录事实。不猜分值，不评价孩子是否懒惰，不诊断或代替家长决策，不生成规则或加分。 period=week针对本周上海周一至今天，last7为最近七日；按用户实际时间范围说明。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -166,6 +209,18 @@
             "behavior": {
               "type": "string",
               "maxLength": 120
+            },
+            "period": {
+              "type": "string",
+              "enum": [
+                "week",
+                "last7"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
             }
           },
           "required": [

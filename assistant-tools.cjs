@@ -27,6 +27,72 @@ function isDraftCancellation(text) {
     /^(?:这笔|这次|这个|它)(?:先)?(?:不记了|别记了|不要记了|不保存了|先不保存)(?:吧)?[。！!]*$/.test(value) ||
     /^(?:把)?(?:这张|这个|当前)(?:草稿|候选)(?:取消|撤销|放弃)(?:吧|了)?[。！!]*$/.test(value);
 }
+function periodFromText(text) {
+  if (/最近\s*(?:7|七)\s*(?:天|日)|过去\s*(?:7|七)\s*(?:天|日)|近七日|近7日|七日|7日|七天|7天|最近一周|近一周/.test(text)) return 'last7';
+  return /本周|这周|本星期|这个星期/.test(text)?'week':'';
+}
+function behaviorFromText(text,state) {
+  const phrase=text.replace(/最近\s*(?:7|七)\s*(?:天|日)|过去\s*(?:7|七)\s*(?:天|日)|近七日|近7日|七日|7日|七天|7天|最近一周|近一周|本周|这周|本星期|这个星期/g,'')
+    .replace(/^(?:(?:那|请|帮我|看看|查看|查询|统计|查一下|看一下|我想知道|我想看)[，,\s]*)+/,'').replace(/[？?。！!\s]+$/,'');
+  const match=/^(?:给)?(.*?)(?:一共|总共|累计)?(?:加了|获得了?|拿了|得了|奖励了?|加分|得分)(?:几分|多少(?:个)?积分|多少分)?$/.exec(phrase) || /^(.*?)(?:的)?(?:积分)?(?:小结|总结|汇总|统计|流水|记录)$/.exec(phrase);
+  if (!match) return '';
+  let value=match[1].trim().replace(/(?:一共|总共|累计)$/,'');
+  if (state && value===state.childName || /^(?:我|他|她|孩子|宝宝|全部|总共|所有行为|积分|一共|总积分)?$/.test(value)) return '';
+  return value.length<=120?value:'';
+}
+function readQueryFromText(text,state) {
+  if (/(?:然后|另外|顺便|同时|并且|[；;]|[，,]\s*再)/.test(text)) return null;
+  if (/(?:加|给|奖励|记)\s*[零〇一二两三四五六七八九十百\d]+\s*(?:分(?!钟)|积分)/.test(text)) return null;
+  const period=periodFromText(text), behavior=period?behaviorFromText(text,state):'';
+  if (/流水|积分记录|加分记录|消费记录|收支|积分历史/.test(text) && !/添加|新增|修改|删除/.test(text)) return {type:'ledger',...(period?{period}:{}),...(behavior?{behavior}:{})};
+  if (period && /小结|总结|汇总|统计|几分|多少(?:个)?积分|多少分|得分/.test(text) && !/规则|每次|提醒|该给/.test(text)) return {type:'week',period,...(behavior?{behavior}:{})};
+  if (/余额|多少(?:个)?积分|还有多少分|剩(?:余|下)多少分|查积分|累计.*分|已(?:消费|兑换).*分/.test(text) && !/新增|添加|改为|改成/.test(text)) return {type:'balance'};
+  return null;
+}
+function sameDraftCorrection(text,draft) {
+  if (!plain(draft)) return false;
+  const value=clean(text).replace(/^(?:(?:那么|那|请帮我|帮我|请)[，,\s]*)+/,'');
+  if (/^(?:把)?(?:(?:这(?:个|张|笔)|当前|刚才的|上一个)(?:草稿|候选|行为|规则)?的?)?(?:分值|积分|行为名称|名称|名字|预设原因|原因|理由|日期|时间)(?:改成|改为|改到|调整为|设为|设置为|是|为|[:：])/.test(value)) return true;
+  if (/^(?:把)?(?:这张草稿|这个候选|这笔|当前草稿|刚才那笔).*(?:改成|改为|改到|调整为|设为|启用|停用)/.test(value)) return true;
+  const type=draft.kind==='form'?'pointItem.save':draft.action && draft.action.type;
+  if (type==='task.save') return /^(?:改成|改为|改到|调整为|设为)(?:今天|明天|后天|\d{4}[-年]|\d{1,2}月|早上|上午|下午|晚上|全天|[零〇一二两三四五六七八九十\d]+[:：点时])/.test(value);
+  const rest=value.replace(/[零〇一二两三四五六七八九十百\d]+/g,'').replace(/不对|不是|不要|应该|规则|常用|行为|加分|积分|分值|改成|改为|调整为|设置为|设为|以后|每天|每日|每次|今天|这次|一次性|一次|只|就|实际|奖励|给|加|记|是|为|分|启用|停用|[，,。:：；;！!？?\s]/g,'');
+  return !rest && (numericValues(value).length>0 || /不是规则|不是(?:今天|这次|以后|每天|每次)|以后每次|只(?:给|加|记)(?:这次|一次)/.test(value));
+}
+function rangeArgs(args,text,state) {
+  const period=periodFromText(text || ''), behavior=period?behaviorFromText(text,state):'';
+  return {...args,...(period?{period}:{}),...(behavior?{behavior}:{})};
+}
+function dateRange(now,period,days=7) {
+  const parts=M.calendarParts(now,ZONE), back=period==='week'?(parts.weekday+6)%7:days-1;
+  return {from:M.addDays(parts.date,-back,ZONE),to:parts.date,period:period || 'last7'};
+}
+function behaviorMatcher(behavior,state) {
+  const canonical=value=>value.replace(/读书/g,'阅读');
+  const selected=new Set(namedMatches(state.pointItems,behavior,'name').map(item=>item.id)), phrase=canonical(behavior);
+  return row=>selected.has(row.itemId) || canonical(row.name).includes(phrase) || phrase.includes(canonical(row.name));
+}
+function pageRows(rows,limit=12) {
+  return {rows:rows.slice(0,limit),total:rows.length,hasMore:rows.length>limit,limit};
+}
+function moreText(page) { return page.hasMore?'\n仅显示前 '+page.rows.length+' 条，共 '+page.total+' 条；更多内容请到对应记录页面查看。':''; }
+function fitResult(result,state,now) {
+  let output=result;
+  for (let attempt=0;attempt<6 && Buffer.byteLength(JSON.stringify(output))>18000;attempt++) {
+    let changed=false;
+    function reduce(row) {
+      if (row.kind==='steps') return {...row,steps:row.steps.map(reduce)};
+      if (row.kind!=='answer' || !row.query || !row.data || !Array.isArray(row.data.rows) || row.data.rows.length<2) return row;
+      const next=queryResult({...row.query,limit:Math.max(1,Math.floor(row.data.rows.length/2))},state,now);
+      if (next.kind!=='answer') return row;
+      changed=true;
+      return {...row,...next};
+    }
+    output=reduce(output);
+    if (!changed) break;
+  }
+  return output;
+}
 function route(view) {
   if (!own(ROUTES, view)) return clarify('请从积分、礼品、提醒或家庭页面选择要使用的功能。');
   return {kind:'route',route:view,title:'打开' + ROUTES[view],reason:'请在' + ROUTES[view] + '界面查看和确认。'};
@@ -70,14 +136,14 @@ function resolveFollowup(result,state,now,options={}) {
     if (computed.kind!=='answer') return {...computed,after:row.after.slice(),deferred:false,mode:'local',source:'local',label:'请重新核对查询'};
     return {...computed,after:row.after.slice(),deferred:false,resolvedAt:new Date(now).toISOString(),mode:'local',source:'local',label:'已按最新记录核对'};
   });
-  return {...result,steps};
+  return fitResult({...result,steps},state,now);
 }
 function ledgerRows(state, since, today) {
   const rows = [];
   function append(list, kind, sign) {
     for (const row of list || []) {
       const day = M.dateKey(row.at,ZONE);
-      if (day >= since && day <= today) rows.push({id:row.id,kind,name:row.name,points:sign * row.points,at:row.at,day});
+      if (day >= since && day <= today) rows.push({id:row.id,kind,name:row.name,points:sign * row.points,at:row.at,day,...(kind==='award'?{itemId:row.itemId}:{})});
     }
   }
   append(state.points,'award',1); append(state.redemptions,'redemption',-1); append(state.petPurchases,'partner',-1);
@@ -87,19 +153,21 @@ function read(name, args, state, now) {
   const today = M.dateKey(now,ZONE), totals = M.totals(state);
   if (name === 'read_balance') return answer('积分余额','现在可用 ' + totals.available + ' 分，累计获得 ' + totals.earned + ' 分，已消费 ' + totals.spent + ' 分。',{type:'balance'},totals);
   if (name === 'read_ledger' || name === 'read_week_summary') {
-    const days = name === 'read_week_summary' ? 7 : (args.days || 7), since = M.addDays(today,1-days,ZONE), rows = ledgerRows(state,since,today);
+    const days=name==='read_week_summary'?7:(args.days || 7), range=dateRange(now,args.period,days), since=range.from;
+    const all=ledgerRows(state,since,today), matches=args.behavior && behaviorMatcher(args.behavior,state), rows=matches?all.filter(row=>row.kind==='award' && matches(row)):all;
     const earned = rows.filter(row => row.points > 0).reduce((sum,row) => sum+row.points,0), spent = -rows.filter(row => row.points < 0).reduce((sum,row) => sum+row.points,0);
     if (name === 'read_week_summary') {
+      if (args.behavior) return answer((range.period==='week'?'本周':'最近七日')+'行为加分',since+' 至 '+today+'，“'+args.behavior+'”相关加分共 '+earned+' 分（'+rows.length+' 笔）。这里只统计该行为的真实加分记录。',{type:'week',period:range.period,behavior:args.behavior},{...range,behavior:args.behavior,earned,count:rows.length});
       const completed = state.tasks.filter(row => !row.deleted && row.done && row.date >= since && row.date <= today).length;
-      const data = {from:since,to:today,earned,spent,net:earned-spent,completed,available:totals.available};
-      return answer('七日小结',since + ' 至 ' + today + '：获得 ' + earned + ' 分，消费 ' + spent + ' 分，净变化 ' + (earned-spent) + ' 分；这七天安排中已完成 ' + completed + ' 条提醒。当前可用 ' + totals.available + ' 分。',{type:'week'},data);
+      const label=range.period==='week'?'本周':'最近七日', data = {...range,earned,spent,net:earned-spent,completed,available:totals.available};
+      return answer(label+'小结',label+' '+since + ' 至 ' + today + '：获得 ' + earned + ' 分，消费 ' + spent + ' 分，净变化 ' + (earned-spent) + ' 分；该范围安排中已完成 ' + completed + ' 条提醒。当前可用 ' + totals.available + ' 分。',{type:'week',period:range.period},data);
     }
-    const visible = rows.slice(0,args.limit || 20), data = {from:since,to:today,total:rows.length,earned,spent,rows:visible};
-    return answer('积分流水',visible.length ? since + ' 至 ' + today + '：\n' + visible.map(row => row.day+' '+row.name+' '+(row.points>0?'+':'')+row.points+' 分').join('\n') + (rows.length>visible.length?'\n还有 '+(rows.length-visible.length)+' 条，请到积分记录查看。':'') : since+' 至 '+today+' 没有积分流水。',{type:'ledger',days,limit:args.limit || 20},data);
+    const data={...range,...pageRows(rows,args.limit || 20),earned,spent};
+    return answer('积分流水',data.rows.length ? since + ' 至 ' + today + (args.behavior?'，“'+args.behavior+'”相关加分':'')+'：\n' + data.rows.map(row => row.day+' '+row.name+' '+(row.points>0?'+':'')+row.points+' 分').join('\n')+moreText(data) : since+' 至 '+today+' 没有符合条件的积分流水。',{type:'ledger',days,...(args.period?{period:args.period}:{}),...(args.behavior?{behavior:args.behavior}:{}),limit:data.limit},data);
   }
   if (name === 'read_rules') {
-    const rows = state.pointItems.filter(row => args.includeDisabled || row.enabled).map(row => copy(row,['id','name','points','reason','enabled']));
-    return answer('常用行为规则',rows.length ? rows.map(row => row.name+'：每次 '+row.points+' 分'+(row.enabled?'':'（已停用）')).join('\n') : '还没有符合条件的常用行为规则。',{type:'rules',includeDisabled:!!args.includeDisabled},{rows});
+    const data=pageRows(state.pointItems.filter(row=>args.includeDisabled || row.enabled).map(row=>copy(row,['id','name','points','enabled'])),args.limit);
+    return answer('常用行为规则',data.rows.length ? data.rows.map(row => row.name+'：每次 '+row.points+' 分'+(row.enabled?'':'（已停用）')).join('\n')+moreText(data) : '还没有符合条件的常用行为规则。',{type:'rules',includeDisabled:!!args.includeDisabled,limit:data.limit},data);
   }
   if (name === 'read_rewards') {
     if (args.rewardId && !entity(state.rewards,args.rewardId)) return clarify('没有找到这个礼品，请从当前家庭礼品列表重新选择。');
@@ -108,17 +176,18 @@ function read(name, args, state, now) {
       const permission = M.availability(state,row.id,now,ZONE);
       return {...copy(row,['id','name','points','category','enabled']),allowed:permission.allowed,reason:permission.reason,gap:Math.max(0,row.points-totals.available),pending:!!pending && pending.rewardId === row.id};
     }).filter(row => !args.onlyEligible || row.allowed);
-    return answer('礼品资格',rows.length ? rows.map(row => row.name+'：'+row.points+' 分；'+(row.allowed?'积分和日期条件已满足，可以申请，仍需家长确认':row.reason)+(row.pending?'；已有待确认申请':'')).join('\n') : '现在没有符合积分和日期条件的礼品。',{type:'rewards',...args},{available:totals.available,rows});
+    const data={available:totals.available,...pageRows(rows,args.limit)};
+    return answer('礼品资格',data.rows.length ? data.rows.map(row => row.name+'：'+row.points+' 分；'+(row.allowed?'积分和日期条件已满足，可以申请，仍需家长确认':row.reason)+(row.pending?'；已有待确认申请':'')).join('\n')+moreText(data) : '现在没有符合积分和日期条件的礼品。',{type:'rewards',...args,limit:data.limit},data);
   }
   if (name === 'read_requests') {
-    const status = args.status || 'all', rows = (state.requests || []).filter(row => status === 'all' || row.status === status).map(row => copy(row,['id','rewardId','name','points','status','createdAt','updatedAt']));
+    const status = args.status || 'all', data=pageRows((state.requests || []).filter(row => status === 'all' || row.status === status).map(row => copy(row,['id','rewardId','name','points','status','createdAt','updatedAt'])).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)),args.limit);
     const labels = {pending:'等待家长确认',approved:'已批准',cancelled:'已取消'};
-    return answer('兑换申请',rows.length ? rows.map(row => row.name+'：'+row.points+' 分，'+labels[row.status]).join('\n') : '没有符合条件的兑换申请。',{type:'requests',status},{rows});
+    return answer('兑换申请',data.rows.length ? data.rows.map(row => row.name+'：'+row.points+' 分，'+labels[row.status]).join('\n')+moreText(data) : '没有符合条件的兑换申请。',{type:'requests',status,limit:data.limit},data);
   }
   if (name === 'read_tasks') {
     const date = args.date || today; M.dateKey(date,ZONE);
-    const rows = state.tasks.filter(row => row.date === date && !row.deleted && (args.includeDone || !row.done)).map(row => copy(row,['id','title','date','time','type','done'])).sort((a,b) => a.time.localeCompare(b.time));
-    return answer('提醒',rows.length ? date+'：\n'+rows.map(row => (row.time || '全天')+' '+row.title+(row.done?'（已完成）':'')).join('\n') : date+' 没有符合条件的提醒。',{type:'tasks',date,includeDone:!!args.includeDone},{date,rows});
+    const data={date,...pageRows(state.tasks.filter(row => row.date === date && !row.deleted && (args.includeDone || !row.done)).map(row => copy(row,['id','title','date','time','type','done'])).sort((a,b) => a.time.localeCompare(b.time)),args.limit)};
+    return answer('提醒',data.rows.length ? date+'：\n'+data.rows.map(row => (row.time || '全天')+' '+row.title+(row.done?'（已完成）':'')).join('\n')+moreText(data) : date+' 没有符合条件的提醒。',{type:'tasks',date,includeDone:!!args.includeDone,limit:data.limit},data);
   }
   if (name === 'read_family_settings') {
     const reward=entity(state.rewards,state.settings.preferredReward), data={monthEndDays:state.settings.monthEndDays,preferredReward:state.settings.preferredReward,preferredRewardName:reward ? reward.name : ''};
@@ -126,22 +195,22 @@ function read(name, args, state, now) {
   }
   if (name === 'read_guidance') {
     if (args.topic==='week') {
-      const summary=read('read_week_summary',{},state,now);
-      return answer('根据已记录内容聊一聊',summary.answer+'\n这些只代表已经记录的内容，没记录也可能是漏记，不能据此判断孩子是否努力。可以和孩子一起聊聊哪里顺利、哪里需要帮助，再由家长决定下一步。',{type:'guidance',topic:'week'},summary.data);
+      const summary=read('read_week_summary',copy(args,['period']),state,now);
+      return answer('根据已记录内容聊一聊',summary.answer+'\n这些只代表已经记录的内容，没记录也可能是漏记，不能据此判断孩子是否努力。可以和孩子一起聊聊哪里顺利、哪里需要帮助，再由家长决定下一步。',{type:'guidance',topic:'week',period:summary.query.period},summary.data);
     }
     const rows=args.behavior?namedMatches(state.pointItems.filter(row=>row.enabled),args.behavior,'name'):state.pointItems.filter(row=>row.enabled);
-    const facts=rows.length?rows.slice(0,6).map(row=>row.name+'：已有规则每次 '+row.points+' 分').join('\n'):'当前没有匹配的常用行为规则。';
-    return answer('分值参考',facts+'\n是否沿用已有规则由家长决定。若是新行为，可以先和孩子约定做到哪一步，再决定分值；这里只给参考，不会替你加分或新建规则。',{type:'guidance',topic:'points',...(args.behavior?{behavior:args.behavior}:{})},{rows:rows.slice(0,6).map(row=>copy(row,['id','name','points'])),truncated:rows.length>6});
+    const data=pageRows(rows.map(row=>copy(row,['id','name','points'])),args.limit || 6), facts=data.rows.length?data.rows.map(row=>row.name+'：已有规则每次 '+row.points+' 分').join('\n'):'当前没有匹配的常用行为规则。';
+    return answer('分值参考',facts+moreText(data)+'\n是否沿用已有规则由家长决定。若是新行为，可以先和孩子约定做到哪一步，再决定分值；这里只给参考，不会替你加分或新建规则。',{type:'guidance',topic:'points',...(args.behavior?{behavior:args.behavior}:{}),limit:data.limit},{...data,truncated:data.hasMore});
   }
   return clarify('没有这个查询工具，请使用页面上的对应功能。');
 }
-function queryResult(query,state,now) {
+function queryResult(query,state,now,options={}) {
   if (!plain(query) || typeof query.type !== 'string') return clarify('请选择要查询的积分、流水、规则、礼品或提醒。');
   const mapping = {balance:'read_balance',ledger:'read_ledger',week:'read_week_summary',seven_days:'read_week_summary',rules:'read_rules',point_items:'read_rules',rewards:'read_rewards',requests:'read_requests',tasks:'read_tasks',settings:'read_family_settings',guidance:'read_guidance'};
   const args = {...query}; delete args.type;
-  if (query.type === 'redeemable') return executeTool('read_rewards',{...args,onlyEligible:true},state,now);
-  if (query.type === 'reward_gap') return executeTool('read_rewards',args,state,now);
-  return mapping[query.type] ? executeTool(mapping[query.type],args,state,now) : clarify('暂时不能查询这项内容，请打开对应界面。');
+  if (query.type === 'redeemable') return executeTool('read_rewards',{...args,onlyEligible:true},state,now,options);
+  if (query.type === 'reward_gap') return executeTool('read_rewards',args,state,now,options);
+  return mapping[query.type] ? executeTool(mapping[query.type],args,state,now,options) : clarify('暂时不能查询这项内容，请打开对应界面。');
 }
 function sourceText(options) {
   const messages = Array.isArray(options.messages) ? options.messages : [];
@@ -277,7 +346,7 @@ function normalizeAction(action,state,now,options={}) {
 }
 function executeTool(name,args,state,now,options={}) {
   if (!validateCall(name,args)) return clarify('工具名称或字段不符合要求，请重新描述。');
-  if (name.startsWith('read_')) return read(name,args,state,now);
+  if (name.startsWith('read_')) return read(name,['read_week_summary','read_ledger','read_guidance'].includes(name)?rangeArgs(args,options.text,state):args,state,now);
   if (name==='open_view') return route(args.route);
   if (name==='ask_clarification') {
     const question=clean(args.question);
@@ -304,9 +373,9 @@ function normalizeResult(candidate,state,now,options={}) {
   }
   if (candidate.kind==='action') return normalizeAction(candidate.action,state,now,options);
   if (candidate.kind==='form' && candidate.form==='pointItem') return normalizeAction({type:'pointItem.save',payload:{item:candidate.fields}},state,now,options);
-  if (candidate.kind==='query' || candidate.kind==='answer') return queryResult(candidate.query,state,now);
+  if (candidate.kind==='query' || candidate.kind==='answer') return queryResult(candidate.query,state,now,options);
   if (candidate.kind==='route') return route(candidate.route);
   if (candidate.kind==='clarify') return executeTool('ask_clarification',{question:candidate.question},state,now,options);
   return clarify('请描述积分、常用行为、礼品或提醒，也可以打开对应界面。');
 }
-module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,normalizeResult,queryResult,joinSteps,deferFollowups,resolveFollowup,isDraftCancellation,activeDraft,namedMatches,numericValues,noRedemption};
+module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,normalizeResult,queryResult,joinSteps,deferFollowups,resolveFollowup,fitResult,isDraftCancellation,readQueryFromText,sameDraftCorrection,activeDraft,namedMatches,numericValues,noRedemption};

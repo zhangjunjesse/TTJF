@@ -316,3 +316,93 @@ test('local: explicit draft cancellation is local, independently recognizable an
   const invented=await connected({kind:'answer',cancelDraft:true,query:{type:'balance'}}).chat('积分余额',seed(),now);
   assert.equal(invented.cancelDraft,undefined);
 });
+test('correction regression: independent queries and new behaviors never reuse the previous draft name',async()=>{
+  const service=local(),state=seed(),draft=await service.chat('今天独立阅读加5分',state,now),snapshot=JSON.stringify(draft),before=JSON.stringify(state);
+  const query=await service.chat('那帮我看看积分余额',state,now,{draft});
+  assert.equal(query.kind,'answer'); assert.equal(query.query.type,'balance'); assert.deepEqual(types(query),[]);
+  const rule=await service.chat('每天整理书包，每次3分',state,now,{draft});
+  assert.equal(rule.action.type,'pointItem.save'); assert.match(rule.action.payload.item.name,/整理书包/); assert.doesNotMatch(rule.action.payload.item.name,/阅读/);
+  const award=await service.chat('这次整理书包加8分',state,now,{draft});
+  assert.equal(award.action.type,'points.add'); assert.equal(award.action.payload.name,'整理书包'); assert.equal(award.action.payload.points,8);
+  const correction=await service.chat('那把分值改成8分',state,now,{draft});
+  assert.equal(correction.action.payload.name,'独立阅读'); assert.equal(correction.action.payload.points,8);
+  assert.equal(JSON.stringify(draft),snapshot,'read and independent messages do not mutate the pending draft'); assert.equal(JSON.stringify(state),before);
+});
+test('correction regression: a model replay of an old award cannot turn a new balance question into a write',async()=>{
+  const draft={kind:'action',action:{type:'points.add',payload:{name:'独立阅读',points:5}}},before=JSON.stringify(draft);
+  const result=await tools([['draft_award',{name:'独立阅读',points:5}]]).chat('那帮我看看积分余额',seed(),now,{draft});
+  assert.equal(result.kind,'answer'); assert.equal(result.query.type,'balance'); assert.deepEqual(types(result),[]); assert.equal(JSON.stringify(draft),before);
+});
+function weekFixture() {
+  const actual=new Date('2026-12-01T09:00:00+08:00'),state=M.createEmptyFamily({childName:'测试孩子'},actual);
+  state.pointItems=[{id:'reading-rule',name:'自主阅读',points:5,reason:'',enabled:true},{id:'tidy-rule',name:'整理书包',points:8,reason:'',enabled:true}];
+  state.points=[
+    {id:'outside-window',itemId:'reading-rule',name:'自主阅读',points:41,reason:'',at:'2026-11-24T01:00:00.000Z'},
+    {id:'last-week-reading',itemId:'reading-rule',name:'自主阅读',points:11,reason:'',at:'2026-11-29T15:59:59.000Z'},
+    {id:'monday-reading',itemId:'reading-rule',name:'自主阅读',points:5,reason:'',at:'2026-11-29T16:00:00.000Z'},
+    {id:'monday-other',itemId:'tidy-rule',name:'整理书包',points:17,reason:'',at:'2026-11-30T01:00:00.000Z'},
+    {id:'tuesday-reading',itemId:'reading-rule',name:'独立阅读',points:7,reason:'',at:'2026-12-01T01:00:00.000Z'}
+  ];
+  return {actual,state};
+}
+test('week regression: this week starts Monday in Shanghai, crosses months and filters only requested behavior',async()=>{
+  const {actual,state}=weekFixture(),before=JSON.stringify(state),service=local();
+  const result=await service.chat('这周阅读加了几分',state,actual);
+  assert.equal(result.kind,'answer'); assert.equal(result.query.type,'week'); assert.equal(result.query.period,'week'); assert.equal(result.query.behavior,'阅读');
+  assert.equal(result.data.from,'2026-11-30'); assert.equal(result.data.to,'2026-12-01'); assert.equal(result.data.earned,12);
+  assert.match(result.answer,/2026-11-30.*2026-12-01/); assert.match(result.answer,/阅读/); assert.doesNotMatch(result.answer,/29 分|40 分/);
+  const rolling=await service.chat('最近7天阅读加了几分',state,actual);
+  assert.equal(rolling.query.period,'last7'); assert.equal(rolling.data.from,'2026-11-25'); assert.equal(rolling.data.earned,23);
+  assert.equal(JSON.stringify(state),before);
+});
+test('week regression: Monday includes only its Shanghai date and a whole-week summary includes other behaviors',async()=>{
+  const {state}=weekFixture(),monday=new Date('2026-11-30T09:00:00+08:00'),service=local();
+  const reading=await service.chat('本周阅读加了几分',state,monday);
+  assert.equal(reading.data.from,'2026-11-30'); assert.equal(reading.data.to,'2026-11-30'); assert.equal(reading.data.earned,5);
+  const summary=await service.chat('本周小结',state,monday);
+  assert.equal(summary.query.period,'week'); assert.equal(summary.data.earned,22); assert.match(summary.answer,/本周/);
+  const recent=await service.chat('最近七天小结',state,monday);
+  assert.equal(recent.query.period,'last7'); assert.equal(recent.data.from,'2026-11-24'); assert.equal(recent.data.earned,74);
+});
+test('week regression: real provider outputs cannot override explicit period or behavior with total points',async()=>{
+  const {actual,state}=weekFixture();
+  for (const service of [tools([['read_week_summary',{}]]),tools([['read_week_summary',{period:'last7',behavior:'整理书包'}]]),connected({kind:'query',query:{type:'balance'}})]) {
+    const result=await service.chat('这周阅读加了几分',state,actual);
+    assert.equal(result.kind,'answer'); assert.equal(result.query.period,'week'); assert.equal(result.query.behavior,'阅读'); assert.equal(result.data.earned,12);
+  }
+  const rolling=await tools([['read_week_summary',{period:'week'}]]).chat('最近7天阅读加了几分',state,actual);
+  assert.equal(rolling.query.period,'last7'); assert.equal(rolling.data.earned,23);
+});
+test('correction regression: model reuse of a previous behavior falls back to the current explicit behavior',async()=>{
+  const draft={kind:'action',action:{type:'points.add',payload:{name:'独立阅读',points:5}}};
+  const rule=await tools([['draft_rule',{name:'独立阅读',points:3}]]).chat('每天整理书包，每次3分',seed(),now,{draft});
+  assert.equal(rule.action.type,'pointItem.save'); assert.match(rule.action.payload.item.name,/整理书包/); assert.equal(rule.source,'fallback');
+  const award=await tools([['draft_award',{name:'独立阅读',points:8}]]).chat('这次整理书包加8分',seed(),now,{draft});
+  assert.equal(award.action.payload.name,'整理书包'); assert.equal(award.action.payload.points,8); assert.equal(award.source,'fallback');
+});
+test('list regression: long rules are bounded, explicitly partial and omit unused preset reasons',async()=>{
+  const state=seed(); state.pointItems=Array.from({length:30},(_,index)=>({id:'large-rule-'+index,name:'常用行为'+index,points:5,reason:'预设原因'.repeat(300),enabled:true}));
+  const result=await local().chat('查看常用行为规则',state,now);
+  assert.equal(result.kind,'answer'); assert.equal(result.data.total,30); assert.equal(result.data.hasMore,true); assert.equal(result.data.rows.length,12);
+  assert.equal(result.data.rows[0].reason,undefined); assert.match(result.answer,/共 30 条/); assert.ok(Buffer.byteLength(JSON.stringify(result))<20000);
+});
+test('list regression: reward eligibility and a late named reward match the full catalog before limiting rows',async()=>{
+  const state=seed(); state.rewards=Array.from({length:40},(_,index)=>({id:'long-reward-'+index,name:'停用礼品'+index,points:1,category:'daily',icon:'pencil',enabled:false}));
+  state.rewards.push({id:'late-book',name:'最后一本绘本',points:80,category:'daily',icon:'pencil',enabled:true}); state.settings.preferredReward='';
+  const eligible=await local().chat('现在可以换什么',state,now);
+  assert.equal(eligible.data.total,1); assert.equal(eligible.data.rows[0].id,'late-book'); assert.equal(eligible.data.hasMore,false);
+  const named=await local().chat('最后一本绘本还差多少分',state,now);
+  assert.equal(named.data.rows[0].id,'late-book'); assert.equal(named.data.rows[0].gap,0);
+});
+test('list regression: six large read results together stay below the actual chat result limit',async()=>{
+  const state=seed(),longName='这是很长但合法的记录名称'.repeat(8).slice(0,110);
+  state.pointItems=Array.from({length:50},(_,index)=>({id:'rule-'+index,name:longName+index,points:5,reason:'长预设'.repeat(500),enabled:true}));
+  state.rewards=Array.from({length:50},(_,index)=>({id:'reward-'+index,name:longName+index,points:1,category:'daily',icon:'pencil',enabled:true})); state.settings.preferredReward='';
+  state.tasks=Array.from({length:50},(_,index)=>({...state.tasks[0],id:'task-'+index,title:longName+index}));
+  state.requests=Array.from({length:50},(_,index)=>({id:'request-'+index,rewardId:'reward-'+index,name:longName+index,points:1,category:'daily',status:'cancelled',createdAt:now.toISOString(),updatedAt:now.toISOString(),redemptionId:''}));
+  const before=JSON.stringify(state),service=tools([['read_rules',{limit:50}],['read_rewards',{limit:50}],['read_tasks',{limit:50}],['read_requests',{limit:50}],['read_rules',{limit:50}],['read_rewards',{limit:50}]]);
+  const result=await service.chat('分别查看规则、礼品、提醒和申请',state,now);
+  assert.equal(result.kind,'steps'); assert.equal(result.steps.length,6); assert.ok(Buffer.byteLength(JSON.stringify(result))<=18000,Buffer.byteLength(JSON.stringify(result)));
+  for (const row of result.steps) { assert.equal(row.kind,'answer'); assert.equal(row.data.total,50); assert.equal(row.data.hasMore,true); assert.ok(row.data.rows.length>=1); assert.match(row.answer,/共 50 条/); }
+  assert.equal(JSON.stringify(state),before);
+});
