@@ -604,6 +604,27 @@
           "additionalProperties": false
         }
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "respond_conversation",
+        "description": "普通非账本交流：自然回应问候、身份、能力、产品使用方法或友善闲聊。可以泛提积分、余额、规则、候选和确认流程；不能自由给出个人账本数字、实时资格或状态，不能声称已保存/已办理/已验证，也不能夹带操作或权限字段。此工具只显示经服务端检查的文字，不查询、不写数据。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      }
     }
   ]
 }

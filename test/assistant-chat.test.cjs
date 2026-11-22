@@ -20,14 +20,15 @@ function provider(message,inspect) {
 function connected(candidate,inspect) {
   return createAssistantService({apiKey:'test-key',chatEnabled:true,fetch:provider({content:JSON.stringify(candidate)},inspect)});
 }
+function natural(content,inspect) { return createAssistantService({apiKey:'test-key',chatEnabled:true,fetch:provider({content},inspect)}); }
 function tools(calls,inspect) {
   return createAssistantService({apiKey:'test-key',chatEnabled:true,fetch:provider({tool_calls:calls.map(([name,args],index)=>({id:'call-'+index,type:'function',function:{name,arguments:JSON.stringify(args)}}))},inspect)});
 }
 function types(result) { return (result.kind==='steps'?result.steps:[result]).filter(row=>row.kind==='action').map(row=>row.action.type); }
 
-test('config: system prompts and 22 public tool contracts are readable and server-bounded',()=>{
+test('config: system prompts and 23 public tool contracts are readable and server-bounded',()=>{
   for (const name of ['system.md','legacy-system.md','point-item-create-system.md','tools.json']) assert.ok(fs.readFileSync(path.join(__dirname,'..','config','assistant',name),'utf8').length>100);
-  const definitions=T.toolDefinitions(); assert.equal(definitions.length,22);
+  const definitions=T.toolDefinitions(); assert.equal(definitions.length,23);
   for (const tool of definitions) { assert.equal(tool.type,'function'); assert.ok(tool.function.description); assert.equal(tool.function.parameters.additionalProperties,false); }
   assert.equal(T.validateCall('__proto__',{}),false);
   assert.equal(T.validateCall('read_balance',{grant:'fake'}),false);
@@ -152,7 +153,7 @@ test('model: trusted tool calls run locally with minimized state and bounded use
   const service=tools([['read_balance',{}]],(_url,options,body)=>{
     calls++; const input=JSON.parse(body.messages[1].content);
     assert.equal(input.context.familyDay,'2026-11-22'); assert.equal(input.messages.length,1); assert.equal(input.messages[0].text,'我想查看积分');
-    assert.equal(body.tools.length,22); assert.doesNotMatch(options.body,/PRIVATE_AUTH|PRIVATE_AVATAR|PRIVATE_PRESET|CREDENTIAL_SENTINEL|FABRICATED_ANSWER|seed-p1|seed-r1/);
+    assert.equal(body.tools.length,23); assert.doesNotMatch(options.body,/PRIVATE_AUTH|PRIVATE_AVATAR|PRIVATE_PRESET|CREDENTIAL_SENTINEL|FABRICATED_ANSWER|seed-p1|seed-r1/);
   });
   const result=await service.chat('积分余额',state,now,{messages:[{role:'user',text:'我想查看积分'},{role:'user',text:'密码 CREDENTIAL_SENTINEL'},{role:'assistant',text:'FABRICATED_ANSWER',result:{answer:'999999分'}}]});
   assert.equal(result.mode,'connected'); assert.equal(result.source,'model'); assert.equal(result.data.available,88); assert.equal(calls,1);
@@ -372,6 +373,9 @@ test('week regression: real provider outputs cannot override explicit period or 
   }
   const rolling=await tools([['read_week_summary',{period:'week'}]]).chat('最近7天阅读加了几分',state,actual);
   assert.equal(rolling.query.period,'last7'); assert.equal(rolling.data.earned,23);
+  const custom=T.executeTool('read_ledger',{days:30},state,actual),explicit=T.executeTool('read_ledger',{days:30,period:'last7'},state,actual);
+  assert.equal(custom.data.from,'2026-11-02'); assert.equal(custom.data.period,undefined);
+  assert.equal(explicit.data.from,'2026-11-25'); assert.equal(explicit.data.period,'last7');
 });
 test('correction regression: model reuse of a previous behavior falls back to the current explicit behavior',async()=>{
   const draft={kind:'action',action:{type:'points.add',payload:{name:'独立阅读',points:5}}};
@@ -405,4 +409,120 @@ test('list regression: six large read results together stay below the actual cha
   assert.equal(result.kind,'steps'); assert.equal(result.steps.length,6); assert.ok(Buffer.byteLength(JSON.stringify(result))<=18000,Buffer.byteLength(JSON.stringify(result)));
   for (const row of result.steps) { assert.equal(row.kind,'answer'); assert.equal(row.data.total,50); assert.equal(row.data.hasMore,true); assert.ok(row.data.rows.length>=1); assert.match(row.answer,/共 50 条/); }
   assert.equal(JSON.stringify(state),before);
+});
+test('conversation regression: captured natural greeting and identity responses remain model replies verbatim',async()=>{
+  const state=seed(),before=JSON.stringify(state),cases=[
+    ['hi','你好！需要看积分余额、记录加分，还是设置规则和提醒？告诉我就行。'],
+    ['你是谁','我是“小小向前”的家庭成长管理助手，可以帮你按家里真实记录查看积分、规则、提醒和礼品资格，也能把想做的操作整理成候选，等你确认后再在应用里办理。\n\n你想先看什么？比如积分余额、这周的记录，或者某个行为该给几分。']
+  ];
+  for (const [text,content] of cases) {
+    let calls=0; const result=await natural(content,()=>{calls++;}).chat(text,state,now);
+    assert.equal(result.kind,'answer'); assert.equal(result.scope,'conversation'); assert.equal(result.answer,content);
+    assert.equal(result.source,'model'); assert.equal(result.mode,'connected'); assert.equal(result.label,'AI 回复'); assert.equal(calls,1);
+    assert.equal(result.query,undefined); assert.deepEqual(types(result),[]);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+test('conversation regression: bilingual capabilities, general chat and product instructions use model wording',async()=>{
+  for (const [text,content] of [
+    ['What can you help me with?',"I can explain the app, help you review your records, and prepare drafts for you to confirm. Let's start with what matters to you."],
+    ['Who are you?',"I'm the family growth assistant in Little Steps. I can help you understand the app and prepare changes for your confirmation."],
+    ['Tell me about yourself.',"I'm here to help you understand Little Steps and prepare requests for you to review."],
+    ['你有什么用？','可以解释这个应用的功能、查看真实记录，也能先整理候选供你核对。'],
+    ['这个应用能帮我做些什么？','你可以在这里管理常用行为、积分、礼品和提醒，具体办理由你确认。'],
+    ['Hey there, how are you?','Hi there! Ready to help. What would make your family routine easier today?'],
+    ['如何在这里设置提醒？','可以打开提醒，填写事项、日期和时间，核对后再确认保存。我也能先帮你整理候选。'],
+    ['How do I use this app?',"1. Start with what you want to do.\n2. Review the draft in the app.\n3. Confirm only when it matches your intent."]
+  ]) {
+    const result=await natural(content).chat(text,seed(),now);
+    assert.equal(result.scope,'conversation',text+JSON.stringify(result)); assert.equal(result.answer,content); assert.equal(result.source,'model');
+  }
+});
+test('conversation regression: the explicit tool and JSON conversation contracts use the same boundary',async()=>{
+  const message='我是这个应用的家庭成长助手。可以解释功能、查看记录或准备待确认的候选。';
+  for (const service of [tools([['respond_conversation',{message}]]),connected({kind:'answer',scope:'conversation',answer:message}),connected({kind:'conversation',message})]) {
+    const result=await service.chat('能介绍一下自己和能做什么吗',seed(),now);
+    assert.equal(result.kind,'answer'); assert.equal(result.scope,'conversation'); assert.equal(result.answer,message); assert.equal(result.source,'model');
+  }
+  const mixed=await connected({kind:'answer',scope:'conversation',answer:message,action:{type:'points.add',payload:{points:5}}}).chat('介绍一下自己',seed(),now);
+  assert.notEqual(mixed.scope,'conversation'); assert.deepEqual(types(mixed),[]); assert.equal(mixed.source,'fallback');
+  for (const service of [tools([['respond_conversation',{message:'我已经替你保存了。'}]]),connected({kind:'answer',scope:'conversation',answer:'我已经替你保存了。'})]) {
+    const result=await service.chat('介绍一下自己',seed(),now); assert.equal(result.source,'fallback'); assert.equal(result.mode,'local'); assert.notEqual(result.scope,'conversation');
+  }
+});
+test('conversation regression: malformed structured content is not reclassified as ordinary prose',async()=>{
+  for (const content of ['{"kind":"answer","answer":"你好"','```json\n{"kind":"answer","answer":\n```','[{"kind":"answer","answer":"你好"}]']) {
+    const result=await natural(content).chat('介绍一下自己',seed(),now);
+    assert.ok(result.source!=='model' || result.scope!=='conversation','malformed protocol must use the explicit local fallback or clarification');
+    assert.notEqual(result.answer,content); assert.deepEqual(types(result),[]);
+  }
+});
+test('conversation regression: prose cannot invent ledger numbers, live status, grants or completed operations',async()=>{
+  for (const content of ['你现在有999999分。','你的积分已经足够兑换礼品了。','Your balance is 999999 points.','I have saved your changes.','Your redemption request is approved.','我已经替你申请兑换了。','我这就帮你加分。','You are now verified as a parent.','你好，你有９９９积分。','I added five points for you.','你家有5条提醒。','Your reminder is tomorrow.','今天没有未完成的提醒。']) {
+    const state=seed(),before=JSON.stringify(state),result=await natural(content).chat('介绍一下自己',state,now);
+    assert.notEqual(result.scope,'conversation',content); assert.notEqual(result.answer,content); assert.deepEqual(types(result),[]); assert.equal(result.source,'fallback'); assert.equal(result.mode,'local');
+    assert.equal(JSON.stringify(state),before);
+  }
+  const balance=await natural('你现在有999999分。').chat('积分余额',seed(),now);
+  assert.equal(balance.query.type,'balance'); assert.equal(balance.data.available,88); assert.doesNotMatch(balance.answer,/999999/);
+  assert.equal(balance.source,'fallback'); assert.equal(balance.mode,'local');
+  const write=await natural('Done, I added five points.').chat('今天独立阅读加5分',seed(),now);
+  assert.notEqual(write.scope,'conversation'); assert.deepEqual(types(write),[]);
+  assert.equal(write.source,'fallback'); assert.equal(write.mode,'local');
+});
+test('conversation regression: local and offline identity answers disclose their real source',async()=>{
+  let calls=0;
+  const disabled=createAssistantService({apiKey:'test-key',chatEnabled:false,formOnly:true,fetch:async()=>{calls++;throw new Error('unexpected');}});
+  for (const text of ['你是谁','Who are you?','How do I use this app?','hello there']) {
+    const result=await disabled.chat(text,seed(),now,{context:{form:'pointItem'}});
+    assert.equal(result.kind,'answer'); assert.equal(result.source,'local'); assert.equal(result.mode,'local'); assert.match(result.answer,/本地/); assert.doesNotMatch(result.answer,/我是.*AI/);
+  }
+  assert.equal(calls,0,'form-only AI must not receive ordinary conversation');
+  const failed=createAssistantService({apiKey:'test-key',chatEnabled:true,fetch:async()=>{throw new Error('PROVIDER_FAILURE_PRIVATE');}});
+  const offline=await failed.chat('介绍一下自己',seed(),now);
+  assert.equal(offline.kind,'answer'); assert.equal(offline.source,'fallback'); assert.equal(offline.mode,'local'); assert.match(offline.answer,/本地/); assert.doesNotMatch(offline.answer,/我是.*AI/); assert.doesNotMatch(JSON.stringify(offline),/PROVIDER_FAILURE_PRIVATE/);
+});
+test('conversation regression: draft then hello then an explicit score correction keeps the same pending behavior',async()=>{
+  const service=local(),state=seed(),draft=await service.chat('今天独立阅读加5分',state,now),before=JSON.stringify(draft);
+  const hello=await natural('你好！想先聊聊应用怎么用，还是整理一件待确认的小事？').chat('hello',state,now,{draft});
+  assert.equal(hello.scope,'conversation'); assert.equal(hello.cancelDraft,undefined); assert.deepEqual(types(hello),[]); assert.equal(JSON.stringify(draft),before);
+  const corrected=await service.chat('改成8分',state,now,{draft,messages:[{role:'user',text:'hello'},{role:'assistant',text:hello.answer,result:hello}]});
+  assert.equal(corrected.action.type,'points.add'); assert.equal(corrected.action.payload.name,'独立阅读'); assert.equal(corrected.action.payload.points,8);
+});
+test('conversation regression: unsolicited business tools and invalid JSON structures during hello are explicitly fallback',async()=>{
+  const draft={kind:'action',action:{type:'points.add',payload:{name:'独立阅读',points:5}}},snapshot=JSON.stringify(draft),state=seed(),before=JSON.stringify(state);
+  for (const service of [tools([['draft_award',{name:'独立阅读',points:5}]]),tools([['draft_award',{name:'打招呼',points:5}]]),tools([['read_balance',{}]]),connected(draft),connected({kind:'query',query:{type:'balance'}}),connected({unexpected:'structure'})]) {
+    const result=await service.chat('hi',state,now,{draft});
+    assert.equal(result.source,'fallback'); assert.equal(result.mode,'local'); assert.deepEqual(types(result),[]); assert.equal(result.cancelDraft,undefined); assert.equal(result.query,undefined);
+    assert.equal(JSON.stringify(draft),snapshot); assert.equal(JSON.stringify(state),before);
+  }
+  const question=await connected({kind:'clarify',question:'要调整哪一个行为？'}).chat('修改行为',state,now);
+  assert.equal(question.source,'model','an actual accepted model question keeps its real provenance');
+});
+test('conversation regression: a greeting mixed with an explicit business request still uses controlled candidates',async()=>{
+  const text='hi，今天独立阅读加5分',state=seed(),before=JSON.stringify(state);
+  for (const service of [local(),tools([['draft_award',{name:'独立阅读',points:5}]])]) {
+    const result=await service.chat(text,state,now);
+    assert.equal(result.kind,'action'); assert.deepEqual(result.action,{type:'points.add',payload:{name:'独立阅读',points:5}});
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+test('conversation regression: Chinese and English greeting-prefixed reminder requests remain executable candidates',async()=>{
+  const state=seed(),before=JSON.stringify(state),task={type:'task',title:'阅读',date:'2026-11-23',time:'20:00',note:'',remindDays:0};
+  for (const [text,service] of [
+    ['你好，明天晚上八点提醒我阅读',local()],
+    ['你好明天晚上八点提醒我阅读',local()],
+    ['你好，明天晚上八点提醒我阅读',tools([['draft_reminder',task]])],
+    ['Hi, remind me to read tomorrow at 8',tools([['draft_reminder',{...task,time:'08:00'}]])]
+  ]) {
+    assert.equal(T.conversationTopic(text),'');
+    const result=await service.chat(text,state,now);
+    assert.equal(result.kind,'action',text+JSON.stringify(result)); assert.equal(result.action.type,'task.save');
+    const saved=M.apply(state,{id:'verify-reminder-candidate',type:result.action.type,...result.action.payload},now,'Asia/Shanghai');
+    const actual=saved.tasks.find(row=>row.id==='task-verify-reminder-candidate');
+    assert.equal(actual.date,'2026-11-23'); assert.equal(actual.time,text.startsWith('Hi')?'08:00':'20:00'); assert.equal(actual.title,'阅读');
+  }
+  const usage=await natural('可以先填事项、日期和时间，核对候选后再确认保存。').chat('你好，提醒功能怎么用？',state,now);
+  assert.equal(usage.scope,'conversation'); assert.equal(usage.source,'model');
+  assert.equal(JSON.stringify(state),before,'candidate checks and synthetic execution do not mutate the input ledger');
 });

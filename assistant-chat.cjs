@@ -124,9 +124,11 @@ function applyCorrection(text,state,now,options) {
 }
 function localSingle(text,state,now,options={}) {
   const fixed=preflight(text); if (fixed) return fixed;
+  if (T.conversationTopic(text)) return {kind:'answer',scope:'conversation',title:'家长助手',answer:'我是“小小向前”的本地规则助手。可以按本地记录帮你查积分、整理加分、常用行为、礼品和提醒候选，或说明应用的使用流程。候选需要你在应用里确认；当前这条回复由本地规则提供。'};
+  const withoutGreeting=text.replace(/^(?:你好|您好|嗨)[，,！!\s]*|^(?:hello|hi|hey)\b[，,！!\s]*/i,'');
+  if (withoutGreeting!==text) return localSingle(withoutGreeting,state,now,{...options,text:withoutGreeting});
   const query=T.readQueryFromText(text,state); if (query) return T.queryResult(query,state,now,{...options,text});
   const correction=applyCorrection(text,state,now,options); if (correction) return correction;
-  if (/^(?:你好|您好|嗨|hello|hi|谢谢)[！!。\s]*$/i.test(text) || /能帮.*什么|怎么用|有哪些功能/.test(text)) return {kind:'answer',title:'家长助手',answer:'可以帮你查积分和七日小结、整理本次加分、设置常用行为、核对礼品资格和提醒。候选由你确认后再保存。'};
   if (/该(?:给|加|奖)|(?:给|加)几分|(?:给|加).*多少分.*(?:合适|好)|分值.*(?:建议|合适)/.test(text)) return T.executeTool('read_guidance',{topic:'points',behavior:text.slice(0,120)},state,now);
   if (/偷懒|懒惰|不努力|这周.*(?:评价|建议|分析)|(?:这周|最近).*(?:表现如何|表现怎么样|是否努力|是不是认真)/.test(text)) return T.executeTool('read_guidance',{topic:'week'},state,now,{...options,text});
   if (/七日|7日|七天|7天|最近一周|本周.*(?:小结|总结)|一周.*(?:小结|总结)/.test(text) && !/规则|每次|提醒/.test(text)) return T.executeTool('read_week_summary',{},state,now,{...options,text});
@@ -199,7 +201,7 @@ function localChat(text,state,now,options={}) {
   return T.deferFollowups(T.joinSteps(parts.map(part=>localSingle((T.noRedemption(text) && /兑|换/.test(part) && !T.noRedemption(part)?'只查不兑，':'')+part,state,now,{...options,text:part}))),text);
 }
 function tagged(result,source,label) {
-  const stamp={mode:source==='model'?'connected':'local',source,label:label || (source==='model'?'AI 已整理':'本地助手')};
+  const stamp={mode:source==='model'?'connected':'local',source,label:label || (source==='model'?(result.scope==='conversation'?'AI 回复':'AI 已整理'):'本地助手')};
   if (result.kind==='steps') result={...result,steps:result.steps.map(row=>({...row,...stamp}))};
   return {...result,...stamp};
 }
@@ -213,6 +215,14 @@ function reusesUnrelatedDraft(result,text,options) {
   const steps=result.kind==='steps'?result.steps:[result];
   return steps.some(row=>row.kind==='action' && ['points.add','pointItem.save'].includes(row.action.type) && (row.action.payload.item || row.action.payload).name===old.name);
 }
+function acceptedModelCandidate(candidate,result) {
+  if (!T.plain(candidate)) return false;
+  if (candidate.kind==='steps' && Array.isArray(candidate.steps)) {
+    const rows=result.kind==='steps'?result.steps:[result];
+    return rows.length===candidate.steps.length && candidate.steps.every((row,index)=>acceptedModelCandidate(row,rows[index]));
+  }
+  return result.kind!=='clarify' || candidate.kind==='clarify' && typeof candidate.question==='string' && result.question===candidate.question.trim();
+}
 function createChat({apiKey,endpoint,model,fetchImpl,timeoutMs,readBounded,enabled,formOnly,interpret}) {
   function status() { return {enabled:!!enabled,mode:apiKey && enabled?'connected':'local',label:apiKey && enabled?'AI 家长助手':'本地助手',formOnly:!!apiKey && formOnly && !enabled}; }
   async function chat(text,state,suppliedNow,inputOptions={}) {
@@ -224,9 +234,9 @@ function createChat({apiKey,endpoint,model,fetchImpl,timeoutMs,readBounded,enabl
     if (fixed) return tagged(fixed,'local');
     if (T.isDraftCancellation(text)) return tagged({kind:'answer',answer:'当前待确认草稿已取消，历史记录保留，账本没有变化。',cancelDraft:true},'local');
     if (prior.committed && !T.activeDraft(options) && /^(?:改成|改为|改到|调整为|不对|不是|应该|分值改)/.test(text.trim())) return tagged(T.clarify('此前候选已办理，不能把它改成另一笔。查看或更正记录请打开对应界面；新增一笔请明确说明。'),'local');
-    const currentQuery=T.readQueryFromText(text,state);
+    const ordinary=T.conversationTopic(text), currentQuery=ordinary?null:T.readQueryFromText(text,state);
     if (!apiKey || !enabled) {
-      if (apiKey && formOnly && context.form==='pointItem' && !context.targetId && !T.activeDraft(options) && !currentQuery && !/查|余额|记录|小结|有哪些|什么|改为|改成|停用|启用/.test(text)) {
+      if (apiKey && formOnly && context.form==='pointItem' && !context.targetId && !T.activeDraft(options) && !currentQuery && !ordinary && !/查|余额|记录|小结|有哪些|什么|改为|改成|停用|启用/.test(text)) {
         const result=await interpret(text,state,now,{context:'pointItemCreate'});
         return {...result,source:result.mode==='connected'?'model':'local'};
       }
@@ -241,21 +251,39 @@ function createChat({apiKey,endpoint,model,fetchImpl,timeoutMs,readBounded,enabl
       if (!response.ok) throw new Error('PROVIDER_FAILED');
       const envelope=JSON.parse(await readBounded(response)), message=envelope && envelope.choices && envelope.choices[0] && envelope.choices[0].message;
       if (!message || !T.plain(message)) throw new Error('INVALID_MODEL_OUTPUT');
-      let result;
+      let result, accepted=true;
       if (Array.isArray(message.tool_calls) && message.tool_calls.length) {
         if (message.tool_calls.length>6) throw new Error('TOO_MANY_TOOLS');
-        const steps=message.tool_calls.map(call=>{
-          if (!T.plain(call) || call.type!=='function' || !T.plain(call.function) || typeof call.function.arguments!=='string' || call.function.arguments.length>10000) throw new Error('INVALID_TOOL_CALL');
-          const args=JSON.parse(call.function.arguments);
-          if (!T.validateCall(call.function.name,args)) throw new Error('INVALID_TOOL_ARGUMENTS');
-          return T.executeTool(call.function.name,args,state,now,{...options,enforceIntent:true});
-        });
-        result=T.joinSteps(steps);
+        if (ordinary && message.tool_calls.some(call=>!call.function || call.function.name!=='respond_conversation')) {
+          result=T.clarify('普通交流不会开始新的业务操作。你可以继续介绍想法，办理事项请明确说明。'); accepted=false;
+        } else {
+          const steps=message.tool_calls.map(call=>{
+            if (!T.plain(call) || call.type!=='function' || !T.plain(call.function) || typeof call.function.arguments!=='string' || call.function.arguments.length>10000) throw new Error('INVALID_TOOL_CALL');
+            const args=JSON.parse(call.function.arguments);
+            if (!T.validateCall(call.function.name,args)) throw new Error('INVALID_TOOL_ARGUMENTS');
+            const row=T.executeTool(call.function.name,args,state,now,{...options,enforceIntent:true});
+            if (row.kind==='clarify' && !(call.function.name==='ask_clarification' && row.question===args.question.trim())) accepted=false;
+            return row;
+          });
+          result=T.joinSteps(steps);
+        }
       } else {
         if (typeof message.content!=='string' || message.content.length>18000) throw new Error('INVALID_MODEL_OUTPUT');
-        const candidate=JSON.parse(message.content.trim().replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''));
-        result=T.normalizeResult(candidate,state,now,{...options,enforceIntent:true});
+        const content=message.content.trim();
+        if (!content) throw new Error('EMPTY_MODEL_OUTPUT');
+        if (/^[{\["]|^```/.test(content)) {
+          const candidate=JSON.parse(content.replace(/^```(?:json)?\s*/,'').replace(/\s*```$/,''));
+          if (ordinary && (!T.plain(candidate) || !(candidate.kind==='conversation' || candidate.kind==='answer' && !candidate.query))) {
+            result=T.clarify('普通交流不会开始新的业务操作。你可以继续介绍想法，办理事项请明确说明。'); accepted=false;
+          } else {
+            result=T.normalizeResult(candidate,state,now,{...options,enforceIntent:true});
+            accepted=acceptedModelCandidate(candidate,result);
+          }
+        } else { result=T.conversationReply(content,options); accepted=result.scope==='conversation'; }
       }
+      const resultRows=result.kind==='steps'?result.steps:[result];
+      if (currentQuery && resultRows.some(row=>row.kind==='action' || row.kind==='form')) accepted=false;
+      if (!accepted) return T.fitResult(tagged(currentQuery?T.queryResult(currentQuery,state,now,options):result,'fallback','AI 结果未采用，已用本地规则处理'),state,now);
       if (!currentQuery && reusesUnrelatedDraft(result,text,options)) throw new Error('STALE_DRAFT_REPLAY');
       return T.fitResult(tagged(T.deferFollowups(currentQuery?T.queryResult(currentQuery,state,now,options):result,text),'model'),state,now);
     } catch (error) {

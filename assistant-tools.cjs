@@ -8,7 +8,7 @@ const ZONE = 'Asia/Shanghai';
 const ROUTES = Object.freeze({points:'积分',pointItems:'常用行为',rewards:'礼品',redemptions:'兑换记录',reminders:'提醒',family:'家庭管理',parent:'家长验证',partner:'伙伴',farm:'农场',profile:'孩子资料',settings:'设置'});
 const IMPLEMENTED = ['read_balance','read_ledger','read_week_summary','read_rules','read_rewards','read_requests','read_tasks','read_family_settings','read_guidance',
   'draft_award','draft_rule','draft_reward','draft_redemption_request','draft_redemption_approval','draft_redemption_cancel',
-  'draft_direct_redemption','draft_rule_delete','draft_reminder','draft_reminder_status','draft_settings','open_view','ask_clarification'];
+  'draft_direct_redemption','draft_rule_delete','draft_reminder','draft_reminder_status','draft_settings','open_view','ask_clarification','respond_conversation'];
 const contracts = new Map(configured.tools.map(tool => [tool.function.name, tool.function.parameters]));
 if (configured.version !== 1 || contracts.size !== IMPLEMENTED.length || IMPLEMENTED.some(name => !contracts.has(name))) {
   throw new Error('助手工具配置与服务端白名单不一致');
@@ -20,6 +20,36 @@ const copy = (value, keys) => Object.fromEntries(keys.filter(key => own(value, k
 const clarify = question => ({kind:'clarify',question});
 const answer = (title, text, query, data) => ({kind:'answer',title,answer:text,query,data});
 const entity = (list, id) => list.find(row => row.id === id);
+function conversationTopic(text) {
+  const value=clean(text);
+  if (!value) return '';
+  const help=/如何|怎样|怎么.{0,20}(?:用|操作|开始|设置|添加|记录|查看|查|兑换|管理)|用法|使用方法|第一次(?:用|打开)|从哪(?:里)?开始|操作顺序|\bhow (?:do|can|should) I\b|\bhow (?:does|to|can I use)\b|\bwhere (?:do|should) I start\b/i.test(value);
+  const businessCommand=/(?:加|给|奖励|记)\s*[零〇一二两三四五六七八九十百\d]+\s*(?:分(?!钟)|积分)|(?:请|帮我|直接).*(?:保存|兑换|批准|取消|修改)|提醒(?:我|我们|孩子|他|她)|\bremind (?:me|us|him|her)\b|\b(?:add|award|give|redeem|approve|cancel|save|update)\b.{0,40}\b(?:points?|credits?|reward|request|rule|reminder)\b/i.test(value);
+  if (!help && (businessCommand || readQueryFromText(value) || /\b(?:my|our|current|available|remaining)\s+(?:\w+\s+){0,2}(?:balance|points?|credits?|requests?|reminders?)\b/i.test(value))) return '';
+  if (help) return 'product_help';
+  if (/你(?:是|叫|算是).{0,12}(?:谁|什么|名字|身份|角色|助手)|你的(?:名字|身份|角色)|(?:介绍|说说).{0,12}(?:自己|身份|你自己)|\b(?:who|what) are you\b|\b(?:introduce|describe) yourself\b|\btell me about yourself\b|\bwhat(?:'s| is| are) your (?:name|role|purpose|job)\b/i.test(value)) return 'identity';
+  if (/(?:你|助手|应用|app|这里).{0,16}(?:能|可以|会|有|支持).{0,16}(?:什么|哪些|啥|用|帮助|功能)|能帮.{0,10}什么|有哪些功能|支持哪些功能|\b(?:what (?:can|do) you|what you can) (?:do|help)\b|\bwhat are your (?:features|capabilities)\b/i.test(value)) return 'capabilities';
+  const greeting=/^(?:你好|您好|嗨|早安|早上好|下午好|晚上好|晚安|谢谢|辛苦了|hello\b|hi\b|hey\b|good (?:morning|afternoon|evening)\b|thank(?:s| you)\b)/i.exec(value);
+  if (greeting) {
+    const rest=value.slice(greeting[0].length).replace(/^[，,.。！!？?\s]+|[，,.。！!？?\s]+$/g,'');
+    return !rest || /^(?:there|everyone|everybody|all|friend|friends|again)$/i.test(rest)?'greeting':conversationTopic(rest);
+  }
+  if (/聊(?:聊|一聊|天)|最近怎么样|你好吗|\bhow are you\b|\b(?:let's|can we) (?:chat|talk)\b/i.test(value)) return 'small_talk';
+  return '';
+}
+function conversationReply(message,options={}) {
+  if (typeof message!=='string' || !message.trim() || message.length>2000 || !conversationTopic(options.text)) return clarify('具体记录和办理需要使用查询或候选工具；也可以问我是谁、有哪些功能或怎么使用。');
+  const text=message.trim(), checked=text.normalize('NFKC');
+  // Generic introductions may mention points, balances and confirmation. Only
+  // concrete amounts, personal live facts, grants and claimed writes are denied.
+  const amounts=/(?:[+-]?\d[\d,.]*|[零〇一二两三四五六七八九十百千万亿点]+)\s*(?:个)?(?:积分|分(?!钟)|points?\b|credits?\b)|(?:积分|余额|分值|balance|points?|credits?)\s*(?:为|是|[:：=]|is|of)?\s*(?:\d|[零〇一二两三四五六七八九十百千万亿])|\b(?:(?:zero|one|two|three|four|five|six|seven|eight|nine|ten|hundred|thousand|million|and)\s+)+(?:points?|credits?)\b/i;
+  const counts=/(?:\d+|[零〇一二两三四五六七八九十百千万亿]+)\s*(?:个|条|笔|项)\s*(?:未完成的|待确认的)?(?:提醒|事项|记录|申请|礼品|规则)|\b\d+\s+(?:pending |unfinished )?(?:reminders?|requests?|records?|rewards?)\b/i;
+  const completed=/(?:已|已经)(?:经)?(?:替你|帮你|为你|给你)?(?:加分|记账|保存|兑换|扣分|申请|批准|审批|取消|删除|修改|设置|提交|验证|确认|更新|调整|入账|到账)|(?:保存|兑换|记账|验证|提交)(?:成功|完成)|我(?:这就|现在|马上|立即|会|将)?(?:直接|自动)?(?:帮你|为你|替你)?(?:加分|记账|扣分|保存|兑换|批准|提交)|\b(?:I|we)(?:'ve| have)?\s+(?:already\s+)?(?:saved|added|recorded|redeemed|approved|cancelled|canceled|updated|deleted|submitted|deducted)\b|\b(?:your|the)\s+(?:\w+\s+){0,3}(?:request|redemption|balance|reward|rule|reminder|changes?)\b.{0,45}\b(?:saved|approved|cancelled|canceled|updated|deleted|submitted|completed)\b|\bI (?:will|shall) (?:add|save|redeem|approve|submit)\b/i;
+  const liveFacts=/(?:你的|你家(?:孩子)?的|孩子的|当前|目前|现在)(?:可用|剩余|累计|总)?(?:积分|余额|分值|申请|提醒)(?:是|为|有|已|已经|够|不足|充足|满足|可兑换|还差|没有)|(?:你(?:家|的)?|孩子)?(?:今天|明天|本周|这周|现在|目前)(?:还)?没有(?:未完成的)?(?:提醒|事项|申请|记录)|记录(?:显示|表明)|(?:已经|已|现在).{0,8}(?:是家长|管理员|获得权限|获得授权|解锁|验证通过)|\byou (?:are now|have been|are) (?:verified|authorized|unlocked|an administrator)\b|\byou (?:currently |now )?have (?:enough|sufficient|no) (?:points?|credits?)\b|\bI (?:checked|looked up|verified) your\b|\byour (?:current |pending )?(?:balance|points?|reminders?|requests?|rewards?) (?:is|are|has|have)\b/i;
+  const protocol=/["'](?:kind|action|payload|query|grant|saveAsTemplate)["']\s*:|^(?:done|all set|completed|已完成|完成了|搞定了|办好了)[.!。！\s]*$/i;
+  if (amounts.test(checked) || counts.test(checked) || completed.test(checked) || liveFacts.test(checked) || protocol.test(checked)) return clarify('具体数字、当前状态和操作结果需要由应用核对。我可以解释功能，实际查询或办理请继续说明。');
+  return {kind:'answer',scope:'conversation',title:'家长助手',answer:text};
+}
 function isDraftCancellation(text) {
   if (typeof text!=='string') return false;
   const value=text.trim();
@@ -64,8 +94,8 @@ function rangeArgs(args,text,state) {
   return {...args,...(period?{period}:{}),...(behavior?{behavior}:{})};
 }
 function dateRange(now,period,days=7) {
-  const parts=M.calendarParts(now,ZONE), back=period==='week'?(parts.weekday+6)%7:days-1;
-  return {from:M.addDays(parts.date,-back,ZONE),to:parts.date,period:period || 'last7'};
+  const parts=M.calendarParts(now,ZONE), back=period==='week'?(parts.weekday+6)%7:period==='last7'?6:days-1;
+  return {from:M.addDays(parts.date,-back,ZONE),to:parts.date,...(period || days===7?{period:period || 'last7'}:{})};
 }
 function behaviorMatcher(behavior,state) {
   const canonical=value=>value.replace(/读书/g,'阅读');
@@ -346,6 +376,7 @@ function normalizeAction(action,state,now,options={}) {
 }
 function executeTool(name,args,state,now,options={}) {
   if (!validateCall(name,args)) return clarify('工具名称或字段不符合要求，请重新描述。');
+  if (name==='respond_conversation') return conversationReply(args.message,options);
   if (name.startsWith('read_')) return read(name,['read_week_summary','read_ledger','read_guidance'].includes(name)?rangeArgs(args,options.text,state):args,state,now);
   if (name==='open_view') return route(args.route);
   if (name==='ask_clarification') {
@@ -373,9 +404,14 @@ function normalizeResult(candidate,state,now,options={}) {
   }
   if (candidate.kind==='action') return normalizeAction(candidate.action,state,now,options);
   if (candidate.kind==='form' && candidate.form==='pointItem') return normalizeAction({type:'pointItem.save',payload:{item:candidate.fields}},state,now,options);
+  if (candidate.kind==='conversation' || candidate.kind==='answer' && !candidate.query) {
+    const keys=candidate.kind==='conversation'?['kind','message']:['kind','scope','answer','title'];
+    if (Object.keys(candidate).some(key=>!keys.includes(key)) || candidate.scope!==undefined && candidate.scope!=='conversation') return clarify('普通交流不能包含操作、权限或业务结果字段。');
+    return conversationReply(candidate.kind==='conversation'?candidate.message:candidate.answer,options);
+  }
   if (candidate.kind==='query' || candidate.kind==='answer') return queryResult(candidate.query,state,now,options);
   if (candidate.kind==='route') return route(candidate.route);
   if (candidate.kind==='clarify') return executeTool('ask_clarification',{question:candidate.question},state,now,options);
   return clarify('请描述积分、常用行为、礼品或提醒，也可以打开对应界面。');
 }
-module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,normalizeResult,queryResult,joinSteps,deferFollowups,resolveFollowup,fitResult,isDraftCancellation,readQueryFromText,sameDraftCorrection,activeDraft,namedMatches,numericValues,noRedemption};
+module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,normalizeResult,queryResult,joinSteps,deferFollowups,resolveFollowup,fitResult,isDraftCancellation,conversationTopic,conversationReply,readQueryFromText,sameDraftCorrection,activeDraft,namedMatches,numericValues,noRedemption};

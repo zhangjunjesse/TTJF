@@ -9,8 +9,20 @@ const entry = '[data-action="assistant-open"]';
 
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
-  assert.ok(['phone', 'tablet', 'landscape', 'template'].includes(device));
-  const assistant = createAssistantService({apiKey:''});
+  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting'].includes(device));
+  const introductions = {
+    'hi':'你好！需要看积分余额、记录加分，还是设置规则和提醒？告诉我就行。',
+    '你是谁':'我是“小小向前”的家庭成长管理助手，可以帮你查看积分和提醒，也可以帮你整理待确认的加分草稿。'
+  };
+  const assistant = createAssistantService(device === 'greeting' ? {
+    apiKey:'test-only',chatEnabled:true,fetch:async (_url, options) => {
+      const request = JSON.parse(options.body);
+      const {instruction} = JSON.parse(request.messages.at(-1).content);
+      const content = introductions[instruction];
+      assert.ok(content, 'expected the current message in the model request');
+      return Response.json({choices:[{finish_reason:'stop',message:{role:'assistant',content}}]});
+    }
+  } : {apiKey:''});
   if (device === 'template') assistant.chat = async (text, state, now) =>
     executeTool('draft_award', {itemId:'reading-rule'}, state, now, {text,enforceIntent:true});
   const env = await Q.initialize({assistantService:assistant});
@@ -41,6 +53,22 @@ async function run() {
     await click(page, entry);
     await page.waitForSelector('#assistant-chat-input', {visible:true});
   };
+  if (device === 'greeting') {
+    await Q.check('ordinary model greetings and introductions remain attributed to AI after reopening', async () => {
+      await open();
+      for (const [prompt, reply] of Object.entries(introductions)) {
+        await B.fill(page, '#assistant-chat-input', prompt); await click(page, '#assistant-chat-send');
+        await page.waitForFunction(expected => Array.from(document.querySelectorAll('.assistant-message')).some(row =>
+          row.querySelector('.assistant-message-source')?.textContent === 'AI' && row.textContent.includes(expected)), {}, reply);
+      }
+      await page.reload({waitUntil:'load'}); await Q.ready(page, family); await open();
+      await page.waitForFunction(() => document.querySelectorAll('.assistant-message-source').length === 2);
+      assert.deepEqual(await page.$$eval('.assistant-message-source', rows => rows.map(row => row.textContent)), ['AI','AI']);
+      assert.equal(await page.$(selector('apply')), null);
+      assert.deepEqual(await ledger(), []); assert.deepEqual(Q.report.pageErrors, []);
+    });
+    return;
+  }
   if (device === 'template') {
     await Q.check('an award identified only by rule ID opens with that rule’s name and score', async () => {
       await click(page, action('all-behaviors')); await click(page, action('points-new'));
