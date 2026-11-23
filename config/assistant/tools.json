@@ -1,0 +1,744 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "read_balance",
+        "description": "实时查询当前家庭累计获得、已消费和可用积分。不包含未确认候选，不创建加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_ledger",
+        "description": "读取最近若干家庭日的真实积分流水，包含加分、礼品扣分与伙伴道具消费；条数有上限。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 period=week按上海周一到今天；last7为含今天的最近七日。behavior仅筛该行为加分；先全量匹配再截返回条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "days": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 366
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "period": {
+              "type": "string",
+              "enum": [
+                "week",
+                "last7"
+              ]
+            },
+            "behavior": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_week_summary",
+        "description": "按上海家庭日只读汇总真实记录：period=week为本周周一到今天；period=last7为包含今天的最近七日，未指定默认last7。behavior可筛指定行为，只汇总该行为真实加分，不能把其他行为算入。返回真实日期范围，不写账。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "period": {
+              "type": "string",
+              "enum": [
+                "week",
+                "last7"
+              ]
+            },
+            "behavior": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_rules",
+        "description": "列出真实常用行为规则及每次默认分值；查询规则不是实际加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "includeDisabled": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_rewards",
+        "description": "查询礼品分值、实时积分差额、日期和启停资格。只查不兑时使用本工具，绝不生成兑换候选。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "rewardId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "onlyEligible": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_requests",
+        "description": "读取真实礼品申请状态（待确认/已批准/已取消），不会批准或重复扣分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "approved",
+                "cancelled",
+                "all"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_tasks",
+        "description": "读取某个上海家庭日的提醒/事项，默认今天未完成。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "date": {
+              "type": "string",
+              "maxLength": 10,
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "includeDone": {
+              "type": "boolean"
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_family_settings",
+        "description": "只读当前家庭的月末可兑换天数与心愿礼品设置；不读取账号、成员、密码、验证、照片或其他私密资料，不写设置。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "read_guidance",
+        "description": "读取供模型参考的真实常用行为分值或已记录的周汇总。points 查询现有规则分值，week 查询实际记录；工具只提供事实，建议内容由模型按系统提示词组织。period=week 为上海周一至今天，last7 为含今天的最近七日。返回清单有界，data.total 为匹配数，hasMore 标示还有记录。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "topic": {
+              "type": "string",
+              "enum": [
+                "points",
+                "week"
+              ]
+            },
+            "behavior": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "period": {
+              "type": "string",
+              "enum": [
+                "week",
+                "last7"
+              ]
+            },
+            "limit": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "after": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 5
+              },
+              "minItems": 1,
+              "maxItems": 6,
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "topic"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_award",
+        "description": "准备一次性加分草稿，也可修改当前待确认的加分。行为和分值已知时直接传 name 和 points，不需要已有规则、itemId 或先查规则。若家长指定按一条已有规则加分，可用其真实 itemId。reason 只填家长明确给出的本次原因。确认前不记账。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "itemId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_rule",
+        "description": "新建或编辑常用行为规则候选，支持改名、改分、预设原因、启用停用；id只用于真实现有项。以后/每天/每次的规则不能当成本次加分；不确定是哪种就追问。缺少名称/分值可填写新建表单。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "reason": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_reward",
+        "description": "新增或编辑礼品候选，id必须来自当前家庭，保留未修改字段；新建须名称和积分。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "points": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "daily",
+                "weekend",
+                "outing"
+              ]
+            },
+            "icon": {
+              "type": "string",
+              "enum": [
+                "pencil",
+                "burger",
+                "mountain"
+              ]
+            },
+            "enabled": {
+              "type": "boolean"
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_redemption_request",
+        "description": "整理真实礼品的兑换申请候选；只查不兑时禁止调用。应用检查积分和日期，用户确认申请后仍需家长批准。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "rewardId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            }
+          },
+          "required": [
+            "rewardId"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_redemption_approval",
+        "description": "整理一条真实待审批申请候选，应用取最新礼品价格并要求家长确认验证，不直接扣分。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "requestId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            }
+          },
+          "required": [
+            "requestId"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_redemption_cancel",
+        "description": "整理一条真实申请的取消候选，已批准的申请不能取消；用户确认才执行。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "requestId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            }
+          },
+          "required": [
+            "requestId"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_direct_redemption",
+        "description": "整理真实礼品的直接兑换候选，应用取最新价格并要求家长确认验证。一般先申请；只查不兑时禁止调用。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "rewardId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            }
+          },
+          "required": [
+            "rewardId"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_rule_delete",
+        "description": "整理删除真实常用行为候选；保留历史账本，用户确认并验证才执行。用户说停用时用draft_rule(enabled=false)。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "itemId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            }
+          },
+          "required": [
+            "itemId"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_reminder",
+        "description": "新增或修改一条提醒候选。日期/时间必须确定，明确全天可time为空；id用于真实现有提醒，未改字段保持原样。仅新增不等于完成，也不会加分。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "type": {
+              "type": "string",
+              "enum": [
+                "task",
+                "event"
+              ]
+            },
+            "title": {
+              "type": "string",
+              "maxLength": 120
+            },
+            "date": {
+              "type": "string",
+              "maxLength": 10,
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            },
+            "time": {
+              "type": "string",
+              "maxLength": 5,
+              "pattern": "^(?:|(?:[01]\\d|2[0-3]):[0-5]\\d)$"
+            },
+            "note": {
+              "type": "string",
+              "maxLength": 2000
+            },
+            "remindDays": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 365
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_reminder_status",
+        "description": "整理真实提醒状态候选，done为完成、undo恢复、ack知道了、snooze十分钟后提醒。不会给孩子加分。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "taskId": {
+              "type": "string",
+              "maxLength": 200,
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,199}$"
+            },
+            "operation": {
+              "type": "string",
+              "enum": [
+                "done",
+                "undo",
+                "ack",
+                "snooze"
+              ]
+            }
+          },
+          "required": [
+            "taskId",
+            "operation"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "draft_settings",
+        "description": "整理月末可兑换天数或心愿礼品设置候选；其他账号、家长验证、家庭或伙伴设置用专用界面。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "monthEndDays": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 31
+            },
+            "preferredReward": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "open_view",
+        "description": "引导到专用界面：积分、规则、礼品、兑换、提醒、家庭、家长验证、伙伴、孩子资料、设置。禁止读取密码、验证码或代答验证题。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "route": {
+              "type": "string",
+              "enum": [
+                "points",
+                "pointItems",
+                "rewards",
+                "redemptions",
+                "reminders",
+                "family",
+                "parent",
+                "partner",
+                "profile",
+                "settings",
+                "farm"
+              ]
+            }
+          },
+          "required": [
+            "route"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "ask_clarification",
+        "description": "向用户提出需要补充的信息或澄清问题；仅展示模型提供的文字。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "question": {
+              "type": "string",
+              "maxLength": 160,
+              "minLength": 1
+            }
+          },
+          "required": [
+            "question"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "respond_conversation",
+        "description": "向用户展示模型的自然语言回复，支持问候、说明、讨论和建议。具体内容遵循系统提示词；文字不会查询、记账、授予权限或改变草稿状态。",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "message": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "message"
+          ],
+          "additionalProperties": false
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "cancel_draft",
+        "description": "取消当前助手待确认的草稿，保留已经保存的账本和历史记录。可与只读查询一起使用；与新建候选操作须分轮办理。",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": [],
+          "additionalProperties": false
+        }
+      }
+    }
+  ]
+}

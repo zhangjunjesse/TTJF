@@ -52,3 +52,17 @@ test('the deny-by-default Docker context explicitly includes every top-level HTM
   const missing = htmlAssets.filter(file => !rules.includes('!' + file));
   assert.deepEqual(missing, [], 'required assets must reach Docker COPY');
 });
+
+test('the runtime package includes the server-only assistant tools and editable prompts', async t => {
+  const docker = read('Dockerfile.saas'), rules = read('.dockerignore').split(/\r?\n/);
+  for (const name of ['assistant-service.cjs', 'assistant-chat.cjs', 'assistant-tools.cjs']) {
+    assert.ok(rootCopies.includes(name) && rules.includes('!' + name), name);
+  }
+  assert.match(docker, /COPY --chown=node:node config\/assistant .\/config\/assistant/);
+  for (const rule of ['!config/', '!config/assistant/', '!config/assistant/*.md', '!config/assistant/tools.json']) assert.ok(rules.includes(rule), rule);
+  const fixture = await H.fixture(t);
+  for (const file of fs.readdirSync(path.join(ROOT, 'config', 'assistant'))) {
+    const response = await H.request(fixture.server, 'GET', '/config/assistant/' + file);
+    assert.equal(response.status, 404, file);
+  }
+});

@@ -15,7 +15,7 @@ const MIME = {
   '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json; charset=utf-8'
 };
-const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js', '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/runtime.js', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css']);
+const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js', '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/runtime.js', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css', '/assistant-panel.js', '/assistant-panel.css']);
 const ASSET_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.ogg']);
 const PUBLIC_ACTIONS = new Set(['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene',
   'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare']);

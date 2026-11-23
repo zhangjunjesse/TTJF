@@ -244,6 +244,13 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   box-shadow: inset 0 1px 0 #ffffef, 0 2px 0 rgba(102, 120, 61, .16);
 }
 .voice-entry { border-color: #d0b67f; background: linear-gradient(#fff6df, #eed9ad); color: #76592f; box-shadow: var(--farm-small-shadow); }
+/* Keep the actual companion stage in view alongside the conversation on tablets. */
+@media (min-width: 900px) and (min-height: 520px) {
+  .view-points:not(.sheet-open):has(#family-assistant-host:not([hidden])) #main:has([data-home-mode="companion"]) {
+    width: calc(100% - 438px);
+    align-self: flex-start;
+  }
+}
 .btn, .farm-tool, .companion-interact {
   border: 1px solid #ccb785;
   color: var(--action-secondary-ink);

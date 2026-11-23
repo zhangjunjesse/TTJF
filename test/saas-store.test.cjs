@@ -10,7 +10,7 @@ const H = require('../saas/testing.cjs');
 test('real SQLite migration is queued/idempotent and family creation is atomic, empty and idempotent', async t => {
   const f = await H.fixture(t);
   await Promise.all([migrate(f.database), migrate(f.database)]);
-  assert.deepEqual((await f.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }]);
+  assert.deepEqual((await f.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }, { version: 3 }]);
   const user = await H.register(f, 'create@example.test'), second = await f.start();
   const payload = { name: '新家', childName: '小新', requestId: 'same-create' };
   const responses = await Promise.all([f.server, second].map(server => H.request(server, 'POST', '/api/families', payload, user)));

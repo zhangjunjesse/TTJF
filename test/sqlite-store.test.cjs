@@ -238,7 +238,7 @@ test('SQLite UUID comparisons, foreign keys and unique identities preserve case-
 test('SQLite migrations are queued/idempotent, preserve supplied databases and refuse unrelated schemas', async t => {
   const f = fixture(t), database = await f.open();
   await Promise.all([migrate(database), migrate(database)]);
-  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }]);
+  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }, { version: 3 }]);
   const supplied = await f.store({ database });
   await supplied.close();
   assert.equal((await database.query('SELECT 1 AS value')).rows[0].value, 1);
@@ -247,7 +247,7 @@ test('SQLite migrations are queued/idempotent, preserve supplied databases and r
   await other.exec('CREATE TABLE unrelated(value TEXT) STRICT;');
   await assert.rejects(migrate(other), /another schema/);
   assert.deepEqual((await other.query("SELECT name FROM sqlite_schema WHERE type='table'")).rows, [{ name: 'unrelated' }]);
-  await database.query('INSERT INTO saas_schema_migrations(version) VALUES(3)');
+  await database.query('INSERT INTO saas_schema_migrations(version) VALUES(4)');
   await assert.rejects(migrate(database), /unsupported/);
 });
 
