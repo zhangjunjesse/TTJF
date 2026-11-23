@@ -232,7 +232,11 @@
         var changed = !connected || result.revision !== revision || (result.familyDay && result.familyDay !== familyDay);
         setSnapshot(result);
         if (setupTx && !setupTx.cancelled && setupTx.uncertain) {
-          if (state.appliedActions.indexOf(setupTx.action.id) >= 0) { finishSetup(setupTx); return; }
+          if (state.appliedActions.indexOf(setupTx.action.id) >= 0) {
+            // The receipt retry must also confirm which assistant draft was resumed.
+            if (setupTx.assistantResume) { render(false); showError('PIN已设置 · 重试后继续本次操作'); return; }
+            finishSetup(setupTx); return;
+          }
           if (meta.parent.configured === true) { failSetup(setupTx, '家长验证已设置'); return; }
         }
         if (retryTx && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
@@ -307,12 +311,19 @@
     if (ui.form) { ui.form.openedRevision = revision; if (ui.form.kind === 'parentConfig' && message === '家长验证已设置') ui.form.setupConflict = true; }
     render(false); if (!tx.cancelled) showError(message);
   }
-  function finishSetup(tx) {
+  function finishSetup(tx, result) {
     var pin = tx.action.pin, auth = tx.auth;
     clearParentSecrets(tx); if (setupTx === tx) setupTx = null; pending = false;
     if (tx.cancelled) { render(false); return; }
     if (auth && ui.auth === auth && ui.form === tx.form) {
-      if (revision !== tx.revision + 1) { auth.autoPin = null; auth.tx.grant = null; if (retryTx === auth.tx) retryTx = null; ui.auth = null; if (ui.form) ui.form.openedRevision = revision; render(false); showError('PIN已设置 · 记录已更新'); return; }
+      var binding = ui.form && ui.form.assistantDraft, resumed = result && result.assistantResume;
+      var resumedDraft = !tx.assistantResume || !!(binding && resumed &&
+        binding.generation === tx.assistantResume.generation && binding.turnId === tx.assistantResume.turnId &&
+        binding.actionId === tx.assistantResume.actionId && binding.type === tx.assistantResume.type && binding.sourceRevision === tx.revision &&
+        resumed.generation === binding.generation && resumed.turnId === binding.turnId && resumed.actionId === binding.actionId &&
+        resumed.type === binding.type && resumed.sourceRevision === revision && resumed.familyDay === binding.familyDay && resumed.familyDay === today());
+      if (revision !== tx.revision + 1 || !resumedDraft) { auth.autoPin = null; auth.tx.grant = null; if (retryTx === auth.tx) retryTx = null; ui.auth = null; if (ui.form) ui.form.openedRevision = revision; render(false); showError(resumedDraft ? 'PIN已设置 · 记录已更新' : 'PIN已设置 · 助手草稿已变化，请打开助手重新核对'); return; }
+      if (tx.assistantResume) binding.sourceRevision = resumed.sourceRevision;
       auth.tx.revision = tx.revision + 1; auth.tx.uncertain = false; auth.tx.grant = null; auth.tx.previousGrowth = M.growth(state); auth.tx.previousPetStatus = playStatus();
       if (ui.form) ui.form.openedRevision = revision;
       auth.autoPin = pin; auth.phase = 'loading'; auth.busy = false; issueChallenge(auth); return;
@@ -331,13 +342,13 @@
         state = clone(state); state.appliedActions.push(tx.action.id); revision++; parentRevision = revision; persist(); finishSetup(tx);
       }, true); return;
     }
-    request('POST', '/api/action', { revision: tx.revision, action: tx.action }, function (status, result) {
+    request('POST', '/api/action', { revision: tx.revision, action: tx.action, assistantResume: tx.assistantResume }, function (status, result) {
       pending = false; tx.busy = false;
       if (result.state) setSnapshot(result);
       if (tx.cancelled) { clearParentSecrets(tx); render(false); if (!status) sync(); return; }
-      if (status === 200 && result.state) { finishSetup(tx); return; }
+      if (status === 200 && result.state) { finishSetup(tx, result); return; }
       if (status === 0) { tx.uncertain = true; connected = false; if (tx.auth && ui.auth === tx.auth) tx.auth.phase = 'setup-retry'; render(false); showError('设置结果待确认'); sync(); return; }
-      failSetup(tx, status === 409 ? result.code === 'PARENT_ALREADY_CONFIGURED' ? '家长验证已设置' : '记录已更新 · 待确认' : errorText(result));
+      failSetup(tx, result.code === 'ASSISTANT_DRAFT_STALE' ? '助手草稿已变化，请打开助手重新核对' : status === 409 ? result.code === 'PARENT_ALREADY_CONFIGURED' ? '家长验证已设置' : '记录已更新 · 待确认' : errorText(result));
     });
   }
   function startSetup(action, auth) {
@@ -346,7 +357,9 @@
     if (setupTx && setupTx.uncertain && setupTx.form === ui.form) { submitSetup(setupTx); return; }
     if (!local && !connected) { showError('未连接'); return; }
     if (action.method === 'pin' && (!/^\d{6}$/.test(action.pin || '') || action.pin !== action.confirmPin)) { showError(action.pin !== action.confirmPin ? 'PIN不一致' : 'PIN格式无效'); return; }
-    action.id = uid(); setupTx = { action: action, revision: auth ? auth.tx.revision : revision, form: ui.form, auth: auth || null, busy: false, uncertain: false, cancelled: false }; submitSetup(setupTx);
+    action.id = uid(); setupTx = { action: action, revision: auth ? auth.tx.revision : revision, form: ui.form, auth: auth || null, busy: false, uncertain: false, cancelled: false };
+    if (auth && auth.tx.assistantDraft) setupTx.assistantResume = { generation:auth.tx.assistantDraft.generation, turnId:auth.tx.assistantDraft.turnId, actionId:auth.tx.action.id, type:auth.tx.action.type };
+    submitSetup(setupTx);
   }
   function beginAction(action, message) {
     if (!scopeReady() || pending) return;
@@ -664,8 +677,10 @@
     return { view: ui.view, form: f ? f.kind : '', targetId: d ? d.id || d.itemId || d.requestId || d.rewardId || '' : '' };
   }
   function openAssistantRoute(route) {
-    var routes = { points:'records', pointItems:'point-list', rewards:'rewards', redemptions:'homeInbox', partner:'petHub', settings:'preferences' };
+    var routes = { pointItems:'point-list', rewards:'rewards', partner:'petHub', settings:'preferences' };
     if (Object.prototype.hasOwnProperty.call(routes, route)) openForm(routes[route], {});
+    else if (route === 'redemptions') onAction('rewards-history');
+    else if (route === 'points') onAction('records');
     else if (route === 'family') SaaS.openSettings();
     else if (route === 'reminders') onAction('nav', 'reminders');
     else if (route === 'parent') onAction('parent-config');

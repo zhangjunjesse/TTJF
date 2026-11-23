@@ -100,7 +100,7 @@ function harness(options = {}) {
   function submit(kind, values) { const el = element('saas-form'); el.attributes['data-saas-form'] = kind; el.elements = Object.entries(values).map(([name, value]) => ({ name, value })); el.checkValidity = () => true; emit(documentEvents, 'submit', { target: el, preventDefault() {} }); }
   function pending(url, method) { return xhrs.filter(x => x.url === url && (!method || x.method === method)).at(-1); }
   function session(verified = true, list = FAMILIES, userId = USER.id, token = 'csrf-' + userId) { pending('/api/session').respond(200, { authenticated: true, user: { ...USER, id: userId, verified }, families: list, csrfToken: token }); }
-  function family(id = 'family-a') { click('select-family', id); const x = pending('/api/state'); x.respond(200, snapshot(id)); const meta = pending('/api/meta'); if (meta && !meta.aborted) meta.respond(200, { familyId: id, userId: USER.id, revision: 1, parent: { configured: true, method: 'pin' } }); }
+  function family(id = 'family-a') { click('select-family', id); const parent = options.parentConfigured === false ? { configured: false, method: null } : { configured: true, method: 'pin' }; const x = pending('/api/state'); x.respond(200, { ...snapshot(id), parent }); const meta = pending('/api/meta'); if (meta && !meta.aborted) meta.respond(200, { familyId: id, userId: USER.id, revision: 1, parent }); }
   function login() { session(); family(); }
   return { window, document, elements, element, stored, channels, advance: ms => { elapsed += ms; }, xhrs, calls, intervals, timeouts, readers, images, revoked, wake, audio, click, submit, pending, session, family, login,
     api: window.__v13, emitDocument: (name, event) => emit(documentEvents, name, event), emitWindow: (name, event) => emit(windowEvents, name, event),
@@ -117,6 +117,44 @@ test('v13 auth-first bootstrap never reads origin business caches or creates a s
     assert.match(h.html(), /登录/); assert.doesNotMatch(h.html(), /甲私有孩子/);
     h.intervals.forEach(fn => fn()); h.window.FamilyFarmUI.tick(); h.emitWindow('pageshow', { persisted: false });
     assert.equal(h.xhrs.length, 1); assert.equal(h.calls.scenes, 0);
+  }
+});
+
+test('first PIN only continues its assistant award with the matching server resume proof', () => {
+  for (const proofCase of ['valid', 'missing', 'other-action', 'other-turn', 'other-day', 'other-revision']) {
+    const h = harness({ parentConfigured: false }); h.login();
+    h.api.open('points', { name: '阅读', points: 5, reason: '' });
+    const ref = { generation: 'first-pin-generation', turnId: 'first-pin-turn', actionId: 'first-pin-award', type: 'points.add' };
+    h.api.get().ui.form.assistantDraft = { ...ref, sourceRevision: 1, familyDay: '2026-11-16' };
+    h.api.action({ type: 'points.add', name: '阅读', points: 5, reason: '' }, '已保存');
+    h.api.parent({});
+    assert.equal(h.ui().authPhase, 'setup');
+    h.api.parent({ elements: { setupPin: { value: '246810' }, setupConfirm: { value: '246810' } } });
+    const setting = h.pending('/api/action');
+    assert.deepEqual(copy(setting.body.assistantResume), ref);
+    const configured = snapshot('family-a', 2); configured.state.appliedActions.push(setting.body.action.id);
+    const proof = { ...ref, sourceRevision: 2, familyDay: '2026-11-16' };
+    if (proofCase === 'other-action') proof.actionId = 'another-award';
+    if (proofCase === 'other-turn') proof.turnId = 'another-turn';
+    if (proofCase === 'other-day') proof.familyDay = '2026-11-17';
+    if (proofCase === 'other-revision') proof.sourceRevision = 3;
+    setting.respond(200, { ...configured, ...(proofCase === 'missing' ? {} : { assistantResume: proof }) });
+    assert.deepEqual(h.state().points, configured.state.points, 'setup does not add an award to the seeded fixture');
+    const challenge = h.pending('/api/parent/challenge');
+    if (proofCase !== 'valid') {
+      assert.equal(challenge, undefined, proofCase + ': no authorization with an unverified resume');
+      assert.equal(h.ui().auth, false); assert.equal(h.ui().form, 'points');
+      assert.equal(h.api.get().ui.form.assistantDraft.sourceRevision, 1);
+      continue;
+    }
+    assert.equal(challenge.body.revision, 2); assert.equal(challenge.body.action.id, ref.actionId);
+    assert.deepEqual(copy(challenge.body.assistantDraft), { generation: ref.generation, turnId: ref.turnId });
+    challenge.respond(200, { familyId: 'family-a', userId: USER.id, challengeId: 'first-pin-challenge', method: 'pin', expiresAt: new Date(+NOW + 120000).toISOString() });
+    const verify = h.pending('/api/parent/verify'); assert.equal(verify.body.answer, '246810');
+    verify.respond(200, { familyId: 'family-a', userId: USER.id, grant: 'first-pin-grant' });
+    const award = h.pending('/api/action');
+    assert.equal(award.body.action.type, 'points.add'); assert.equal(award.body.action.id, ref.actionId);
+    assert.equal(award.body.revision, 2); assert.equal(award.body.grant, 'first-pin-grant');
   }
 });
 

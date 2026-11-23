@@ -343,6 +343,55 @@ test('followup: model tools defer reads only through typed dependencies and refr
   assert.notEqual(immediate.steps[1].deferred,true); assert.equal(immediate.steps[1].data.available,88);
   assert.equal(JSON.stringify(state),before);
 });
+
+test('followup regression: each dependency query resolves once and keeps its saved historical answer',async()=>{
+  const state=seed(),before=JSON.stringify(state),result=await tools([
+    ['draft_award',{name:'阅读',points:5}],['read_balance',{after:[0]}],
+    ['draft_award',{name:'整理书包',points:6}],['read_balance',{after:[0,2]}],['read_balance',{}]
+  ]).chat('分两笔确认，再逐项核对',state,now);
+  assert.deepEqual(T.resolveFollowup(result,state,now,{committedIndexes:[]}),result);
+  const firstState=M.apply(state,{id:'snapshot-first',type:'points.add',...result.steps[0].action.payload},now,T.ZONE);
+  const first=T.resolveFollowup(result,firstState,now,{committedIndexes:[0]});
+  assert.equal(first.steps[1].data.available,93); assert.equal(first.steps[1].deferred,false);
+  assert.equal(first.steps[3].deferred,true); assert.equal(first.steps[3].data,undefined);
+  assert.deepEqual(first.steps[4],result.steps[4]);
+  // Chat results are JSON snapshots in SQLite; pending and resolved flags survive reload.
+  const reloaded=JSON.parse(JSON.stringify(first)),snapshot=JSON.parse(JSON.stringify(first.steps[1]));
+  const later=new Date(now.getTime()+1000),secondState=M.apply(firstState,{id:'snapshot-second',type:'points.add',...result.steps[2].action.payload},later,T.ZONE);
+  const second=T.resolveFollowup(reloaded,secondState,later,{committedIndexes:[0,2]});
+  assert.equal(second.steps[3].data.available,99); assert.equal(second.steps[3].deferred,false);
+  assert.deepEqual(second.steps[1],snapshot,'an unrelated later write cannot revise the first answer or resolvedAt');
+  assert.deepEqual(second.steps[4],result.steps[4],'immediate queries keep their original snapshot too');
+  assert.deepEqual(T.resolveFollowup(second,secondState,new Date(later.getTime()+1000),{committedIndexes:[0,2]}),second);
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('followup regression: completed legacy answers with after metadata are never refreshed',()=>{
+  const state=seed(),answer=T.read('read_balance',{},state,now),updated=M.apply(state,{id:'legacy-snapshot',type:'points.add',name:'阅读',points:5},now,T.ZONE);
+  for (const flags of [{},{deferred:false},{deferred:false,resolvedAt:now.toISOString()}]) {
+    const result={kind:'steps',steps:[{kind:'action',action:{type:'points.add',payload:{name:'阅读',points:5}}},{...answer,after:[0],...flags}]};
+    assert.deepEqual(T.resolveFollowup(result,updated,now,{committedIndexes:[0]}),result);
+  }
+});
+
+test('followup regression: bounding a later large query preserves earlier answer snapshots',async()=>{
+  const state=seed();
+  state.rewards=Array.from({length:50},(_,index)=>({id:'snapshot-reward-'+index,name:'待核对的家庭礼品'.repeat(12)+index,points:1,category:'daily',icon:'pencil',enabled:true}));
+  state.settings.preferredReward='';
+  const result=await tools([
+    ['draft_award',{name:'阅读',points:5}],['read_rewards',{after:[0],limit:50}],
+    ['draft_award',{name:'整理书包',points:6}],['read_rewards',{after:[0,2],limit:50}]
+  ]).chat('两次确认后分别查看全部礼品',state,now);
+  const firstState=M.apply(state,{id:'large-first',type:'points.add',name:'阅读',points:5},now,T.ZONE);
+  const first=T.resolveFollowup(result,firstState,now,{committedIndexes:[0]});
+  assert.equal(first.steps[1].data.available,93); assert.equal(first.steps[1].data.hasMore,true);
+  assert.ok(Buffer.byteLength(JSON.stringify(first))<=18000);
+  const snapshot=JSON.parse(JSON.stringify(first.steps[1])),secondState=M.apply(firstState,{id:'large-second',type:'points.add',name:'整理书包',points:6},now,T.ZONE);
+  const second=T.resolveFollowup(JSON.parse(JSON.stringify(first)),secondState,now,{committedIndexes:[0,2]});
+  assert.equal(second.steps[3].data.available,99); assert.equal(second.steps[3].data.hasMore,true);
+  assert.deepEqual(second.steps[1],snapshot,'size reduction cannot re-query a completed answer');
+  assert.ok(Buffer.byteLength(JSON.stringify(second))<=18000);
+});
 test('followup: missing dependencies and unknown query types cannot trigger writes or invented answers',()=>{
   const state=seed(),before=JSON.stringify(state),result={kind:'steps',steps:[{kind:'action',action:{type:'points.add',payload:{name:'阅读',points:5}}},{kind:'answer',deferred:true,after:[0],query:{type:'parent.secret'},answer:'等待核对'}]};
   assert.deepEqual(T.resolveFollowup(result,state,now,{committedIndexes:[]}),result);
@@ -418,6 +467,113 @@ test('week regression: Monday includes only its Shanghai date and a whole-week s
   assert.equal(summary.query.period,'week'); assert.equal(summary.data.earned,22); assert.match(summary.answer,/本周/);
   const recent=await service.chat('最近七天小结',state,monday);
   assert.equal(recent.query.period,'last7'); assert.equal(recent.data.from,'2026-11-24'); assert.equal(recent.data.earned,74);
+});
+
+test('week guidance regression: this-week advice uses Shanghai Monday and recent advice keeps seven days',async()=>{
+  const prior=process.env.TZ; process.env.TZ='UTC';
+  try {
+    const sunday=new Date('2026-11-22T23:59:59+08:00'),monday=new Date('2026-11-23T00:00:00+08:00'),actual=new Date('2026-11-22T16:30:00Z');
+    let state=M.createEmptyFamily({childName:'周范围核对'},sunday);
+    state=M.apply(state,{id:'weekly-sunday',type:'points.add',name:'阅读',points:11},sunday,T.ZONE);
+    state=M.apply(state,{id:'weekly-monday',type:'points.add',name:'阅读',points:5},monday,T.ZONE);
+    const before=JSON.stringify(state),service=local();
+    const control=await service.chat('本周小结',state,actual);
+    assert.equal(control.data.from,'2026-11-23'); assert.equal(control.data.earned,5);
+    for (const text of ['这周表现怎么样','本周表现怎么样','这周有哪些建议','本周有哪些建议','这周是不是偷懒','本周是不是偷懒','本星期表现如何','这个星期有哪些建议']) {
+      const result=await service.chat(text,state,actual);
+      assert.equal(result.query?.type,'guidance',text); assert.equal(result.query.topic,'week',text); assert.equal(result.query.period,'week',text);
+      assert.equal(result.data.from,'2026-11-23',text); assert.equal(result.data.to,'2026-11-23',text); assert.equal(result.data.earned,5,text);
+      assert.equal(result.data.available,16,text); assert.doesNotMatch(result.answer,/偷懒|懒惰|不努力/);
+    }
+    for (const text of ['最近7天表现怎么样','最近七天有哪些建议','最近一周表现如何','最近表现怎么样']) {
+      const result=await service.chat(text,state,actual);
+      assert.equal(result.query?.type,'guidance',text); assert.equal(result.query.period,'last7',text);
+      assert.equal(result.data.from,'2026-11-17',text); assert.equal(result.data.earned,16,text);
+    }
+    assert.equal(JSON.stringify(state),before);
+  } finally { process.env.TZ=prior; }
+});
+
+test('week guidance regression: explicit reminders keep performance questions as task content',async()=>{
+  const state=seed(),before=JSON.stringify(state),service=local();
+  for (const [text,title] of [
+    ['明天晚上八点提醒我分析本周表现','分析本周表现'],
+    ['明天晚上八点提醒我评价本周表现','评价本周表现'],
+    ['明天晚上八点提醒我分析这周表现','分析这周表现'],
+    ['明天晚上八点提醒我分析最近七天表现','分析最近七天表现'],
+    ['明天晚上八点提醒我看看本周表现怎么样','看看本周表现怎么样'],
+    ['明天晚上八点提醒我本周表现分析','本周表现分析'],
+    ['明天晚上八点提醒分析本周表现','分析本周表现'],
+    ['明天晚上八点提醒孩子评价本周表现','评价本周表现'],
+    ['帮我添加一条明天晚上八点提醒评价本周表现','评价本周表现'],
+    ['你好，明天晚上八点提醒我分析本周表现','分析本周表现']
+  ]) {
+    const result=await service.chat(text,state,now);
+    assert.equal(result.kind,'action',text); assert.equal(result.action.type,'task.save',text);
+    assert.equal(result.action.payload.task.title,title,text); assert.equal(result.action.payload.task.date,'2026-11-23',text);
+    assert.equal(result.action.payload.task.time,'20:00',text); assert.equal(result.query,undefined,text);
+  }
+  for (const [text,period] of [['分析本周表现','week'],['评价本周表现','week'],['分析这周表现','week'],['分析最近七天表现','last7'],['这周的提醒完成情况有什么建议','week']]) {
+    const result=await service.chat(text,state,now);
+    assert.equal(result.kind,'answer',text); assert.equal(result.query.type,'guidance',text); assert.equal(result.query.period,period,text);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('ledger regression: actual instants sort correctly across timezone offsets before limiting rows',()=>{
+  const actual=new Date('2026-11-22T12:00:00+08:00'),state=M.createEmptyFamily({childName:'流水时序核对'},actual);
+  state.points=[
+    {id:'offset-later',itemId:'',name:'稍后阅读',points:5,reason:'',at:'2026-11-22T02:00:00.000Z'},
+    {id:'offset-earlier',itemId:'',name:'较早阅读',points:6,reason:'',at:'2026-11-22T09:30:00+08:00'},
+    {id:'offset-latest',itemId:'',name:'最后阅读',points:7,reason:'',at:'2026-11-21T22:15:00-05:00'}
+  ];
+  const before=JSON.stringify(state),full=T.executeTool('read_ledger',{},state,actual),page=T.executeTool('read_ledger',{limit:1},state,actual);
+  assert.deepEqual(full.data.rows.map(row=>row.id),['offset-latest','offset-later','offset-earlier']);
+  assert.deepEqual(page.data.rows.map(row=>row.id),['offset-latest']); assert.equal(page.data.total,3); assert.equal(page.data.earned,18);
+  assert.equal(full.data.rows[0].day,'2026-11-22'); assert.equal(JSON.stringify(state),before);
+});
+
+test('ledger regression: equal instants follow actual action order across awards, gifts and purchases',async()=>{
+  let state=M.createEmptyFamily({childName:'同刻流水核对'},now);
+  for (const action of [
+    {id:'ledger-gift',type:'reward.save',reward:{id:'ledger-gift',name:'铅笔',points:2}},
+    {id:'aa-first',type:'points.add',name:'第一次阅读',points:20},
+    {id:'bb-gift',type:'reward.redeem',rewardId:'ledger-gift'},
+    {id:'cc-purchase',type:'pet.buy',itemId:'snack',quantity:1,expectedPoints:3},
+    {id:'zz-last',type:'points.add',name:'最后阅读',points:7}
+  ]) state=M.apply(state,action,now,T.ZONE);
+  // Imported timestamps may express the same instant with a different offset.
+  state.points[0].at='2026-11-22T09:00:00+08:00';
+  const before=JSON.stringify(state),full=await local().chat('查看积分流水',state,now),page=T.executeTool('read_ledger',{limit:2},state,now);
+  const expected=['points-zz-last','purchase-cc-purchase','redeem-bb-gift','points-aa-first'];
+  assert.deepEqual(full.data.rows.map(row=>row.id),expected); assert.deepEqual(page.data.rows.map(row=>row.id),expected.slice(0,2));
+  assert.deepEqual(full.data.rows.map(row=>row.kind),['award','partner','redemption','award']);
+  assert.deepEqual(full.data.rows.map(row=>row.points),[7,-3,-2,20]);
+  assert.deepEqual([full.data.earned,full.data.spent],[27,5]); assert.equal(JSON.stringify(state),before);
+});
+
+test('ledger regression: equal-time legacy rows retain source priority and reverse append order',()=>{
+  const state=seed(),at=now.toISOString();
+  state.points=[{id:'old-award',name:'较早鼓励',points:20,reason:'',itemId:'',at},{id:'new-award',name:'最近鼓励',points:20,reason:'',itemId:'',at}];
+  state.redemptions=['old-gift','new-gift'].map(id=>({id,rewardId:'legacy-gift',name:'铅笔',points:2,category:'daily',note:'',at}));
+  state.petPurchases=['old-purchase','new-purchase'].map(id=>({id,itemId:'snack',name:'能量果',quantity:1,unitPoints:3,points:3,at}));
+  const before=JSON.stringify(state),result=T.executeTool('read_ledger',{},state,now);
+  assert.deepEqual(result.data.rows.map(row=>row.id),['new-award','old-award','new-gift','old-gift','new-purchase','old-purchase']);
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('ledger regression: real times outrank partial action history and logged ties keep their known order',()=>{
+  const state=seed(),at=now.toISOString();
+  state.points=[
+    {id:'points-logged-first',name:'已记录鼓励',points:20,reason:'',itemId:'',at},
+    {id:'legacy-unlogged',name:'旧鼓励',points:10,reason:'',itemId:'',at},
+    {id:'points-later-time',name:'时间较晚的鼓励',points:10,reason:'',itemId:'',at:'2026-11-22T09:00:01+08:00'}
+  ];
+  state.redemptions=[{id:'redeem-logged-last',rewardId:'legacy-gift',name:'铅笔',points:2,category:'daily',note:'',at}];
+  state.appliedActions=['later-time','logged-first','logged-last'];
+  const before=JSON.stringify(state),result=T.executeTool('read_ledger',{},state,new Date(now.getTime()+2000));
+  assert.deepEqual(result.data.rows.map(row=>row.id),['points-later-time','redeem-logged-last','points-logged-first','legacy-unlogged']);
+  assert.equal(JSON.stringify(state),before);
 });
 test('week regression: provider-selected periods, behaviors and query kinds are not rewritten from user text',async()=>{
   const {actual,state}=weekFixture(),before=JSON.stringify(state);

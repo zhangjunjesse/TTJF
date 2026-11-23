@@ -95,12 +95,13 @@ function pageRows(rows,limit=12) {
   return {rows:rows.slice(0,limit),total:rows.length,hasMore:rows.length>limit,limit};
 }
 function moreText(page) { return page.hasMore?'\n仅显示前 '+page.rows.length+' 条，共 '+page.total+' 条；更多内容请到对应记录页面查看。':''; }
-function fitResult(result,state,now) {
+function fitResult(result,state,now,preserved=[]) {
   let output=result;
   for (let attempt=0;attempt<6 && Buffer.byteLength(JSON.stringify(output))>18000;attempt++) {
     let changed=false;
     function reduce(row) {
       if (row.kind==='steps') return {...row,steps:row.steps.map(reduce)};
+      if (preserved.includes(row)) return row;
       if (row.kind!=='answer' || !row.query || !row.data || !Array.isArray(row.data.rows) || row.data.rows.length<2) return row;
       const next=queryResult({...row.query,limit:Math.max(1,Math.floor(row.data.rows.length/2))},state,now);
       if (next.kind!=='answer') return row;
@@ -162,25 +163,34 @@ function deferFollowups(result,text) {
 function resolveFollowup(result,state,now,options={}) {
   if (!plain(result) || result.kind!=='steps' || !Array.isArray(result.steps)) return result;
   const committed=new Set(Array.isArray(options.committedIndexes)?options.committedIndexes:[]);
+  let changed=false;
   const steps=result.steps.map((row,index)=>{
-    if (!plain(row) || row.kind!=='answer' || !Array.isArray(row.after) || !row.after.length || row.after.length>6) return row;
+    if (!plain(row) || row.kind!=='answer' || row.deferred!==true || !Array.isArray(row.after) || !row.after.length || row.after.length>6) return row;
     if (!row.after.every(dependency=>Number.isSafeInteger(dependency) && dependency>=0 && dependency<index && plain(result.steps[dependency]) && result.steps[dependency].kind==='action' && committed.has(dependency))) return row;
     const computed=queryResult(row.query,state,new Date(now));
+    changed=true;
     if (computed.kind!=='answer') return {...computed,after:row.after.slice(),deferred:false,mode:'local',source:'local',label:'请重新核对查询'};
     return {...computed,after:row.after.slice(),deferred:false,resolvedAt:new Date(now).toISOString(),mode:'local',source:'local',label:'已按最新记录核对'};
   });
-  return fitResult({...result,steps},state,now);
+  // Existing answers are saved snapshots, including their displayed list size.
+  // Only newly resolved queries may be resized to fit the result limit.
+  return changed?fitResult({...result,steps},state,now,result.steps):result;
 }
 function ledgerRows(state, since, today) {
-  const rows = [];
-  function append(list, kind, sign) {
-    for (const row of list || []) {
+  const rows = [], actionIndexes = new Map((state.appliedActions || []).map((id,index)=>[id,index]));
+  function append(list, kind, sign, prefix, sourceOrder) {
+    for (const [index,row] of (list || []).entries()) {
       const day = M.dateKey(row.at,ZONE);
-      if (day >= since && day <= today) rows.push({id:row.id,kind,name:row.name,points:sign * row.points,at:row.at,day,...(kind==='award'?{itemId:row.itemId}:{})});
+      if (day < since || day > today) continue;
+      const actionId=row.id.startsWith(prefix)?row.id.slice(prefix.length):'';
+      rows.push({value:{id:row.id,kind,name:row.name,points:sign * row.points,at:row.at,day,...(kind==='award'?{itemId:row.itemId}:{})},
+        timestamp:new Date(row.at).getTime(),actionIndex:actionIndexes.get(actionId) ?? -1,sourceOrder,index});
     }
   }
-  append(state.points,'award',1); append(state.redemptions,'redemption',-1); append(state.petPurchases,'partner',-1);
-  return rows.sort((a,b) => b.at.localeCompare(a.at) || a.id.localeCompare(b.id));
+  append(state.points,'award',1,'points-',0); append(state.redemptions,'redemption',-1,'redeem-',1); append(state.petPurchases,'partner',-1,'purchase-',2);
+  // Match home-points: actual instants first, then saved action order. Legacy
+  // ties keep source priority and reverse append order without inventing dates.
+  return rows.sort((a,b)=>b.timestamp-a.timestamp || b.actionIndex-a.actionIndex || a.sourceOrder-b.sourceOrder || b.index-a.index).map(row=>row.value);
 }
 function read(name, args, state, now) {
   const today = M.dateKey(now,ZONE), totals = M.totals(state);
@@ -358,4 +368,4 @@ function executeTool(name,args,state,now) {
   const type={done:'task.toggle',undo:'task.toggle',ack:'task.ack',snooze:'task.snooze'}[args.operation];
   return normalizeAction({type,payload:{taskId:args.taskId,...(type==='task.snooze'?{minutes:10}:{})}},state,now);
 }
-module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,queryResult,joinSteps,deferFollowups,resolveFollowup,fitResult,isDraftCancellation,conversationTopic,conversationReply,readQueryFromText,sameDraftCorrection,activeDraft,namedMatches,numericValues,noRedemption};
+module.exports={ZONE,ROUTES,plain,copy,clarify,route,read,toolDefinitions,validateCall,executeTool,normalizeAction,queryResult,joinSteps,deferFollowups,resolveFollowup,fitResult,isDraftCancellation,conversationTopic,conversationReply,periodFromText,readQueryFromText,sameDraftCorrection,activeDraft,namedMatches,numericValues,noRedemption};

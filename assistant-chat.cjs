@@ -137,13 +137,18 @@ function applyCorrection(text,state,now,options) {
 }
 function localSingle(text,state,now,options={}) {
   const fixed=preflight(text); if (fixed) return fixed;
-  if (T.conversationTopic(text)) return {kind:'answer',scope:'conversation',title:'家长助手',answer:'我是“小小向前”的本地规则助手。可以按本地记录帮你查积分、整理加分、常用行为、礼品和提醒候选，或说明应用的使用流程。候选需要你在应用里确认；当前这条回复由本地规则提供。'};
+  const period=T.periodFromText(text);
+  const reminderCommand=/提醒(?:我|我们|孩子|他|她)/.test(text) ||
+    /提醒/.test(text) && A.interpret(text,state,legacyNow(now)).action?.type==='task.save';
+  const weekGuidance=!reminderCommand && (/偷懒|懒惰|不努力/.test(text) || (!!period || /最近/.test(text)) && /评价|建议|分析|表现如何|表现怎么样|是否努力|是不是认真/.test(text));
+  // A question about recorded performance (including “表现如何”) is not product help.
+  if (!weekGuidance && T.conversationTopic(text)) return {kind:'answer',scope:'conversation',title:'家长助手',answer:'我是“小小向前”的本地规则助手。可以按本地记录帮你查积分、整理加分、常用行为、礼品和提醒候选，或说明应用的使用流程。候选需要你在应用里确认；当前这条回复由本地规则提供。'};
   const withoutGreeting=text.replace(/^(?:你好|您好|嗨)[，,！!\s]*|^(?:hello|hi|hey)\b[，,！!\s]*/i,'');
   if (withoutGreeting!==text) return localSingle(withoutGreeting,state,now,{...options,text:withoutGreeting});
   const query=T.readQueryFromText(text,state); if (query) return T.queryResult(query,state,now);
   const correction=applyCorrection(text,state,now,options); if (correction) return correction;
   if (/该(?:给|加|奖)|(?:给|加)几分|(?:给|加).*多少分.*(?:合适|好)|分值.*(?:建议|合适)/.test(text)) return T.executeTool('read_guidance',{topic:'points',behavior:text.slice(0,120)},state,now);
-  if (/偷懒|懒惰|不努力|这周.*(?:评价|建议|分析)|(?:这周|最近).*(?:表现如何|表现怎么样|是否努力|是不是认真)/.test(text)) return T.executeTool('read_guidance',{topic:'week'},state,now);
+  if (weekGuidance) return T.executeTool('read_guidance',{topic:'week',...(period?{period}:{})},state,now);
   if (/七日|7日|七天|7天|最近一周|本周.*(?:小结|总结)|一周.*(?:小结|总结)/.test(text) && !/规则|每次|提醒/.test(text)) return T.executeTool('read_week_summary',{},state,now);
   if (/流水|积分记录|加分记录|消费记录|收支|积分历史/.test(text) && !/添加|新增|修改|删除/.test(text)) return T.executeTool('read_ledger',{},state,now);
   if (/查看.*(?:家庭设置|积分设置)|(?:心愿礼品|月末天数|月底天数).*(?:多少|什么|几天)|月末.*(?:最后几天|多少天)/.test(text)) return T.executeTool('read_family_settings',{},state,now);

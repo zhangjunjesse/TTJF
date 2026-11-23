@@ -7,6 +7,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const Q = require('./saas-browser.cjs');
 const { createAssistantService } = require('../assistant-service.cjs');
+const { route } = require('../assistant-tools.cjs');
 const { B, M, PIN, action: a, click, ui, snapshot, save, parentSubmit } = Q;
 const CASE = process.env.UI_REFINEMENT_CASE || 'award';
 assert.ok(['award', 'template', 'templateDelete', 'history', 'voice', 'retry', 'balance', 'aiForm', 'aiFormPartial'].includes(CASE), 'Unknown UI_REFINEMENT_CASE');
@@ -80,8 +81,11 @@ async function setup() {
   env = await Q.initialize({ assistantService: CASE === 'aiForm' || CASE === 'aiFormPartial' ? formAssistant() : {
     status: () => ({ mode: 'local', label: '合成指令测试' }),
     interpret: async () => ({kind:'clarify',question:'请说明操作'}),
-    chat: async () => ({ mode: 'local', kind: 'action', action: { type: 'points.add',
-      payload: { name: '合成语音行为', points: 11, reason: '完整读完故事并主动分享' } } })
+    chat: async text => {
+      if (CASE === 'history') return route({ '打开兑换记录':'redemptions', '打开积分':'points' }[text]);
+      return { mode: 'local', kind: 'action', action: { type: 'points.add',
+        payload: { name: '合成语音行为', points: 11, reason: '完整读完故事并主动分享' } } };
+    }
   } });
   env.clock(Date.parse('2026-11-17T04:30:00Z'));
   page = await env.newPage({ controlledClock: true, width: 905, height: 768 }); Q.active(page);
@@ -389,6 +393,22 @@ async function history() {
     assert.equal(await page.evaluate(() => document.activeElement.dataset.action), 'rewards-history');
     assert.deepEqual(await page.$$eval('.reward-card', nodes => nodes.map(node => node.dataset.id)), gifts);
     assert.deepEqual(await sql(), before); assert.deepEqual(recent(marker, '/api/parent/challenge'), []); assert.deepEqual(recent(marker, '/api/action'), []);
+  });
+  await Q.check('Assistant history cards open the requested ledger tab and show completed records without a write', async () => {
+    const before = await sql(), marker = env.calls.length;
+    for (const [prompt, tab, record] of [
+      ['打开兑换记录', 'redemptions', '合成已完成兑换'],
+      ['打开积分', 'points', '合成兑换前积累']
+    ]) {
+      await Q.home(page); await click(page, a('assistant-open'));
+      await B.fill(page, '#assistant-chat-input', prompt); await click(page, '#assistant-chat-send');
+      await page.waitForFunction(title => document.querySelector('.assistant-message:last-child .assistant-route strong')?.textContent === title, {}, prompt);
+      await click(page, '.assistant-message:last-child [data-assistant-action="route"]');
+      assert.equal((await ui(page)).form, 'records');
+      assert.equal(await page.$eval('.history-tabs .active', node => node.dataset.id), tab);
+      assert.ok((await page.$eval('.record-list', node => node.textContent)).includes(record));
+    }
+    assert.deepEqual(await sql(), before); assert.deepEqual(recent(marker, '/api/action'), []);
   });
 }
 async function voice() {
