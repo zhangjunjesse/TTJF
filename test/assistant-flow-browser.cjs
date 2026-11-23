@@ -39,9 +39,10 @@ async function launcherLayout(page, name) {
       const values = style[key].split(' ');
       return [radius(values[0],bounds.width),radius(values[1] || values[0],bounds.height)];
     });
-    const decoration = ['::before','::after'].filter(pseudo => {
+    const decoration = ['::before','::after'].map(pseudo => {
       const value = getComputedStyle(launcher,pseudo);
-      return value.content !== 'none' && value.content !== 'normal' && value.display !== 'none' && value.visibility !== 'hidden' && Number(value.opacity) > 0;
+      return {pseudo, visible:value.content !== 'none' && value.content !== 'normal' && value.display !== 'none' && value.visibility !== 'hidden' && Number(value.opacity) > 0,
+        pointerEvents:value.pointerEvents, background:value.backgroundImage};
     });
     return { viewport:{width:innerWidth,height:innerHeight}, nav:nav.getBoundingClientRect().toJSON(), controls,
       sceneBottom:splitScene && stage && rendered(stage) ? stage.getBoundingClientRect().bottom : null,
@@ -49,7 +50,7 @@ async function launcherLayout(page, name) {
       aria:launcher && { label:launcher.getAttribute('aria-label'), controls:launcher.getAttribute('aria-controls'), popup:launcher.getAttribute('aria-haspopup') },
       orb:{button:launcher.matches('button.assistant-orb') && launcher.type === 'button', text:launcher.innerText.trim(),
         children:Array.from(launcher.children).map(node => node.tagName), decoration, corners,
-        background:style.backgroundImage, focusable:launcher.tabIndex === 0 && launcher.getAttribute('aria-hidden') !== 'true'},
+        background:style.backgroundImage, overflow:style.overflow, focusable:launcher.tabIndex === 0 && launcher.getAttribute('aria-hidden') !== 'true'},
       documentWidth:document.documentElement.scrollWidth };
   });
   Q.report.layouts.push({name,...value}); launcherProgress(name);
@@ -60,7 +61,9 @@ async function launcherLayout(page, name) {
   assert.equal(value.orb.button, true, name + ': the sphere itself is the assistant button');
   assert.equal(value.orb.text, '', name + ': the sphere has no visible label');
   assert.deepEqual(value.orb.children, [], name + ': the sphere has no nested icon or ornament');
-  assert.deepEqual(value.orb.decoration, [], name + ': the sphere has no generated ring or ornament');
+  assert.ok(value.orb.decoration.every(layer => layer.visible && layer.pointerEvents === 'none' && /radial-gradient\(/.test(layer.background)),
+    name + ': the pearl colors and sheen are visible material layers without pointer targets');
+  assert.equal(value.orb.overflow, 'hidden', name + ': material layers are clipped inside the sphere');
   assert.ok(value.orb.corners.every(([x,y]) => x >= launcher.width / 2 - .5 && y >= launcher.height / 2 - .5), name + ': all edges form a circle');
   assert.match(value.orb.background, /radial-gradient\(/, name + ': the sphere has light and shade');
   assert.equal(value.orb.focusable, true, name + ': the sphere is available to the keyboard and accessibility tree');
@@ -88,7 +91,7 @@ function launcherSnapshot(page) {
     media:{reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,forcedColors:matchMedia('(forced-colors:active)').matches},
     styles:[launcher,...launcher.querySelectorAll('*')].flatMap((node,index) => [null,'::before','::after'].map(pseudo => {
       const style = getComputedStyle(node,pseudo);
-      return {index,pseudo,animation:style.animationName,animationDuration:style.animationDuration,playState:style.animationPlayState,
+      return {index,pseudo,content:style.content,animation:style.animationName,animationDuration:style.animationDuration,playState:style.animationPlayState,
         transitionDuration:style.transitionDuration,transform:style.transform,translate:style.translate,rotate:style.rotate,scale:style.scale,
         opacity:style.opacity,filter:style.filter,background:style.backgroundImage,position:style.backgroundPosition.split(',').map(value => value.trim()),
         size:style.backgroundSize,radius:style.borderRadius,shadow:style.boxShadow};
@@ -102,14 +105,15 @@ async function launcherMotion(page) {
   const first = await launcherSnapshot(page); await B.delay(200);
   const middle = await launcherSnapshot(page); await B.delay(300); const last = await launcherSnapshot(page);
   Q.report.assistantLauncher.motion = {...Q.report.assistantLauncher.motion,'no-preference':{first,middle,last}};
-  launcherProgress('reflection-motion');
+  launcherProgress('pearl-motion');
   assert.deepEqual(first.media, {reduced:false,forcedColors:false}, 'the normal motion preference is active');
-  assert.equal(first.animations.length, 1, 'one CSS animation moves the reflection');
+  assert.equal(first.animations.length, 1, 'one CSS animation moves the internal pearl colors');
   assert.ok([first,middle,last].every(sample => sample.animations.length === 1 && sample.animations[0].playState === 'running' && !sample.animations[0].pending),
-    'the reflection is running during the samples');
-  assert.ok([middle,last].some(sample => sample.styles[0].position[0] !== first.styles[0].position[0]), 'the reflection advances in real time');
-  const fixedBody = sample => ({...sample,styles:sample.styles.map((style,index) => index === 0 ? {...style,position:style.position.slice(1)} : style)});
-  [middle,last].forEach(sample => assert.deepEqual(fixedBody(sample), fixedBody(first), 'the circle, location, shadow and other background layers stay still'));
+    'the pearl colors are drifting during the samples');
+  const drift = sample => sample.styles.find(style => style.index === 0 && style.pseudo === '::before').transform;
+  assert.ok([middle,last].some(sample => drift(sample) !== drift(first)), 'the internal pearl colors advance in real time');
+  const fixedBody = sample => ({...sample,styles:sample.styles.map(style => style.index === 0 && style.pseudo === '::before' ? {...style,transform:null} : style)});
+  [middle,last].forEach(sample => assert.deepEqual(fixedBody(sample), fixedBody(first), 'the circle, location, shadow and surface sheen stay still'));
 }
 async function launcherStill(page, motion) {
   const forcedColors = motion === 'forced-colors';
@@ -124,6 +128,8 @@ async function launcherStill(page, motion) {
   assert.deepEqual(first.styles.filter(style => style.animation !== 'none' && style.animationDuration.split(',').some(duration => parseFloat(duration) > 0)), [],
     motion + ': the sphere and its decoration do not animate');
   assert.deepEqual(last, first, motion + ': the idle sphere does not rotate, breathe or move');
+  if (forcedColors) assert.ok(first.styles.filter(style => style.pseudo).every(style => style.content === 'none'),
+    'forced colors hide the pearl material layers');
   if (motion === 'reduce') assert.deepEqual(first.styles.filter(style => style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)), [],
     'reduced motion stops entry transitions');
 }
@@ -143,26 +149,28 @@ async function launcherFlow(page, env, device, open) {
     await page.waitForFunction(() => FamilyDemo.getUI().view === 'points');
     await launcherLayout(page, 'returned-home');
   });
-  await Q.check(device + ': only the reflection moves, and reduced motion and forced colors keep it still', async () => {
+  await Q.check(device + ': only internal pearl colors move, and reduced motion and forced colors keep it still', async () => {
     await launcherMotion(page);
     await launcherStill(page, 'forced-colors'); await Q.shot(page, device + '-forced-colors-entry');
     await launcherStill(page, 'reduce');
     await launcherLayout(page, 'reduced-motion-home'); await Q.shot(page, device + '-reduced-motion-entry');
     await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'},{name:'forced-colors',value:'none'}]);
   });
-  await Q.check(device + ': the reflection pauses behind the panel and pointer and keyboard activation restore focus', async () => {
+  await Q.check(device + ': the pearl colors pause behind the panel and pointer and keyboard activation restore focus', async () => {
     await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'family-assistant-panel', 'opening does not focus the keyboard');
     await B.delay(200); const first = await launcherSnapshot(page); await B.delay(300); const last = await launcherSnapshot(page);
     Q.report.assistantLauncher.motion['panel-open'] = {first,last}; launcherProgress('panel-open-paused');
-    assert.equal(first.animations.length, 1, 'the reflection remains available to resume');
-    assert.equal(first.animations[0].playState, 'paused', 'the reflection pauses behind the open panel');
+    assert.equal(first.animations.length, 1, 'the pearl drift remains available to resume');
+    assert.equal(first.animations[0].playState, 'paused', 'the pearl colors pause behind the open panel');
     assert.equal(first.animations[0].pending, false, 'the pause has settled');
-    assert.deepEqual(last, first, 'the reflection stays fixed while the assistant is open');
+    assert.deepEqual(last, first, 'the pearl colors stay fixed while the assistant is open');
+    assert.equal(await page.$eval('.assistant-panel-header .assistant-orb', node => node.getAnimations({subtree:true}).length), 0,
+      'the panel brand does not animate');
     await Q.shot(page, device + '-assistant-open');
     await click(page, 'button' + selector('close'));
     await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-launcher'));
-    await page.waitForFunction(() => document.querySelector('.assistant-launcher').getAnimations().some(animation => animation.playState === 'running' && !animation.pending));
+    await page.waitForFunction(() => document.querySelector('.assistant-launcher').getAnimations({subtree:true}).some(animation => animation.playState === 'running' && !animation.pending));
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => FamilyAssistantPanel.getState().open && FamilyAssistantPanel.getState().loaded);
     await page.keyboard.press('Escape');
@@ -193,6 +201,8 @@ async function launcherFlow(page, env, device, open) {
       inSheet:!!node.closest('.sheet'), floating:node.classList.contains('assistant-launcher')
     })));
     assert.deepEqual(visibleEntries, [{inSheet:true,floating:false}], 'the sheet has one contextual entry');
+    assert.equal(await page.$eval('.assistant-sheet-entry .assistant-orb', node => node.getAnimations({subtree:true}).length), 0,
+      'the contextual entry does not animate');
     await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
     await click(page, 'button' + selector('close'));
     await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-sheet-entry'));

@@ -11,25 +11,43 @@
 }
 .assistant-dock .nav-item { margin: 0; }
 .assistant-orb {
+  position: relative;
   display: block;
   flex: 0 0 auto;
+  isolation: isolate;
+  overflow: hidden;
   border-radius: 50%;
+  background: radial-gradient(circle at 37% 26%, #fafbf6 2%, #dfedea 42%, #a6bfca 73%, #678897 100%);
+  box-shadow: 0 2px 3px #3f5b5633;
+}
+.assistant-orb::before, .assistant-orb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.assistant-orb::before {
+  inset: -15%;
   background:
-    radial-gradient(ellipse 35% 26% at 48% 36%, #f3ffecd9, transparent) 0 0 / 66% 62% no-repeat,
-    radial-gradient(ellipse 49% 25% at 50% 91%, #7ac4a78c, transparent),
-    radial-gradient(circle at 34% 29%, #b8dfc4 0%, #78bda4 29%, #3c8978 56%, #205c54 78%, #184b46 100%);
-  box-shadow: 0 2px 3px #294d392e;
+    radial-gradient(ellipse 36% 33% at 59% 57%, #efb5dbed, transparent),
+    radial-gradient(ellipse 54% 27% at 40% 69%, #8cdacc, transparent),
+    radial-gradient(ellipse 30% 38% at 72% 32%, #bab0ed, transparent),
+    radial-gradient(ellipse 40% 29% at 33% 32%, #fff5cb, transparent);
+}
+.assistant-orb::after {
+  background: radial-gradient(ellipse 38% 18% at 35% 21%, #fffffbb0, transparent);
+  box-shadow: inset 1px 1px 2px #faf9f5, inset -2px -3px 4px #485f8580;
 }
 .assistant-launcher, .assistant-sheet-entry { width: 48px; height: 48px; padding: 0; border: 0; }
 .assistant-launcher { justify-self: center; }
 @media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
-  .assistant-launcher { animation: assistant-orb-light 3.2s ease-in-out infinite alternate; }
-  body:has(> .assistant-panel-host:not([hidden])) .assistant-launcher { animation-play-state: paused; }
+  .assistant-launcher::before { animation: assistant-pearl-drift 5s ease-in-out infinite alternate; }
+  body:has(> .assistant-panel-host:not([hidden])) .assistant-launcher::before { animation-play-state: paused; }
 }
-/* Slide the reflection across the surface. The body of the sphere and its shadow stay put. */
-@keyframes assistant-orb-light {
-  from { background-position: 0 0, 0 0, 0 0; }
-  to { background-position: 82% 25%, 0 0, 0 0; }
+@keyframes assistant-pearl-drift {
+  from { transform: rotate(-20deg) translateX(-4%); }
+  to { transform: rotate(26deg) translateX(4%); }
 }
 .assistant-sheet-entry { display: grid; place-items: center; background: transparent; border-radius: 50%; }
 .assistant-sheet-entry .assistant-orb { width: 30px; height: 30px; }
@@ -55,6 +73,7 @@
 }
 @media (forced-colors: active) {
   .assistant-orb { forced-color-adjust: none; background: ButtonText; box-shadow: none; }
+  .assistant-orb::before, .assistant-orb::after { content: none; }
   .assistant-launcher:focus-visible, .assistant-sheet-entry:focus-visible { outline-color: Highlight; }
 }
 /* Kept outside #app so opening the assistant never replaces a form draft. */
