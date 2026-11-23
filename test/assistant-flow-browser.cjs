@@ -48,7 +48,7 @@ async function launcherLayout(page, name) {
       entries:Array.from(document.querySelectorAll('[data-action="assistant-open"]')).filter(rendered).length,
       aria:launcher && { label:launcher.getAttribute('aria-label'), controls:launcher.getAttribute('aria-controls'), popup:launcher.getAttribute('aria-haspopup') },
       orb:{button:launcher.matches('button.assistant-orb') && launcher.type === 'button', text:launcher.innerText.trim(),
-        children:Array.from(launcher.children).filter(rendered).map(node => node.tagName), decoration, corners,
+        children:Array.from(launcher.children).map(node => node.tagName), decoration, corners,
         background:style.backgroundImage, focusable:launcher.tabIndex === 0 && launcher.getAttribute('aria-hidden') !== 'true'},
       documentWidth:document.documentElement.scrollWidth };
   });
@@ -82,22 +82,45 @@ async function launcherLayout(page, name) {
   assert.deepEqual(value.aria, {label:'打开家长助手',controls:'family-assistant-panel',popup:'dialog'});
   assert.ok(value.documentWidth <= value.viewport.width + 1, name + ': no horizontal overflow');
 }
-async function launcherStill(page, motion) {
-  await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:motion}]);
-  await page.mouse.move(1,1); await B.delay(200);
-  const inspect = () => page.$eval('.assistant-launcher', launcher => ({
+function launcherSnapshot(page) {
+  return page.$eval('.assistant-launcher', launcher => ({
     rect:launcher.getBoundingClientRect().toJSON(),
+    media:{reduced:matchMedia('(prefers-reduced-motion:reduce)').matches,forcedColors:matchMedia('(forced-colors:active)').matches},
     styles:[launcher,...launcher.querySelectorAll('*')].flatMap((node,index) => [null,'::before','::after'].map(pseudo => {
       const style = getComputedStyle(node,pseudo);
-      return {index,pseudo,animation:style.animationName,animationDuration:style.animationDuration,transitionDuration:style.transitionDuration,
-        transform:style.transform,opacity:style.opacity,filter:style.filter,background:style.backgroundImage,position:style.backgroundPosition,shadow:style.boxShadow};
+      return {index,pseudo,animation:style.animationName,animationDuration:style.animationDuration,playState:style.animationPlayState,
+        transitionDuration:style.transitionDuration,transform:style.transform,translate:style.translate,rotate:style.rotate,scale:style.scale,
+        opacity:style.opacity,filter:style.filter,background:style.backgroundImage,position:style.backgroundPosition.split(',').map(value => value.trim()),
+        size:style.backgroundSize,radius:style.borderRadius,shadow:style.boxShadow};
     })),
-    activeAnimations:launcher.getAnimations({subtree:true}).filter(animation => animation.playState === 'running' || animation.pending).length
+    animations:launcher.getAnimations({subtree:true}).map(animation => ({playState:animation.playState,pending:animation.pending}))
   }));
-  const first = await inspect(); await B.delay(300); const last = await inspect();
+}
+async function launcherMotion(page) {
+  await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'},{name:'forced-colors',value:'none'}]);
+  await page.mouse.move(1,1); await B.delay(200);
+  const first = await launcherSnapshot(page); await B.delay(200);
+  const middle = await launcherSnapshot(page); await B.delay(300); const last = await launcherSnapshot(page);
+  Q.report.assistantLauncher.motion = {...Q.report.assistantLauncher.motion,'no-preference':{first,middle,last}};
+  launcherProgress('reflection-motion');
+  assert.deepEqual(first.media, {reduced:false,forcedColors:false}, 'the normal motion preference is active');
+  assert.equal(first.animations.length, 1, 'one CSS animation moves the reflection');
+  assert.ok([first,middle,last].every(sample => sample.animations.length === 1 && sample.animations[0].playState === 'running' && !sample.animations[0].pending),
+    'the reflection is running during the samples');
+  assert.ok([middle,last].some(sample => sample.styles[0].position[0] !== first.styles[0].position[0]), 'the reflection advances in real time');
+  const fixedBody = sample => ({...sample,styles:sample.styles.map((style,index) => index === 0 ? {...style,position:style.position.slice(1)} : style)});
+  [middle,last].forEach(sample => assert.deepEqual(fixedBody(sample), fixedBody(first), 'the circle, location, shadow and other background layers stay still'));
+}
+async function launcherStill(page, motion) {
+  const forcedColors = motion === 'forced-colors';
+  await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:forcedColors ? 'no-preference' : 'reduce'},
+    {name:'forced-colors',value:forcedColors ? 'active' : 'none'}]);
+  await page.mouse.move(1,1); await B.delay(200);
+  const first = await launcherSnapshot(page); await B.delay(300); const last = await launcherSnapshot(page);
   Q.report.assistantLauncher.motion = {...Q.report.assistantLauncher.motion,[motion]:{first,last}};
   launcherProgress(motion + '-still');
-  assert.equal(first.activeAnimations + last.activeAnimations, 0, motion + ': the sphere has no running animations');
+  assert.deepEqual(first.media, {reduced:!forcedColors,forcedColors}, motion + ': the browser applies the requested media preference');
+  assert.deepEqual(first.animations, [], motion + ': the sphere has no running animations');
   assert.deepEqual(first.styles.filter(style => style.animation !== 'none' && style.animationDuration.split(',').some(duration => parseFloat(duration) > 0)), [],
     motion + ': the sphere and its decoration do not animate');
   assert.deepEqual(last, first, motion + ': the idle sphere does not rotate, breathe or move');
@@ -105,7 +128,7 @@ async function launcherStill(page, motion) {
     'reduced motion stops entry transitions');
 }
 async function launcherFlow(page, env, device, open) {
-  Q.report.assistantLauncher = {case:device,boundary:'Real SaaS and isolated SQLite in desktop Chromium. Reduced motion is emulated; a physical tablet, Safari and OS keyboard are not verified.'};
+  Q.report.assistantLauncher = {case:device,boundary:'Real SaaS and isolated SQLite in desktop Chromium. Reduced motion and forced colors are emulated; a physical tablet, Safari and OS keyboard are not verified.'};
   launcherProgress('fixture-ready');
   const before = await Q.snapshot(page), marker = env.calls.length;
   await Q.check(device + ': centered assistant and both navigation tabs remain reachable in points, companion and reminders', async () => {
@@ -120,14 +143,26 @@ async function launcherFlow(page, env, device, open) {
     await page.waitForFunction(() => FamilyDemo.getUI().view === 'points');
     await launcherLayout(page, 'returned-home');
   });
-  await Q.check(device + ': the sphere stays still in both motion preferences and pointer and keyboard activation restore focus', async () => {
-    await launcherStill(page, 'no-preference'); await launcherStill(page, 'reduce');
+  await Q.check(device + ': only the reflection moves, and reduced motion and forced colors keep it still', async () => {
+    await launcherMotion(page);
+    await launcherStill(page, 'forced-colors'); await Q.shot(page, device + '-forced-colors-entry');
+    await launcherStill(page, 'reduce');
     await launcherLayout(page, 'reduced-motion-home'); await Q.shot(page, device + '-reduced-motion-entry');
+    await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'},{name:'forced-colors',value:'none'}]);
+  });
+  await Q.check(device + ': the reflection pauses behind the panel and pointer and keyboard activation restore focus', async () => {
     await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'family-assistant-panel', 'opening does not focus the keyboard');
+    await B.delay(200); const first = await launcherSnapshot(page); await B.delay(300); const last = await launcherSnapshot(page);
+    Q.report.assistantLauncher.motion['panel-open'] = {first,last}; launcherProgress('panel-open-paused');
+    assert.equal(first.animations.length, 1, 'the reflection remains available to resume');
+    assert.equal(first.animations[0].playState, 'paused', 'the reflection pauses behind the open panel');
+    assert.equal(first.animations[0].pending, false, 'the pause has settled');
+    assert.deepEqual(last, first, 'the reflection stays fixed while the assistant is open');
     await Q.shot(page, device + '-assistant-open');
     await click(page, 'button' + selector('close'));
     await page.waitForFunction(() => !FamilyAssistantPanel.getState().open && document.activeElement.matches('.assistant-launcher'));
+    await page.waitForFunction(() => document.querySelector('.assistant-launcher').getAnimations().some(animation => animation.playState === 'running' && !animation.pending));
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => FamilyAssistantPanel.getState().open && FamilyAssistantPanel.getState().loaded);
     await page.keyboard.press('Escape');

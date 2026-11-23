@@ -15,13 +15,22 @@
   flex: 0 0 auto;
   border-radius: 50%;
   background:
-    radial-gradient(ellipse 23% 16% at 32% 22%, #f3ffecd9, transparent),
+    radial-gradient(ellipse 35% 26% at 48% 36%, #f3ffecd9, transparent) 0 0 / 66% 62% no-repeat,
     radial-gradient(ellipse 49% 25% at 50% 91%, #7ac4a78c, transparent),
     radial-gradient(circle at 34% 29%, #b8dfc4 0%, #78bda4 29%, #3c8978 56%, #205c54 78%, #184b46 100%);
   box-shadow: 0 2px 3px #294d392e;
 }
 .assistant-launcher, .assistant-sheet-entry { width: 48px; height: 48px; padding: 0; border: 0; }
 .assistant-launcher { justify-self: center; }
+@media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
+  .assistant-launcher { animation: assistant-orb-light 3.2s ease-in-out infinite alternate; }
+  body:has(> .assistant-panel-host:not([hidden])) .assistant-launcher { animation-play-state: paused; }
+}
+/* Slide the reflection across the surface. The body of the sphere and its shadow stay put. */
+@keyframes assistant-orb-light {
+  from { background-position: 0 0, 0 0, 0 0; }
+  to { background-position: 82% 25%, 0 0, 0 0; }
+}
 .assistant-sheet-entry { display: grid; place-items: center; background: transparent; border-radius: 50%; }
 .assistant-sheet-entry .assistant-orb { width: 30px; height: 30px; }
 .assistant-launcher:focus-visible, .assistant-sheet-entry:focus-visible { outline: 3px solid #835b16; outline-offset: 2px; }
