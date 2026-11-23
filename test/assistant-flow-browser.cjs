@@ -329,9 +329,60 @@ async function firstPinConflictFlow(page, env, device, open) {
   });
 }
 
+async function awardUnitFlow(page, env, family, open) {
+  const instruction = '自己刷牙加一份', marker = env.calls.length;
+  const sql = async () => (await env.database.query('SELECT revision,state FROM saas_families WHERE id=$1', [family])).rows[0];
+  const read = name => page.$eval('#editor-form [name="' + name + '"]', node => node.value);
+  const before = await sql();
+  await Q.check('local 自己刷牙加一份 opens an editable one-point award without changing SQLite', async () => {
+    await open(); await B.fill(page, '#assistant-chat-input', instruction); await click(page, '#assistant-chat-send');
+    await page.waitForSelector(selector('apply'), {visible:true});
+    assert.equal(await page.$eval('.assistant-message-source', node => node.textContent), '本地');
+    assert.match(await page.$eval('.assistant-draft-pending', node => node.textContent), /自己刷牙/);
+    assert.match(await page.$eval('.assistant-draft-pending', node => node.textContent), /(?:^|\D)1\s*分/);
+    await Q.shot(page, 'award-unit-one-point-draft');
+    await click(page, selector('apply'));
+    assert.equal(await read('name'), '自己刷牙'); assert.equal(await read('points'), '1');
+    assert.deepEqual(await sql(), before, 'preparing and opening the draft leaves the family ledger unchanged');
+  });
+  await Q.check('editing the one-point award to two and cancelling leaves SQLite unchanged', async () => {
+    await Q.type(page, '#editor-form [name="points"]', '2');
+    await Q.shot(page, 'award-unit-edited-two-points');
+    await click(page, '.sheet-header ' + action('form-close'));
+    await page.waitForFunction(() => !FamilyDemo.getUI().form);
+    assert.deepEqual(await sql(), before, 'cancelling the edited draft does not award points');
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/action','/api/parent/challenge','/api/parent/verify'].includes(call.path)), [],
+      'neither drafting nor cancelling starts an authorization or business write');
+  });
+  await Q.check('confirmation and parent authorization commit only the final two-point award once', async () => {
+    await open(); await page.waitForSelector(selector('apply'), {visible:true}); await click(page, selector('apply'));
+    assert.equal(await read('points'), '1', 'the pending assistant draft still has its original score');
+    await Q.type(page, '#editor-form [name="points"]', '2'); await click(page, Q.save);
+    assert.equal((await Q.ui(page)).authPhase, 'confirm');
+    assert.match(await page.$eval('.points-confirm-dialog', node => node.textContent), /确认加2分/);
+    assert.deepEqual(await sql(), before, 'review has not committed the edited score');
+    await Q.shot(page, 'award-unit-two-point-confirmation');
+    await click(page, action('points-confirm'));
+    await page.waitForSelector('#parent-form [name="answer"]', {visible:true});
+    assert.deepEqual(await sql(), before, 'requesting parent authorization has not committed the score');
+    await B.fill(page, '#parent-form [name="answer"]', Q.PIN); await click(page, Q.parentSubmit);
+    await page.waitForSelector('#assistant-chat-input', {visible:true});
+    await page.waitForFunction(() => !document.querySelector('[data-assistant-action="apply"]'));
+    await Q.settled(page);
+    const saved = await sql(), rows = saved.state.points;
+    assert.equal(saved.revision, before.revision + 1); assert.equal(rows.length, 1);
+    assert.equal(rows[0].name, '自己刷牙'); assert.equal(rows[0].points, 2);
+    assert.deepEqual((await Q.snapshot(page)).points, rows, 'the browser and SQLite show the same final award');
+    const writes = env.calls.slice(marker).filter(call => call.path === '/api/action');
+    assert.equal(writes.length, 1); assert.equal(writes[0].action.type, 'points.add'); assert.equal(writes[0].action.hasGrant, true);
+    assert.deepEqual(Q.report.pageErrors, []);
+    await Q.shot(page, 'award-unit-final-two-point-award');
+  });
+}
+
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
-  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'launcher-phone', 'launcher-tablet',
+  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'launcher-phone', 'launcher-tablet',
     'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent'].includes(device));
   if (device.startsWith('launcher-')) {
     Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
@@ -392,6 +443,7 @@ async function run() {
   if (device === 'first-pin' || device === 'first-pin-retry') { await firstPinFlow(page, env, device, open); return; }
   if (device.startsWith('first-pin-')) { await firstPinConflictFlow(page, env, device, open); return; }
   if (device.startsWith('launcher-')) { await launcherFlow(page, env, device, open); return; }
+  if (device === 'award-unit') { Q.phase(device); await awardUnitFlow(page, env, family, open); return; }
   if (device === 'greeting') {
     await Q.check('greetings, arithmetic, current time and creative replies survive reopening with their model attribution', async () => {
       await open();
