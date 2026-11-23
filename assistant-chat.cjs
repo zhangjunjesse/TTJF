@@ -135,6 +135,15 @@ function applyCorrection(text,state,now,options) {
   }
   return null;
 }
+function normalizeAwardUnit(text,state) {
+  const amount=/[，,\s]*(?:加|奖励)\s*([零〇一二两三四五六七八九十百\d]+)\s*份[。！!\s]*$/.exec(text);
+  if (!amount) return text;
+  const behavior=text.slice(0,amount.index).trim().replace(/^(?:请)?(?:帮我)?(?:给孩子|孩子)?(?:今天|这次|刚才)?\s*/,'');
+  // “份” also counts portions. Only infer points for a complete behavior name.
+  const dailyHabit=/^(?:自己|主动|自主|独立)?(?:刷牙|洗脸|洗手|穿衣服|叠被子|整理书包|阅读|读书|做家务)$/;
+  if (!dailyHabit.test(behavior) && !state.pointItems.some(item=>item.enabled && item.name===behavior)) return text;
+  return behavior+'加'+amount[1]+'分';
+}
 function localSingle(text,state,now,options={}) {
   const fixed=preflight(text); if (fixed) return fixed;
   if (T.conversationTopic(text)) return {kind:'answer',scope:'conversation',title:'家长助手',answer:'我是“小小向前”的本地规则助手。可以按本地记录帮你查积分、整理加分、常用行为、礼品和提醒候选，或说明应用的使用流程。候选需要你在应用里确认；当前这条回复由本地规则提供。'};
@@ -188,6 +197,7 @@ function localSingle(text,state,now,options={}) {
     return result.kind==='action'?T.normalizeAction(result.action,state,now):result;
   }
   const context=options.context || {}, scope=context.scope || (context.form==='points'?'points':context.form==='pointItem' && context.targetId?'pointItems':'general');
+  if (!recurring && (scope==='general' || scope==='points')) text=normalizeAwardUnit(text,state);
   const selected=state.tasks.find(row=>row.id===context.targetId && !row.deleted), phrase=selected && /^(?:改|调整|推迟)/.test(text)?'把'+selected.title+text:text;
   const result=A.interpret(phrase,state,legacyNow(now),{context:scope,...(context.targetId?{targetId:context.targetId}:{})});
   if (result.kind==='action') {

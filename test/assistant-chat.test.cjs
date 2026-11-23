@@ -48,6 +48,23 @@ test('local: recurring rule and a single actual award stay distinct without writ
   assert.equal(award.source,'local'); assert.equal(award.mode,'local');
   assert.equal(JSON.stringify(state),before);
 });
+test('local: a homophone in an award keeps the behavior and score without awarding ordinary portions',async()=>{
+  const service=local(), state=seed();
+  state.pointItems.push({id:'water-plants',name:'照看薄荷',points:5,enabled:true});
+  const before=JSON.stringify(state);
+  for (const [input,name,points] of [
+    ['自己刷牙加一份','自己刷牙',1],
+    ['自己刷牙加一分','自己刷牙',1],
+    ['照看薄荷，加 2 份。','照看薄荷',2]
+  ]) {
+    const result=await service.chat(input,state,now);
+    assert.deepEqual(result.action,{type:'points.add',payload:{name,points}},input);
+  }
+  for (const input of ['早餐再加一份','给我一份早餐','刷牙杯加一份','不要给自己刷牙加一份']) {
+    assert.ok(!types(await service.chat(input,state,now)).includes('points.add'),input);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
 test('local: unspecified reasons never overwrite a manually completed award form',async()=>{
   for (const text of ['今天独立阅读加5分','行为：阅读，加5分','自主阅读，加5分']) {
     const result=await local().chat(text,seed(),now,{context:{form:'points',view:'points'}});
