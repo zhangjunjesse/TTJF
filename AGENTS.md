@@ -31,6 +31,8 @@
 - `npm run test:ui:flows`：真实临时 SQLite 的加分确认、常用模板、兑换记录、指令和重试；`UI_REFINEMENT_CASE` 分别选 `award`（默认）、`template`、`history`、`voice`、`retry`、`balance`（空原因加分、保存常用、刷新与历史总积分/可兑换积分）。`npm run test:ui:layout` 用 `UI_LAYOUT_WIDTH`、`UI_LAYOUT_HEIGHT` 指定视口，检查首页占屏、触控命中、卡片、输入和弹框，`UI_LAYOUT_CASE=long` 运行长积分布局。`npm run test:ui:credit` 检查共用渲染器的积分宝箱、降级及资源释放。各入口使用 `TEST_ARTIFACT_DIR` 保存独立证据。
 - `npm run test:ui:keyboard` 在真实 SaaS 表单上模拟手机键盘压缩、移动可见区域。用 `MOBILE_KEYBOARD_CASE=award|template|reminder|pin|pin-landscape` 分别检查立即加分（默认）、常用行为、提醒和竖屏/横屏家长 PIN。系统输入法和 Safari 真机需单独验收。
 - `npm run test:assistant:flow` 使用真实 SaaS 和临时 SQLite，按 `ASSISTANT_FLOW_CASE=phone|template|tablet|landscape|greeting` 验证助手交接、记账、清空、布局和问候回复来源；`launcher-phone` 和 `launcher-tablet` 检查底栏居中、导航触控、减少动态效果和焦点恢复。`npm run test:assistant:panel` 按 `ASSISTANT_PANEL_CASE=layout|lifecycle|drafts|voice|history` 独立验证面板交互。两者均支持 `TEST_ARTIFACT_DIR`。
+- 助手草稿进入首次家长验证时，用 `ASSISTANT_FLOW_CASE=first-pin|first-pin-retry|first-pin-conflict|first-pin-concurrent` 分别验证正常续办、响应丢失后重试、并发设置 PIN 和独立记账导致草稿过期。
+- `ASSISTANT_PANEL_CASE=receipts|mixed-notes` 分别验证历史卡片的逐项办理状态，以及含办理步骤的历史消息能显示当时的查询答复和追问。
 - `npm run test:home:views` 使用隔离的家庭和 SQLite 测试首页。用 `DEVICE_HOME_CASE=phone|phone-landscape|desktop-screen|tablet|preferences|storage|sync` 选择手机、横屏、桌面窄窗口、平板、本机偏好、存储不可用或打开七日小结时收到家庭账本更新的场景。首页在首次打开时按窗口大小选择视图，只有用户显式保存的视图偏好才写入本机。
 - `TEST_ARTIFACT_DIR` 可把本轮证据写到独立目录；避免覆盖历史验收。详细范围和本次已知失败基线见 `docs/sqlite-verification.md`。
 - `npm run test:pet-home:browser` 通过隔离的 SaaS/SQLite 测试伙伴首页。`PET_HOME_CASE=home|preview|rotation|scope|touch|portraits` 选择场景，`PET_HOME_WIDTH`、`PET_HOME_HEIGHT` 选择手机或平板视口。`portraits` 检查 WebGL 不可用时的十套形态、成长足迹和伙伴设置。实体 iPad/Safari 需单独验收。

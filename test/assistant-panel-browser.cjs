@@ -8,7 +8,7 @@ const crypto = require('node:crypto');
 const B = require('./browser.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const CASE = process.env.ASSISTANT_PANEL_CASE || 'layout';
-assert.ok(['layout', 'lifecycle', 'drafts', 'voice', 'history'].includes(CASE));
+assert.ok(['layout', 'lifecycle', 'drafts', 'voice', 'history', 'receipts', 'mixed-notes'].includes(CASE));
 const OUT = process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(ROOT, 'data', 'assistant-panel-verification', CASE);
 const report = { case: CASE, startedAt: new Date().toISOString(), checks: [], errors: [], boundary: 'Real Edge/Chromium, isolated panel and deterministic callback transport. VisualViewport and microphone events are controlled fixtures. This does not verify native iPad/Safari, an OS keyboard, a real microphone, an external model or the integrated SaaS host.' };
 report.sourceHashes = Object.fromEntries(['assistant-panel.js', 'assistant-panel.css', 'test/assistant-panel-browser.cjs'].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex')]));
@@ -378,10 +378,119 @@ async function history() {
   });
 }
 
+async function receiptCards() {
+  return page.$$eval('.assistant-message:not(.assistant-message-current)', messages => {
+    const message = messages.find(node => node.querySelector('h3')?.textContent === '已记录：家长实际加分');
+    return message ? Array.from(message.querySelectorAll('.assistant-draft-card')).map(card => ({
+      index:Number(card.dataset.assistantDraftIndex),status:card.querySelector('.assistant-draft-heading span')?.textContent,
+      applies:card.querySelectorAll('[data-assistant-action="apply"]').length
+    })) : null;
+  });
+}
+async function receipts() {
+  await fixture();
+  await page.evaluate(() => {
+    const result = {kind:'steps',steps:[
+      {...__qaAction,title:'已记录：家长实际加分',summary:'家长改为 7 分 · 实际记录已保存',receipt:{actionId:'saved-action',revision:4}},
+      {kind:'route',route:'points',title:'积分记录'},
+      {...__qaAction,title:'尚未提交的第二项',receipt:{actionId:'untrusted-model-receipt',revision:999,status:'committed'}},
+      {kind:'answer',title:'积分快照',answer:'保存这一步时可兑换 7 分。',after:[0],deferred:false}
+    ]};
+    __qaInstallDraft(__qaSnapshot, '00000000-0000-4000-8000-000000000080', result);
+    __qaSnapshot.draft.actions.find(action => action.index === 0).status = 'committed';
+    __qaSnapshot.messages.at(-1).committedIndexes = [0];
+  });
+  await open();
+  await check('A partial current plan shows the saved step and keeps only its pending step actionable', async () => {
+    assert.equal(await page.$eval('.assistant-current-draft [data-assistant-draft-index="0"] .assistant-draft-heading span', node => node.textContent), '已办理');
+    assert.deepEqual(await page.$$eval(a('apply'), nodes => nodes.map(node => Number(node.dataset.stepIndex))), [2]);
+    assert.equal(await page.$eval('.assistant-current-draft .assistant-step-note', node => node.textContent), '保存这一步时可兑换 7 分。');
+    await draftUntouched();
+  });
+  await check('Replacing a partial plan keeps its persisted committed index and ignores a model receipt on the other card', async () => {
+    await page.evaluate(() => { __qaInstallDraft(__qaSnapshot, '00000000-0000-4000-8000-000000000081', __qaAction); FamilyAssistantPanel.refresh(); }); await ready();
+    assert.deepEqual(await receiptCards(), [{index:0,status:'已办理',applies:0},{index:2,status:'历史草稿',applies:0}]);
+    await page.screenshot({path:path.join(OUT,'partial-history.png')}); await draftUntouched();
+  });
+  await check('A fresh panel read preserves per-step historical statuses without creating a handoff', async () => {
+    await page.evaluate(() => FamilyAssistantPanel.reset()); await open();
+    assert.deepEqual(await receiptCards(), [{index:0,status:'已办理',applies:0},{index:2,status:'历史草稿',applies:0}]);
+    assert.deepEqual(await page.evaluate(() => __qaApplies), []);
+    assert.equal(await page.evaluate(() => __qaRequests.some(call => /\/action|\/parent\//.test(call.url))), false);
+  });
+  await check('The existing all-committed message flag still marks every historical card completed', async () => {
+    await page.evaluate(() => {
+      const message = __qaSnapshot.messages.find(message => message.turnId.endsWith('000000000080') && message.role === 'assistant');
+      message.committed = true; delete message.committedIndexes; FamilyAssistantPanel.refresh();
+    }); await ready();
+    assert.deepEqual(await receiptCards(), [{index:0,status:'已办理',applies:0},{index:2,status:'已办理',applies:0}]);
+  });
+}
+async function mixedNotes() {
+  await fixture();
+  await page.evaluate(() => {
+    const result = {kind:'steps',steps:[
+      {...__qaAction,title:'已加分',summary:'自主阅读 · +7 分'},
+      {kind:'route',route:'points',title:'积分记录'},
+      {kind:'answer',title:'积分快照',answer:'当时可兑换 7 分，累计 7 分。',after:[0],deferred:false},
+      {kind:'clarify',title:'下一项',question:'下一次要选择哪条提醒？'}
+    ]};
+    __qaInstallDraft(__qaSnapshot, '00000000-0000-4000-8000-000000000090', result);
+    const message = __qaSnapshot.messages.at(-1);
+    message.text = '已加分：自主阅读 · +7 分\n积分记录\n积分快照：当时可兑换 7 分，累计 7 分。\n下一项：下一次要选择哪条提醒？';
+    message.committed = true; __qaSnapshot.draft = null;
+  }); await open();
+  await check('A historical mixed plan displays its balance snapshot and clarification once beside its cards', async () => {
+    const notes = await page.$$eval('.assistant-message .assistant-message-text', nodes => nodes.map(node => node.textContent));
+    assert.equal(notes.filter(text => text === '当时可兑换 7 分，累计 7 分。').length, 1);
+    assert.equal(notes.filter(text => text === '下一次要选择哪条提醒？').length, 1);
+    assert.equal(await page.$$eval('.assistant-draft-card', nodes => nodes.length), 1);
+    assert.equal(await page.$$eval(a('route'), nodes => nodes.length), 1);
+    assert.equal(await page.$$eval(a('apply'), nodes => nodes.length), 0);
+    await page.screenshot({path:path.join(OUT,'historical-query.png')});
+  });
+  await check('Reopening the panel keeps its historical query text visible and read-only', async () => {
+    await page.click(a('close')); await open();
+    const text = await page.$eval('#assistant-chat-log', node => node.textContent);
+    assert.equal(text.split('当时可兑换 7 分，累计 7 分。').length - 1, 1);
+    assert.equal(text.split('下一次要选择哪条提醒？').length - 1, 1);
+    assert.equal(await page.$$eval(a('apply'), nodes => nodes.length), 0); await draftUntouched();
+  });
+  await check('Untitled answers and clarification in a mixed plan do not repeat in its generated prose', async () => {
+    await page.evaluate(() => {
+      __qaInstallDraft(__qaSnapshot, '00000000-0000-4000-8000-000000000091', {kind:'steps',steps:[__qaAction,
+        {kind:'answer',answer:'另一份快照可兑换 9 分。'},{kind:'clarify',question:'下一项提醒希望几点？'}]});
+      __qaSnapshot.messages.at(-1).text = '加分草稿：自主阅读 · 5 分\n另一份快照可兑换 9 分。\n下一项提醒希望几点？';
+      __qaSnapshot.draft = null; FamilyAssistantPanel.refresh();
+    }); await ready();
+    const text = await page.$eval('#assistant-chat-log', node => node.textContent);
+    assert.equal(text.split('另一份快照可兑换 9 分。').length - 1, 1);
+    assert.equal(text.split('下一项提醒希望几点？').length - 1, 1);
+  });
+  await check('Additional historical prose remains visible alongside mixed plan notes', async () => {
+    await page.evaluate(() => { __qaSnapshot.messages.at(-1).text = '这份结果来自本次核对，请先看当时快照。'; FamilyAssistantPanel.refresh(); }); await ready();
+    const text = await page.$eval('#assistant-chat-log', node => node.textContent);
+    assert.equal(text.split('这份结果来自本次核对，请先看当时快照。').length - 1, 1);
+    assert.equal(text.split('另一份快照可兑换 9 分。').length - 1, 1);
+  });
+  await check('Plain answers, ordinary conversation and standalone clarification render once', async () => {
+    await page.evaluate(() => {
+      __qaSnapshot.messages = [
+        {role:'assistant',turnId:'plain-answer',text:'现在可兑换 11 分。',result:{kind:'answer',answer:'现在可兑换 11 分。'}},
+        {role:'assistant',turnId:'conversation-answer',text:'你好，需要帮什么？',result:{kind:'answer',scope:'conversation',answer:'你好，需要帮什么？'}},
+        {role:'assistant',turnId:'plain-clarify',text:'希望提醒在几点？',result:{kind:'clarify',question:'希望提醒在几点？'}}
+      ]; FamilyAssistantPanel.reset();
+    }); await open();
+    assert.deepEqual(await page.$$eval('.assistant-message .assistant-message-text', nodes => nodes.map(node => node.textContent)),
+      ['现在可兑换 11 分。','你好，需要帮什么？','希望提醒在几点？']);
+    assert.equal(await page.$$eval(a('apply'), nodes => nodes.length), 0); await draftUntouched();
+  });
+}
+
 (async () => {
   save(); browser = await B.launch();
   try {
-    await ({ layout, lifecycle, drafts, voice, history })[CASE]();
+    await ({ layout, lifecycle, drafts, voice, history, receipts, 'mixed-notes':mixedNotes })[CASE]();
     if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'panel.png') });
     assert.deepEqual(report.errors, []); report.passed = true;
   } catch (error) { report.passed = false; report.failure = { message: error.message, stack: error.stack }; if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'failure.png') }); throw error; }

@@ -16,6 +16,12 @@ function createBusiness({ store, auth, now, assistant }) {
   }
   function result(body, status = 200) { return { status, body }; }
   function error(status, code, message, extra) { return result({ error: message, code, ...extra }, status); }
+  function actionResult(family, body, resumed) {
+    const output = snapshot(family);
+    if (resumed) output.assistantResume = { ...body.assistantResume, turnId: body.assistantResume.turnId.toLowerCase(),
+      sourceRevision: resumed.sourceRevision, familyDay: resumed.familyDay };
+    return result(output);
+  }
   function conflict(family, action) {
     return action && action.type === 'parent.setup' && family.parent.configured ?
       error(409, 'PARENT_ALREADY_CONFIGURED', '家长验证已设置', snapshot(family)) : result(snapshot(family), 409);
@@ -152,7 +158,7 @@ function createBusiness({ store, auth, now, assistant }) {
       const settingUp = body.action.type === 'parent.setup';
       if (settingUp && family.role !== 'owner') { return error(403, 'OWNER_REQUIRED', '仅家庭所有者可首次设置家长验证'); }
       // Membership/session authorization above precedes every receipt read.
-      const prior = (await client.query('SELECT receipt FROM saas_action_receipts WHERE family_id=$1 AND action_id=$2', [family.id, body.action.id])).rows[0];
+      const prior = (await client.query('SELECT receipt,revision FROM saas_action_receipts WHERE family_id=$1 AND action_id=$2', [family.id, body.action.id])).rows[0];
       const binding = await chats.authorize(client, who, family, body, { replay: !!prior });
       if (binding && binding.error) { return binding.error; }
       if (prior || family.state.appliedActions.includes(body.action.id)) {
@@ -161,8 +167,10 @@ function createBusiness({ store, auth, now, assistant }) {
           if (prior && prior.receipt.algorithm === 'scrypt') { await failure(client, family); }
           return error(400, 'ACTION_ID_REUSED', '此操作标识已使用，不能更改内容后重试');
         }
-        return result(snapshot(family));
       }
+      const resuming = await chats.prepareResume(client, who, family, body, { replay: !!prior, revision: prior && Number(prior.revision) });
+      if (resuming && resuming.error) return { ...resuming.error, body: { ...snapshot(family), ...resuming.error.body } };
+      if (prior) return actionResult(family, body, resuming);
       if (body.revision !== family.revision) { return conflict(family, body.action); }
       if (settingUp && family.parent.configured) { return conflict(family, body.action); }
       let grantHash;
@@ -197,8 +205,10 @@ function createBusiness({ store, auth, now, assistant }) {
       await client.query('UPDATE saas_families SET state=$2,parent=$3,revision=$4,updated_at=$5 WHERE id=$1', [family.id, state, parent, revision, at()]);
       await client.query('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES($1,$2,$3,$4,$5)', [family.id, body.action.id, receipt, revision, at()]);
       if (grantHash) { await client.query('DELETE FROM saas_parent_grants WHERE token_hash=$1', [grantHash]); }
-      await chats.committed(client, who, { ...family, state, parent, revision }, binding, revision);
-      return result(snapshot({ ...family, state, parent, revision }));
+      const updatedFamily = { ...family, state, parent, revision };
+      await chats.committed(client, who, updatedFamily, binding, revision);
+      const resumed = resuming && await chats.resume(client, who, updatedFamily, resuming, revision);
+      return actionResult(updatedFamily, body, resumed);
     });
   }
   async function interpret(ctx, body) {

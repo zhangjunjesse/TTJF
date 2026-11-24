@@ -222,6 +222,119 @@ async function launcherFlow(page, env, device, open) {
   launcherProgress('passed');
 }
 
+async function firstPinEditor(page, env, device, open) {
+  await page.waitForFunction(() => FamilyDemo.getUI().parentConfigured === false);
+  await open();
+  await B.fill(page, '#assistant-chat-input', '今天独立阅读加5分'); await click(page, '#assistant-chat-send');
+  await page.waitForSelector(selector('apply'), {visible:true});
+  const draft = (await env.api(page, '/api/assistant/chat/read', 'POST', {})).body.draft;
+  assert.equal(draft.sourceRevision, 1); assert.equal(draft.actions[0].status, 'pending');
+  await click(page, selector('apply'));
+  await click(page, Q.save); await click(page, action('points-confirm'));
+  await page.waitForSelector('#parent-form [name="setupPin"]', {visible:true});
+  assert.deepEqual((await env.api(page, '/api/state')).body.state.points, []);
+  await Q.shot(page, device + '-setup');
+  await B.fill(page, '#parent-form [name="setupPin"]', Q.PIN);
+  await B.fill(page, '#parent-form [name="setupConfirm"]', Q.PIN);
+  return draft;
+}
+async function holdFirstPinResponse(page) {
+  await page.evaluate(() => {
+    const send = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.send = function (body) {
+      if (body && JSON.parse(body).action?.type === 'parent.setup') window.__qaFirstPinXhr = this;
+      return send.apply(this, arguments);
+    };
+    window.__qaTransport.arm({path:'/api/action',status:200,method:'POST'});
+  });
+}
+async function firstPinCommitted(page, env, device, draft) {
+  await page.waitForSelector('#assistant-chat-input', {visible:true});
+  await page.waitForFunction(() => !document.querySelector('[data-assistant-action="apply"]'));
+  const saved = (await env.api(page, '/api/state')).body;
+  assert.equal(saved.parent.configured, true);
+  assert.equal(saved.revision, 3, 'only the PIN and the one award advance the family revision');
+  assert.equal(saved.state.points.length, 1); assert.equal(saved.state.points[0].points, 5);
+  assert.equal(saved.state.points[0].id, 'points-' + draft.actions[0].actionId);
+  const current = (await env.api(page, '/api/assistant/chat/read', 'POST', {})).body;
+  assert.equal(current.draft, undefined); assert.ok(current.messages.some(message => message.committed));
+  Q.report.firstPin = {case:device,sourceRevision:draft.sourceRevision,revision:saved.revision,
+    actionId:draft.actions[0].actionId,committedAwards:saved.state.points.length};
+  await Q.shot(page, device + '-committed');
+}
+async function firstPinFlow(page, env, device, open) {
+  const retry = device === 'first-pin-retry';
+  await Q.check(retry ? 'lost PIN setup reply retries its receipt and continues the assistant award once' :
+    'first parent PIN continues the same assistant award and commits it once', async () => {
+    const draft = await firstPinEditor(page, env, device, open);
+    if (retry) await holdFirstPinResponse(page);
+    await click(page, Q.parentSubmit);
+    if (retry) {
+      await page.waitForFunction(() => __qaTransport.pending().length === 1);
+      const configured = (await env.api(page, '/api/state')).body;
+      assert.equal(configured.parent.configured, true); assert.equal(configured.revision, 2);
+      assert.deepEqual(configured.state.points, []);
+      // Drop only the actual response callback after the real SQLite commit.
+      await page.evaluate(() => __qaFirstPinXhr.ontimeout());
+      await page.waitForFunction(() => FamilyDemo.getUI().authPhase === 'setup-retry' && FamilyDemo.getUI().connected);
+      assert.match(await page.$eval('#parent-error', node => node.textContent), /PIN已设置/);
+      await click(page, Q.parentSubmit);
+    }
+    await firstPinCommitted(page, env, device, draft);
+    if (retry) {
+      await page.evaluate(() => __qaTransport.release());
+      const setups = env.calls.filter(call => call.path === '/api/action' && call.action?.type === 'parent.setup');
+      assert.equal(setups.length, 2); assert.equal(setups[0].action.id, setups[1].action.id);
+      assert.equal((await env.api(page, '/api/state')).body.state.points.length, 1, 'late original response cannot repeat the award');
+      Q.report.firstPin.setupRequests = setups.length;
+    }
+    assert.deepEqual(Q.report.pageErrors, []);
+  });
+}
+async function concurrentFirstPinAward(page, env) {
+  const current = (await env.api(page, '/api/state')).body;
+  assert.equal(current.parent.configured, true); assert.equal(current.revision, 2);
+  const action = {id:'first-pin-concurrent-award',type:'points.add',name:'并发记录',points:7};
+  const challenge = await env.api(page, '/api/parent/challenge', 'POST', {revision:current.revision,action});
+  assert.equal(challenge.status, 200);
+  const verified = await env.api(page, '/api/parent/verify', 'POST', {challengeId:challenge.body.challengeId,answer:Q.PIN});
+  assert.equal(verified.status, 200);
+  const written = await env.api(page, '/api/action', 'POST', {revision:current.revision,action,grant:verified.body.grant});
+  assert.equal(written.status, 200); assert.equal(written.body.revision, 3);
+}
+async function firstPinConflictFlow(page, env, device, open) {
+  const afterSetup = device === 'first-pin-concurrent';
+  await Q.check(afterSetup ? 'a real ledger update after PIN setup still rejects the assistant award' :
+    'a concurrent family update cannot be hidden by first PIN setup', async () => {
+    const draft = await firstPinEditor(page, env, device, open);
+    if (afterSetup) await holdFirstPinResponse(page);
+    else {
+      const changed = await env.api(page, '/api/action', 'POST', {revision:draft.sourceRevision,
+        action:{id:'first-pin-concurrent-pet',type:'pet.configure',kind:'plant',name:'并发改名'}});
+      assert.equal(changed.status, 200); assert.equal(changed.body.revision, 2);
+    }
+    await click(page, Q.parentSubmit);
+    if (afterSetup) {
+      await page.waitForFunction(() => __qaTransport.pending().length === 1);
+      await concurrentFirstPinAward(page, env);
+      await page.evaluate(() => __qaTransport.release());
+    }
+    await page.waitForFunction(() => !FamilyDemo.getUI().auth && !FamilyDemo.getUI().pending);
+    assert.match(await page.$eval('#form-error', node => node.textContent), /草稿已变化|记录已更新/);
+    const saved = (await env.api(page, '/api/state')).body;
+    assert.equal(saved.parent.configured, afterSetup);
+    assert.equal(saved.revision, afterSetup ? 3 : 2);
+    assert.deepEqual(saved.state.points.map(row => ({id:row.id,points:row.points})), afterSetup ?
+      [{id:'points-first-pin-concurrent-award',points:7}] : []);
+    assert.equal(saved.state.appliedActions.includes(draft.actions[0].actionId), false);
+    const current = (await env.api(page, '/api/assistant/chat/read', 'POST', {})).body.draft;
+    assert.equal(current.stale, true); assert.equal(current.sourceRevision, afterSetup ? 2 : 1);
+    Q.report.firstPin = {case:device,sourceRevision:current.sourceRevision,revision:saved.revision,
+      stale:current.stale,assistantAwardCommitted:false,concurrentAwards:saved.state.points.length};
+    await Q.shot(page, device + '-rejected'); assert.deepEqual(Q.report.pageErrors, []);
+  });
+}
+
 async function awardUnitFlow(page, env, family, open) {
   const instruction = '自己刷牙加一份', marker = env.calls.length;
   const sql = async () => (await env.database.query('SELECT revision,state FROM saas_families WHERE id=$1', [family])).rows[0];
@@ -315,7 +428,8 @@ async function awardUnitFlow(page, env, family, open) {
 
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
-  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'launcher-phone', 'launcher-tablet'].includes(device));
+  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'launcher-phone', 'launcher-tablet',
+    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent'].includes(device));
   if (device.startsWith('launcher-')) {
     Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
   }
@@ -342,9 +456,9 @@ async function run() {
   if (device === 'template') assistant.chat = async (text, state, now) =>
     executeTool('draft_award', {itemId:'reading-rule'}, state, now);
   const env = await Q.initialize({assistantService:assistant});
-  // The fixture server clock is frozen while the UI clock advances. Starting
-  // at a minute boundary keeps the default award time inside this short run.
-  if (device === 'award-unit') await env.setClock(Math.floor(env.now() / 60000) * 60000);
+  // The server clock is frozen while the UI estimates elapsed time between polls.
+  // Start at a whole minute so the default award time cannot run ahead during input.
+  env.clock(Date.parse('2026-11-23T04:30:00Z'));
   const size = device === 'tablet' || device === 'launcher-tablet' ? {width:1024,height:768} : device === 'landscape' ? {width:844,height:390} : {width:390,height:844};
   const page = await env.newPage({...size,controlledClock:true});
   Q.active(page);
@@ -352,10 +466,10 @@ async function run() {
   await Q.registerAndVerify(page, 'assistant-' + device + '-' + Q.RUN + '@example.test');
   const family = await Q.createFamily(page, '助手体验测试家庭', '小禾');
   const initial = await env.api(page, '/api/state');
-  const setup = await env.api(page, '/api/action', 'POST', {
+  const setup = device.startsWith('first-pin') ? null : await env.api(page, '/api/action', 'POST', {
     revision:initial.body.revision, action:{id:'assistant-test-pin',type:'parent.setup',method:'pin',pin:Q.PIN,confirmPin:Q.PIN}
   });
-  assert.equal(setup.status, 200);
+  if (setup) assert.equal(setup.status, 200);
   if (device === 'template') {
     const rule = {id:'assistant-test-template',type:'pointItem.save',item:{id:'reading-rule',name:'独立阅读',points:8,reason:'上次的情况',enabled:true}};
     const revision = setup.body.revision;
@@ -372,6 +486,8 @@ async function run() {
     await click(page, entry);
     await page.waitForSelector('#assistant-chat-input', {visible:true});
   };
+  if (device === 'first-pin' || device === 'first-pin-retry') { await firstPinFlow(page, env, device, open); return; }
+  if (device.startsWith('first-pin-')) { await firstPinConflictFlow(page, env, device, open); return; }
   if (device.startsWith('launcher-')) { await launcherFlow(page, env, device, open); return; }
   if (device === 'award-unit') { Q.phase(device); await awardUnitFlow(page, env, family, open); return; }
   if (device === 'greeting') {
@@ -444,7 +560,7 @@ async function run() {
     await Q.shot(page, 'phone-assistant');
     await click(page, 'button' + selector('close'));
   });
-  await Q.check('assistant fills the existing award editor, with one verified award in SQLite', async () => {
+  await Q.check('a parent edits the proposed five points to seven and saves one verified award in SQLite', async () => {
     await click(page, action('all-behaviors')); await click(page, action('points-new'));
     await B.fillForm(page, {reason:'自己选了一本书'});
     await open();
@@ -458,6 +574,7 @@ async function run() {
     assert.equal(await read('points'), '5');
     assert.match(await read('name'), /阅读/);
     assert.equal(await read('reason'), '自己选了一本书');
+    await B.fillForm(page, {points:'7'});
     await click(page, Q.save); await click(page, action('points-confirm'));
     await page.waitForSelector('#parent-form [name="answer"]', {visible:true});
     assert.equal(await page.$(entry), null, 'PIN screen owns the viewport');
@@ -465,11 +582,14 @@ async function run() {
     await page.waitForSelector('#assistant-chat-input', {visible:true});
     await page.waitForFunction(() => !document.querySelector('[data-assistant-action="apply"]'));
     const rows = await ledger();
-    assert.equal(rows.length, 1); assert.equal(rows[0].points, 5);
+    assert.equal(rows.length, 1); assert.equal(rows[0].points, 7);
   });
   await Q.check('conversation survives refresh, then clears without removing the award', async () => {
     await page.reload({waitUntil:'load'}); await Q.ready(page, family); await open();
     await page.waitForFunction(() => document.querySelector('#family-assistant-panel').textContent.includes('今天独立阅读加5分'));
+    const card = await page.$eval('.assistant-draft-card', node => node.textContent);
+    assert.match(card, /已办理/); assert.match(card, /\+7\s*分/); assert.doesNotMatch(card, /\+5\s*分/);
+    await Q.shot(page, 'phone-edited-award-receipt');
     await click(page, selector('clear')); await click(page, selector('confirm-clear'));
     await page.waitForFunction(() => !document.querySelector('#family-assistant-panel').textContent.includes('今天独立阅读加5分'));
     assert.equal((await ledger()).length, 1);

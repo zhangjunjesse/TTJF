@@ -85,8 +85,9 @@
     var rows = parts(result), hasCard = rows.some(function (part) { return part.kind === 'action' || part.kind === 'form' || part.kind === 'route'; });
     if (!hasCard) return message.text;
     var known = normalized(rows.map(function (part) { return resultTitle(part) + resultSummary(part) + (part.question || '') + (part.answer || ''); }).join(''));
+    var generated = normalized(rows.map(function (part) { return (part.title || '') + (part.answer || part.question || part.summary || part.reason || ''); }).join(''));
     var actual = normalized(message.text), content = actual.replace(/^(?:已(?:为你)?整理(?:好了)?(?:请核对)?|确认(?:本次)?(?:加分|保存|提醒|操作)?|请核对(?:后保存)?|草稿已整理)/, '');
-    if (!content || known.indexOf(actual) >= 0 || known.indexOf(content) >= 0) return '';
+    if (!content || actual === generated || known.indexOf(actual) >= 0 || known.indexOf(content) >= 0) return '';
     return message.text;
   }
   function currentDraftHTML() {
@@ -112,6 +113,7 @@
     var source = own ? '' : sourceLabel(result || currentDraft && draft.result);
     var html = '<article class="assistant-message' + (own ? ' assistant-message-user' : '') + (currentDraft ? ' assistant-message-current' : '') + '"><span class="assistant-sr-only">' + (own ? '你：' : '家长助手：') + '</span>' + (source ? '<span class="assistant-message-source">' + esc(source) + '</span>' : '') + '<div class="assistant-message-content">';
     var rows = parts(currentDraft ? draft.result : result);
+    var hasCard = !own && rows.some(function (part) { return part.kind === 'action' || part.kind === 'form' || part.kind === 'route'; });
     var conversation = !own && rows.some(function (part) { return part.kind === 'answer' && part.scope === 'conversation'; });
     var content = own ? message.text : conversation ? '' : supplementalText(message, currentDraft ? draft.result : result);
     if (content) html += '<p class="assistant-message-text">' + esc(content) + '</p>';
@@ -119,8 +121,9 @@
     if (currentDraft) html += currentDraftHTML();
     if (!own && result && !currentDraft) rows.forEach(function (part, index) {
       if (part.kind === 'route') html += routeCard(part, messageIndex, index, false);
-      else if (part.kind === 'action' || part.kind === 'form') html += resultCard(part, index, false, !!message.committed);
-      else if (conversation && (part.answer || part.question)) html += '<p class="assistant-message-text">' + esc(part.answer || part.question) + '</p>';
+      else if (part.kind === 'action' || part.kind === 'form') html += resultCard(part, index, false,
+        !!message.committed || Array.isArray(message.committedIndexes) && message.committedIndexes.indexOf(index) >= 0);
+      else if ((conversation || hasCard) && (part.answer || part.question)) html += '<p class="assistant-message-text">' + esc(part.answer || part.question) + '</p>';
     });
     return html + '</div></article>';
   }
