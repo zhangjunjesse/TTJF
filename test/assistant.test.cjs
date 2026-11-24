@@ -7,6 +7,31 @@ const A = require('../assistant.js');
 const {createAssistantService} = require('../assistant-service.cjs');
 const now = new Date('2026-11-15T12:30:00+08:00');
 function seed() { return M.createSeed(now); }
+test('Mandarin dictation separates replaced interim words from final segments without losing repeated words', () => {
+  const recognition = {};
+  A.configureSpeech(recognition);
+  assert.deepEqual(recognition, {lang:'zh-CN', continuous:true, interimResults:true, maxAlternatives:3});
+  const final = words => Object.assign([{transcript:words, confidence:0.94}], {isFinal:true});
+  const first = final('好好');
+  assert.deepEqual(A.speechTranscript([first, [{transcript:'书'}]]),
+    {finalText:'好好', interimText:'书', uncertain:false});
+  assert.deepEqual(A.speechTranscript([first, final('收好书包')]),
+    {finalText:'好好收好书包', interimText:'', uncertain:false});
+});
+test('Close family-name alternatives can be reviewed while conflicting amounts keep the leading transcript', () => {
+  function hear(leading, alternative, hints, confidence = 0.92) {
+    const segment = Object.assign([{transcript:leading, confidence}, {transcript:alternative, confidence:0.90}], {isFinal:true});
+    return A.speechTranscript([segment], hints);
+  }
+  assert.deepEqual(hear('给晨月加五分', '给晨悦加五分', ['晨悦']),
+    {finalText:'给晨悦加五分', interimText:'', uncertain:true});
+  assert.equal(hear('给晨月加五分', '给晨悦加五分', ['晨月', '晨悦']).finalText, '给晨月加五分');
+  assert.deepEqual(hear('给晨月加五分', '给晨悦加十分', ['晨悦']),
+    {finalText:'给晨月加五分', interimText:'', uncertain:true});
+  assert.equal(hear('查积分', '查积分', [], 0).uncertain, true);
+  assert.equal(hear('提醒我去买书', '提醒我去卖书', []).uncertain, true);
+  assert.equal(hear('提醒我买书。', '提醒我买书', []).uncertain, false);
+});
 function provider(candidate, inspect) {
   return async (url, options) => {
     if (inspect) { inspect(url, options); }

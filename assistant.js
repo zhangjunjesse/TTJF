@@ -362,5 +362,49 @@
     }
     return clarify('可以说“明天七点半提醒带水杯”、“主动收好书包，给五分”，或“我还有多少积分”。当前是本地指令演示，复杂说法可以直接手动填写。');
   }
-  return {interpret:interpret, normalize:normalize, query:query};
+  function configureSpeech(recognition) {
+    recognition.lang = 'zh-CN';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 3;
+  }
+  function speechNumbers(words) {
+    return (words.match(/[负零〇一二两三四五六七八九十百千万亿点半\d]+|[-−－+.．:：]/g) || []).join('|');
+  }
+  function matchesFamilyTerm(leading, alternative, hints) {
+    if (leading.length !== alternative.length) return false;
+    return hints.some(function (term) {
+      var at = alternative.indexOf(term);
+      return term.length > 1 && at >= 0 && leading.indexOf(term) < 0 &&
+        leading.slice(0, at) === alternative.slice(0, at) &&
+        leading.slice(at + term.length) === alternative.slice(at + term.length);
+    });
+  }
+  function speechTranscript(results, hints) {
+    var finalText = '', interimText = '', uncertain = false;
+    hints = hints || [];
+    for (var i = 0; results && i < results.length; i++) {
+      var segment = results[i], best = segment[0];
+      if (!best || !best.transcript) { uncertain = true; continue; }
+      var words = best.transcript;
+      if (!segment.isFinal) { interimText += words; continue; }
+      if (!(best.confidence >= 0.75)) uncertain = true;
+      for (var j = 1; j < segment.length; j++) {
+        var candidate = segment[j], alternative = candidate.transcript;
+        if (!alternative || alternative === words) continue;
+        if (candidate.confidence > 0 && best.confidence - candidate.confidence > 0.08) continue;
+        if (speechNumbers(best.transcript) !== speechNumbers(alternative)) { uncertain = true; continue; }
+        // In a noisy room, alternatives may disagree about whole words even if the number is clear.
+        if (best.transcript.replace(/[\s，。！？、,.!?]/g, '') !== alternative.replace(/[\s，。！？、,.!?]/g, '')) uncertain = true;
+        // Prefer a known family term only when the surrounding words are identical.
+        if (matchesFamilyTerm(best.transcript, alternative, hints)) {
+          if (words === best.transcript && !matchesFamilyTerm(alternative, best.transcript, hints)) words = alternative;
+          uncertain = true;
+        }
+      }
+      finalText += words;
+    }
+    return {finalText:finalText, interimText:interimText, uncertain:uncertain};
+  }
+  return {interpret:interpret, normalize:normalize, query:query, configureSpeech:configureSpeech, speechTranscript:speechTranscript};
 }));

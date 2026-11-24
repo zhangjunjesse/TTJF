@@ -335,13 +335,28 @@ async function firstPinConflictFlow(page, env, device, open) {
   });
 }
 
-async function awardUnitFlow(page, env, family, open) {
+async function awardUnitFlow(page, env, family, open, useVoice = false) {
   const instruction = '自己刷牙加一份', marker = env.calls.length;
   const sql = async () => (await env.database.query('SELECT revision,state FROM saas_families WHERE id=$1', [family])).rows[0];
   const read = name => page.$eval('#editor-form [name="' + name + '"]', node => node.value);
   const before = await sql();
   await Q.check('local 自己刷牙加一份 opens an editable one-point award without changing SQLite', async () => {
-    await open(); await B.fill(page, '#assistant-chat-input', instruction); await click(page, '#assistant-chat-send');
+    await open();
+    if (useVoice) {
+      const hold = await page.waitForSelector(selector('hold-voice'), {visible:true});
+      await page.waitForFunction(node => !node.disabled, {}, hold);
+      await hold.hover(); await page.mouse.down();
+      await page.waitForSelector('.assistant-recording:not([hidden])');
+      await page.evaluate(words => {
+        window.__qaNow += 1500; // Simulate the speaking interval on this fixture's controlled clock.
+        const result = Object.assign([{transcript:words, confidence:0.97}], {isFinal:true});
+        window.__qaRecognizer.onresult({results:[result]});
+      }, instruction);
+      assert.equal(env.calls.filter(call => call.path.endsWith('/turn')).length, 0);
+      await page.mouse.up();
+    } else {
+      await B.fill(page, '#assistant-chat-input', instruction); await click(page, '#assistant-chat-send');
+    }
     await page.waitForSelector(selector('apply'), {visible:true});
     assert.equal(await page.$eval('.assistant-message-source', node => node.textContent), '本地');
     assert.match(await page.$eval('.assistant-draft-pending', node => node.textContent), /自己刷牙/);
@@ -428,7 +443,7 @@ async function awardUnitFlow(page, env, family, open) {
 
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
-  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'launcher-phone', 'launcher-tablet',
+  assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'voice-award', 'launcher-phone', 'launcher-tablet',
     'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent'].includes(device));
   if (device.startsWith('launcher-')) {
     Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
@@ -480,6 +495,13 @@ async function run() {
     const saved = await env.api(page, '/api/action', 'POST', {revision,action:rule,grant:verified.body.grant});
     assert.equal(saved.status, 200);
   }
+  if (device === 'voice-award') await page.evaluateOnNewDocument(() => {
+    window.SpeechRecognition = class {
+      start() { window.__qaRecognizer = this; this.onstart?.(); }
+      stop() { this.onend?.(); }
+      abort() { this.onend?.(); }
+    };
+  });
   await page.reload({waitUntil:'load'}); await Q.ready(page, family);
   const ledger = async () => (await env.api(page, '/api/state')).body.state.points;
   const open = async () => {
@@ -489,7 +511,9 @@ async function run() {
   if (device === 'first-pin' || device === 'first-pin-retry') { await firstPinFlow(page, env, device, open); return; }
   if (device.startsWith('first-pin-')) { await firstPinConflictFlow(page, env, device, open); return; }
   if (device.startsWith('launcher-')) { await launcherFlow(page, env, device, open); return; }
-  if (device === 'award-unit') { Q.phase(device); await awardUnitFlow(page, env, family, open); return; }
+  if (device === 'award-unit' || device === 'voice-award') {
+    Q.phase(device); await awardUnitFlow(page, env, family, open, device === 'voice-award'); return;
+  }
   if (device === 'greeting') {
     await Q.check('greetings, arithmetic, current time and creative replies survive reopening with their model attribution', async () => {
       await open();

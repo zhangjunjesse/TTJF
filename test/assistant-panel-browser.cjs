@@ -8,10 +8,10 @@ const crypto = require('node:crypto');
 const B = require('./browser.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const CASE = process.env.ASSISTANT_PANEL_CASE || 'layout';
-assert.ok(['layout', 'lifecycle', 'drafts', 'voice', 'history', 'receipts', 'mixed-notes'].includes(CASE));
+assert.ok(['layout', 'lifecycle', 'drafts', 'voice', 'hold', 'hold-touch', 'history', 'receipts', 'mixed-notes'].includes(CASE));
 const OUT = process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(ROOT, 'data', 'assistant-panel-verification', CASE);
 const report = { case: CASE, startedAt: new Date().toISOString(), checks: [], errors: [], boundary: 'Real Edge/Chromium, isolated panel and deterministic callback transport. VisualViewport and microphone events are controlled fixtures. This does not verify native iPad/Safari, an OS keyboard, a real microphone, an external model or the integrated SaaS host.' };
-report.sourceHashes = Object.fromEntries(['assistant-panel.js', 'assistant-panel.css', 'test/assistant-panel-browser.cjs'].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex')]));
+report.sourceHashes = Object.fromEntries(['assistant.js', 'assistant-panel.js', 'assistant-panel.css', 'test/assistant-panel-browser.cjs'].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex')]));
 let browser, page;
 const a = name => 'button[data-assistant-action="' + name + '"]';
 function save() { fs.mkdirSync(OUT, { recursive: true }); fs.writeFileSync(path.join(OUT, 'result.json'), JSON.stringify(report, null, 2) + '\n'); }
@@ -59,6 +59,7 @@ async function fixture(width = 390, height = 844, viewportOptions = {}) {
     window.SpeechRecognition = function () { window.__qaVoice = this; this.start = function () {}; this.stop = function () {}; this.abort = function () { this.aborted = true; }; };
     document.addEventListener('keydown', event => { if (event.key === 'Escape') __qaEscapes++; });
   });
+  await page.addScriptTag({ path: path.join(ROOT, 'assistant.js') });
   await page.addScriptTag({ path: path.join(ROOT, 'assistant-panel.js') });
   await page.evaluate(() => {
     FamilyAssistantPanel.init({ request: __qaRequest, scope: () => __qaScope, context: () => ({ view: 'points', form: 'pointItem' }), contextLabel: () => '正在编辑常用行为', canOpen: () => __qaAllowed,
@@ -70,13 +71,14 @@ async function draftUntouched() { assert.equal(await page.$eval('#original-draft
 async function geometry() {
   return page.evaluate(() => {
     const rect = node => node.getBoundingClientRect().toJSON(), viewport = visualViewport;
-    const controls = ['#assistant-chat-input', '.assistant-voice', '#assistant-chat-send'].map(selector => {
+    const controls = ['#assistant-chat-input', '.assistant-voice', '#assistant-chat-send', '[data-assistant-action="hold-voice"]'].map(selector => {
       const node = document.querySelector(selector), r = rect(node);
+      if (!node.getClientRects().length) return null;
       const hit = [r.top + 1, r.y + r.height / 2, r.bottom - 1].every(y =>
         node.contains(document.elementFromPoint(r.x + r.width / 2, y)));
       return { selector, rect: r, hit };
-    });
-    return { panel: rect(document.querySelector('#family-assistant-panel')), controls, viewport: { top: viewport.offsetTop, left: viewport.offsetLeft, width: viewport.width, height: viewport.height }, focused: document.activeElement.id, caret: document.querySelector('#assistant-chat-input').selectionStart, documentWidth: document.documentElement.scrollWidth, width: innerWidth };
+    }).filter(Boolean);
+    return { panel: rect(document.querySelector('#family-assistant-panel')), composer: rect(document.querySelector('.assistant-composer')), controls, viewport: { top: viewport.offsetTop, left: viewport.offsetLeft, width: viewport.width, height: viewport.height }, focused: document.activeElement.id, caret: document.querySelector('#assistant-chat-input').selectionStart, documentWidth: document.documentElement.scrollWidth, width: innerWidth };
   });
 }
 function withinGeometry(value) {
@@ -87,21 +89,32 @@ function withinGeometry(value) {
   value.controls.forEach(control => assert.equal(control.hit, true, control.selector + ' is pointer hit-testable'));
   assert.equal(value.documentWidth, value.width);
 }
+function composerAtBottom(value) {
+  assert.ok(value.panel.bottom - value.composer.bottom >= -1 && value.panel.bottom - value.composer.bottom <= 20,
+    'the composer remains at the panel bottom: ' + JSON.stringify(value));
+}
+function visibleComposer(value, editing) {
+  assert.deepEqual(value.controls.map(control => control.selector), editing
+    ? ['#assistant-chat-input', '.assistant-voice', '#assistant-chat-send']
+    : ['#assistant-chat-input', '[data-assistant-action="hold-voice"]']);
+}
 async function layout() {
   for (const [width, height] of [[390, 844], [320, 568], [1024, 768], [844, 390], [1366, 768]]) {
     await fixture(width, height);
     await check(width + 'px opens without focusing the keyboard and keeps the form draft', async () => {
-      await open(); const value = await geometry(); withinGeometry(value); assert.equal(value.focused, 'family-assistant-panel');
+      await open(); const value = await geometry(); withinGeometry(value); composerAtBottom(value); visibleComposer(value, false); assert.equal(value.focused, 'family-assistant-panel');
       assert.equal(await page.$eval(a('clear'), node => node.getClientRects().length), 0, 'a fresh conversation has nothing to clear');
       assert.equal(await page.$eval('#assistant-chat-count', node => node.getClientRects().length), 0);
       if (height >= 420) {
         const positions = await page.evaluate(() => {
           const rect = selector => document.querySelector(selector).getBoundingClientRect();
           return { headingEnd: rect('.assistant-welcome').bottom, inputTop: rect('.assistant-input-row').top,
-            inputEnd: rect('.assistant-input-row').bottom, suggestionsTop: rect('.assistant-examples').top };
+            suggestionsTop: rect('.assistant-examples').top, suggestionsEnd: rect('.assistant-examples').bottom };
         });
-        assert.ok(positions.headingEnd <= positions.inputTop && positions.inputTop - positions.headingEnd <= 32);
-        assert.ok(positions.inputEnd <= positions.suggestionsTop && positions.suggestionsTop - positions.inputEnd <= 24);
+        assert.ok(positions.headingEnd <= positions.suggestionsTop, 'welcome content precedes the suggestions');
+        assert.ok(positions.suggestionsEnd <= positions.inputTop && positions.inputTop - positions.suggestionsEnd <= 32,
+          'suggestions sit above the bottom composer');
+        assert.ok(value.composer.top > value.panel.top + value.panel.height * 0.65, 'the empty mobile composer is not vertically centered');
       }
       assert.equal(Math.round(value.panel.width), width >= 900 ? 420 : width); await draftUntouched();
       assert.equal(await page.$eval('#assistant-panel-context', node => node.textContent), '正在编辑常用行为');
@@ -121,8 +134,15 @@ async function layout() {
       await settle(); await page.click('#assistant-chat-input'); await page.type('#assistant-chat-input', '继续输入');
       await page.$eval('#assistant-chat-input', node => node.setSelectionRange(2, 2));
       await page.evaluate(() => { __qaViewport.offsetTop = 59; __qaViewport.height = 255; visualViewport.dispatchEvent(new Event('scroll')); });
-      await settle(); const value = await geometry(); withinGeometry(value); assert.equal(value.focused, 'assistant-chat-input'); assert.equal(value.caret, 2);
+      await settle(); const value = await geometry(); withinGeometry(value); composerAtBottom(value); visibleComposer(value, true); assert.equal(value.focused, 'assistant-chat-input'); assert.equal(value.caret, 2);
       if (width === 390) await page.screenshot({ path: path.join(OUT, 'keyboard-phone.png') });
+    });
+    await check(width + 'px active conversations keep the composer at the bottom', async () => {
+      await page.click('#assistant-chat-send'); await ready();
+      const value = await geometry(); withinGeometry(value); composerAtBottom(value);
+      assert.equal((await state()).messageCount, 2);
+      assert.equal(await page.$eval('.assistant-welcome', node => node.getClientRects().length), 0);
+      if (width === 390) await page.screenshot({ path: path.join(OUT, 'active-keyboard-phone.png') });
     });
     await check(width + 'px Escape only closes the assistant and restores the entry focus', async () => {
       await page.keyboard.press('Escape'); await settle(); assert.equal((await state()).open, false);
@@ -161,7 +181,7 @@ async function layout() {
       }, height, top);
       await settle();
       const value = await geometry();
-      withinGeometry(value);
+      withinGeometry(value); composerAtBottom(value); visibleComposer(value, true);
       assert.ok(value.controls.every(({ rect }) => rect.height >= 48 && rect.width >= 48));
       assert.equal(value.focused, 'assistant-chat-input');
       if (height === 390) assert.ok(await page.$eval(a('example'), node => node.getClientRects().length), 'suggestions return when the keyboard closes');
@@ -345,6 +365,7 @@ async function voice() {
     assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '我手动改过了'); assert.equal((await state()).listening, false); await draftUntouched();
   });
   await check('Microphone denial keeps typing available and never sends a message', async () => {
+    await page.click('#assistant-chat-input');
     await page.click(a('voice')); await page.evaluate(() => { __qaVoice.onerror({ error: 'not-allowed' }); __qaVoice.onend(); });
     assert.match(await page.$eval('#assistant-chat-status', node => node.textContent), /未获授权/); assert.equal(await page.$eval('#assistant-chat-input', node => node.disabled), false);
     assert.equal(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).length), 0);
@@ -353,6 +374,390 @@ async function voice() {
     await page.click(a('voice')); await page.evaluate(() => { window.__qaClosedVoice = __qaVoice.onresult; }); await page.keyboard.press('Escape');
     await page.evaluate(() => __qaClosedVoice({ results: [[{ transcript: '收起后的迟到文字' }]] })); await settle();
     assert.equal((await state()).open, false); assert.equal(await page.evaluate(() => __qaEscapes), 0); await draftUntouched();
+  });
+}
+const sentTexts = () => page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).map(call => call.body.text));
+async function holdFixture(width = 390, height = 844, withHistory = false) {
+  if (page && !page.isClosed()) await page.close();
+  await fixture(width, height, { isMobile: true, hasTouch: true });
+  if (withHistory) await page.evaluate(() => {
+    __qaSnapshot.messages = [
+      { role: 'user', text: '今天可以帮我做些什么？', turnId: 'fixture-history' },
+      { role: 'assistant', text: '可以查询积分，也可以帮你整理草稿。', turnId: 'fixture-history', result: { kind: 'answer', source: 'local', answer: '可以查询积分，也可以帮你整理草稿。' } }
+    ];
+  });
+  await open();
+}
+async function startHold(touch = false) {
+  await page.waitForSelector(a('hold-voice'), { visible: true, timeout: 2000 });
+  const point = await page.$eval(a('hold-voice'), node => {
+    const r = node.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+    return { x, y, disabled: node.disabled, hit: node.contains(document.elementFromPoint(x, y)) };
+  });
+  assert.equal(point.disabled, false); assert.equal(point.hit, true, 'the hold control is reachable before pressing');
+  const gesture = { ...point, touch };
+  if (touch) {
+    gesture.client = await page.createCDPSession();
+    await gesture.client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y, id: 1 }] });
+  } else { await page.mouse.move(point.x, point.y); await page.mouse.down(); }
+  await page.waitForFunction(() => FamilyAssistantPanel.getState().listening && !document.querySelector('.assistant-recording').hidden, { timeout: 2000 });
+    await page.evaluate(() => { __qaSavedVoice = { result: __qaVoice.onresult, end: __qaVoice.onend, error: __qaVoice.onerror, nomatch: __qaVoice.onnomatch }; });
+  return gesture;
+}
+async function moveHold(gesture, x, y) {
+  if (gesture.touch) await gesture.client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y, id: 1 }] });
+  else await page.mouse.move(x, y);
+  await settle();
+}
+async function releaseHold(gesture, cancel = false) {
+  if (gesture.touch) {
+    await gesture.client.send('Input.dispatchTouchEvent', { type: cancel ? 'touchCancel' : 'touchEnd', touchPoints: [] });
+    await gesture.client.detach();
+  } else await page.mouse.up();
+}
+async function hear(segments) {
+  await page.evaluate(segments => {
+    const results = segments.map(segment => {
+      const row = [{ transcript: segment.text }];
+      if (Object.prototype.hasOwnProperty.call(segment, 'confidence')) row[0].confidence = segment.confidence;
+      for (const alternative of segment.alternatives || []) row.push({ transcript: alternative.text, confidence: alternative.confidence });
+      row.isFinal = segment.final === true;
+      return row;
+    });
+    __qaVoice.onresult({ results });
+  }, segments);
+}
+const holdLongEnough = () => new Promise(resolve => setTimeout(resolve, 340));
+async function recordingSettled() {
+  await page.$eval('.assistant-recording', async node => {
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    const finite = node.getAnimations({ subtree: true }).filter(animation =>
+      animation.effect && Number.isFinite(animation.effect.getComputedTiming().endTime));
+    await Promise.all(finite.map(animation => animation.finished.catch(() => {})));
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  });
+}
+function recordingAppearance() {
+  return page.$eval('.assistant-recording', node => {
+    const wave = node.querySelector('.assistant-recording-wave'), hint = node.querySelector('.assistant-recording-hint');
+    return {
+      media: { reduced: matchMedia('(prefers-reduced-motion: reduce)').matches, forcedColors: matchMedia('(forced-colors: active)').matches },
+      ink: getComputedStyle(hint).color, hint: hint.textContent, hintRect: hint.getBoundingClientRect().toJSON(),
+      layers: [null, '::before', '::after'].map(pseudo => {
+        const style = getComputedStyle(node, pseudo);
+        return { pseudo, content: style.content, display: style.display, visibility: style.visibility, opacity: style.opacity,
+          background: style.backgroundColor, image: style.backgroundImage, position: style.backgroundPosition,
+          mask: style.maskImage, transform: style.transform };
+      }),
+      wave: { height: wave.getBoundingClientRect().height,
+        bars: Array.from(wave.children, bar => bar.getBoundingClientRect().height) }
+    };
+  });
+}
+async function recordingFrames() {
+  await recordingSettled();
+  const first = await recordingAppearance(); await B.delay(170);
+  const middle = await recordingAppearance(); await B.delay(230);
+  return [first, middle, await recordingAppearance()];
+}
+async function endRecognition() { await page.evaluate(() => __qaVoice.onend()); }
+async function lateRecognition() {
+  await page.evaluate(() => {
+    const row = [{ transcript: '迟到结果不应覆盖或发送', confidence: 0.99 }]; row.isFinal = true;
+    __qaSavedVoice.result({ results: [row] }); __qaSavedVoice.end(); __qaSavedVoice.end();
+  });
+}
+async function editableTranscript(expected) {
+  assert.equal(await page.$eval('#assistant-chat-input', node => node.value), expected);
+  assert.equal(await page.$eval('#assistant-chat-send', node => node.disabled), false);
+  const value = await geometry(); withinGeometry(value); composerAtBottom(value); visibleComposer(value, true);
+  assert.deepEqual(await sentTexts(), []);
+  await draftUntouched();
+}
+async function hold() {
+  await check('A reliable final stays on the recording overlay until release, then sends only once after recognition ends', async () => {
+    await holdFixture(390, 844, true); const gesture = await startHold();
+    await hear([{ text: '我现在有多少积分？', final: true, confidence: 0.96 }]);
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    assert.match(await page.$eval('.assistant-recording', node => node.textContent), /我现在有多少积分/);
+    assert.deepEqual(await sentTexts(), []);
+    await recordingSettled();
+    await page.screenshot({ path: path.join(OUT, 'hold-listening-phone.png') });
+    await holdLongEnough(); await releaseHold(gesture);
+    assert.deepEqual(await sentTexts(), [], 'release waits for the recognizer to finalize');
+    await endRecognition(); await page.waitForFunction(() => __qaRequests.some(call => call.url.endsWith('/turn'))); await ready();
+    await lateRecognition(); await settle();
+    assert.deepEqual(await sentTexts(), ['我现在有多少积分？']);
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    assert.equal(await page.$eval('.assistant-recording', node => node.getClientRects().length), 0);
+    const composer = await geometry(); withinGeometry(composer); visibleComposer(composer, false);
+    assert.equal(await page.$eval(a('hold-voice'), node => node.disabled), false, 'successful send returns to a usable hold composer');
+    await page.screenshot({ path: path.join(OUT, 'hold-sent-phone.png') }); await draftUntouched();
+    await page.evaluate(() => { __qaFirstVoice = __qaSavedVoice; });
+    const second = await startHold();
+    await page.evaluate(() => {
+      const row = [{ transcript: '上一轮不应混入下一轮', confidence: 0.99 }]; row.isFinal = true;
+      __qaFirstVoice.result({ results: [row] }); __qaFirstVoice.end();
+    });
+    assert.equal((await state()).listening, true); assert.deepEqual(await sentTexts(), ['我现在有多少积分？']);
+    await hear([{ text: '再查一下可兑换积分', final: true, confidence: 0.96 }]); await holdLongEnough(); await releaseHold(second); await endRecognition();
+    await page.waitForFunction(() => __qaRequests.filter(call => call.url.endsWith('/turn')).length === 2); await ready();
+    assert.deepEqual(await sentTexts(), ['我现在有多少积分？', '再查一下可兑换积分']);
+    visibleComposer(await geometry(), false);
+  });
+  await check('A final received after release can complete the same held utterance without a duplicate send', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await hear([{ text: '请查一下', final: false }]); await holdLongEnough(); await releaseHold(gesture);
+    assert.deepEqual(await sentTexts(), []);
+    await hear([{ text: '请查一下积分', final: true, confidence: 0.96 }]); await endRecognition();
+    await page.waitForFunction(() => __qaRequests.some(call => call.url.endsWith('/turn'))); await ready();
+    await lateRecognition(); assert.deepEqual(await sentTexts(), ['请查一下积分']);
+  });
+  await check('Sliding upward and releasing discards even a reliable final and invalidates late results', async () => {
+    await holdFixture(390, 844, true); const gesture = await startHold();
+    await hear([{ text: '这段语音要取消', final: true, confidence: 0.96 }]); await holdLongEnough();
+    await moveHold(gesture, gesture.x, gesture.y - 100);
+    assert.equal(await page.$eval('.assistant-recording', node => node.dataset.cancel), 'true');
+    await recordingSettled();
+    await page.screenshot({ path: path.join(OUT, 'hold-cancel-phone.png') });
+    await releaseHold(gesture); await lateRecognition(); await settle();
+    assert.deepEqual(await sentTexts(), []); assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    assert.equal((await state()).listening, false); assert.equal(await page.$eval('.assistant-recording', node => node.getClientRects().length), 0);
+    await draftUntouched();
+  });
+  await check('An interim-only recording stays editable until the user explicitly sends it', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await hear([{ text: '明天早上提醒带水杯', final: false }]); await holdLongEnough(); await releaseHold(gesture); await endRecognition();
+    await editableTranscript('明天早上提醒带水杯');
+    await write('明天七点半提醒带水杯'); await page.click('#assistant-chat-send'); await ready();
+    assert.deepEqual(await sentTexts(), ['明天七点半提醒带水杯']);
+  });
+  for (const [label, confidence, alternatives] of [
+    ['low confidence', 0.4, []], ['missing confidence', undefined, []],
+    ['conflicting numbers', 0.96, [{ text: '自主阅读加十分', confidence: 0.94 }]]
+  ]) await check('A final with ' + label + ' remains an editable draft', async () => {
+    await holdFixture(); const gesture = await startHold();
+    const segment = { text: '自主阅读加五分', final: true, alternatives };
+    if (confidence !== undefined) segment.confidence = confidence;
+    await hear([segment]); await holdLongEnough(); await releaseHold(gesture); await endRecognition();
+    await editableTranscript('自主阅读加五分');
+  });
+  await check('A no-match signal keeps a later final editable instead of automatically sending it', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await page.evaluate(() => __qaVoice.onnomatch());
+    await hear([{ text: '需要再核对的语音', final: true, confidence: 0.96 }]);
+    await holdLongEnough(); await releaseHold(gesture); await endRecognition(); await editableTranscript('需要再核对的语音');
+  });
+  await check('Missing recognition completion times out to an editable draft and rejects a late final', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await hear([{ text: '没有结束回调的语音', final: true, confidence: 0.96 }]); await holdLongEnough(); await releaseHold(gesture);
+    await page.waitForFunction(() => document.querySelector('#assistant-chat-input').value === '没有结束回调的语音', { timeout: 2500 });
+    await editableTranscript('没有结束回调的语音'); await lateRecognition(); await editableTranscript('没有结束回调的语音');
+  });
+  await check('A recognizer that ends before the finger is released keeps its text for review', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await hear([{ text: '先核对一下这句话', final: true, confidence: 0.96 }]); await endRecognition();
+    assert.deepEqual(await sentTexts(), []); await holdLongEnough(); await releaseHold(gesture);
+    await editableTranscript('先核对一下这句话');
+  });
+  await check('A manual draft typed during recording wins over the utterance and all late callbacks', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await hear([{ text: '还没有确认的语音', final: true, confidence: 0.96 }]);
+    await write('我已经手动改好的草稿'); await releaseHold(gesture); await lateRecognition();
+    await editableTranscript('我已经手动改好的草稿');
+    await page.click(a('close')); await open(); await editableTranscript('我已经手动改好的草稿');
+  });
+  await check('Closing during release finalization invalidates the microphone before reopening', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await hear([{ text: '收起后不应发送', final: true, confidence: 0.96 }]); await holdLongEnough(); await releaseHold(gesture);
+    await page.click(a('close')); await lateRecognition(); await open();
+    assert.deepEqual(await sentTexts(), []); assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    assert.equal((await state()).listening, false); await draftUntouched();
+  });
+  await check('Resetting and switching families reject the old recording callbacks and preserve the new draft', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await hear([{ text: '旧家庭的语音', final: true, confidence: 0.96 }]);
+    await page.evaluate(() => { FamilyAssistantPanel.reset(); __qaScope = 'family-b'; __qaSnapshot = { generation: 'b'.repeat(43), messages: [], draft: null }; });
+    await releaseHold(gesture); await open(); await write('新家庭的手动草稿'); await lateRecognition();
+    await editableTranscript('新家庭的手动草稿'); assert.equal((await state()).generation, 'b'.repeat(43));
+  });
+  await check('A denied hold microphone leaves a reachable text composer and sends nothing', async () => {
+    await holdFixture(); const gesture = await startHold();
+    await page.evaluate(() => { __qaVoice.onerror({ error: 'not-allowed' }); __qaSavedVoice.end(); }); await releaseHold(gesture);
+    assert.match(await page.$eval('#assistant-chat-status', node => node.textContent), /未获授权/);
+    await lateRecognition(); await page.click('#assistant-chat-input'); await write('继续打字'); await editableTranscript('继续打字');
+  });
+  await check('Holding Space supports release-to-send without triggering a second click action', async () => {
+    await holdFixture(); await page.focus(a('hold-voice')); await page.keyboard.down('Space');
+    await page.waitForFunction(() => FamilyAssistantPanel.getState().listening);
+    await hear([{ text: '键盘也能按住说话', final: true, confidence: 0.96 }]); await holdLongEnough(); await page.keyboard.up('Space');
+    await endRecognition(); await page.waitForFunction(() => __qaRequests.some(call => call.url.endsWith('/turn'))); await ready();
+    assert.deepEqual(await sentTexts(), ['键盘也能按住说话']); await draftUntouched();
+  });
+}
+async function holdTouch() {
+  for (const [width, height] of [[390, 844], [768, 1024], [844, 390]]) {
+    await check(width + 'px real touch keeps the control stable while sliding to cancel and back', async () => {
+      await holdFixture(width, height, true); const before = await geometry(); visibleComposer(before, false); composerAtBottom(before);
+      const initialScroll = await page.evaluate(() => ({ body: scrollY, log: document.querySelector('#assistant-chat-log').scrollTop }));
+      const gesture = await startHold(true); await hear([{ text: '触屏按住说话', final: true, confidence: 0.96 }]);
+      const recording = await geometry(); withinGeometry(recording); visibleComposer(recording, false); composerAtBottom(recording);
+      assert.deepEqual(recording.controls.map(control => control.rect), before.controls.map(control => control.rect), 'recording does not move the original touch target');
+      await moveHold(gesture, gesture.x, gesture.y - 100);
+      assert.equal(await page.$eval('.assistant-recording', node => node.dataset.cancel), 'true');
+      await moveHold(gesture, gesture.x, gesture.y);
+      assert.equal(await page.$eval('.assistant-recording', node => node.dataset.cancel), 'false');
+      assert.deepEqual(await page.evaluate(() => ({ body: scrollY, log: document.querySelector('#assistant-chat-log').scrollTop })), initialScroll,
+        'dragging the held control does not scroll the conversation');
+      await holdLongEnough(); await releaseHold(gesture); await endRecognition();
+      await page.waitForFunction(() => __qaRequests.some(call => call.url.endsWith('/turn'))); await ready();
+      assert.deepEqual(await sentTexts(), ['触屏按住说话']); composerAtBottom(await geometry()); await draftUntouched();
+      if (width === 390) await page.screenshot({ path: path.join(OUT, 'touch-sent-phone.png') });
+    });
+  }
+  await check('Sliding right converts a reliable final to editable text without sending', async () => {
+    await holdFixture(390, 844, true); const gesture = await startHold(true);
+    await hear([{ text: '嘈杂环境先核对这句话', final: true, confidence: 0.96 }]);
+    await moveHold(gesture, gesture.x + 100, gesture.y);
+    assert.deepEqual(await page.$eval('.assistant-recording', node => ({ cancel: node.dataset.cancel, review: node.dataset.review })),
+      { cancel: 'false', review: 'true' });
+    await recordingSettled();
+    await page.screenshot({ path: path.join(OUT, 'hold-review-phone.png') });
+    await holdLongEnough(); await releaseHold(gesture); await endRecognition(); await editableTranscript('嘈杂环境先核对这句话');
+    await lateRecognition(); await editableTranscript('嘈杂环境先核对这句话');
+    await write('我核对并改好了这句话'); await page.click('#assistant-chat-send'); await ready();
+    assert.deepEqual(await sentTexts(), ['我核对并改好了这句话']);
+  });
+  await check('Sliding back from convert-to-text restores release-to-send for the same utterance', async () => {
+    await holdFixture(); const gesture = await startHold(true);
+    await hear([{ text: '移回后按原方式发送', final: true, confidence: 0.96 }]);
+    await moveHold(gesture, gesture.x + 100, gesture.y);
+    assert.equal(await page.$eval('.assistant-recording', node => node.dataset.review), 'true');
+    await moveHold(gesture, gesture.x, gesture.y);
+    assert.deepEqual(await page.$eval('.assistant-recording', node => ({ cancel: node.dataset.cancel, review: node.dataset.review })),
+      { cancel: 'false', review: 'false' });
+    await holdLongEnough(); await releaseHold(gesture); await endRecognition();
+    await page.waitForFunction(() => __qaRequests.some(call => call.url.endsWith('/turn'))); await ready();
+    assert.deepEqual(await sentTexts(), ['移回后按原方式发送']);
+  });
+  await check('Sliding upward cancels even after entering convert-to-text', async () => {
+    await holdFixture(); const gesture = await startHold(true);
+    await hear([{ text: '这句话最终仍然要取消', final: true, confidence: 0.96 }]);
+    await moveHold(gesture, gesture.x + 100, gesture.y);
+    assert.equal(await page.$eval('.assistant-recording', node => node.dataset.review), 'true');
+    await moveHold(gesture, gesture.x + 100, gesture.y - 100);
+    assert.equal(await page.$eval('.assistant-recording', node => node.dataset.cancel), 'true');
+    await holdLongEnough(); await releaseHold(gesture); await lateRecognition();
+    assert.deepEqual(await sentTexts(), []); assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    await draftUntouched();
+  });
+  await check('The empty landscape hold control stays reachable in a compressed visible viewport', async () => {
+    await holdFixture(844, 390, true);
+    await page.evaluate(() => {
+      Object.defineProperties(visualViewport, { height: { configurable: true, value: 120 }, offsetTop: { configurable: true, value: 30 } });
+      visualViewport.dispatchEvent(new Event('resize'));
+    });
+    await settle(); const before = await geometry(); withinGeometry(before); visibleComposer(before, false); composerAtBottom(before);
+    const gesture = await startHold(true); await hear([{ text: '压缩窗口仍能取消', final: true, confidence: 0.96 }]);
+    const during = await geometry(); withinGeometry(during); visibleComposer(during, false); composerAtBottom(during);
+    assert.deepEqual(during.controls.map(control => control.rect), before.controls.map(control => control.rect));
+    const overlay = await page.$eval('.assistant-recording', node => node.getBoundingClientRect().toJSON());
+    assert.ok(overlay.top >= during.panel.top && overlay.bottom <= during.panel.bottom && overlay.height > 0);
+    await releaseHold(gesture, true); await lateRecognition(); assert.deepEqual(await sentTexts(), []); await draftUntouched();
+  });
+  await check('An OS touch cancellation discards recognition and ignores final callbacks', async () => {
+    await holdFixture(); const gesture = await startHold(true);
+    await hear([{ text: '系统打断这段录音', final: true, confidence: 0.96 }]); await releaseHold(gesture, true); await lateRecognition();
+    assert.deepEqual(await sentTexts(), []); assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    assert.equal((await state()).listening, false); withinGeometry(await geometry()); await draftUntouched();
+  });
+  await check('A window interruption aborts the held recording without sending', async () => {
+    await holdFixture(); const gesture = await startHold(true);
+    await hear([{ text: '窗口离开后不应发送', final: true, confidence: 0.96 }]);
+    await page.evaluate(() => window.dispatchEvent(new Event('blur'))); await releaseHold(gesture); await lateRecognition();
+    assert.deepEqual(await sentTexts(), []); assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    assert.equal((await state()).listening, false); await draftUntouched();
+  });
+  await check('Recording fades softly, shows distinct gesture colors and a speech-responsive wave, and respects accessible display preferences', async () => {
+    report.recordingAppearance = {};
+    await holdFixture(390, 844, true);
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }, { name: 'forced-colors', value: 'none' }]);
+    const gesture = await startHold(true); await recordingSettled();
+    const quiet = await recordingAppearance();
+    await page.evaluate(() => __qaVoice.onspeechstart());
+    await hear([{ text: '说话时波形更明显', final: true, confidence: 0.96 }]);
+    const moving = await recordingFrames();
+    report.recordingAppearance.normal = { quiet, moving }; save();
+    assert.deepEqual(moving[0].media, { reduced: false, forcedColors: false });
+    assert.ok(moving[0].wave.height > quiet.wave.height + 0.5, 'speech increases the effective waveform height');
+    assert.ok(moving.slice(1).some(frame => JSON.stringify(frame.wave.bars) !== JSON.stringify(moving[0].wave.bars)),
+      'the visible waveform advances between real-time frames');
+    const paintMotion = frame => frame.layers.map(layer => ({ transform: layer.transform, position: layer.position, opacity: layer.opacity }));
+    assert.ok(moving.slice(1).some(frame => JSON.stringify(paintMotion(frame)) !== JSON.stringify(paintMotion(moving[0]))),
+      'the gradient moves after the entry animation has settled');
+    assert.ok(moving[0].layers.some(layer => {
+      if (layer.content === 'none' || layer.display === 'none' || layer.visibility !== 'visible' || Number(layer.opacity) === 0) return false;
+      const gradient = layer.mask + ' ' + layer.image;
+      const alphas = Array.from(gradient.matchAll(/rgba?\(([^)]+)\)/g), match => {
+        const channels = match[1].split(/[,\s/]+/).filter(Boolean); return channels.length === 4 ? Number(channels[3]) : 1;
+      });
+      return gradient.includes('gradient(') && alphas.length > 1 && Math.min(...alphas) < Math.max(...alphas);
+    }), 'a painted gradient fades between different alpha levels');
+    await page.screenshot({ path: path.join(OUT, 'hold-motion-speaking-phone.png') });
+    await page.evaluate(() => __qaVoice.onspeechend()); await recordingSettled();
+    const speechEnded = await recordingAppearance();
+    assert.ok(Math.abs(speechEnded.wave.height - quiet.wave.height) < 0.1, 'speech end restores the quieter waveform height');
+    await moveHold(gesture, gesture.x + 100, gesture.y); await recordingSettled();
+    const review = await recordingAppearance();
+    await page.screenshot({ path: path.join(OUT, 'hold-motion-review-phone.png') });
+    await moveHold(gesture, gesture.x + 100, gesture.y - 100); await recordingSettled();
+    const cancel = await recordingAppearance();
+    await page.screenshot({ path: path.join(OUT, 'hold-motion-cancel-phone.png') });
+    const colors = frame => JSON.stringify(frame.layers.map(layer => [layer.background, layer.image]));
+    assert.equal(new Set([colors(moving[0]), colors(review), colors(cancel)]).size, 3,
+      'recording, review and cancel paint visibly different colors');
+    assert.match(review.hint, /转成文字/); assert.match(cancel.hint, /取消/);
+    await moveHold(gesture, gesture.x, gesture.y);
+    await page.evaluate(() => __qaVoice.onspeechstart()); await recordingSettled(); await endRecognition(); await recordingSettled();
+    const recognitionEnded = await recordingAppearance();
+    assert.ok(Math.abs(recognitionEnded.wave.height - quiet.wave.height) < 0.1, 'recognition completion resets the waveform even during speech');
+    report.recordingAppearance.normal = { quiet, moving, speechEnded, review, cancel, recognitionEnded }; save();
+    await releaseHold(gesture); await editableTranscript('说话时波形更明显');
+
+    await holdFixture();
+    const fallbackGesture = await startHold(true); await recordingSettled();
+    const fallbackQuiet = await recordingAppearance();
+    await hear([{ text: '没有语音边界事件也能响应', final: false }]); await recordingSettled();
+    const interim = await recordingAppearance();
+    assert.ok(interim.wave.height > fallbackQuiet.wave.height + 0.5, 'interim transcription makes the wave responsive without speech boundary events');
+    await hear([{ text: '没有语音边界事件也能响应', final: true, confidence: 0.96 }]); await recordingSettled();
+    const final = await recordingAppearance();
+    assert.ok(Math.abs(final.wave.height - fallbackQuiet.wave.height) < 0.1, 'a final transcript resets the fallback speech response');
+    report.recordingAppearance.fallback = { quiet: fallbackQuiet, interim, final }; save();
+    await releaseHold(fallbackGesture, true); await lateRecognition(); assert.deepEqual(await sentTexts(), []);
+
+    for (const mode of ['reduced', 'forced-colors']) {
+      await holdFixture();
+      await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: mode === 'reduced' ? 'reduce' : 'no-preference' },
+        { name: 'forced-colors', value: mode === 'forced-colors' ? 'active' : 'none' }]);
+      const stillGesture = await startHold(true); await recordingSettled();
+      const beforeSpeech = await recordingAppearance(); await page.evaluate(() => __qaVoice.onspeechstart());
+      const still = await recordingFrames();
+      report.recordingAppearance[mode] = { beforeSpeech, frames: still }; save();
+      assert.deepEqual(still[0].media, { reduced: mode === 'reduced', forcedColors: mode === 'forced-colors' });
+      still.forEach(frame => {
+        assert.deepEqual(frame.layers, beforeSpeech.layers, mode + ': the painted surface stays still');
+        assert.deepEqual(frame.wave, beforeSpeech.wave, mode + ': the waveform stays still, including during speech');
+        assert.ok(frame.hintRect.width > 0 && frame.hintRect.height > 0, mode + ': the recording instruction remains visible');
+      });
+      if (mode === 'forced-colors') {
+        const visibleLayers = still[0].layers.filter(layer => !layer.pseudo || layer.content !== 'none' && layer.display !== 'none');
+        assert.ok(visibleLayers.every(layer => !/gradient\(/.test(layer.mask + ' ' + layer.image)), 'forced colors remove decorative gradients');
+        assert.notEqual(still[0].ink, still[0].layers[0].background, 'forced colors keep the instruction distinct from its background');
+      }
+      await page.screenshot({ path: path.join(OUT, 'hold-motion-' + mode + '-phone.png') });
+      await releaseHold(stillGesture, true); await lateRecognition(); assert.deepEqual(await sentTexts(), []); await draftUntouched();
+    }
   });
 }
 async function history() {
@@ -490,7 +895,7 @@ async function mixedNotes() {
 (async () => {
   save(); browser = await B.launch();
   try {
-    await ({ layout, lifecycle, drafts, voice, history, receipts, 'mixed-notes':mixedNotes })[CASE]();
+    await ({ layout, lifecycle, drafts, voice, hold, 'hold-touch': holdTouch, history, receipts, 'mixed-notes':mixedNotes })[CASE]();
     if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'panel.png') });
     assert.deepEqual(report.errors, []); report.passed = true;
   } catch (error) { report.passed = false; report.failure = { message: error.message, stack: error.stack }; if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'failure.png') }); throw error; }
