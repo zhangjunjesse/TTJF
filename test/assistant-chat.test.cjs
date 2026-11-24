@@ -51,18 +51,118 @@ test('local: recurring rule and a single actual award stay distinct without writ
 test('local: a homophone in an award keeps the behavior and score without awarding ordinary portions',async()=>{
   const service=local(), state=seed();
   state.pointItems.push({id:'water-plants',name:'照看薄荷',points:5,enabled:true});
+  state.pointItems.push({id:'disabled-plants',name:'照看罗勒',points:5,enabled:false});
   const before=JSON.stringify(state);
   for (const [input,name,points] of [
     ['自己刷牙加一份','自己刷牙',1],
     ['自己刷牙加一分','自己刷牙',1],
-    ['照看薄荷，加 2 份。','照看薄荷',2]
+    ['自己睡觉加一份','自己睡觉',1],
+    ['自己睡觉，加 １ 份！','自己睡觉',1],
+    ['照看薄荷，加 2 份。','照看薄荷',2],
+    ['照看薄荷，加２份！','照看薄荷',2]
   ]) {
     const result=await service.chat(input,state,now);
     assert.deepEqual(result.action,{type:'points.add',payload:{name,points}},input);
   }
-  for (const input of ['早餐再加一份','给我一份早餐','刷牙杯加一份','不要给自己刷牙加一份']) {
+  for (const input of ['早餐再加一份','给我一份早餐','刷牙杯加一份','不要给自己刷牙加一份',
+    '照看罗勒加一份','自己睡觉加一份早餐','自己睡觉加一份吗？','自己睡觉不加一份',
+    '自己睡觉加一份，刷牙加二份','早餐+1份']) {
     assert.ok(!types(await service.chat(input,state,now)).includes('points.add'),input);
   }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: a single positive award sign preserves the behavior as an uncommitted draft',async()=>{
+  const service=local(),state=seed(),before=JSON.stringify(state);
+  for (const [input,name,points] of [
+    ['自己睡觉+1分','自己睡觉',1],
+    ['自己睡觉 ＋ １ 分。','自己睡觉',1],
+    ['自己睡觉，+ 1 分！','自己睡觉',1],
+    ['行为：自己睡觉，＋１分。','自己睡觉',1],
+    ['自己刷牙+一分','自己刷牙',1],
+    ['整理书包 + ２ 分!','整理书包',2],
+    ['自己睡觉加１分。','自己睡觉',1],
+    ['主动帮助别人+1分','主动帮助别人',1],
+    ['主动请教问题+1分','主动请教问题',1],
+    ['没有挑食+1分','没有挑食',1],
+    ['不用提醒就自己刷牙+1分','不用提醒就自己刷牙',1],
+    ['独立阅读20分钟+1分','独立阅读20分钟',1]
+  ]) {
+    const result=await service.chat(input,state,now);
+    assert.equal(result.kind,'action',input+': '+JSON.stringify(result));
+    assert.deepEqual(result.action,{type:'points.add',payload:{name,points}},input);
+    assert.equal(result.source,'local');
+    assert.equal(result.mode,'local');
+  }
+  assert.equal(JSON.stringify(state),before,'the assistant only prepares an editable draft');
+});
+
+test('local: positive award notation does not turn questions, negations or calculations into awards',async()=>{
+  const service=local(),state=seed(),before=JSON.stringify(state);
+  for (const input of [
+    '+1分','35+100等于多少','35+100分','自己睡觉+1+2分','自己睡觉+-1分','自己睡觉＋－１分',
+    '自己睡觉+1.5分','自己睡觉＋１．５分','自己睡觉+1分，刷牙+2分','自己睡觉+1分还是+2分',
+    '自己睡觉+1分钟','自己睡觉加一份钟','自己睡觉+1分吗？','自己睡觉+1分？',
+    '不要给自己睡觉+1分','自己睡觉别+1分','别给自己睡觉＋１分','自己睡觉-1分',
+    '自己睡觉+1分，1+2等于几','没有自己睡觉+1分','不想给自己睡觉+1分',
+    '自己睡觉无需+1分','查询自己睡觉+1分','查看自己睡觉+1分','如果自己睡觉+1分',
+    '三十五+一百分','查一下自己睡觉+1分','自己睡觉不需要+1分','自己睡觉不用+1分',
+    '不用给自己睡觉+1分','不需要给自己睡觉+1分','请问自己睡觉+1分',
+    '自己睡觉没必要+1分','没必要给自己睡觉+1分'
+  ]) {
+    assert.ok(!types(await service.chat(input,state,now)).includes('points.add'),input);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: plus signs in reminder text keep the existing reminder route',async()=>{
+  const state=seed(),before=JSON.stringify(state);
+  const result=await local().chat('明天七点提醒做1+1练习题',state,now);
+  assert.equal(result.kind,'action',JSON.stringify(result));
+  assert.deepEqual(result.action,{type:'task.save',payload:{task:{type:'task',title:'做1+1练习题',date:'2026-11-23',time:'07:00',note:'',remindDays:0}}});
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: reminder titles containing award notation keep the existing reminder route',async()=>{
+  const state=seed(),before=JSON.stringify(state);
+  for (const title of ['自己睡觉+1分','自己睡觉＋１分']) {
+    const result=await local().chat('明天七点提醒'+title,state,now);
+    assert.equal(result.kind,'action',JSON.stringify(result));
+    assert.deepEqual(result.action,{type:'task.save',payload:{task:{type:'task',title,date:'2026-11-23',time:'07:00',note:'',remindDays:0}}});
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: conversational queries and calculations with award notation never become awards',async()=>{
+  const service=local(),state=seed(),before=JSON.stringify(state);
+  for (const input of [
+    '我想查询自己睡觉+1分','我想查一下自己睡觉+1分','能帮我查一下自己睡觉+1分',
+    '请你帮我查一下自己睡觉+1分',
+    '算一下35+100分','计算35+100分','请帮我算一算３５＋１００分'
+  ]) {
+    assert.equal((await service.chat(input,state,now)).kind,'clarify',input);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: negated operations and unfinished behaviors with award notation require clarification',async()=>{
+  const service=local(),state=seed(),before=JSON.stringify(state);
+  for (const input of [
+    '自己睡觉不要再+1分','不要再给自己睡觉+1分','请不要再给自己睡觉+1分',
+    '先不要给自己睡觉+1分','自己睡觉不再+1分','没有按时睡觉+1分','没有独立完成作业+1分'
+  ]) {
+    assert.equal((await service.chat(input,state,now)).kind,'clarify',input);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: enabled positive-habit templates keep their negated names in award notation',async()=>{
+  const state=seed(),service=local();
+  state.pointItems.push({id:'no-temper',name:'没发脾气',points:5,enabled:true});
+  const before=JSON.stringify(state);
+  const result=await service.chat('没发脾气+2分',state,now);
+  assert.equal(result.kind,'action',JSON.stringify(result));
+  assert.deepEqual(result.action,{type:'points.add',payload:{name:'没发脾气',points:2}});
   assert.equal(JSON.stringify(state),before);
 });
 test('local: unspecified reasons never overwrite a manually completed award form',async()=>{
