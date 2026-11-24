@@ -45,7 +45,8 @@
       '<textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="发消息…" enterkeyhint="enter" aria-describedby="assistant-composer-hint"></textarea>' +
       button('voice', icon('mic'), 'assistant-tool assistant-voice', ' aria-label="听写成文字" aria-pressed="false" title="听写成文字，核对后再发送"') +
       '<button id="assistant-chat-send" type="submit" class="assistant-send" aria-label="发送消息">' + icon('send') + '</button></div>' +
-      '<p id="assistant-composer-hint" class="assistant-sr-only">草稿可在原页面核对后保存。最多输入 1200 字。</p><p id="assistant-hold-hint" class="assistant-hold-hint">松开发送 · 上滑取消 · 右滑转文字</p><span id="assistant-chat-count" hidden></span></form></div>' +
+      '<p id="assistant-composer-hint" class="assistant-sr-only">草稿可在原页面核对后保存。最多输入 1200 字。</p><p id="assistant-hold-hint" class="assistant-hold-hint">' +
+      (root.__TTJF_VOLC_ASR__ ? '火山语音识别 · ' : '') + '松开发送 · 上滑取消 · 右滑转文字</p><span id="assistant-chat-count" hidden></span></form></div>' +
       '<div class="assistant-recording" data-cancel="false" data-review="false" hidden><p class="assistant-recording-text"></p><p class="assistant-recording-hint" role="status" aria-live="polite"></p>' +
       '<div class="assistant-recording-wave" aria-hidden="true">' + '<span></span>'.repeat(48) + '</div></div>' +
       '<div id="assistant-clear-confirm" class="assistant-confirm-overlay" hidden><section class="assistant-confirm" role="alertdialog" aria-modal="true" aria-labelledby="assistant-clear-title" aria-describedby="assistant-clear-description"><h3 id="assistant-clear-title">清空这段对话？</h3><p id="assistant-clear-description">当前对话和未办理的助手草稿会清空，已保存的家庭记录会保留。</p><div>' + button('cancel-clear', '保留对话', 'assistant-button') + button('confirm-clear', '清空对话', 'assistant-button assistant-danger') + '</div></section></div></section>';
@@ -327,8 +328,28 @@
     try { hints = typeof config.speechHints === 'function' ? config.speechHints() : config.speechHints; } catch (e) { hints = []; }
     return Array.isArray(hints) ? hints.filter(function (hint) { return typeof hint === 'string' && trim(hint); }) : [];
   }
-  function speechAvailable() { return !!SPEECH && !!root.FamilyAssistant && typeof root.FamilyAssistant.configureSpeech === 'function' && typeof root.FamilyAssistant.speechTranscript === 'function'; }
+  function speechAvailable() {
+    if (root.__TTJF_VOLC_ASR__) return !!root.FamilyVolcVoice && root.FamilyVolcVoice.isSupported();
+    return !!SPEECH && !!root.FamilyAssistant && typeof root.FamilyAssistant.configureSpeech === 'function' && typeof root.FamilyAssistant.speechTranscript === 'function';
+  }
+  function createRecognizer(hints, onTranscript) {
+    if (root.__TTJF_VOLC_ASR__) {
+      // Family records are local matching hints. The cloud vocabulary is set on the server.
+      return root.FamilyVolcVoice.create({ request: config.request,
+        onPartialText: function (words) { onTranscript({ finalText: '', interimText: words }); },
+        onFinalText: function (words) { onTranscript({ finalText: words, interimText: '' }); }
+      });
+    }
+    var recognition = new SPEECH();
+    root.FamilyAssistant.configureSpeech(recognition);
+    recognition.onresult = function (event) { onTranscript(root.FamilyAssistant.speechTranscript(event.results, hints)); };
+    return recognition;
+  }
   function voiceFailure(event) {
+    if (event.error === 'network' || event.error === 'timeout') return '语音连接中断，请再说一次或直接输入文字。';
+    if (event.error === 'audio-capture') return '麦克风暂时不可用，请检查输入设备后重试。';
+    if (event.error === 'busy') return '语音正在使用中，请稍后再试。';
+    if (event.error === 'service-unavailable') return '语音服务暂时不可用，可以继续打字。';
     return event.error === 'not-allowed' || event.error === 'service-not-allowed' ? '听写未获授权，可以继续打字。' : event.error === 'no-speech' ? '没有听清，再试一次或输入文字。' : '听写未完成，请核对文字或再试一次。';
   }
   function releaseCapture(session) {
@@ -370,7 +391,8 @@
   }
   function finishHold(session, endedAfterRelease) {
     if (!validHold(session)) return;
-    var words = trim(session.finalText + session.interimText), finalWords = trim(session.finalText);
+    var finalWords = trim(session.finalText);
+    var words = session.recognition.provider === 'volc' ? finalWords : trim(session.finalText + session.interimText);
     var sameDraft = text === session.base, tooShort = session.duration < 300;
     var reliable = endedAfterRelease && !session.naturalEnd && !session.failed && !session.uncertain && !session.truncated && !tooShort && finalWords && !trim(session.interimText);
     var autoSend = reliable && !session.review && !trim(session.base) && sameDraft && loaded && !busy() && !confirming && !uncertainTurn();
@@ -394,7 +416,12 @@
     session.held = false; session.released = true; session.duration = Date.now() - session.started; root.clearTimeout(session.limit); releaseCapture(session);
     if (session.ended) { finishHold(session, false); return; }
     listening = false; voiceNote = '正在整理语音…'; updateControls();
-    session.timer = root.setTimeout(function () { if (validHold(session)) { session.uncertain = true; finishHold(session, false); } }, 1500);
+    session.timer = root.setTimeout(function () {
+      if (!validHold(session)) return;
+      session.uncertain = true;
+      if (session.recognition.provider === 'volc') session.failure = '等待语音定稿超时，请再说一次。';
+      finishHold(session, false);
+    }, session.recognition.provider === 'volc' ? 12000 : 1500);
     try { session.recognition.stop(); } catch (e) { session.failed = true; finishHold(session, false); }
   }
   function startHold(target, event, keyboard) {
@@ -403,18 +430,17 @@
     var recognition, session = { token: ++voiceEpoch, scope: scope, generation: generation, base: text, hints: speechHints(), target: target,
       pointerId: keyboard ? null : event.pointerId, startX: event.clientX, key: keyboard ? event.key : '', rect: target.getBoundingClientRect(), started: Date.now(), held: true, released: false,
       cancel: false, review: false, finalText: '', interimText: '', uncertain: false, truncated: false, failed: false, ended: false, naturalEnd: false, failure: '', timer: 0, limit: 0 };
-    try { recognition = new SPEECH(); root.FamilyAssistant.configureSpeech(recognition); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
+    try { recognition = createRecognizer(session.hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
     holding = session; session.recognition = recognition; voice = recognition; listening = true; voiceNote = ''; holdClickUntil = Date.now() + 700;
     recognition.onspeechstart = function () { if (validHold(session)) { session.speaking = true; renderRecording(); } };
     recognition.onspeechend = function () { if (validHold(session)) { session.speaking = false; renderRecording(); } };
-    recognition.onresult = function (event) {
+    function received(result) {
       if (!validHold(session)) return;
-      var result = root.FamilyAssistant.speechTranscript(event.results, session.hints);
       session.finalText = result.finalText; session.interimText = result.interimText;
       session.uncertain = session.uncertain || !!result.uncertain;
       session.truncated = session.truncated || (session.base ? session.base.length + 1 : 0) + session.finalText.length + session.interimText.length > 1200;
       renderRecording();
-    };
+    }
     recognition.onerror = function (event) {
       if (!validHold(session)) return;
       session.failed = true; session.failure = voiceFailure(event); listening = false; voiceNote = session.failure;
@@ -436,7 +462,10 @@
       if (!validHold(session)) return;
       session.failed = true; session.failure = '说话时间较长，请核对文字后发送。'; releaseHold(session);
     }, 60000);
-    try { recognition.start(); } catch (e) { cancelHold('当前无法听写，可以继续打字。'); }
+    try { recognition.start(); } catch (e) { cancelHold('当前无法听写，可以继续打字。'); return; }
+    if (holding === session && !session.failed && !session.ended && event.pointerType === 'touch' && typeof root.navigator.vibrate === 'function') {
+      try { root.navigator.vibrate(12); } catch (e) { /* Haptics are optional on a touch device. */ }
+    }
     updateControls();
   }
   function holdStarted(event) {
@@ -461,17 +490,22 @@
   function voiceInterrupted() { if (holding) cancelHold('语音已停止，请重新按住说话。'); }
   function startVoice() {
     if (!current() || !speechAvailable() || confirming || holding) return;
-    if (voice) { try { voice.stop(); } catch (e) { stopVoice(); } listening = false; voiceNote = '正在整理听写…'; updateControls(); return; }
+    if (voice) { listening = false; voiceNote = '正在整理听写…'; try { voice.stop(); } catch (e) { stopVoice(); voiceNote = '听写已中断，请重新录音。'; } updateControls(); return; }
     var recognition, token = ++voiceEpoch, base = text, voiceScope = scope, heard = false, hints = speechHints();
-    try { recognition = new SPEECH(); root.FamilyAssistant.configureSpeech(recognition); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
+    try { recognition = createRecognizer(hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
     voice = recognition; listening = true; voiceNote = ''; editing = true;
     function valid() { return voice === recognition && token === voiceEpoch && voiceScope === scopeKey() && current(); }
-    recognition.onresult = function (event) {
+    function received(result) {
       if (!valid()) return;
-      var result = root.FamilyAssistant.speechTranscript(event.results, hints), words = result.finalText + result.interimText;
+      var words = result.finalText + result.interimText;
+      if (recognition.provider === 'volc' && !result.finalText) {
+        voiceNote = words ? '正在识别：' + words.slice(-120) : '';
+        updateControls(); return;
+      }
       if (!words) return;
+      voiceNote = '';
       heard = true; text = ((base ? base + '\n' : '') + words).slice(0, 1200); input.value = text; growInput(); updateControls();
-    };
+    }
     recognition.onerror = function (event) {
       if (!valid()) return;
       listening = false; voiceNote = voiceFailure(event); updateControls();

@@ -725,10 +725,13 @@ async function holdTouch() {
     await releaseHold(gesture); await editableTranscript('说话时波形更明显');
 
     await holdFixture();
+    await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }, { name: 'forced-colors', value: 'none' }]);
     const fallbackGesture = await startHold(true); await recordingSettled();
     const fallbackQuiet = await recordingAppearance();
     await hear([{ text: '没有语音边界事件也能响应', final: false }]); await recordingSettled();
     const interim = await recordingAppearance();
+    report.recordingAppearance.fallback = { quiet: fallbackQuiet, interim }; save();
+    assert.deepEqual(interim.media, { reduced: false, forcedColors: false });
     assert.ok(interim.wave.height > fallbackQuiet.wave.height + 0.5, 'interim transcription makes the wave responsive without speech boundary events');
     await hear([{ text: '没有语音边界事件也能响应', final: true, confidence: 0.96 }]); await recordingSettled();
     const final = await recordingAppearance();

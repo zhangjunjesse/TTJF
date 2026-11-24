@@ -5,6 +5,7 @@ const path = require('node:path');
 const { createAssistantService } = require('../assistant-service.cjs');
 const { executeTool } = require('../assistant-tools.cjs');
 const Q = require('./saas-browser.cjs');
+const cloudVoice = require('./assistant-cloud-voice-browser.cjs');
 const { B, action, click } = Q;
 const selector = name => '[data-assistant-action="' + name + '"]';
 const entry = '[data-action="assistant-open"]';
@@ -444,7 +445,7 @@ async function awardUnitFlow(page, env, family, open, useVoice = false) {
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
   assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'voice-award', 'launcher-phone', 'launcher-tablet',
-    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent'].includes(device));
+    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent', 'cloud-voice'].includes(device));
   if (device.startsWith('launcher-')) {
     Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
   }
@@ -470,7 +471,8 @@ async function run() {
   } : {apiKey:''});
   if (device === 'template') assistant.chat = async (text, state, now) =>
     executeTool('draft_award', {itemId:'reading-rule'}, state, now);
-  const env = await Q.initialize({assistantService:assistant});
+  const provider = device === 'cloud-voice' ? cloudVoice.fixture() : null;
+  const env = await Q.initialize({assistantService:assistant, asrConfig:provider && {}, asrConnect:provider?.connect});
   // The server clock is frozen while the UI estimates elapsed time between polls.
   // Start at a whole minute so the default award time cannot run ahead during input.
   env.clock(Date.parse('2026-11-23T04:30:00Z'));
@@ -502,12 +504,14 @@ async function run() {
       abort() { this.onend?.(); }
     };
   });
+  if (provider) await cloudVoice.setup(page);
   await page.reload({waitUntil:'load'}); await Q.ready(page, family);
   const ledger = async () => (await env.api(page, '/api/state')).body.state.points;
   const open = async () => {
     await click(page, entry);
     await page.waitForSelector('#assistant-chat-input', {visible:true});
   };
+  if (provider) { await open(); await cloudVoice.verify(page, env, provider); return; }
   if (device === 'first-pin' || device === 'first-pin-retry') { await firstPinFlow(page, env, device, open); return; }
   if (device.startsWith('first-pin-')) { await firstPinConflictFlow(page, env, device, open); return; }
   if (device.startsWith('launcher-')) { await launcherFlow(page, env, device, open); return; }

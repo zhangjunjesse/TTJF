@@ -211,6 +211,7 @@ async function createEnvironment(options = {}) {
   const port = await reservePort(), origin = 'http://127.0.0.1:' + port;
   const config = {
     database, publicOrigin: origin, environment: 'test', rootDir: options.staticRoot || ROOT, now: () => new Date(now),
+    asrConfig: options.asrConfig || null, asrConnect: options.asrConnect,
     mailer: { sendMail: async message => {
       captured.push(message);
       const kind = /#(verify|reset|invite)=/.exec(message.text || '');
