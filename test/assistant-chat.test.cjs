@@ -122,6 +122,49 @@ test('local: plus signs in reminder text keep the existing reminder route',async
   assert.deepEqual(result.action,{type:'task.save',payload:{task:{type:'task',title:'做1+1练习题',date:'2026-11-23',time:'07:00',note:'',remindDays:0}}});
   assert.equal(JSON.stringify(state),before);
 });
+
+test('local: reminder titles containing award notation keep the existing reminder route',async()=>{
+  const state=seed(),before=JSON.stringify(state);
+  for (const title of ['自己睡觉+1分','自己睡觉＋１分']) {
+    const result=await local().chat('明天七点提醒'+title,state,now);
+    assert.equal(result.kind,'action',JSON.stringify(result));
+    assert.deepEqual(result.action,{type:'task.save',payload:{task:{type:'task',title,date:'2026-11-23',time:'07:00',note:'',remindDays:0}}});
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: conversational queries and calculations with award notation never become awards',async()=>{
+  const service=local(),state=seed(),before=JSON.stringify(state);
+  for (const input of [
+    '我想查询自己睡觉+1分','我想查一下自己睡觉+1分','能帮我查一下自己睡觉+1分',
+    '请你帮我查一下自己睡觉+1分',
+    '算一下35+100分','计算35+100分','请帮我算一算３５＋１００分'
+  ]) {
+    assert.equal((await service.chat(input,state,now)).kind,'clarify',input);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: negated operations and unfinished behaviors with award notation require clarification',async()=>{
+  const service=local(),state=seed(),before=JSON.stringify(state);
+  for (const input of [
+    '自己睡觉不要再+1分','不要再给自己睡觉+1分','请不要再给自己睡觉+1分',
+    '先不要给自己睡觉+1分','自己睡觉不再+1分','没有按时睡觉+1分','没有独立完成作业+1分'
+  ]) {
+    assert.equal((await service.chat(input,state,now)).kind,'clarify',input);
+  }
+  assert.equal(JSON.stringify(state),before);
+});
+
+test('local: enabled positive-habit templates keep their negated names in award notation',async()=>{
+  const state=seed(),service=local();
+  state.pointItems.push({id:'no-temper',name:'没发脾气',points:5,enabled:true});
+  const before=JSON.stringify(state);
+  const result=await service.chat('没发脾气+2分',state,now);
+  assert.equal(result.kind,'action',JSON.stringify(result));
+  assert.deepEqual(result.action,{type:'points.add',payload:{name:'没发脾气',points:2}});
+  assert.equal(JSON.stringify(state),before);
+});
 test('local: unspecified reasons never overwrite a manually completed award form',async()=>{
   for (const text of ['今天独立阅读加5分','行为：阅读，加5分','自主阅读，加5分']) {
     const result=await local().chat(text,seed(),now,{context:{form:'points',view:'points'}});
