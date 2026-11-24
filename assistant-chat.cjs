@@ -141,21 +141,28 @@ function localAwardNotation(text,state,now) {
   if (!symbolic && !(amount && (amount[3]==='份' || /[０-９]/.test(amount[2])))) return null;
   const unclear=()=>T.clarify('请明确本次加分的行为和一个正整数分值。');
   if (!amount) return unclear();
-  const behavior=text.slice(0,amount.index).trim().replace(/^(?:请(?!问)\s*)?(?:帮我\s*)?(?:给孩子\s*|孩子\s*)?(?:今天|这次|刚才)?\s*/,'')
+  const behavior=text.slice(0,amount.index).trim().replace(/^(?:请(?!问)(?:你)?\s*)?(?:帮我\s*)?(?:给孩子\s*|孩子\s*)?(?:今天|这次|刚才)?\s*/,'')
     .replace(/^(?:行为名称|行为|名称)\s*[:：]\s*/,'').replace(/^[，,。:：\s]+|[，,。:：\s]+$/g,'');
   // Recognize a whole award sentence, never replace arbitrary plus signs.
   if (!/[\p{L}]/u.test(behavior) || /^[零〇一二两三四五六七八九十百千万亿\d０-９\s]+$/.test(behavior) ||
       /[+＋\-－−=＝*×÷/？?]/.test(behavior) || /^(?:给我|给孩子|给他|给她|孩子|他|她|这次|今天|一次|加分|奖励|积分)$/.test(behavior) ||
       /[零〇一二两三四五六七八九十百\d０-９]+\s*(?:积分|分(?!钟))/.test(behavior)) return unclear();
-  const questionOrExample=/^(?:查询|查看|查一下|看看|请问|问一下|如果|假如|假设|要是|例如|比如|能否|是否|能不能|可不可以)/.test(behavior) ||
+  const intent=behavior.replace(/^(?:(?:我想要?|我要|想要?|请你|请(?!问)|麻烦你?|劳驾|你能|能(?:不能)?|可(?:不可以|以)|帮我|帮忙|帮助我)[，,\s]*)+/,'');
+  const queryPrefix=/^(?:查询|查看|查一下|查一查|看看|看一下|请问|问一下|如果|假如|假设|要是|例如|比如|能否|是否|能不能|可不可以)/;
+  const questionOrExample=queryPrefix.test(behavior) || queryPrefix.test(intent) ||
     /(?:吗|呢|么|是否|能否|能不能|可不可以|要不要|该不该)$/.test(behavior);
-  const declined=/^(?:不要|别|不用|无需|不必|不需要|没必要|不能|不该|不想|不打算|禁止|没有|没|未)(?:给|加|奖励|记)/.test(behavior) ||
-    /(?:不要|别|不用|无需|不必|不需要|没必要|不想|不打算|不能|不该|不|没|未)(?:给|加|奖励|记)?$/.test(behavior);
+  const calculation=/^(?:计算|算一下|算一算)\s*[零〇一二两三四五六七八九十百\d０-９]/.test(intent) ||
+    /^[零〇一二两三四五六七八九十百千万亿\d０-９\s加减乘除]+$/.test(behavior);
+  const declined=/(?:不要|别|不用|无需|不必|不需要|没必要|不能|不该|不想|不打算|不再|禁止|没有|没|未)(?:再|先|继续|现在|暂时)*\s*(?:给|加|奖励|记)/.test(behavior) ||
+    /(?:不要|别|不用|无需|不必|不需要|没必要|不想|不打算|不能|不该|不|没|未)(?:再|先|继续|现在|暂时)*(?:给|加|奖励|记)?(?:了|吧)?$/.test(behavior);
   // “份” also counts portions. Only infer points for a complete behavior name.
   const dailyHabit=/^(?:自己|主动|自主|独立)?(?:刷牙|洗脸|洗手|穿衣服|叠被子|整理书包|阅读|读书|做家务|睡觉)$/;
   const knownBehavior=value=>dailyHabit.test(value) || state.pointItems.some(item=>item.enabled && item.name===value);
   const notDone=/^(?:自己|孩子)?(?:没有|没|未|不想|不要|别|不)(.+)$/.exec(behavior);
-  if (questionOrExample || declined || notDone && knownBehavior(notDone[1])) return unclear();
+  // Preserve positive habit descriptions without treating unfinished acts as awards.
+  const positiveNegative=knownBehavior(behavior) || /^(?:没有|没)挑食$/.test(behavior) ||
+    /^(?:不用|无需|不必|不需要)(?:再)?提醒(?:就|也).+/.test(behavior);
+  if (questionOrExample || calculation || declined || notDone && !positiveNegative) return unclear();
   if (amount[3]==='份' && !knownBehavior(behavior)) return unclear();
   const score=amount[2].replace(/[０-９]/g,char=>String.fromCharCode(char.charCodeAt(0)-0xFEE0));
   return T.executeTool('draft_award',{name:behavior,points:T.numericValues(score+'分')[0]},state,now);
@@ -218,11 +225,13 @@ function localSingle(text,state,now,options={}) {
     return result.kind==='action'?T.normalizeAction(result.action,state,now):result;
   }
   const context=options.context || {}, scope=context.scope || (context.form==='points'?'points':context.form==='pointItem' && context.targetId?'pointItems':'general');
+  const selected=state.tasks.find(row=>row.id===context.targetId && !row.deleted), phrase=selected && /^(?:改|调整|推迟)/.test(text)?'把'+selected.title+text:text;
+  const result=A.interpret(phrase,state,legacyNow(now),{context:scope,...(context.targetId?{targetId:context.targetId}:{})});
+  // A reminder's title can contain point notation; retain its existing route.
+  if (result.kind==='action' && result.action.type==='task.save') return T.normalizeAction(result.action,state,now);
   if (!recurring && (scope==='general' || scope==='points')) {
     const notation=localAwardNotation(text,state,now); if (notation) return notation;
   }
-  const selected=state.tasks.find(row=>row.id===context.targetId && !row.deleted), phrase=selected && /^(?:改|调整|推迟)/.test(text)?'把'+selected.title+text:text;
-  const result=A.interpret(phrase,state,legacyNow(now),{context:scope,...(context.targetId?{targetId:context.targetId}:{})});
   if (result.kind==='action') {
     if (result.action.type==='points.add') {
       const payload=result.action.payload;
