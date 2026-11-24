@@ -44,20 +44,24 @@ async function form(expected) {
   await page.waitForFunction(kind => window.FamilyDemo.getUI().form === kind, { timeout: 7000 }, expected);
 }
 async function route(expected, name, unavailable = false) {
-  await page.waitForFunction(({ value, fallback }) => {
+  const calendar = (await B.ui(page)).view === 'reminders';
+  await page.waitForFunction(({ value, fallback, calendar }) => {
     const host = window.FamilyWorldUI && window.FamilyWorldUI.diagnostics();
     if (!host || host.route !== value || document.body.dataset.worldRoute !== value) return false;
+    if (calendar) return document.body.dataset.worldLayout === 'page' && !host.visible && !host.renderer;
     if (value === 'farm') return !host.visible;
     if (fallback) return host.visible && document.querySelector('#world-stage').dataset.sceneState === 'unavailable';
     return host.visible && host.renderer && host.renderer.ready && host.renderer.webgl && host.renderer.drawCalls > 0 && host.renderer.presentation === value;
-  }, { timeout: 10000 }, { value: expected, fallback: unavailable });
+  }, { timeout: 10000 }, { value: expected, fallback: unavailable, calendar });
   const diagnostic = await page.evaluate(() => ({ host: window.FamilyWorldUI.diagnostics(), farm: window.FamilyDemo.getUI().farmRender,
     scene: window.FamilyFarmScene.diagnostics(),
     canvases: Array.from(document.querySelectorAll('canvas.family-farm-canvas')).map(canvas => ({
       tabIndex: canvas.tabIndex, world: !!canvas.closest('#world-stage'), width: canvas.width, height: canvas.height })) }));
   assert.ok(diagnostic.scene.instances.length <= 1, 'only one renderer instance may survive a route change');
   assert.ok(diagnostic.scene.activeCount <= 1, 'only the current visible renderer may run');
-  if (expected !== 'farm') {
+  if (calendar) {
+    assert.equal(diagnostic.canvases.length, 0, 'calendar pages release the decorative renderer');
+  } else if (expected !== 'farm') {
     assert.equal(await page.$eval('#world-stage', el => el.getAttribute('aria-hidden')), 'true');
     assert.equal(await page.$$eval('#world-stage canvas', nodes => nodes.every(node => node.tabIndex === -1)), true);
     assert.equal(diagnostic.canvases.filter(canvas => !canvas.world).length, 0, 'a station must not retain the previous family farm canvas');
@@ -140,7 +144,7 @@ const scenarios = {
     });
   },
   async reminders() {
-    await check('reminder inbox, calendar and editor share their scene', async () => {
+    await check('the companion inbox opens its station and the standalone calendar and editor open as app pages', async () => {
       await open('home-inbox', 'homeInbox', 'reminders'); await home();
       await B.navigate(page, 'reminders'); await route('reminders', 'reminders-page');
       await open('task-new', 'task', 'reminders', 'reminder-editor');
@@ -250,6 +254,17 @@ async function runFallback() {
   });
 }
 async function runLayout(width) {
+  if (width < 700) {
+    await check('phone ledger opens its real form on the page without mounting a station', async () => {
+      await click(a('add-points')); await form('behaviorPicker');
+      assert.equal(await page.$eval('.sheet', el => el.classList.contains('ledger-sheet')), true);
+      const state = await page.evaluate(() => ({ host: window.FamilyWorldUI.diagnostics(), layout: document.body.dataset.worldLayout }));
+      assert.equal(state.layout, 'page'); assert.equal(state.host.route, 'points');
+      assert.equal(state.host.visible, false); assert.equal(state.host.renderer, null);
+      await B.closeSheet(page);
+      await B.homeView(page, 'companion');
+    });
+  }
   await check(width + 'px layout preserves readable fields and reachable panel controls', async () => {
     await open('add-points', 'behaviorPicker', 'points', 'layout-picker'); await assertPanel();
     await open('points-new', 'points', 'points', 'layout-editor'); await assertPanel();

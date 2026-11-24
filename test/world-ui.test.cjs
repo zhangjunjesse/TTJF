@@ -100,6 +100,40 @@ test('world host maps every supported business and account state to its required
   }
 });
 
+test('in-place ledger authorization keeps the ledger visible without loading a station', () => {
+  const f = fixture({ lazy: true });
+  const review = business('points', { auth: true, ledgerPage: true });
+  f.api.business(review);
+  assert.equal(f.api.diagnostics().route, 'authorization');
+  assert.equal(f.api.diagnostics().visible, false);
+  assert.equal(f.scripts.length, 0);
+
+  f.api.business(business('points'));
+  assert.equal(f.scripts.length, 1);
+  f.api.business(review);
+  f.window.FamilyFarmScene = f.scene;
+  f.scripts[0].onload();
+  assert.equal(f.api.diagnostics().visible, false);
+  assert.equal(f.controllers.length, 0, 'a late editor scene cannot cover the review');
+});
+
+test('app pages and their approvals open without a scenery download while the companion market still mounts', () => {
+  const f = fixture({ lazy: true });
+  for (const [kind, auth, route] of [['behaviorPicker', false, 'points'], ['pointItem', true, 'authorization'], ['preferences', false, 'settings'], ['homeInbox', false, 'reminders'], ['homeWeek', false, 'history'], ['rewards', false, 'rewards'], ['request', false, 'rewards'], ['approve', false, 'rewards'], ['approve', true, 'authorization'], ['records', false, 'history']]) {
+    f.api.business(business(kind, { auth, ledgerPage: true }));
+    assert.equal(f.body.getAttribute('data-world-layout'), 'page');
+    assert.equal(f.api.diagnostics().route, route);
+    assert.equal(f.api.diagnostics().visible, false);
+    assert.equal(f.scripts.length, 0);
+  }
+  f.api.business(business('rewards'));
+  assert.equal(f.scripts.length, 1);
+  f.api.business(business('request', { ledgerPage: true }));
+  f.window.FamilyFarmScene = f.scene;
+  f.scripts[0].onload();
+  assert.equal(f.controllers.length, 0);
+});
+
 test('a late scene download follows the current route and never restores a previous family', () => {
   const f = fixture({ lazy: true });
   f.api.account('checking'); f.api.account('loading-family'); f.api.business(business(null));

@@ -18,8 +18,13 @@
   function current() { return opened && scope === scopeKey() && allowed(); }
   function busy() { return !!active || !!serverPending; }
   function icon(name) {
-    var paths = { spark: '<path d="m12 3 2.2 6.8L21 12l-6.8 2.2L12 21l-2.2-6.8L3 12l6.8-2.2Z"/>', close: '<path d="m6 6 12 12M6 18 18 6"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>', send: '<path d="M12 19V5m-6 6 6-6 6 6"/>', clear: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 10v7m4-7v7"/>', arrow: '<path d="M5 12h14m-6-6 6 6-6 6"/>' };
-    return '<svg class="assistant-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (paths[name] || paths.spark) + '</svg>';
+    var paths = {
+      coins: '<ellipse cx="10" cy="6" rx="7" ry="3"/><path d="M3 6v5c0 1.7 3.1 3 7 3 2.6 0 5-.6 6.2-1.6M17 6v4m-11 3v3c0 1.7 3.1 3 7 3s7-1.3 7-3v-4c0-1.2-1.3-2.2-3.3-2.7"/>',
+      book: '<path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2Zm0 14a2 2 0 0 1 2-2h13M8 8h7"/>',
+      bell: '<path d="M5 16h14l-1.7-2.5V10a5.3 5.3 0 1 0-10.6 0v3.5ZM10 19a2.3 2.3 0 0 0 4 0"/>',
+      close: '<path d="m6 6 12 12M6 18 18 6"/>', mic: '<rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/>', send: '<path d="M12 19V5m-6 6 6-6 6 6"/>', clear: '<path d="M4 7h16M9 7V4h6v3M6 7l1 14h10l1-14M10 10v7m4-7v7"/>', arrow: '<path d="M5 12h14m-6-6 6 6-6 6"/>'
+    };
+    return '<svg class="assistant-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + paths[name] + '</svg>';
   }
   function button(action, label, classes, extra) { return '<button type="button" data-assistant-action="' + action + '" class="' + (classes || 'assistant-button') + '"' + (extra || '') + '>' + label + '</button>'; }
   function focus(node) { if (!node || !node.focus) return; try { node.focus({ preventScroll: true }); } catch (e) { node.focus(); } }
@@ -30,15 +35,16 @@
     host = doc.createElement('div'); host.id = 'family-assistant-host'; host.className = 'assistant-panel-host'; host.hidden = true;
     host.innerHTML = '<div class="assistant-backdrop" data-assistant-action="close" aria-hidden="true"></div>' +
       '<section id="family-assistant-panel" class="assistant-panel" role="dialog" aria-modal="true" aria-labelledby="assistant-panel-title" aria-describedby="assistant-panel-description" tabindex="-1">' +
-      '<header class="assistant-panel-header"><span class="assistant-brand assistant-orb" aria-hidden="true"></span><div class="assistant-heading"><h2 id="assistant-panel-title">家长助手</h2><p id="assistant-panel-description" class="assistant-sr-only">查积分、整理草稿、打开页面</p></div>' +
-      button('clear', icon('clear') + '<span>清空</span>', 'assistant-tool assistant-clear', ' aria-label="清空助手对话"') + button('close', icon('close'), 'assistant-tool', ' aria-label="收起助手"') + '</header>' +
-      '<div class="assistant-context" id="assistant-panel-context"></div><div id="assistant-chat-log" class="assistant-chat-log" role="log" aria-label="助手对话" aria-live="polite" aria-relevant="additions text"></div>' +
+      '<header class="assistant-panel-header"><span class="assistant-brand assistant-orb" aria-hidden="true"></span><div class="assistant-heading"><h2 id="assistant-panel-title">家长助手</h2><span class="assistant-context" id="assistant-panel-context" hidden></span><p id="assistant-panel-description" class="assistant-sr-only">查积分、整理草稿、打开页面</p></div>' +
+      button('clear', icon('clear'), 'assistant-tool assistant-clear', ' aria-label="清空助手对话" title="清空助手对话" hidden') + button('close', icon('close'), 'assistant-tool', ' aria-label="收起助手" title="收起助手"') + '</header>' +
+      '<div class="assistant-workspace"><div class="assistant-welcome" hidden><h3>今天想做点什么？</h3></div>' +
+      '<div id="assistant-chat-log" class="assistant-chat-log" role="log" aria-label="助手对话" aria-live="polite" aria-relevant="additions text"></div>' +
       '<div class="assistant-feedback" id="assistant-chat-feedback" hidden><p id="assistant-chat-error" role="alert"></p>' + button('retry', '重试', 'assistant-retry') + '</div>' +
       '<form id="assistant-chat-form" class="assistant-composer"><p id="assistant-chat-status" class="assistant-chat-status" role="status" aria-live="polite"></p><label for="assistant-chat-input" class="assistant-sr-only">给家长助手发消息</label>' +
-      '<div class="assistant-input-row">' + button('voice', icon('mic'), 'assistant-tool assistant-voice', ' aria-label="听写成文字" aria-pressed="false" title="听写成文字，核对后再发送"') +
-      '<textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="说说你想做什么…" enterkeyhint="enter" aria-describedby="assistant-composer-hint"></textarea>' +
+      '<div class="assistant-input-row"><textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="给家长助手发消息…" enterkeyhint="enter" aria-describedby="assistant-composer-hint"></textarea>' +
+      button('voice', icon('mic'), 'assistant-tool assistant-voice', ' aria-label="听写成文字" aria-pressed="false" title="听写成文字，核对后再发送"') +
       '<button id="assistant-chat-send" type="submit" class="assistant-send" aria-label="发送消息">' + icon('send') + '</button></div>' +
-      '<div class="assistant-composer-meta"><p id="assistant-composer-hint">核对草稿后，在原页面保存。</p><span id="assistant-chat-count">0 / 1200</span></div></form>' +
+      '<p id="assistant-composer-hint" class="assistant-sr-only">草稿可在原页面核对后保存。最多输入 1200 字。</p><span id="assistant-chat-count" hidden></span></form>' + examples() + '</div>' +
       '<div id="assistant-clear-confirm" class="assistant-confirm-overlay" hidden><section class="assistant-confirm" role="alertdialog" aria-modal="true" aria-labelledby="assistant-clear-title" aria-describedby="assistant-clear-description"><h3 id="assistant-clear-title">清空这段对话？</h3><p id="assistant-clear-description">当前对话和未办理的助手草稿会清空，已保存的家庭记录会保留。</p><div>' + button('cancel-clear', '保留对话', 'assistant-button') + button('confirm-clear', '清空对话', 'assistant-button assistant-danger') + '</div></section></div></section>';
     doc.body.appendChild(host); box = doc.getElementById('family-assistant-panel'); input = doc.getElementById('assistant-chat-input'); log = doc.getElementById('assistant-chat-log');
     host.addEventListener('click', clicked); host.addEventListener('submit', submitted); input.addEventListener('input', typed);
@@ -119,9 +125,15 @@
     return html + '</div></article>';
   }
   function hasTurn(turnId, role) { return messages.some(function (message) { return message.turnId === turnId && (!role || message.role === role); }); }
-  function welcome() {
-    var prompts = ['我现在有多少积分？', '新建一个阅读的常用行为', '明天晚上八点提醒我阅读'];
-    return '<section class="assistant-welcome"><span class="assistant-welcome-mark" aria-hidden="true">' + icon('spark') + '</span><h3>今天需要我帮什么？</h3><div class="assistant-examples">' + prompts.map(function (prompt) { return button('example', esc(prompt) + icon('arrow'), 'assistant-example', ' data-prompt="' + esc(prompt) + '" title="放入输入框，核对后发送"'); }).join('') + '</div></section>';
+  function examples() {
+    var prompts = [
+      { icon: 'coins', label: '查积分', text: '我现在有多少积分？' },
+      { icon: 'book', label: '建常用行为', text: '新建一个阅读的常用行为' },
+      { icon: 'bell', label: '设提醒', text: '明天晚上八点提醒我阅读' }
+    ];
+    return '<div class="assistant-examples" role="group" aria-label="常用提问" hidden>' + prompts.map(function (prompt) {
+      return button('example', icon(prompt.icon) + esc(prompt.label), 'assistant-example', ' data-prompt="' + esc(prompt.text) + '" title="' + esc(prompt.text) + '"');
+    }).join('') + '</div>';
   }
   function renderConversation(toBottom) {
     if (!log) return;
@@ -130,7 +142,12 @@
     html += messages.map(messageHTML).join('');
     if (pendingTurn && !hasTurn(pendingTurn.turnId)) html += '<article class="assistant-message assistant-message-user assistant-message-pending"><span class="assistant-sr-only">你：</span><div class="assistant-message-content"><p class="assistant-message-text">' + esc(pendingTurn.text) + '</p></div></article>';
     if (draft && draft.result && !messages.some(function (message) { return message.role === 'assistant' && message.turnId === draft.turnId; })) html += currentDraftHTML();
-    log.innerHTML = html || welcome();
+    var welcome = loaded && !html && !serverPending;
+    box.classList.toggle('assistant-start', welcome);
+    box.querySelector('.assistant-welcome').hidden = !welcome;
+    box.querySelector('.assistant-examples').hidden = !welcome;
+    log.hidden = welcome;
+    log.innerHTML = html;
     if (toBottom || nearEnd) log.scrollTop = log.scrollHeight; else log.scrollTop = oldTop;
   }
 
@@ -139,16 +156,21 @@
     var sending = !!active && active.kind === 'turn' || !!serverPending, clearing = !!active && active.kind === 'clear';
     var status = voiceNote || (listening ? '正在听写，只会转成文字。' : clearing ? '正在清空对话…' : sending ? '正在整理，可以收起后再来看。' : active && active.kind === 'read' ? '正在同步对话…' : notice);
     doc.getElementById('assistant-chat-status').textContent = status;
-    doc.getElementById('assistant-panel-context').textContent = contextLabel();
-    doc.getElementById('assistant-panel-context').hidden = !contextLabel();
+    var context = contextLabel(), contextNode = doc.getElementById('assistant-panel-context');
+    contextNode.textContent = context;
+    contextNode.hidden = !context;
     doc.getElementById('assistant-chat-send').disabled = !loaded || !trim(text) || busy() || confirming || uncertainTurn();
     doc.getElementById('assistant-chat-send').setAttribute('aria-busy', String(sending));
-    host.querySelector('[data-assistant-action="clear"]').disabled = !loaded || clearing;
+    var clearButton = host.querySelector('[data-assistant-action="clear"]');
+    clearButton.hidden = !(messages.length || draft || pendingTurn || serverPending || text || confirming);
+    clearButton.disabled = !loaded || clearing;
     var microphone = host.querySelector('[data-assistant-action="voice"]');
     microphone.disabled = !SPEECH || clearing || confirming;
     microphone.setAttribute('aria-pressed', String(listening)); microphone.setAttribute('aria-label', listening ? '停止听写' : '听写成文字');
     microphone.title = SPEECH ? '听写成文字，核对后再发送' : '当前浏览器不支持听写，请输入文字';
-    doc.getElementById('assistant-chat-count').textContent = text.length + ' / 1200';
+    var count = doc.getElementById('assistant-chat-count');
+    count.hidden = text.length < 1080;
+    count.textContent = text.length + ' / 1200';
     doc.getElementById('assistant-chat-feedback').hidden = !error;
     doc.getElementById('assistant-chat-error').textContent = error;
     var retryButton = host.querySelector('[data-assistant-action="retry"]'); retryButton.hidden = !retry; retryButton.disabled = !!active;

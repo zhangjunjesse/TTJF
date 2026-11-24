@@ -67,7 +67,7 @@ function configureSelection(cases) {
 function includesPhase(value) { return !selection || selection.cases.some(entry => entry.phase === value && selection.included.has(entry.label)); }
 const sa = (name, id) => 'button[data-saas="' + name + '"]' + (id === undefined ? '' : '[data-id="' + id + '"]');
 const submit = '#saas-form button[type="submit"]';
-const save = '.sheet-header button.sheet-save[type="submit"][form="editor-form"]';
+const save = B.SELECTORS.submit;
 const parentSubmit = '#parent-form button[type="submit"]';
 const snapshot = page => page.evaluate(() => window.FamilyDemo && window.FamilyDemo.getState());
 const status = page => page.evaluate(() => window.FamilySaas && window.FamilySaas.status());
@@ -210,7 +210,7 @@ async function createEnvironment(options = {}) {
   let now = Date.now(), server;
   const port = await reservePort(), origin = 'http://127.0.0.1:' + port;
   const config = {
-    database, publicOrigin: origin, environment: 'test', rootDir: ROOT, now: () => new Date(now),
+    database, publicOrigin: origin, environment: 'test', rootDir: options.staticRoot || ROOT, now: () => new Date(now),
     mailer: { sendMail: async message => {
       captured.push(message);
       const kind = /#(verify|reset|invite)=/.exec(message.text || '');

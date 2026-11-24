@@ -397,11 +397,11 @@ async function run() {
     });
     await Q.check('Device sound boolean survives reload while hide/logout stop real audio; wake-lock UI does not alter family state', async () => {
       const before = await sql(); await preferences('sound'); assert.equal(await page.evaluate(() => localStorage.getItem('ttjf-saas-device-sound-v1')), 'true');
-      await page.reload({ waitUntil: 'load' }); await selectAfterReload(); await preferences(); assert.match(await page.$eval(a('sound'), node => node.textContent), /已开启/);
+      await page.reload({ waitUntil: 'load' }); await selectAfterReload(); await preferences(); assert.equal(await page.$eval(a('sound'), node => node.getAttribute('aria-checked')), 'true');
       await page.$eval('#sound-complete', audio => { audio.loop = true; }); await click(page, a('sound')); await click(page, a('sound'));
       await page.waitForFunction(() => !document.querySelector('#sound-complete').paused);
       await visibility(true); assert.equal(await page.$eval('#sound-complete', audio => audio.paused && audio.currentTime === 0), true);
-      await visibility(false); await Q.ready(page, familyId); await preferences(); assert.match(await page.$eval(a('sound'), node => node.textContent), /已开启/);
+      await visibility(false); await Q.ready(page, familyId); await preferences(); assert.equal(await page.$eval(a('sound'), node => node.getAttribute('aria-checked')), 'true');
       await click(page, a('sound')); await click(page, a('sound')); await page.waitForFunction(() => !document.querySelector('#sound-complete').paused);
       await Q.logout(page); assert.equal(await page.$eval('#sound-complete', audio => audio.paused && audio.currentTime === 0), true); assert.equal(await page.evaluate(() => localStorage.getItem('ttjf-saas-device-sound-v1')), 'true');
       await Q.login(page, ownerEmail, currentPassword, familyId); await Q.ready(page, familyId); await preferences('sound'); assert.equal(await page.evaluate(() => localStorage.getItem('ttjf-saas-device-sound-v1')), 'false');

@@ -90,6 +90,17 @@ async function layout() {
     await fixture(width, height);
     await check(width + 'px opens without focusing the keyboard and keeps the form draft', async () => {
       await open(); const value = await geometry(); withinGeometry(value); assert.equal(value.focused, 'family-assistant-panel');
+      assert.equal(await page.$eval(a('clear'), node => node.getClientRects().length), 0, 'a fresh conversation has nothing to clear');
+      assert.equal(await page.$eval('#assistant-chat-count', node => node.getClientRects().length), 0);
+      if (height >= 420) {
+        const positions = await page.evaluate(() => {
+          const rect = selector => document.querySelector(selector).getBoundingClientRect();
+          return { headingEnd: rect('.assistant-welcome').bottom, inputTop: rect('.assistant-input-row').top,
+            inputEnd: rect('.assistant-input-row').bottom, suggestionsTop: rect('.assistant-examples').top };
+        });
+        assert.ok(positions.headingEnd <= positions.inputTop && positions.inputTop - positions.headingEnd <= 32);
+        assert.ok(positions.inputEnd <= positions.suggestionsTop && positions.suggestionsTop - positions.inputEnd <= 24);
+      }
       assert.equal(Math.round(value.panel.width), width >= 900 ? 420 : width); await draftUntouched();
       assert.equal(await page.$eval('#assistant-panel-context', node => node.textContent), '正在编辑常用行为');
       const smallTargets = await page.$$eval('#family-assistant-panel button, #assistant-chat-input', nodes => nodes.filter(node => node.getClientRects().length).map(node => ({ label: node.textContent || node.getAttribute('aria-label'), width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })).filter(rect => rect.width < 47.9 || rect.height < 47.9));
@@ -264,6 +275,14 @@ async function voice() {
     await page.click(a('example')); assert.ok(await page.$eval('#assistant-chat-input', node => node.value.length > 0));
     assert.equal(await page.evaluate(() => document.activeElement.id === 'assistant-chat-input'), false);
     assert.equal(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).length), 0);
+  });
+  await check('The composer shows its character limit near capacity and hides it after a shorter edit', async () => {
+    await write('读'.repeat(1150));
+    assert.equal(await page.$eval('#assistant-chat-count', node => node.innerText), '1150 / 1200');
+    assert.ok(await page.$eval('#assistant-chat-count', node => node.getClientRects().length));
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.maxLength), 1200);
+    await write('查积分');
+    assert.equal(await page.$eval('#assistant-chat-count', node => node.getClientRects().length), 0);
   });
   await check('Recognition only transcribes; manual editing aborts late microphone callbacks', async () => {
     await write('原有文字'); await page.click(a('voice'));

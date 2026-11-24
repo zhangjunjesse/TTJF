@@ -1,7 +1,7 @@
 'use strict';
 
 // One bounded group per process, using synthetic users and a fresh SQLite file.
-// DEVICE_HOME_CASE=phone|phone-landscape|desktop-screen|tablet|preferences|storage|sync
+// DEVICE_HOME_CASE=phone|phone-award|phone-award-draft|phone-landscape|desktop-screen|tablet|preferences|storage|sync
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, action: a, click, ui, snapshot } = Q;
 const CASE = process.env.DEVICE_HOME_CASE || 'phone';
-const CASES = ['phone', 'phone-landscape', 'desktop-screen', 'tablet', 'preferences', 'storage', 'sync'];
+const CASES = ['phone', 'phone-award', 'phone-award-draft', 'phone-landscape', 'desktop-screen', 'tablet', 'preferences', 'storage', 'sync'];
 assert.ok(CASES.includes(CASE), 'Unknown DEVICE_HOME_CASE');
 const KEY = 'ttjf-device-home-v1';
 const SOURCES = ['test/device-home-browser.cjs', 'test/browser.cjs', 'test/saas-browser.cjs',
@@ -167,6 +167,238 @@ async function phone() {
     assert.notEqual((await ui(page)).form, null, 'the summary has a readable detail panel');
     await Q.shot(page, CASE + '-seven-day-details'); await Q.home(page); await mode('points');
     await unchanged(before, marker, 'seven-day detail');
+  });
+}
+async function phoneAwardFixture(allCommon = true) {
+  let sequence = 0;
+  async function fixtureAction(input, protectedAction = true) {
+    const before = await env.api(page, '/api/state');
+    assert.equal(before.status, 200);
+    const action = { ...input, id: 'device-home-' + CASE + '-fixture-' + (++sequence) };
+    let grant;
+    if (protectedAction) {
+      const challenge = await env.api(page, '/api/parent/challenge', 'POST', { revision: before.body.revision, action });
+      assert.equal(challenge.status, 200, JSON.stringify(challenge.body));
+      const verified = await env.api(page, '/api/parent/verify', 'POST', { challengeId: challenge.body.challengeId, answer: Q.PIN });
+      assert.equal(verified.status, 200, JSON.stringify(verified.body)); grant = verified.body.grant;
+    }
+    const saved = await env.api(page, '/api/action', 'POST', { revision: before.body.revision, action, grant });
+    assert.equal(saved.status, 200, JSON.stringify(saved.body));
+  }
+  await fixtureAction({ type: 'parent.setup', method: 'pin', pin: Q.PIN, confirmPin: Q.PIN }, false);
+  const items = [
+    { id: 'device-home-read', name: '合成阅读', points: 3 },
+    { id: 'device-home-tidy', name: '合成整理', points: 2 },
+    { id: 'device-home-help', name: '合成帮忙', points: 1 },
+    { id: 'device-home-brush', name: '自己刷牙', points: 1 }
+  ];
+  for (const item of allCommon ? items : items.slice(-1)) {
+    await fixtureAction({ type: 'pointItem.save', item: { ...item, reason: '', enabled: true } });
+  }
+  await reload(); await mode('points');
+}
+async function ledgerAwardReceipt(phase, expected) {
+  await page.waitForFunction(() => {
+    const world = window.FamilyWorldUI?.diagnostics();
+    return world && world.route === 'authorization' && world.visible === false;
+  }, { timeout: 4000 });
+  const receipt = await page.$eval('.ledger-award-dialog', dialog => {
+    const visible = node => {
+      if (!node) return false;
+      const box = node.getBoundingClientRect(), style = getComputedStyle(node);
+      return box.width > 0 && box.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+    };
+    const references = attribute => (dialog.getAttribute(attribute) || '').split(/\s+/).filter(Boolean)
+      .map(id => ({ id, text: document.getElementById(id)?.textContent.trim() || '' }));
+    const readable = selector => {
+      const node = dialog.querySelector(selector);
+      return !!node && visible(node) && !node.closest('[aria-hidden="true"], [hidden], [inert]');
+    };
+    const answer = dialog.querySelector('[name="answer"]');
+    const summaryBox = dialog.querySelector('.ledger-award-summary').getBoundingClientRect();
+    const body = dialog.querySelector('.sheet-body'), bodyBox = body.getBoundingClientRect(), bodyStyle = getComputedStyle(body);
+    const contentLeft = bodyBox.left + parseFloat(bodyStyle.borderLeftWidth) + parseFloat(bodyStyle.paddingLeft);
+    const contentRight = bodyBox.right - parseFloat(bodyStyle.borderRightWidth) - parseFloat(bodyStyle.paddingRight);
+    return {
+      phase: dialog.dataset.authPhase, role: dialog.getAttribute('role'), modal: dialog.getAttribute('aria-modal'),
+      text: dialog.textContent, name: dialog.querySelector('.ledger-award-name')?.textContent.trim(),
+      child: dialog.querySelector('.ledger-award-child')?.textContent.trim(),
+      amount: dialog.querySelector('.ledger-award-amount')?.textContent.trim(),
+      meta: dialog.querySelector('.ledger-award-meta')?.textContent.trim(),
+      reason: dialog.querySelector('.ledger-award-reason')?.textContent.trim() ?? null,
+      readable: ['.ledger-award-child', '.ledger-award-name', '.ledger-award-amount', '.ledger-award-meta'].map(readable),
+      label: references('aria-labelledby'), description: references('aria-describedby'),
+      focused: dialog.contains(document.activeElement),
+      pinLabel: answer ? [...answer.labels].map(label => label.textContent.trim()).join(' ') : null,
+      homeVisible: visible(document.querySelector('#main [data-home-mode="points"]')),
+      homeHiddenFromReader: document.querySelector('.app-shell')?.getAttribute('aria-hidden'),
+      worldStageVisible: visible(document.querySelector('#world-stage')),
+      layout: { summary: { left: summaryBox.left, right: summaryBox.right, width: summaryBox.width },
+        contentLeft, contentRight, contentWidth: contentRight - contentLeft },
+      world: window.FamilyWorldUI.diagnostics()
+    };
+  });
+  assert.equal(receipt.phase, phase); assert.equal(receipt.role, 'dialog'); assert.equal(receipt.modal, 'true');
+  assert.equal(receipt.name, expected.name);
+  assert.equal(receipt.amount.replace(/\s+/g, ''), '+' + expected.points + '分');
+  assert.ok(receipt.child.includes('合成设备宝')); assert.ok(receipt.meta.includes(expected.time));
+  assert.ok(receipt.label.length && receipt.label.every(row => row.text), 'the receipt has a valid accessible dialog name');
+  assert.ok(receipt.description.length && receipt.description.every(row => row.text), 'the receipt has a valid accessible dialog description');
+  assert.ok(receipt.readable.every(Boolean), 'the child, behavior, amount and time are readable in the real receipt');
+  assert.equal(receipt.focused, true, 'focus stays in the active award dialog');
+  assert.equal(receipt.homeVisible, true, 'the actual points home remains visible behind review and PIN');
+  assert.equal(receipt.homeHiddenFromReader, 'true', 'the background is excluded from the active dialog reading order');
+  assert.equal(receipt.worldStageVisible, false, 'no 3D location replaces the actual ledger during review or PIN');
+  assert.equal(receipt.world.route, 'authorization'); assert.equal(receipt.world.visible, false);
+  if (CASE === 'phone-award' && phase === 'confirm') {
+    const layout = receipt.layout;
+    assert.ok(layout.contentWidth > 0 && layout.summary.width >= layout.contentWidth * .9,
+      'the real receipt fills at least 90% of the available phone sheet content: ' + JSON.stringify(layout));
+    assert.ok(layout.summary.left >= layout.contentLeft - 1 && layout.summary.right <= layout.contentRight + 1,
+      'the full-width receipt stays inside the phone sheet content: ' + JSON.stringify(layout));
+  }
+  if (expected.reason) assert.ok(receipt.reason?.includes(expected.reason), 'a supplied reason remains on the real receipt');
+  else {
+    assert.equal(receipt.reason, null, 'a blank optional reason has no empty receipt row');
+    assert.doesNotMatch(receipt.text, /未填写/);
+  }
+  if (phase === 'confirm') {
+    const cta = await page.$eval(a('points-confirm'), node => ({ text: node.textContent.trim(), busy: node.getAttribute('aria-busy'), disabled: node.disabled }));
+    assert.match(cta.text, /家长验证/); assert.doesNotMatch(cta.text, /发放|完成|成功|已加/);
+    assert.equal(cta.busy, 'false'); assert.equal(cta.disabled, false);
+    assert.equal(receipt.pinLabel, null, 'a review does not ask for a PIN before the explicit verification action');
+  } else assert.match(receipt.pinLabel, /家长\s*PIN/);
+  return receipt;
+}
+async function phoneAward() {
+  await check('A visible phone common behavior opens its real receipt directly and authorizes one point before returning to the first home record', async () => {
+    await phoneAwardFixture();
+    const before = await sql(), marker = env.calls.length, beforeTotals = Q.M.totals(before.state);
+    const commonItems = await page.$$eval('.points-behavior-grid [data-action="choose-point"]', nodes => nodes.map(node => ({
+      id: node.dataset.id, text: node.textContent.trim()
+    })));
+    assert.equal(commonItems.length, 4, 'the portrait points home exposes all four common behaviors');
+    const chosen = a('choose-point', 'device-home-brush'), target = await B.metrics(page, chosen);
+    assert.ok(target.some(row => row.width >= 47.9 && row.height >= 47.9 && row.inViewport && row.reachable),
+      'the actual brush-teeth behavior is visible and tappable without first opening the picker: ' + JSON.stringify(target));
+    assert.match(await page.$eval(chosen, node => node.textContent), /自己刷牙.*\+1/);
+    await Q.shot(page, 'phone-brush-common-visible');
+    await click(page, chosen, { scroll: false });
+    assert.equal((await ui(page)).authPhase, 'confirm');
+    await click(page, '.ledger-award-dialog .sheet-header button[aria-label="取消本次加分"]');
+    await page.waitForFunction(() => {
+      const current = window.FamilyDemo.getUI(); return !current.auth && current.form === null && current.view === 'points';
+    });
+    await mode('points');
+    assert.equal(await page.$eval(chosen, node => node === document.activeElement), true,
+      'one visible cancel returns to the same common-behavior home button');
+    await unchanged(before, marker, 'the visible quick-review cancellation');
+    progress('The visible cancel returned once to the original home behavior without authorization or writing');
+    await click(page, chosen, { scroll: false });
+    assert.equal((await ui(page)).form, 'points');
+    assert.equal((await ui(page)).authPhase, 'confirm');
+    assert.equal(await page.$('#editor-form'), null, 'the unchanged visible template does not open or focus an editor first');
+    const preview = await ledgerAwardReceipt('confirm', { name: '自己刷牙', points: 1, time: '12:30' });
+    assert.equal(await page.$('#parent-form [name="answer"]'), null, 'the preview does not ask for a PIN yet');
+    assert.deepEqual(await sql(), before, 'opening the behavior and its preview does not write any points');
+    assert.deepEqual(env.calls.slice(marker).filter(call => !['GET', 'HEAD'].includes(call.method)), [],
+      'the visible behavior and review do not request authorization or persist an award');
+    await Q.shot(page, 'phone-brush-preview');
+    await click(page, a('points-confirm'));
+    await page.waitForSelector('#parent-form [name="answer"]');
+    assert.equal((await ui(page)).authPhase, 'verify');
+    const pin = await ledgerAwardReceipt('verify', { name: '自己刷牙', points: 1, time: '12:30' });
+    assert.deepEqual(await sql(), before, 'the parent challenge alone does not award a point');
+    assert.equal(env.calls.slice(marker).filter(call => call.path === '/api/parent/challenge').length, 1);
+    assert.equal(env.calls.slice(marker).filter(call => call.path === '/api/action').length, 0);
+    await Q.shot(page, 'phone-brush-parent-pin');
+    await B.fill(page, '#parent-form [name="answer"]', Q.PIN); await click(page, Q.parentSubmit);
+    await page.waitForFunction(() => {
+      const current = window.FamilyDemo.getUI(); return !current.auth && !current.pending && current.form === null && current.view === 'points';
+    });
+    await mode('points');
+    const notice = await page.$$eval('#toast.visible, #home-feedback[data-feedback="true"]', nodes => nodes.filter(node => {
+      const r = node.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(node).visibility !== 'hidden';
+    }).map(node => node.textContent).join(' '));
+    assert.match(notice, /自己刷牙/); assert.match(notice, /\+\s*1\s*分/);
+    const firstRecord = await page.$eval('.points-recent-list li:first-child', node => ({
+      name: node.querySelector('strong').textContent, amount: node.querySelector('.points-record-amount').textContent.trim()
+    }));
+    assert.equal(firstRecord.name, '自己刷牙'); assert.match(firstRecord.amount, /^\+1\s*分$/);
+    const firstRecordTargets = await B.metrics(page, '.points-recent-list li:first-child');
+    assert.ok(firstRecordTargets.some(row => row.inViewport && row.reachable),
+      'the returned phone home visibly shows the first new record: ' + JSON.stringify(firstRecordTargets));
+    assert.equal(await page.$eval('[data-testid="earned-points"]', node => Number(node.textContent)), beforeTotals.earned + 1);
+    assert.equal(await page.$eval('[data-testid="available-points"]', node => Number(node.textContent)), beforeTotals.available + 1);
+    await Q.shot(page, 'phone-brush-award-success');
+    const after = await sql(), afterTotals = Q.M.totals(after.state);
+    assert.equal(after.revision, before.revision + 1, 'one authorized award creates exactly one family revision');
+    assert.equal(after.state.points.length, before.state.points.length + 1);
+    assert.deepEqual(after.state.points.filter(row => row.itemId === 'device-home-brush').map(row => ({ name: row.name, points: row.points, reason: row.reason, at: row.at })),
+      [{ name: '自己刷牙', points: 1, reason: '', at: '2026-11-20T04:30:00.000Z' }]);
+    assert.deepEqual(afterTotals, { earned: beforeTotals.earned + 1, spent: beforeTotals.spent, available: beforeTotals.available + 1 });
+    assert.deepEqual(await snapshot(page), after.state, 'the home and SQLite agree on the actually committed ledger');
+    const writes = env.calls.slice(marker).filter(call => call.path === '/api/action');
+    assert.equal(writes.length, 1); assert.equal(writes[0].action.type, 'points.add'); assert.equal(writes[0].action.hasGrant, true);
+    report.phoneAward = { commonItems, brushTargets: target, preview, pin, notice, firstRecord, firstRecordTargets,
+      beforeTotals, afterTotals, beforeRevision: before.revision, afterRevision: after.revision, authorizedWrites: writes.length };
+    progress('Brush-teeth award committed once and visible on the returned phone home');
+  });
+}
+async function phoneAwardDraft() {
+  await phoneAwardFixture(false);
+  const chosen = a('choose-point', 'device-home-brush'), before = await sql(), marker = env.calls.length;
+  const readDraft = () => page.$eval('#editor-form', form => Object.fromEntries(['name', 'points', 'reason', 'recordTime']
+    .map(name => [name, form.elements[name].value])));
+  await check('Returning from a common-behavior receipt keeps an editable draft and requests no authorization', async () => {
+    await click(page, chosen); assert.equal((await ui(page)).authPhase, 'confirm');
+    await click(page, '.sheet-footer ' + a('parent-cancel'));
+    assert.equal((await ui(page)).form, 'points'); assert.equal((await ui(page)).auth, false);
+    assert.deepEqual(await readDraft(), { name: '自己刷牙', points: '1', reason: '', recordTime: '12:30' });
+    await unchanged(before, marker, 'returning from the direct common-behavior review');
+    await Q.shot(page, 'phone-brush-return-to-edit');
+  });
+  await check('Separate amount, reason and time drafts reopen for editing instead of being overwritten by quick review', async () => {
+    const drafts = [
+      { label: 'amount', values: { points: 7 }, expected: { points: '7', reason: '', recordTime: '12:30' } },
+      { label: 'reason', values: { points: 1, reason: '早餐后自己刷牙' }, expected: { points: '1', reason: '早餐后自己刷牙', recordTime: '12:30' } },
+      { label: 'time', values: { reason: '', recordTime: '10:05' }, expected: { points: '1', reason: '', recordTime: '10:05' } }
+    ];
+    report.phoneAwardDrafts = [];
+    for (const draft of drafts) {
+      await B.fillForm(page, draft.values);
+      await click(page, '.sheet-header ' + a('form-close')); await mode('points');
+      assert.equal((await ui(page)).form, null);
+      await click(page, chosen);
+      assert.equal((await ui(page)).form, 'points'); assert.equal((await ui(page)).auth, false,
+        draft.label + ' changes must open the saved editor rather than a replacement review');
+      assert.equal(await page.$('.points-confirm-dialog'), null);
+      const actual = await readDraft(); assert.deepEqual(actual, { name: '自己刷牙', ...draft.expected });
+      report.phoneAwardDrafts.push({ field: draft.label, draft: actual });
+      progress('Retained independent ' + draft.label + ' draft');
+    }
+    await unchanged(before, marker, 'reopening each independent common-behavior draft');
+    await Q.shot(page, 'phone-brush-time-draft-retained');
+  });
+  await check('The edited common-behavior receipt and cancelled PIN leave both the template and ledger unchanged', async () => {
+    await B.fillForm(page, { points: 7, reason: '早餐后自己刷牙' }); await click(page, Q.save);
+    const review = await ledgerAwardReceipt('confirm', { name: '自己刷牙', points: 7, reason: '早餐后自己刷牙', time: '10:05' });
+    await unchanged(before, marker, 'edited common-behavior review');
+    await Q.shot(page, 'phone-brush-edited-receipt');
+    await click(page, a('points-confirm')); await page.waitForSelector('#parent-form [name="answer"]');
+    const pin = await ledgerAwardReceipt('verify', { name: '自己刷牙', points: 7, reason: '早餐后自己刷牙', time: '10:05' });
+    await B.fill(page, '#parent-form [name="answer"]', Q.PIN);
+    assert.deepEqual(await sql(), before, 'entering a valid PIN still needs its explicit verify action');
+    await click(page, '.sheet-footer ' + a('parent-cancel'));
+    assert.equal((await ui(page)).auth, false);
+    assert.deepEqual(await readDraft(), { name: '自己刷牙', points: '7', reason: '早餐后自己刷牙', recordTime: '10:05' });
+    await click(page, '.sheet-header ' + a('form-close')); await mode('points');
+    assert.deepEqual(await sql(), before, 'cancelling a PIN never changes the template or stored ledger');
+    assert.deepEqual(await snapshot(page), before.state);
+    const requests = env.calls.slice(marker).filter(call => !['GET', 'HEAD'].includes(call.method));
+    assert.deepEqual(requests.map(call => call.path), ['/api/parent/challenge'], 'only the explicit review action requests one challenge; cancelled PIN never verifies or commits');
+    report.phoneAwardCancellation = { review, pin, beforeRevision: before.revision, afterRevision: (await sql()).revision, requests };
+    await Q.shot(page, 'phone-brush-cancelled-no-record');
   });
 }
 async function landscape() {
@@ -348,7 +580,7 @@ async function run() {
   try {
     await Promise.race([(async () => {
       await setup();
-      await ({ phone, 'desktop-screen': phone, 'phone-landscape': landscape, tablet, preferences, storage, sync })[CASE]();
+      await ({ phone, 'phone-award': phoneAward, 'phone-award-draft': phoneAwardDraft, 'desktop-screen': phone, 'phone-landscape': landscape, tablet, preferences, storage, sync })[CASE]();
       assert.deepEqual(Q.report.pageErrors, []);
       assert.deepEqual(hashes(), report.sourceHashes, 'sources changed during device-home evidence run');
       progress('Case complete');
