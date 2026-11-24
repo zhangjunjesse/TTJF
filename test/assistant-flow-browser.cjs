@@ -289,7 +289,10 @@ async function awardUnitFlow(page, env, family, open) {
     assert.deepEqual(await sql(), beforePlus, 'the screenshot phrase only fills the form');
     await click(page, Q.save);
     assert.equal((await Q.ui(page)).authPhase, 'confirm');
-    assert.match(await page.$eval('.points-confirm-dialog', node => node.textContent), /确认加1分/);
+    const receipt = '.ledger-award-dialog ';
+    assert.equal(await page.$eval(receipt + '.ledger-award-name', node => node.textContent.trim()), '自己睡觉');
+    assert.equal(await page.$eval(receipt + '.ledger-award-amount', node => node.textContent.replace(/\s+/g, '')), '+1分');
+    assert.match(await page.$eval(receipt + action('points-confirm'), node => node.textContent), /家长验证/);
     assert.deepEqual(await sql(), beforePlus, 'review still requires manual confirmation and parent authorization');
     await Q.shot(page, 'award-plus-sleep-confirmation');
     await click(page, action('points-confirm'));
