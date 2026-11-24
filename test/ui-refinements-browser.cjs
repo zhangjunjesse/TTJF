@@ -10,7 +10,7 @@ const { createAssistantService } = require('../assistant-service.cjs');
 const { route } = require('../assistant-tools.cjs');
 const { B, M, PIN, action: a, click, ui, snapshot, save, parentSubmit } = Q;
 const CASE = process.env.UI_REFINEMENT_CASE || 'award';
-assert.ok(['award', 'template', 'templateDelete', 'history', 'voice', 'retry', 'balance', 'aiForm', 'aiFormPartial'].includes(CASE), 'Unknown UI_REFINEMENT_CASE');
+assert.ok(['award', 'picker', 'template', 'templateDelete', 'history', 'voice', 'retry', 'balance', 'aiForm', 'aiFormPartial'].includes(CASE), 'Unknown UI_REFINEMENT_CASE');
 // A configured provider is called only when this specific case explicitly opts in.
 const FORM_LIVE = CASE === 'aiForm' && process.env.UI_FORM_LIVE === '1';
 const FORM_INPUT = '以后自己读书满二十分钟，奖励五分';
@@ -88,7 +88,7 @@ async function setup() {
     }
   } });
   env.clock(Date.parse('2026-11-17T04:30:00Z'));
-  page = await env.newPage({ controlledClock: true, width: 905, height: 768 }); Q.active(page);
+  page = await env.newPage({ controlledClock: true, width: CASE === 'picker' ? 390 : 905, height: CASE === 'picker' ? 844 : 768 }); Q.active(page);
   if (CASE === 'aiForm' || CASE === 'aiFormPartial') page.on('request', request => {
     if (new URL(request.url()).pathname !== '/api/assistant/chat/turn') return;
     const body = JSON.parse(request.postData());
@@ -101,6 +101,13 @@ async function setup() {
   familyId = await Q.createFamily(page, '合成界面核对-' + CASE, CHILD);
   await fixtureAction({ type: 'parent.setup', method: 'pin', pin: PIN, confirmPin: PIN }, false);
   await fixtureAction({ type: 'pointItem.save', item: { id: 'ui-common', name: '合成常用行为', points: 5, reason: '主动整理桌面', enabled: true } });
+  if (CASE === 'picker') {
+    for (let index = 1; index <= 31; index++) {
+      // Fixture creation spans normal verification windows; production limits stay enabled.
+      if (index % 15 === 0) env.clock(env.now() + 61000);
+      await fixtureAction({ type: 'pointItem.save', item: { id: 'ui-picker-' + index, name: '练习' + String(index).padStart(2, '0') + '：自己收好学习用品', points: 5, reason: '', enabled: true } });
+    }
+  }
   if (CASE === 'templateDelete') {
     await fixtureAction({ type: 'pointItem.save', item: { id: 'ui-retained', name: '合成保留常用行为', points: 8, reason: '', enabled: true } });
     await fixtureAction({ type: 'points.add', itemId: 'ui-common', reason: '合成删除前的历史原因' });
@@ -223,11 +230,52 @@ async function award() {
     await click(page, '.sheet-footer ' + a('parent-cancel')); assert.deepEqual(await sql(), before);
   });
 }
+async function picker() {
+  await Q.check('A dense phone picker restores its page capacity after a one-result search and keeps every behavior reachable', async () => {
+    const before = await sql(), marker = env.calls.length;
+    await click(page, a('all-behaviors')); await click(page, a('picker-search'));
+    const custom = '.behavior-picker-body ' + a('points-new');
+    const customTarget = await B.metrics(page, custom);
+    assert.ok(customTarget.length === 1 && customTarget[0].width >= 48 && customTarget[0].height >= 48 && customTarget[0].inViewport && customTarget[0].reachable,
+      'The labeled custom award remains a 48px target without scrolling');
+    const initial = (await ui(page)).picker;
+    assert.equal(initial.total, 32); assert.ok(initial.pages > 1 && initial.pageSize > 2);
+    const denseHeight = await page.$eval('.behavior-picker-sheet', node => node.getBoundingClientRect().height);
+    await Q.shot(page, 'picker-dense');
+    await Q.type(page, '#behavior-search', '练习08');
+    await page.waitForFunction(() => window.FamilyDemo.getUI().picker.total === 1);
+    assert.equal((await ui(page)).picker.items[0].id, 'ui-picker-8');
+    const singleHeight = await page.$eval('.behavior-picker-sheet', node => node.getBoundingClientRect().height);
+    assert.ok(singleHeight < denseHeight, 'A one-result phone drawer fits its actual content');
+    await Q.shot(page, 'picker-one-result');
+    await click(page, '.picker-search ' + a('picker-clear'));
+    const restored = (await ui(page)).picker;
+    assert.equal(restored.total, 32); assert.equal(restored.pageSize, initial.pageSize);
+    assert.equal(restored.pages, initial.pages); assert.equal(restored.page, 0);
+    const restoredHeight = await page.$eval('.behavior-picker-sheet', node => node.getBoundingClientRect().height);
+    assert.ok(Math.abs(restoredHeight - denseHeight) < 1, 'Clearing search restores the dense drawer height');
+    await Q.shot(page, 'picker-cleared');
+    const seen = [];
+    for (let pageIndex = 0; pageIndex < restored.pages; pageIndex++) {
+      const current = (await ui(page)).picker;
+      assert.equal(current.page, pageIndex);
+      seen.push(...current.items.map(item => item.id));
+      if (pageIndex + 1 < restored.pages) await click(page, a('picker-next'), { scroll: false });
+    }
+    assert.equal(seen.length, 32); assert.equal(new Set(seen).size, 32);
+    assert.deepEqual(seen.slice().sort(), before.state.pointItems.map(item => item.id).sort());
+    assert.deepEqual(await sql(), before); assert.deepEqual(recent(marker, '/api/action'), []);
+    Q.report.pickerCapacity = { initial, restored, denseHeight, singleHeight, restoredHeight, seen };
+    progress('Dense search, clearing and all-page reachability verified without writes');
+  });
+}
 async function template() {
   await Q.check('Creating a named common behavior uses explicit template copy and changes no earned points', async () => {
     const before = await sql();
     await click(page, a('all-behaviors')); await click(page, a('point-list'));
-    assert.match(await page.$eval('.template-create', node => node.textContent), /新建常用行为/);
+    assert.match(await page.$eval('.template-create', node => node.textContent), /新建/);
+    assert.equal(await page.$eval('.template-create', node => node.getAttribute('aria-label')), '新建常用行为');
+    assert.equal(await page.$eval('#sheet-title', node => node.textContent), '常用行为');
     await click(page, a('point-item-new'));
     assert.match(await page.$eval('.sheet', node => node.textContent), /本次不增加积分/);
     await B.fillForm(page, { name: '合成新建常用行为', points: 9, reason: '默认预设原因' });
@@ -473,7 +521,10 @@ async function balance() {
     assert.equal(await page.$eval('#editor-form [name="saveAsTemplate"]', node => node.checked), true);
     assert.equal(await page.$eval('#editor-form [name="reason"]', node => node.required), false);
     assert.match(await page.$eval('#editor-form [name="reason"]', node => node.closest('label').textContent), /选填/);
-    const text = await review(marker, before); assert.match(text, /未填写/);
+    const text = await review(marker, before);
+    assert.ok(await page.$('.ledger-award-dialog'), 'the points-home review uses the actual ledger receipt');
+    assert.equal(await page.$('.ledger-award-reason'), null, 'a blank optional reason is omitted from the new receipt');
+    assert.doesNotMatch(text, /未填写/);
     await confirm(); await finish();
     const after = await sql(), saved = after.state.points.find(row => row.name === '合成喂猫');
     assert.equal(saved.reason, '');
@@ -520,7 +571,7 @@ async function run() {
   Q.report.boundaries.push('UI refinement case ' + CASE + ': real SaaS HTTP and temporary SQLite; synthetic email verification and ' +
     (FORM_LIVE ? 'explicitly opted-in configured model generation' : 'mock assistant generation') + ', no external mail, microphone or live family data.');
   await setup();
-  await ({ award, template, templateDelete, history, voice, retry, balance, aiForm, aiFormPartial })[CASE]();
+  await ({ award, picker, template, templateDelete, history, voice, retry, balance, aiForm, aiFormPartial })[CASE]();
   assert.deepEqual(Q.report.pageErrors, []); progress('Case complete');
 }
 Q.execute(run);

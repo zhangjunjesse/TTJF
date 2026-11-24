@@ -201,7 +201,13 @@ async function launcherFlow(page, env, device, open) {
       inSheet:!!node.closest('.sheet'), floating:node.classList.contains('assistant-launcher')
     })));
     assert.deepEqual(visibleEntries, [{inSheet:true,floating:false}], 'the sheet has one contextual entry');
-    assert.equal(await page.$eval('.assistant-sheet-entry .assistant-orb', node => node.getAnimations({subtree:true}).length), 0,
+    const contextual = await page.$eval('.assistant-sheet-entry', node => {
+      const rect = node.getBoundingClientRect();
+      return {name:node.getAttribute('aria-label'), width:rect.width, height:rect.height, animations:node.getAnimations({subtree:true}).length};
+    });
+    assert.equal(contextual.name, '打开家长助手');
+    assert.ok(contextual.width >= 48 && contextual.height >= 48, 'the contextual assistant remains easy to tap');
+    assert.equal(contextual.animations, 0,
       'the contextual entry does not animate');
     await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
     await click(page, 'button' + selector('close'));
@@ -359,7 +365,12 @@ async function awardUnitFlow(page, env, family, open) {
     assert.equal(await read('points'), '1', 'the pending assistant draft still has its original score');
     await Q.type(page, '#editor-form [name="points"]', '2'); await click(page, Q.save);
     assert.equal((await Q.ui(page)).authPhase, 'confirm');
-    assert.match(await page.$eval('.points-confirm-dialog', node => node.textContent), /确认加2分/);
+    assert.ok(await page.$('.ledger-award-dialog'), 'the points-home assistant draft uses the same real ledger receipt');
+    assert.match(await page.$eval('.ledger-award-name', node => node.textContent), /自己刷牙/);
+    assert.equal(await page.$eval('.ledger-award-amount', node => node.textContent.replace(/\s+/g, '')), '+2分');
+    assert.match(await page.$eval(action('points-confirm'), node => node.textContent), /家长验证/);
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/action', '/api/parent/challenge', '/api/parent/verify'].includes(call.path)), [],
+      'drafting and reviewing the edited score starts no authorization or business write');
     assert.deepEqual(await sql(), before, 'review has not committed the edited score');
     await Q.shot(page, 'award-unit-two-point-confirmation');
     await click(page, action('points-confirm'));
@@ -377,6 +388,41 @@ async function awardUnitFlow(page, env, family, open) {
     assert.equal(writes.length, 1); assert.equal(writes[0].action.type, 'points.add'); assert.equal(writes[0].action.hasGrant, true);
     assert.deepEqual(Q.report.pageErrors, []);
     await Q.shot(page, 'award-unit-final-two-point-award');
+  });
+  await Q.check('local screenshot phrase 自己睡觉+1分 retains its name and commits once after manual confirmation', async () => {
+    const beforePlus = await sql(), replies = await page.$$eval('.assistant-message-source', nodes => nodes.length);
+    await B.fill(page, '#assistant-chat-input', '自己睡觉+1分'); await click(page, '#assistant-chat-send');
+    await page.waitForFunction(count => document.querySelectorAll('.assistant-message-source').length === count + 1, {}, replies);
+    await Q.shot(page, 'award-plus-sleep-response');
+    assert.ok(await page.$(selector('apply')), 'the screenshot phrase must produce an editable award draft');
+    assert.equal(await page.$$eval('.assistant-message-source', nodes => nodes.at(-1).textContent), '本地');
+    assert.match(await page.$eval('.assistant-draft-pending', node => node.textContent), /自己睡觉/);
+    await click(page, selector('apply'));
+    assert.equal(await read('name'), '自己睡觉'); assert.equal(await read('points'), '1');
+    assert.deepEqual(await sql(), beforePlus, 'the screenshot phrase only fills the form');
+    await click(page, Q.save);
+    assert.equal((await Q.ui(page)).authPhase, 'confirm');
+    const receipt = '.ledger-award-dialog ';
+    assert.equal(await page.$eval(receipt + '.ledger-award-name', node => node.textContent.trim()), '自己睡觉');
+    assert.equal(await page.$eval(receipt + '.ledger-award-amount', node => node.textContent.replace(/\s+/g, '')), '+1分');
+    assert.match(await page.$eval(receipt + action('points-confirm'), node => node.textContent), /家长验证/);
+    assert.deepEqual(await sql(), beforePlus, 'review still requires manual confirmation and parent authorization');
+    await Q.shot(page, 'award-plus-sleep-confirmation');
+    await click(page, action('points-confirm'));
+    await page.waitForSelector('#parent-form [name="answer"]', {visible:true});
+    assert.deepEqual(await sql(), beforePlus);
+    await B.fill(page, '#parent-form [name="answer"]', Q.PIN); await click(page, Q.parentSubmit);
+    await page.waitForSelector('#assistant-chat-input', {visible:true});
+    await page.waitForFunction(() => !document.querySelector('[data-assistant-action="apply"]'));
+    await Q.settled(page);
+    const saved = await sql();
+    assert.equal(saved.revision, beforePlus.revision + 1); assert.equal(saved.state.points.length, 2);
+    assert.equal(saved.state.points[1].name, '自己睡觉'); assert.equal(saved.state.points[1].points, 1);
+    const writes = env.calls.slice(marker).filter(call => call.path === '/api/action');
+    assert.equal(writes.length, 2); assert.equal(writes[1].action.type, 'points.add'); assert.equal(writes[1].action.hasGrant, true);
+    assert.deepEqual((await Q.snapshot(page)).points, saved.state.points);
+    assert.deepEqual(Q.report.pageErrors, []);
+    await Q.shot(page, 'award-plus-sleep-final-one-point-award');
   });
 }
 

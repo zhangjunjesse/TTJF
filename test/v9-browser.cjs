@@ -5,6 +5,8 @@ const {ROOT,ARTIFACTS,Model,action,click,state,ui}=B;
 const SAVE='.sheet-header button.sheet-save[type="submit"][form="editor-form"]';
 const AUTH_SAVE='#parent-form button[type="submit"],button[type="submit"][form="parent-form"]';
 const TILE='.picker-grid button[data-action="choose-point"]';
+const CUSTOM='.behavior-picker-body '+action('points-new');
+const MANAGE='.picker-section-heading '+action('point-list');
 const ONLY=process.env.V9_CASES||'';
 const sha=file=>crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT,file))).digest('hex');
 const hashes=()=>Object.fromEntries(['app.js','styles.css','index.html','model.js','server.cjs','test/v9-browser.cjs'].map(file=>[file,sha(file)]));
@@ -21,7 +23,7 @@ async function shot(page,name){if(ONLY)return;const file='artifacts/v9-'+name+'.
 async function audit(page,label,extra=''){
   const data=await page.evaluate(selector=>{
     const rect=e=>{const r=e.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height,right:r.right,bottom:r.bottom};};
-    const selectorBase='.sheet-header button,.picker-grid button,#behavior-picker-footer button,#behavior-page,#behavior-search,.picker-search button';
+    const selectorBase='.sheet-header button,.picker-section-heading button,.picker-grid button,#behavior-picker-footer button,#behavior-page,#behavior-search,.picker-search button';
     const controls=[...document.querySelectorAll(selectorBase+(selector?','+selector:''))].filter(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden').map(e=>{const r=rect(e),hit=document.elementFromPoint(r.x+r.w/2,r.y+r.h/2);return{...r,label:e.getAttribute('aria-label')||e.innerText||e.name,disabled:e.disabled,hit:!!hit&&(hit===e||e.contains(hit))};});
     const panel=document.querySelector('.sheet');return{width:innerWidth,height:innerHeight,scrollWidth:document.documentElement.scrollWidth,panel:panel?rect(panel):null,controls,inputs:[...document.querySelectorAll('.sheet input:not([type="hidden"]):not([type="checkbox"]),.sheet textarea,.sheet select')].filter(e=>e.getClientRects().length).map(e=>({name:e.name||e.id,font:parseFloat(getComputedStyle(e).fontSize)}))};
   },extra);
@@ -32,7 +34,16 @@ async function audit(page,label,extra=''){
   return{width:data.width,height:data.height,minimumTarget:Math.min(...data.controls.flatMap(c=>[c.w,c.h])),minimumInputFont:data.inputs.length?Math.min(...data.inputs.map(i=>i.font)):null};
 }
 async function picker(page){await click(page,action('add-points'),{scroll:false});assert.equal((await ui(page)).form,'behaviorPicker');await B.delay(100);}
-async function formContract(page){assert.ok(await page.$(SAVE),'Header must own the external form submit');assert.equal(await page.$eval(SAVE,e=>e.form&&e.form.id),'editor-form');assert.equal(await page.$$eval('#editor-form button[type="submit"]',e=>e.length),0);assert.equal(await page.$$eval('button[data-action="points-mode"]',e=>e.length),0);assert.match(await page.$eval(SAVE,e=>e.innerText.trim()),/^(加分|保存|确认|发送)$/);assert.ok(await page.$eval(SAVE,e=>!!e.getAttribute('aria-label')));}
+async function formContract(page){
+  assert.ok(await page.$(SAVE),'Header must own the external form submit');
+  assert.equal(await page.$eval(SAVE,e=>e.form&&e.form.id),'editor-form');
+  assert.equal(await page.$$eval('#editor-form button[type="submit"]',e=>e.length),0);
+  assert.equal(await page.$$eval('button[data-action="points-mode"]',e=>e.length),0);
+  const label=await page.$eval(SAVE,e=>e.innerText.trim());
+  if((await ui(page)).form==='points')assert.equal(label,'核对加分');
+  else assert.match(label,/^(保存|确认|发送)$/);
+  assert.ok(await page.$eval(SAVE,e=>!!e.getAttribute('aria-label')));
+}
 async function submit(page,env,type,screenshot=false){
   const before=await state(page),revision=(await ui(page)).revision,start=env.requests.length;
   await click(page,SAVE,{scroll:false});await page.waitForFunction(()=>window.FamilyDemo.getUI().authPhase==='verify',{timeout:6000});
@@ -48,14 +59,16 @@ async function layouts(){
   for(const [name,width,height]of [['735',735,754],['390',390,844],['320',320,568]])await test(name+' App entry, back/draft, row navigation and touch sizing',async()=>{
     const{env,page}=await setup(width,height);try{
       const original=await state(page);await picker(page);assert.equal(await page.$$eval('button[data-action="points-mode"]',e=>e.length),0);assert.equal(await isVisible(page,'#behavior-search'),false);
-      for(const name of ['points-new','picker-search','point-list'])assert.ok(await page.$('.sheet-header '+action(name)));
+      assert.ok(await page.$('.sheet-header '+action('picker-search')));
+      assert.equal(await page.$eval(MANAGE,e=>e.getAttribute('aria-label')),'管理常用行为');
+      assert.equal(await page.$eval(CUSTOM,e=>e.textContent.trim()),'自定义加分');
       const measurements=[await audit(page,'picker-'+width)];if(width===735)await shot(page,'picker-735');
-      await click(page,'.sheet-header '+action('points-new'),{scroll:false});assert.equal((await ui(page)).form,'points');assert.equal(await value(page,'itemId'),'');await formContract(page);measurements.push(await audit(page,'new-points-'+width));assert.equal(await isVisible(page,'textarea[name="aiText"]'),false);if(width===390)await shot(page,'new-points-390');
+      await click(page,CUSTOM,{scroll:false});assert.equal((await ui(page)).form,'points');assert.equal(await value(page,'itemId'),'');await formContract(page);measurements.push(await audit(page,'new-points-'+width));assert.equal(await isVisible(page,'textarea[name="aiText"]'),false);if(width===390)await shot(page,'new-points-390');
       if(width===735){await typed(page,'name','往返保留的自定义加分');await typed(page,'reason','保留输入原因');await typed(page,'points','13');await click(page,action('ai-toggle'));assert.equal(await isVisible(page,'textarea[name="aiText"]'),true);await click(page,action('ai-toggle'));assert.equal(await value(page,'name'),'往返保留的自定义加分');}
       await B.closeSheet(page);assert.equal((await ui(page)).form,'behaviorPicker');assert.equal(await page.evaluate(()=>document.activeElement.dataset.action),'points-new');
-      if(width===735){await click(page,'.sheet-header '+action('points-new'),{scroll:false});assert.equal(await value(page,'name'),'往返保留的自定义加分');assert.equal(await value(page,'points'),'13');assert.equal(await value(page,'reason'),'保留输入原因');await B.closeSheet(page);}
+      if(width===735){await click(page,CUSTOM,{scroll:false});assert.equal(await value(page,'name'),'往返保留的自定义加分');assert.equal(await value(page,'points'),'13');assert.equal(await value(page,'reason'),'保留输入原因');await B.closeSheet(page);}
       const chosen=await page.$eval(TILE,e=>e.dataset.id);await click(page,TILE,{scroll:false});assert.equal(await value(page,'itemId'),chosen);await formContract(page);await B.closeSheet(page);assert.equal(await page.evaluate(()=>document.activeElement.dataset.id),chosen);
-      await click(page,'.sheet-header '+action('point-list'),{scroll:false});assert.equal((await ui(page)).form,'point-list');assert.ok(await page.$('.sheet-header '+action('point-item-new')));measurements.push(await audit(page,'management-'+width));
+      await click(page,MANAGE,{scroll:false});assert.equal((await ui(page)).form,'point-list');assert.ok(await page.$('.sheet-header '+action('point-item-new')));measurements.push(await audit(page,'management-'+width));
       const row=await page.$eval('.manage-row',e=>({id:e.dataset.id,tag:e.tagName,w:e.getBoundingClientRect().width,parent:e.parentElement.getBoundingClientRect().width,h:e.getBoundingClientRect().height,nested:e.querySelectorAll('button').length}));assert.equal(row.tag,'BUTTON');assert.ok(row.w>=row.parent-2&&row.h>=48);assert.equal(row.nested,0);if(width===320)await shot(page,'management-320');
       await click(page,'.manage-row');assert.equal((await ui(page)).form,'pointItem');assert.equal(await value(page,'name'),original.pointItems.find(i=>i.id===row.id).name);await formContract(page);measurements.push(await audit(page,'edit-common-'+width));
       assert.equal(env.requests.length,0);assert.deepEqual(await state(page),original);return measurements;
@@ -65,7 +78,7 @@ async function layouts(){
 async function main(){
   await layouts();
   await test('Custom points plus saved common item uses the actual PIN-authorized ledger',async()=>{
-    const{env,page}=await setup();try{const before=await state(page);await picker(page);await click(page,'.sheet-header '+action('points-new'));
+    const{env,page}=await setup();try{const before=await state(page);await picker(page);await click(page,CUSTOM);
       await typed(page,'name','v9主动收好书桌');await typed(page,'points','13');await typed(page,'reason','完成后主动整理');await click(page,'.template-toggle');assert.equal((await ui(page)).saveAsTemplate,true);await formContract(page);
       const next=await submit(page,env,'points.add',true),entry=next.points.at(-1),item=next.pointItems.find(i=>i.id===entry.itemId);
       assert.equal(next.points.length,before.points.length+1);assert.equal(next.pointItems.length,before.pointItems.length+1);assert.equal(entry.name,'v9主动收好书桌');assert.equal(entry.points,13);assert.equal(item.name,entry.name);assert.equal(item.reason,entry.reason);assert.equal(item.points,13);assert.equal(Model.totals(next).available,Model.totals(before).available+13);await B.noSheet(page);
@@ -73,7 +86,7 @@ async function main(){
     }finally{await cleanup(env);}
   });
   await test('Common-management header plus creates and authorizes a saved item',async()=>{
-    const{env,page}=await setup();try{await picker(page);await click(page,'.sheet-header '+action('point-list'));await click(page,'.sheet-header '+action('point-item-new'));assert.equal((await ui(page)).form,'pointItem');await typed(page,'name','v9新的常用行为');await typed(page,'points','9');await typed(page,'reason','自己独立完成');await formContract(page);const next=await submit(page,env,'pointItem.save');assert.equal(next.pointItems.filter(i=>i.name==='v9新的常用行为'&&i.points===9).length,1);assert.equal((await ui(page)).form,'point-list');return{created:1};}finally{await cleanup(env);}
+    const{env,page}=await setup();try{await picker(page);await click(page,MANAGE);await click(page,'.sheet-header '+action('point-item-new'));assert.equal((await ui(page)).form,'pointItem');await typed(page,'name','v9新的常用行为');await typed(page,'points','9');await typed(page,'reason','自己独立完成');await formContract(page);const next=await submit(page,env,'pointItem.save');assert.equal(next.pointItems.filter(i=>i.name==='v9新的常用行为'&&i.points===9).length,1);assert.equal((await ui(page)).form,'point-list');return{created:1};}finally{await cleanup(env);}
   });
   await test('Reminder header plus creates an authorized reminder',async()=>{
     const{env,page}=await setup();try{await B.navigate(page,'reminders');await audit(page,'reminder-header',action('task-new'));await click(page,action('task-new'),{scroll:false});assert.equal((await ui(page)).form,'task');await formContract(page);await typed(page,'title','v9明天整理书包');await typed(page,'note','检查水杯和作业');const next=await submit(page,env,'task.save');assert.equal(next.tasks.filter(t=>t.title==='v9明天整理书包'&&!t.deleted).length,1);return{created:1};}finally{await cleanup(env);}

@@ -224,7 +224,7 @@ async function runTest() {
     await audit('gallery-default-available', a('farm-pet-look', 'default'));
     await audit('gallery-festival-selected', a('farm-pet-look', 'festival'));
     await B.click(page, a('farm-pet-current'));
-    await B.click(page, a('add-points')); await audit('picker-award-entry', '.sheet .icon-button.nav-add');
+    await B.click(page, a('add-points')); await audit('picker-award-entry', '.sheet .picker-custom-award');
     await B.click(page, '.sheet ' + a('point-list')); await audit('template-create', '.sheet .template-create');
     await B.closeSheet(page);
     await B.click(page, '.sheet ' + a('points-new')); await audit('points-save', B.SELECTORS.submit);
