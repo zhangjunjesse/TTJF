@@ -114,8 +114,9 @@
   function show(next, value, context) {
     route = next; document.body.setAttribute('data-world-route', route);
     document.body.setAttribute('data-world-context', context);
-    // Release the station before the interactive farm mounts: one live WebGL context across the app.
-    if (route === 'farm') { reset(); return; }
+    document.body.setAttribute('data-world-layout', value.ledgerPage ? 'page' : 'scene');
+    // Ledger sheets keep their real home behind them. The farm owns its own renderer.
+    if (route === 'farm' || value.ledgerPage) { reset(); return; }
     ensureStage(); stage.hidden = false; projection = value;
     var copy = places[route];
     stage.querySelector('.world-eyebrow').textContent = copy[2];

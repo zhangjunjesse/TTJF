@@ -18,10 +18,6 @@
     if (options.button) return options.button(action, content, className, id, label);
     return '<button type="button" class="' + esc(className) + '" data-action="' + esc(action) + '"' + (id == null ? '' : ' data-id="' + esc(id) + '"') + (label ? ' aria-label="' + esc(label) + '"' : '') + '>' + content + '</button>';
   }
-  function displayTime(at, today, zone) {
-    var parts = M.calendarParts(at, zone), yesterday = M.addDays(today, -1, zone);
-    return (parts.date === today ? '今天' : parts.date === yesterday ? '昨天' : parts.month + '月' + parts.day + '日') + ' ' + parts.time;
-  }
   function kindLabel(kind) { return { points: '加分', redemption: '礼品兑换', purchase: '道具购买' }[kind]; }
 
   function ledgerRecords(state) {
@@ -98,42 +94,82 @@
     });
     return { today: today, zone: zone, from: days[0].key, to: today, rangeLabel: shortDate(days[0].key) + ' — ' + shortDate(today),
       totals: totals, earned: earned, count: count, activeDays: activeDays, todayEarned: days[6].points, todayCount: days[6].count,
-      days: days, behaviors: groupBehaviors(records, state.pointItems), recent: ledger.slice(0, 3).map(function (row) { row.timeLabel = displayTime(row.at, today, zone); return row; }) };
+      days: days, behaviors: groupBehaviors(records, state.pointItems), recent: ledger.slice(0, 3).map(function (row) {
+        var parts = M.calendarParts(row.at, zone);
+        row.day = parts.date;
+        row.dayLabel = parts.date === today ? '今天' : parts.date === days[5].key ? '昨天' : dateLabel(parts.date);
+        row.clock = parts.time;
+        row.timeLabel = row.dayLabel + ' ' + row.clock;
+        return row;
+      }) };
   }
   function summaryFor(options) { return options.summary || analyze(options); }
   function amountClass(value) { return String(value).length > 7 ? ' points-amount-long' : ''; }
 
   function wallet(options, summary) {
-    var total = summary.totals, label = '历史总积分' + total.earned + '，可兑换积分' + total.available + '，查看积分记录';
-    var amounts = '<span class="points-wallet-label">历史总积分</span><span class="points-total-line"><strong data-testid="earned-points" class="points-total' + amountClass(total.earned) + '">' + total.earned + '</strong><span>分</span></span><span class="points-balance-hint">查看积分记录 ' + draw(options, 'chevron') + '</span>';
-    return '<section class="points-wallet points-paper" aria-label="积分操作"><div class="points-wallet-values">' + button(options, 'records', amounts, 'points-balance-entry', '', label) + '<div class="points-today"><span>今日获得</span><strong class="' + (String(summary.todayEarned).length > 6 ? 'points-small-amount' : '') + '">+' + summary.todayEarned + '<small> 分</small></strong><small>' + summary.todayCount + ' 次加分</small></div></div><div class="points-available"><span>可兑换积分</span><strong data-testid="available-points" class="' + (String(total.available).length > 10 ? 'points-small-amount' : '') + '">' + total.available + '</strong><small>分</small></div><div class="points-main-actions">' + button(options, 'add-points', draw(options, 'plus') + '<span>立即加分</span>', 'btn primary points-add') + button(options, 'jump-rewards', draw(options, 'gift') + '<span>兑换礼品</span>', 'btn points-redeem', '', '礼品兑换') + '</div></section>';
+    var total = summary.totals;
+    var balances = '<span class="points-balance-row"><span>历史总积分</span><strong class="points-total" data-testid="earned-points">' + total.earned + '</strong></span>' +
+      '<span class="points-balance-row points-available"><span>可兑换积分</span><strong data-testid="available-points">' + total.available + '</strong></span>';
+    var label = '历史总积分' + total.earned + '，可兑换积分' + total.available + '，查看积分记录';
+    var today = '<div class="points-today"><span class="points-today-label">今日获得</span><strong class="points-today-score' + amountClass(summary.todayEarned) + '"><span class="points-score-sign">+</span>' + summary.todayEarned + '<small>分</small></strong>' +
+      '<span class="points-today-count">' + summary.todayCount + ' 次加分</span></div>';
+    return '<section class="points-wallet points-paper" aria-label="积分操作"><div class="points-wallet-values">' + today +
+      button(options, 'records', balances, 'points-balance-entry', '', label) + '</div><div class="points-main-actions">' +
+      button(options, 'add-points', draw(options, 'plus') + '<span>加分</span>', 'btn primary points-add', '', '加分') +
+      button(options, 'jump-rewards', draw(options, 'gift') + '<span>兑换礼品</span>', 'btn points-redeem', '', '礼品兑换') + '</div></section>';
   }
   function weekChart(summary) {
     var maximum = Math.max.apply(null, summary.days.map(function (day) { return day.points; }));
     return '<ol class="points-week-chart" aria-label="最近七天每天获得的积分">' + summary.days.map(function (day, i) {
       var height = maximum ? Math.round(day.points / maximum * 100) : 0;
-      return '<li class="' + (i === 6 ? 'is-today' : '') + '" aria-label="' + esc(day.dateLabel + '，获得' + day.points + '分，' + day.count + '次加分') + '"><span class="points-day-number' + (String(day.points).length > 5 ? ' points-day-number-long' : '') + '" aria-hidden="true">' + day.points + '</span><span class="points-day-track" aria-hidden="true"><span class="points-day-bar" style="height:' + height + '%"></span></span><span class="points-day-label" aria-hidden="true">' + day.label + '</span></li>';
+      var dayLabel = day.label.startsWith('周') ? '<span class="points-day-prefix">周</span>' + day.label.slice(1) : day.label;
+      var number = '<span class="points-day-number' + (String(day.points).length > 5 ? ' points-day-number-long' : '') + '">' + (day.points || '') + '</span>';
+      var track = '<span class="points-day-track" aria-hidden="true">' + number + '<span class="points-day-bar" style="height:' + height + '%"></span></span>';
+      return '<li class="' + (i === 6 ? 'is-today' : '') + '" aria-label="' + esc(day.dateLabel + '，获得' + day.points + '分，' + day.count + '次加分') + '">' + track + '<span class="points-day-label" aria-hidden="true">' + dayLabel + '</span></li>';
     }).join('') + '</ol>';
   }
   function overview(options, summary) {
-    return '<section class="points-overview points-paper" aria-labelledby="points-week-heading"><div class="points-section-heading"><div><span class="points-eyebrow">' + esc(summary.rangeLabel) + '</span><h2 id="points-week-heading">最近 7 天</h2></div>' + button(options, 'home-week', '查看小结 ' + draw(options, 'chevron'), 'text-button points-section-link', '', '查看最近七天积分小结') + '</div><div class="points-week-totals"><span><strong class="' + (String(summary.earned).length > 8 ? 'points-small-amount' : '') + '">+' + summary.earned + '</strong><small>获得积分</small></span><span><strong>' + summary.count + '<small> 次</small></strong><small>加分鼓励</small></span></div>' + weekChart(summary) + '<p class="points-week-note">' + draw(options, summary.count ? 'leaf' : 'sun') + (summary.count ? '有 ' + summary.activeDays + ' 天，留下了进步的足迹' : '还没有加分记录，下一次进步从这里开始') + '</p></section>';
+    return '<section class="points-overview points-paper" aria-labelledby="points-week-heading"><div class="points-section-heading"><h2 id="points-week-heading">最近 7 天</h2><span class="points-week-range">' + esc(summary.rangeLabel) + '</span>' + button(options, 'home-week', draw(options, 'chevron'), 'text-button points-section-link', '', '查看最近七天积分小结') + '</div>' +
+      '<div class="points-week-totals"><strong class="' + (String(summary.earned).length > 8 ? 'points-small-amount' : '') + '">+' + summary.earned + '<small> 分</small></strong><span>' + summary.count + ' 次加分</span></div>' + weekChart(summary) + '</section>';
+  }
+  function recentEntry(row) {
+    var detail = row.positive ? row.reason : row.kindLabel + (row.reason ? ' · ' + row.reason : '');
+    var amountClass = row.positive ? 'is-earned' : 'is-spent';
+    if (String(row.points).length > 6) amountClass += ' points-small-amount';
+    return '<li class="points-recent-row"><time class="points-record-time" datetime="' + esc(row.at) + '" aria-label="' + esc(row.timeLabel) + '">' + esc(row.clock) + '</time>' +
+      '<div class="points-record-copy"><strong>' + esc(row.name) + '</strong>' + (detail ? '<span class="points-record-reason">' + esc(detail) + '</span>' : '') + '</div>' +
+      '<b class="points-record-amount ' + amountClass + '">' + (row.positive ? '+' : '−') + row.points + '<small> 分</small></b></li>';
   }
   function recent(options, summary) {
-    return '<section class="points-recent points-paper" aria-labelledby="points-recent-heading"><div class="points-section-heading"><h2 id="points-recent-heading">最近记录</h2>' + button(options, 'records', '全部记录 ' + draw(options, 'chevron'), 'text-button points-section-link') + '</div>' + (summary.recent.length ? '<ul class="points-recent-list">' + summary.recent.map(function (row) {
-      return '<li class="points-recent-row"><span class="points-record-symbol ' + (row.positive ? 'is-earned' : 'is-spent') + '" aria-hidden="true">' + draw(options, row.positive ? 'star' : row.kind === 'redemption' ? 'gift' : 'snack') + '</span><div class="points-record-copy"><strong>' + esc(row.name) + '</strong>' + (row.reason ? '<span class="points-record-reason" title="' + esc(row.reason) + '">' + esc(row.reason) + '</span>' : '') + '<small>' + esc(row.timeLabel) + '<span aria-hidden="true"> · </span>' + row.kindLabel + '</small></div><b class="points-record-amount ' + (row.positive ? 'is-earned' : 'is-spent') + (String(row.points).length > 6 ? ' points-small-amount' : '') + '">' + (row.positive ? '+' : '−') + row.points + '<small> 分</small></b></li>';
-    }).join('') + '</ul>' : '<div class="points-records-empty"><span>' + draw(options, 'pencil') + '</span><p>暂无积分记录</p></div>') + '</section>';
+    var days = [];
+    summary.recent.forEach(function (row) {
+      var day = days[days.length - 1];
+      if (!day || day.key !== row.day) {
+        day = { key: row.day, label: row.dayLabel, entries: [] };
+        days.push(day);
+      }
+      day.entries.push(recentEntry(row));
+    });
+    var groups = days.map(function (day) {
+      var headingId = 'points-record-day-' + esc(day.key);
+      return '<div class="points-record-day' + (day.key === summary.today ? ' is-today' : '') + '"><h3 id="' + headingId + '"><time datetime="' + esc(day.key) + '">' + esc(day.label) + '</time></h3>' +
+        '<ul class="points-recent-list" role="list" aria-labelledby="' + headingId + '">' + day.entries.join('') + '</ul></div>';
+    });
+    return '<section class="points-recent points-paper" aria-labelledby="points-recent-heading"><div class="points-section-heading"><h2 id="points-recent-heading">最近记录</h2>' +
+      button(options, 'records', draw(options, 'chevron'), 'text-button points-section-link', '', '查看全部积分记录') + '</div>' +
+      (days.length ? '<div class="points-record-days">' + groups.join('') + '</div>' : '<div class="points-records-empty"><p>暂无积分记录</p></div>') + '</section>';
   }
-  function behavior(options, item, index) {
-    if (options.behaviorTile) return options.behaviorTile(item, index, 'points-home-behavior');
-    return button(options, 'choose-point', '<span class="behavior-symbol behavior-symbol-' + (index % 4) + '">' + draw(options, ['leaf', 'pencil', 'sun', 'heart'][index % 4]) + '</span><span class="behavior-copy"><b>' + esc(item.name) + '</b>' + (item.reason ? '<small>' + esc(item.reason) + '</small>' : '') + '</span><strong>+' + item.points + '</strong>', 'behavior-card points-home-behavior', item.id, item.name + '，加' + item.points + '分');
+  function behavior(options, item) {
+    return button(options, 'choose-point', '<span class="points-shortcut-symbol" aria-hidden="true">' + draw(options, 'star') + '</span><span class="behavior-copy"><b>' + esc(item.name) + '</b></span><strong>+' + item.points + '</strong>',
+      'behavior-card points-home-behavior', item.id, item.name + '，加' + item.points + '分');
   }
   function behaviors(options) {
     var items = options.items || [], allCount = options.allCount === undefined ? items.length : options.allCount;
-    return '<section class="points-behaviors points-paper" aria-labelledby="points-behaviors-heading"><div class="points-section-heading"><h2 id="points-behaviors-heading">常用行为</h2>' + button(options, 'all-behaviors', '全部 ' + allCount + ' 项 ' + draw(options, 'chevron'), 'text-button points-section-link', '', '选择全部' + allCount + '个启用行为') + '</div><div class="points-behavior-grid">' + (items.length ? items.map(function (item, index) { return behavior(options, item, index); }).join('') : button(options, 'all-behaviors', '<span>' + draw(options, 'leaf') + '</span><b>添加一个值得鼓励的小习惯</b><small>保存常用行为，下次加分更方便</small>', 'points-behaviors-empty')) + '</div></section>';
+    return '<section class="points-behaviors points-paper" aria-labelledby="points-behaviors-heading"><div class="points-section-heading"><h2 id="points-behaviors-heading">快捷加分</h2>' + button(options, 'all-behaviors', (allCount > 1 ? allCount + ' 项 ' : '') + draw(options, 'chevron'), 'text-button points-section-link', '', '选择全部' + allCount + '个启用行为') + '</div><div class="points-behavior-grid">' + (items.length ? items.map(function (item) { return behavior(options, item); }).join('') : button(options, 'all-behaviors', '<span>' + draw(options, 'leaf') + '</span><b>添加一个值得鼓励的小习惯</b><small>保存常用行为，下次加分更方便</small>', 'points-behaviors-empty')) + '</div></section>';
   }
   function render(options) {
-    var summary = summaryFor(options), parts = M.calendarParts(summary.today, summary.zone);
-    return '<section class="points-home" data-home-mode="points" aria-label="积分首页"><div class="points-home-intro"><h1>成长积分册</h1><span class="points-home-date">' + dateLabel(summary.today) + '<small>星期' + ['日', '一', '二', '三', '四', '五', '六'][parts.weekday] + '</small></span></div>' + wallet(options, summary) + recent(options, summary) + overview(options, summary) + behaviors(options) + '</section>';
+    var summary = summaryFor(options);
+    return '<section class="points-home" data-home-mode="points" aria-label="积分首页"><h1 class="points-home-title">成长积分册</h1>' + wallet(options, summary) + behaviors(options) + recent(options, summary) + overview(options, summary) + '</section>';
   }
   function summaryBody(options) {
     var summary = summaryFor(options), expanded = false;

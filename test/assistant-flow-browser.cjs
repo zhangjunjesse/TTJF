@@ -201,7 +201,13 @@ async function launcherFlow(page, env, device, open) {
       inSheet:!!node.closest('.sheet'), floating:node.classList.contains('assistant-launcher')
     })));
     assert.deepEqual(visibleEntries, [{inSheet:true,floating:false}], 'the sheet has one contextual entry');
-    assert.equal(await page.$eval('.assistant-sheet-entry .assistant-orb', node => node.getAnimations({subtree:true}).length), 0,
+    const contextual = await page.$eval('.assistant-sheet-entry', node => {
+      const rect = node.getBoundingClientRect();
+      return {name:node.getAttribute('aria-label'), width:rect.width, height:rect.height, animations:node.getAnimations({subtree:true}).length};
+    });
+    assert.equal(contextual.name, '打开家长助手');
+    assert.ok(contextual.width >= 48 && contextual.height >= 48, 'the contextual assistant remains easy to tap');
+    assert.equal(contextual.animations, 0,
       'the contextual entry does not animate');
     await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
     await click(page, 'button' + selector('close'));
@@ -246,7 +252,12 @@ async function awardUnitFlow(page, env, family, open) {
     assert.equal(await read('points'), '1', 'the pending assistant draft still has its original score');
     await Q.type(page, '#editor-form [name="points"]', '2'); await click(page, Q.save);
     assert.equal((await Q.ui(page)).authPhase, 'confirm');
-    assert.match(await page.$eval('.points-confirm-dialog', node => node.textContent), /确认加2分/);
+    assert.ok(await page.$('.ledger-award-dialog'), 'the points-home assistant draft uses the same real ledger receipt');
+    assert.match(await page.$eval('.ledger-award-name', node => node.textContent), /自己刷牙/);
+    assert.equal(await page.$eval('.ledger-award-amount', node => node.textContent.replace(/\s+/g, '')), '+2分');
+    assert.match(await page.$eval(action('points-confirm'), node => node.textContent), /家长验证/);
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/action', '/api/parent/challenge', '/api/parent/verify'].includes(call.path)), [],
+      'drafting and reviewing the edited score starts no authorization or business write');
     assert.deepEqual(await sql(), before, 'review has not committed the edited score');
     await Q.shot(page, 'award-unit-two-point-confirmation');
     await click(page, action('points-confirm'));

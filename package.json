@@ -24,6 +24,7 @@
     "test:assistant:flow": "node test/assistant-flow-browser.cjs",
     "test:assistant:panel": "node test/assistant-panel-browser.cjs",
     "test:home:views": "node test/device-home-browser.cjs",
+    "test:home:visual": "node test/points-home-visual.cjs",
     "test:ui:layout": "node test/ui-refinements-layout.cjs",
     "test:ui:keyboard": "node test/mobile-keyboard-browser.cjs",
     "test:ui:flows": "node test/ui-refinements-browser.cjs",

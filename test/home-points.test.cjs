@@ -253,6 +253,39 @@ test('home and detail render saved content as text and preserve action entrances
   assert.match(html, /class="points-record-reason"/);
 });
 
+test('recent records group entries by family day and retain a full accessible timestamp after midnight', () => {
+  const state = empty();
+  state.points = [point('early', '2026-11-20T16:02:00.000Z', 1), point('late', '2026-11-20T16:03:00.000Z', 1)];
+  const recentSection = () => Home.render({ state, summary: Home.analyze({ state, now, zone }) }).match(/<section class="points-recent[^]*?<\/section>/)[0];
+  let html = recentSection();
+  assert.equal((html.match(/>今天</g) || []).length, 1);
+  assert.match(html, /aria-label="今天 00:02"/);
+  state.points[0].at = '2026-11-20T15:59:00.000Z';
+  html = recentSection();
+  const groups = [...html.matchAll(/<h3[^>]*><time datetime="([^"]+)">([^<]+)<\/time><\/h3>\s*<ul[^>]*>([\s\S]*?)<\/ul>/g)];
+  assert.deepEqual(groups.map(group => [group[1], group[2]]), [['2026-11-21', '今天'], ['2026-11-20', '昨天']]);
+  assert.match(groups[0][3], /aria-label="今天 00:03">00:03<\/time>/);
+  assert.match(groups[1][3], /aria-label="昨天 23:59">23:59<\/time>/);
+  assert.equal((html.match(/>昨天</g) || []).length, 1);
+});
+
+test('recent entries keep the recorded reason, redemption type and signed amount next to the correct name', () => {
+  const state = empty();
+  state.points = [
+    { ...point('bag', '2026-11-20T10:58:00Z', 3, '整理书包'), reason: '按明天的课表收好课本' },
+    point('meal', '2026-11-20T16:03:00Z', 1, '好好吃饭')
+  ];
+  state.redemptions = [{ ...redemption('pencil', '2026-11-20T13:17:00Z'), note: '蓝色' }];
+  const html = Home.render({ state, summary: Home.analyze({ state, now, zone }) });
+  const rows = [...html.matchAll(/<li class="points-recent-row">([\s\S]*?)<\/li>/g)].map(match => match[1]);
+  assert.equal(rows.length, 3);
+  assert.match(rows[0], /好好吃饭[\s\S]*\+1<small>/);
+  assert.doesNotMatch(rows[0], /points-record-reason/);
+  assert.match(rows[1], /彩虹铅笔[\s\S]*礼品兑换 · 蓝色[\s\S]*−2<small>/);
+  assert.match(rows[2], /18:58[\s\S]*整理书包[\s\S]*按明天的课表收好课本[\s\S]*\+3<small>/);
+  assert.equal((html.match(/>昨天<\/time>/g) || []).length, 1);
+});
+
 test('empty families have seven zero days and clear empty states', () => {
   const state = empty(), summary = Home.analyze({ state, now, zone });
   assert.deepEqual(summary.totals, { earned: 0, spent: 0, available: 0 });

@@ -21,8 +21,8 @@ async function ready() { await page.waitForFunction(() => FamilyAssistantPanel.g
 async function open() { await page.click('#launcher'); await ready(); }
 async function write(value) { await page.$eval('#assistant-chat-input', (node, value) => { node.value = value; node.dispatchEvent(new Event('input', { bubbles: true })); }, value); }
 async function state() { return page.evaluate(() => FamilyAssistantPanel.getState()); }
-async function fixture(width = 390, height = 844) {
-  page = await browser.newPage(); await page.setViewport({ width, height, deviceScaleFactor: 1 });
+async function fixture(width = 390, height = 844, viewportOptions = {}) {
+  page = await browser.newPage(); await page.setViewport({ width, height, deviceScaleFactor: 1, ...viewportOptions });
   page.on('pageerror', error => { report.errors.push(error.message); save(); });
   await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><button id="launcher">家庭小助手</button><form id="editor-form"><input id="original-draft" name="name" value="手动底稿要保留"></form></body></html>');
   for (const name of ['styles.css', 'farm-world.css', 'assistant-panel.css']) await page.addStyleTag({ path: path.join(ROOT, name) });
@@ -70,9 +70,11 @@ async function draftUntouched() { assert.equal(await page.$eval('#original-draft
 async function geometry() {
   return page.evaluate(() => {
     const rect = node => node.getBoundingClientRect().toJSON(), viewport = visualViewport;
-    const controls = ['#assistant-chat-input', '#assistant-chat-send'].map(selector => {
-      const node = document.querySelector(selector), r = rect(node), hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-      return { selector, rect: r, hit: !!hit && (hit === node || node.contains(hit)) };
+    const controls = ['#assistant-chat-input', '.assistant-voice', '#assistant-chat-send'].map(selector => {
+      const node = document.querySelector(selector), r = rect(node);
+      const hit = [r.top + 1, r.y + r.height / 2, r.bottom - 1].every(y =>
+        node.contains(document.elementFromPoint(r.x + r.width / 2, y)));
+      return { selector, rect: r, hit };
     });
     return { panel: rect(document.querySelector('#family-assistant-panel')), controls, viewport: { top: viewport.offsetTop, left: viewport.offsetLeft, width: viewport.width, height: viewport.height }, focused: document.activeElement.id, caret: document.querySelector('#assistant-chat-input').selectionStart, documentWidth: document.documentElement.scrollWidth, width: innerWidth };
   });
@@ -90,6 +92,17 @@ async function layout() {
     await fixture(width, height);
     await check(width + 'px opens without focusing the keyboard and keeps the form draft', async () => {
       await open(); const value = await geometry(); withinGeometry(value); assert.equal(value.focused, 'family-assistant-panel');
+      assert.equal(await page.$eval(a('clear'), node => node.getClientRects().length), 0, 'a fresh conversation has nothing to clear');
+      assert.equal(await page.$eval('#assistant-chat-count', node => node.getClientRects().length), 0);
+      if (height >= 420) {
+        const positions = await page.evaluate(() => {
+          const rect = selector => document.querySelector(selector).getBoundingClientRect();
+          return { headingEnd: rect('.assistant-welcome').bottom, inputTop: rect('.assistant-input-row').top,
+            inputEnd: rect('.assistant-input-row').bottom, suggestionsTop: rect('.assistant-examples').top };
+        });
+        assert.ok(positions.headingEnd <= positions.inputTop && positions.inputTop - positions.headingEnd <= 32);
+        assert.ok(positions.inputEnd <= positions.suggestionsTop && positions.suggestionsTop - positions.inputEnd <= 24);
+      }
       assert.equal(Math.round(value.panel.width), width >= 900 ? 420 : width); await draftUntouched();
       assert.equal(await page.$eval('#assistant-panel-context', node => node.textContent), '正在编辑常用行为');
       const smallTargets = await page.$$eval('#family-assistant-panel button, #assistant-chat-input', nodes => nodes.filter(node => node.getClientRects().length).map(node => ({ label: node.textContent || node.getAttribute('aria-label'), width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height })).filter(rect => rect.width < 47.9 || rect.height < 47.9));
@@ -117,6 +130,56 @@ async function layout() {
     });
     await page.close();
   }
+  await check('A single landscape tap starts dictation or sends the first message from a focused composer', async () => {
+    await fixture(844, 390, { isMobile: true, hasTouch: true });
+    await open();
+    const input = '#assistant-chat-input', message = '我现在有多少积分？';
+    const sentMessages = () => page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).map(call => call.body.text));
+    await page.tap(input);
+    await page.keyboard.type(message);
+    await page.tap(a('voice'));
+    const listening = (await state()).listening;
+    const sentWhileListening = await sentMessages();
+    await page.tap(input);
+    await page.tap('#assistant-chat-send');
+    assert.deepEqual({ listening, sentWhileListening, sent: await sentMessages() }, {
+      listening: true, sentWhileListening: [], sent: [message]
+    });
+    await page.close();
+  });
+  await check('An empty landscape composer stays tappable as the keyboard shrinks and pans the viewport', async () => {
+    await fixture(844, 390, { isMobile: true, hasTouch: true });
+    await open();
+    const input = '#assistant-chat-input';
+    await page.tap(input);
+    for (const [height, top] of [[120, 0], [150, 30], [188, 0], [390, 0], [120, 30]]) {
+      await page.evaluate((height, top) => {
+        Object.defineProperties(visualViewport, {
+          height: { configurable: true, value: height }, offsetTop: { configurable: true, value: top }
+        });
+        visualViewport.dispatchEvent(new Event('resize'));
+      }, height, top);
+      await settle();
+      const value = await geometry();
+      withinGeometry(value);
+      assert.ok(value.controls.every(({ rect }) => rect.height >= 48 && rect.width >= 48));
+      assert.equal(value.focused, 'assistant-chat-input');
+      if (height === 390) assert.ok(await page.$eval(a('example'), node => node.getClientRects().length), 'suggestions return when the keyboard closes');
+      if (height === 120 && top === 0) {
+        await page.screenshot({ path: path.join(OUT, 'empty-keyboard-120.png'), clip: { x: 0, y: 0, width: 844, height } });
+      }
+    }
+    await page.tap(a('voice'));
+    assert.equal((await state()).listening, true);
+    withinGeometry(await geometry());
+    await page.tap(input);
+    await page.keyboard.type('查积分');
+    await page.tap('#assistant-chat-send');
+    assert.deepEqual(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).map(call => call.body.text)), ['查积分']);
+    await page.tap(a('close'));
+    assert.equal((await state()).open, false);
+    await page.close();
+  });
 }
 async function lifecycle() {
   await fixture(); await open();
@@ -264,6 +327,14 @@ async function voice() {
     await page.click(a('example')); assert.ok(await page.$eval('#assistant-chat-input', node => node.value.length > 0));
     assert.equal(await page.evaluate(() => document.activeElement.id === 'assistant-chat-input'), false);
     assert.equal(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).length), 0);
+  });
+  await check('The composer shows its character limit near capacity and hides it after a shorter edit', async () => {
+    await write('读'.repeat(1150));
+    assert.equal(await page.$eval('#assistant-chat-count', node => node.innerText), '1150 / 1200');
+    assert.ok(await page.$eval('#assistant-chat-count', node => node.getClientRects().length));
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.maxLength), 1200);
+    await write('查积分');
+    assert.equal(await page.$eval('#assistant-chat-count', node => node.getClientRects().length), 0);
   });
   await check('Recognition only transcribes; manual editing aborts late microphone callbacks', async () => {
     await write('原有文字'); await page.click(a('voice'));
