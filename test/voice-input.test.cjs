@@ -76,6 +76,7 @@ function harness(options = {}) {
   const document = target({ hidden: false });
   const root = target({ document, isSecureContext: true, location: { protocol: 'https:', host: 'family.test' },
     AudioContext, AudioWorkletNode, WebSocket,
+    performance: { now: () => clock },
     navigator: { mediaDevices: { getUserMedia(constraints) { captureCalls++; trace.push(['microphone', constraints]); return mic.promise; } } },
     setTimeout(fn, delay) { const id = ++nextTimer; timers.set(id, { fn, at: clock + delay }); return id; },
     clearTimeout(id) { timers.delete(id); }
@@ -96,12 +97,12 @@ function harness(options = {}) {
     return value;
   }
   const rec = recognition();
-  async function started() {
-    rec.start(); await settle();
+  async function started(value = rec) {
+    value.start(); await settle();
     requests[0].callback(200, { ticket: 'one/use+ticket' });
     const socket = sockets[0]; assert.ok(socket); socket.open(); return socket;
   }
-  async function ready() { const socket = await started(); socket.message({ type: 'ready' }); return socket; }
+  async function ready(value = rec) { const socket = await started(value); socket.message({ type: 'ready' }); return socket; }
   function advance(ms) {
     const until = clock + ms;
     for (let count = 0; count < 1000; count++) {
@@ -122,7 +123,7 @@ function harness(options = {}) {
     assert.equal(timers.size, 0);
   }
   return { root, rec, recognition, events, requests, contexts, nodes, sockets, trace, track, stream, mic,
-    timers, advance, started, ready, released, captureCalls: () => captureCalls };
+    timers, advance, elapse: ms => { clock += ms; }, started, ready, released, captureCalls: () => captureCalls };
 }
 const frame = (bytes = 1600) => ({ type: 'pcm', buffer: new ArrayBuffer(bytes) });
 const errors = h => h.events.filter(event => event.type === 'error');
@@ -205,6 +206,111 @@ test('explicit text callbacks receive preview and terminal text once without dup
   const ws = disconnected.sockets[0]; ws.open(); ws.message({ type: 'ready' }); disconnected.nodes[0].emit(frame());
   ws.message({ type: 'partial', text: '临时文字' }); ws.drop();
   assert.deepEqual(preview, ['临时文字', '']); assert.equal(results(disconnected).length, 0); disconnected.released();
+});
+
+test('60-second dictation gracefully flushes and delivers a terminal draft instead of discarding the preview', async () => {
+  const h = harness(), preview = [], draft = [], limits = [];
+  const rec = h.recognition({ onPartialText: text => preview.push(text), onFinalText: text => draft.push(text) });
+  rec.onlimit = event => limits.push(event.code);
+  const socket = await h.ready(rec);
+  h.nodes[0].emit(frame()); socket.message({ type: 'partial', text: '已说出的听写' });
+  h.advance(59999);
+  assert.deepEqual(limits, []); assert.deepEqual(draft, []);
+  h.advance(1);
+  assert.deepEqual(limits, ['VOICE_TOO_LONG']);
+  assert.deepEqual(preview, ['已说出的听写']); assert.deepEqual(draft, []);
+  assert.equal(h.nodes[0].port.sent.filter(value => value.type === 'flush').length, 1);
+  assert.equal(socket.sent.some(value => value.type === 'end'), false, 'end waits for the worklet tail');
+  h.nodes[0].emit(frame(96)); h.nodes[0].emit({ type: 'flushed' });
+  assert.equal(socket.sent.at(-1).type, 'end');
+  socket.message({ type: 'final', text: '已说出的完整听写' });
+  assert.deepEqual(draft, ['已说出的完整听写']); assert.equal(rec.finalized, true);
+  assert.deepEqual(errors(h), []); assert.equal(h.events.filter(event => event.type === 'end').length, 1);
+  h.released();
+});
+
+test('60-second PCM budget trims a crossing frame before transport even with delayed timers and queued audio', async () => {
+  const h = harness(), socket = await h.ready(), limits = [];
+  h.rec.onlimit = event => limits.push(event.code);
+  h.elapse(90000); // Background/throttled timers have not delivered their callbacks.
+  for (let i = 0; i < 1199; i++) h.nodes[0].emit(frame());
+  socket.bufferedAmount = 64000;
+  h.nodes[0].emit(frame(1598)); h.nodes[0].emit(frame());
+  assert.deepEqual(limits, ['VOICE_TOO_LONG']);
+  h.rec.stop(); h.rec.stop();
+  assert.equal(h.nodes[0].port.sent.filter(value => value.type === 'flush').length, 1);
+  h.nodes[0].emit(frame()); h.nodes[0].emit({ type: 'flushed' });
+  assert.equal(socket.sent.some(value => value.type === 'end'), false, 'queued audio still precedes end');
+  socket.bufferedAmount = 0; h.advance(25);
+  const audio = socket.sent.filter(value => value instanceof ArrayBuffer);
+  assert.equal(audio.reduce((sum, value) => sum + value.byteLength, 0), 60 * 32000);
+  assert.equal(audio.at(-1).byteLength, 2, 'only the remaining PCM16 sample crosses the boundary');
+  assert.equal(socket.sent.filter(value => value.type === 'end').length, 1);
+  socket.message({ type: 'final', text: '上限内的完整草稿' });
+  assert.deepEqual(results(h).map(row => [row.text, row.final]), [['上限内的完整草稿', true]]);
+  assert.deepEqual(errors(h), []); h.released();
+});
+
+test('60-second cap reached by a flush tail notifies an already released recording before its terminal text', async () => {
+  const h = harness(), order = [];
+  const rec = h.recognition({ onFinalText: text => order.push(text) });
+  rec.onlimit = event => { order.push(event.code); rec.stop(); };
+  const socket = await h.ready(rec);
+  for (let i = 0; i < 1199; i++) h.nodes[0].emit(frame());
+  h.nodes[0].emit(frame(1598)); rec.stop();
+  assert.deepEqual(order, []);
+  h.nodes[0].emit(frame(96));
+  assert.deepEqual(order, ['VOICE_TOO_LONG']);
+  assert.equal(h.nodes[0].port.sent.filter(value => value.type === 'flush').length, 1);
+  h.nodes[0].emit({ type: 'flushed' });
+  assert.equal(socket.sent.filter(value => value instanceof ArrayBuffer).reduce((sum, value) => sum + value.byteLength, 0), 60 * 32000);
+  assert.equal(socket.sent.filter(value => value.type === 'end').length, 1);
+  socket.message({ type: 'final', text: '需要核对的草稿' });
+  assert.deepEqual(order, ['VOICE_TOO_LONG', '需要核对的草稿']);
+  assert.deepEqual(errors(h), []); h.released();
+});
+
+test('60-second limit notification supports reentrant stop and cancel without double flush or late drafts', async () => {
+  for (const trigger of ['timer', 'bytes', 'delayed-release']) {
+    for (const action of ['stop', 'abort']) {
+      const h = harness(), socket = await h.ready(), limits = [], oldPCM = h.nodes[0].port.onmessage;
+      h.rec.onlimit = event => { limits.push(event.code); h.rec[action](); h.rec[action](); };
+      if (trigger === 'bytes') for (let i = 0; i < 1200; i++) h.nodes[0].emit(frame());
+      else {
+        h.nodes[0].emit(frame());
+        if (trigger === 'timer') h.advance(60000);
+        else { h.elapse(60001); h.rec.stop(); }
+      }
+      assert.deepEqual(limits, ['VOICE_TOO_LONG'], trigger + '/' + action);
+      if (action === 'stop') {
+        h.rec.stop();
+        assert.equal(h.nodes[0].port.sent.filter(value => value.type === 'flush').length, 1);
+        h.nodes[0].emit(frame(64)); h.nodes[0].emit({ type: 'flushed' });
+        assert.equal(socket.sent.filter(value => value.type === 'end').length, 1);
+        socket.message({ type: 'final', text: '留待核对的草稿' });
+        assert.equal(results(h).filter(value => value.final).length, 1);
+      } else {
+        assert.equal(h.nodes[0].port.sent.some(value => value.type === 'flush'), false);
+        assert.equal(socket.sent.some(value => value.type === 'end'), false);
+        oldPCM({ data: frame() }); socket.message({ type: 'final', text: '已取消' });
+        assert.deepEqual(results(h), []);
+      }
+      assert.deepEqual(errors(h), []); assert.equal(h.events.filter(event => event.type === 'end').length, 1);
+      h.released();
+    }
+  }
+});
+
+test('60-second capture deadline is cleared on an earlier manual stop while terminal final is pending', async () => {
+  const h = harness(), socket = await h.ready(), limits = [];
+  h.rec.onlimit = event => limits.push(event.code);
+  h.nodes[0].emit(frame()); h.advance(59999); h.rec.stop(); h.rec.stop();
+  h.advance(1); assert.deepEqual(limits, []);
+  h.nodes[0].emit({ type: 'flushed' }); h.advance(500);
+  socket.message({ type: 'final', text: '正常松手的草稿' });
+  assert.equal(h.nodes[0].port.sent.filter(value => value.type === 'flush').length, 1);
+  assert.equal(socket.sent.filter(value => value.type === 'end').length, 1);
+  assert.deepEqual(limits, []); assert.deepEqual(errors(h), []); h.released();
 });
 
 test('hotwords satisfy gateway bounds without controls, duplicates, or unbounded JSON', async () => {

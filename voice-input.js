@@ -4,8 +4,12 @@
   var owner = null;
   var RATE = 16000, FRAME_SAMPLES = 800, FRAME_BYTES = FRAME_SAMPLES * 2;
   var MAX_QUEUE = RATE * 2 * 3, MAX_SOCKET = RATE * 2 * 2;
+  var MAX_DURATION_MS = 60000, MAX_AUDIO_BYTES = RATE * 2 * MAX_DURATION_MS / 1000;
   var SETUP_MS = 12000, CONNECT_MS = 8000, FLUSH_MS = 1000, FINAL_MS = 10000;
 
+  function now() {
+    return root.performance && typeof root.performance.now === 'function' ? root.performance.now() : Date.now();
+  }
   function supported() {
     return root.isSecureContext !== false && !!(root.navigator && root.navigator.mediaDevices &&
       typeof root.navigator.mediaDevices.getUserMedia === 'function' &&
@@ -34,7 +38,7 @@
   function create(options) {
     options = options || {};
     var current = null;
-    var recognition = { provider: 'volc', finalized: false, onstart: null, onresult: null, onerror: null,
+    var recognition = { provider: 'volc', finalized: false, onstart: null, onresult: null, onerror: null, onlimit: null,
       onend: null, onspeechstart: null, onspeechend: null, start: start, stop: stop, abort: abort };
 
     function live(run) { return current === run && !run.ended; }
@@ -111,6 +115,13 @@
       if (hadText) textResult('', false);
       invoke(recognition, 'onerror', { error: error, code: code, discarded: true });
       invoke(recognition, 'onend');
+    }
+    function reachLimit(run) {
+      if (!live(run) || run.limited) return;
+      run.limited = true;
+      // The panel must require review before any reentrant stop can finalize a hold.
+      invoke(recognition, 'onlimit', { code: 'VOICE_TOO_LONG' });
+      if (live(run)) stop();
     }
     function transient(run, code) {
       if (!live(run)) return;
@@ -240,8 +251,14 @@
       if (message.type !== 'pcm' || !(message.buffer instanceof ArrayBuffer) || !message.buffer.byteLength || message.buffer.byteLength > FRAME_BYTES || message.buffer.byteLength % 2) {
         fail(run, 'audio-capture', 'VOICE_PCM_INVALID'); return;
       }
-      run.queue.push(message.buffer); run.queuedBytes += message.buffer.byteLength;
+      var remaining = MAX_AUDIO_BYTES - run.sentBytes - run.queuedBytes;
+      if (remaining > 0) {
+        // Worklet messages can outpace the duration timer, including during flush.
+        var frame = message.buffer.byteLength > remaining ? message.buffer.slice(0, remaining) : message.buffer;
+        run.queue.push(frame); run.queuedBytes += frame.byteLength;
+      }
       if (run.queuedBytes > MAX_QUEUE) { fail(run, 'service-unavailable', 'BACKPRESSURE'); return; }
+      if (run.sentBytes + run.queuedBytes === MAX_AUDIO_BYTES) reachLimit(run);
       drain(run);
     }
     function capture(run) {
@@ -258,7 +275,8 @@
         run.source.connect(run.node); run.node.connect(run.gain); run.gain.connect(run.context.destination);
       } catch (e) { fail(run, 'audio-capture', 'VOICE_CAPTURE_UNAVAILABLE'); return; }
       run.audioStarted = true;
-      timer(run, 'duration', 65000, function () { fail(run, 'service-unavailable', 'VOICE_TOO_LONG'); });
+      run.startedAt = now();
+      timer(run, 'duration', MAX_DURATION_MS, function () { if (!run.stopping) reachLimit(run); });
       invoke(recognition, 'onstart'); connect(run);
     }
     function prepareAudio(run) {
@@ -306,7 +324,7 @@
     }
     function start() {
       if (current && !current.ended) { var error = new Error('Voice input already started'); error.name = 'InvalidStateError'; throw error; }
-      var run = { timers: {}, ended: false, stopping: false, micPending: false, audioStarted: false,
+      var run = { timers: {}, ended: false, stopping: false, limited: false, micPending: false, audioStarted: false,
         audioReleased: false, resumed: false, moduleReady: false, ready: false, flushed: false,
         eosSent: false, ticketDone: false, attempt: 0, sentBytes: 0, queue: [], queuedBytes: 0, lastText: '' };
       current = run; recognition.finalized = false;
@@ -327,7 +345,9 @@
     function stop() {
       var run = current;
       if (!run || !live(run) || run.stopping) return;
+      if (run.audioStarted && !run.limited && now() - run.startedAt >= MAX_DURATION_MS) { reachLimit(run); return; }
       run.stopping = true;
+      clearTimer(run, 'duration');
       // Releasing during permission/loading must never start a microphone later.
       if (!run.audioStarted) { cleanup(run); invoke(recognition, 'onend'); return; }
       clearTimer(run, 'retry');

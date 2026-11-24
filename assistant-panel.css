@@ -216,6 +216,7 @@
   mask-image: linear-gradient(90deg, transparent, #000 12% 88%, transparent);
 }
 .assistant-recording-wave span { width: 3px; height: 10px; border-radius: 4px; background: currentColor; }
+.assistant-recording[data-ready="false"] .assistant-recording-wave { visibility: hidden; }
 .assistant-recording-wave span:nth-child(3n) { height: 15px; }
 .assistant-recording-wave span:nth-child(4n + 1) { height: 19px; }
 .assistant-recording-wave span:nth-child(7n + 2) { height: 23px; }

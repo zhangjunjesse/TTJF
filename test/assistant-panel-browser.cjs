@@ -56,7 +56,7 @@ async function fixture(width = 390, height = 844, viewportOptions = {}) {
       }, 10);
       return handle;
     };
-    window.SpeechRecognition = function () { window.__qaVoice = this; this.start = function () {}; this.stop = function () {}; this.abort = function () { this.aborted = true; }; };
+    window.SpeechRecognition = function () { window.__qaVoice = this; this.start = function () { if (this.onstart) this.onstart(); }; this.stop = function () {}; this.abort = function () { this.aborted = true; }; };
     document.addEventListener('keydown', event => { if (event.key === 'Escape') __qaEscapes++; });
   });
   await page.addScriptTag({ path: path.join(ROOT, 'assistant.js') });
@@ -149,6 +149,38 @@ async function layout() {
       assert.equal(await page.evaluate(() => __qaEscapes), 0); assert.equal(await page.evaluate(() => document.activeElement.id), 'launcher'); await draftUntouched();
     });
     await page.close();
+  }
+  for (const touch of [false, true]) {
+    const mode = touch ? 'touch' : 'mouse';
+    await check('A first ' + mode + ' activation at the suggestion edge fills the focused empty composer without sending', async () => {
+      await fixture(390, 844, touch ? { isMobile: true, hasTouch: true } : {});
+      await open();
+      const input = '#assistant-chat-input', prompt = '我现在有多少积分？';
+      if (touch) await page.tap(input); else await page.click(input);
+      await settle();
+      assert.equal(await page.evaluate(() => document.activeElement.id), 'assistant-chat-input');
+      assert.equal(await page.$eval(input, node => node.value), '');
+      const point = await page.$eval(a('example'), node => {
+        const rect = node.getBoundingClientRect(), x = rect.left + rect.width / 2, y = rect.bottom - 2;
+        return { x, y, label: node.textContent, hit: node.contains(document.elementFromPoint(x, y)) };
+      });
+      assert.equal(point.label, '查积分'); assert.equal(point.hit, true, 'the suggestion edge is reachable before pressing');
+      // Keep the same physical point through release, even if focus changes its layout.
+      if (touch) await page.touchscreen.tap(point.x, point.y);
+      else { await page.mouse.move(point.x, point.y); await page.mouse.down(); await settle(); await page.mouse.up(); }
+      await settle();
+      assert.equal(await page.$eval(input, node => node.value), prompt, 'the first activation inserts the selected prompt');
+      assert.deepEqual(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn'))), [], 'a suggestion does not submit a turn');
+      assert.equal((await state()).messageCount, 0);
+      if (touch) await page.tap(input); else await page.click(input);
+      await page.keyboard.press('End'); await page.keyboard.type(' 请核对。');
+      assert.equal(await page.evaluate(() => document.activeElement.id), 'assistant-chat-input');
+      assert.equal(await page.$eval(input, node => node.value), prompt + ' 请核对。', 'the suggested prompt remains editable');
+      assert.deepEqual(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn'))), []);
+      withinGeometry(await geometry()); await draftUntouched();
+      await page.screenshot({ path: path.join(OUT, 'example-edge-' + mode + '.png') });
+      await page.close();
+    });
   }
   await check('A single landscape tap starts dictation or sends the first message from a focused composer', async () => {
     await fixture(844, 390, { isMobile: true, hasTouch: true });
