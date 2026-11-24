@@ -276,6 +276,38 @@ async function awardUnitFlow(page, env, family, open) {
     assert.deepEqual(Q.report.pageErrors, []);
     await Q.shot(page, 'award-unit-final-two-point-award');
   });
+  await Q.check('local screenshot phrase 自己睡觉+1分 retains its name and commits once after manual confirmation', async () => {
+    const beforePlus = await sql(), replies = await page.$$eval('.assistant-message-source', nodes => nodes.length);
+    await B.fill(page, '#assistant-chat-input', '自己睡觉+1分'); await click(page, '#assistant-chat-send');
+    await page.waitForFunction(count => document.querySelectorAll('.assistant-message-source').length === count + 1, {}, replies);
+    await Q.shot(page, 'award-plus-sleep-response');
+    assert.ok(await page.$(selector('apply')), 'the screenshot phrase must produce an editable award draft');
+    assert.equal(await page.$$eval('.assistant-message-source', nodes => nodes.at(-1).textContent), '本地');
+    assert.match(await page.$eval('.assistant-draft-pending', node => node.textContent), /自己睡觉/);
+    await click(page, selector('apply'));
+    assert.equal(await read('name'), '自己睡觉'); assert.equal(await read('points'), '1');
+    assert.deepEqual(await sql(), beforePlus, 'the screenshot phrase only fills the form');
+    await click(page, Q.save);
+    assert.equal((await Q.ui(page)).authPhase, 'confirm');
+    assert.match(await page.$eval('.points-confirm-dialog', node => node.textContent), /确认加1分/);
+    assert.deepEqual(await sql(), beforePlus, 'review still requires manual confirmation and parent authorization');
+    await Q.shot(page, 'award-plus-sleep-confirmation');
+    await click(page, action('points-confirm'));
+    await page.waitForSelector('#parent-form [name="answer"]', {visible:true});
+    assert.deepEqual(await sql(), beforePlus);
+    await B.fill(page, '#parent-form [name="answer"]', Q.PIN); await click(page, Q.parentSubmit);
+    await page.waitForSelector('#assistant-chat-input', {visible:true});
+    await page.waitForFunction(() => !document.querySelector('[data-assistant-action="apply"]'));
+    await Q.settled(page);
+    const saved = await sql();
+    assert.equal(saved.revision, beforePlus.revision + 1); assert.equal(saved.state.points.length, 2);
+    assert.equal(saved.state.points[1].name, '自己睡觉'); assert.equal(saved.state.points[1].points, 1);
+    const writes = env.calls.slice(marker).filter(call => call.path === '/api/action');
+    assert.equal(writes.length, 2); assert.equal(writes[1].action.type, 'points.add'); assert.equal(writes[1].action.hasGrant, true);
+    assert.deepEqual((await Q.snapshot(page)).points, saved.state.points);
+    assert.deepEqual(Q.report.pageErrors, []);
+    await Q.shot(page, 'award-plus-sleep-final-one-point-award');
+  });
 }
 
 async function run() {
@@ -307,6 +339,9 @@ async function run() {
   if (device === 'template') assistant.chat = async (text, state, now) =>
     executeTool('draft_award', {itemId:'reading-rule'}, state, now);
   const env = await Q.initialize({assistantService:assistant});
+  // The fixture server clock is frozen while the UI clock advances. Starting
+  // at a minute boundary keeps the default award time inside this short run.
+  if (device === 'award-unit') await env.setClock(Math.floor(env.now() / 60000) * 60000);
   const size = device === 'tablet' || device === 'launcher-tablet' ? {width:1024,height:768} : device === 'landscape' ? {width:844,height:390} : {width:390,height:844};
   const page = await env.newPage({...size,controlledClock:true});
   Q.active(page);
