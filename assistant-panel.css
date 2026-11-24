@@ -190,6 +190,7 @@
   .assistant-examples { column-gap: 2px; }
   .assistant-panel .assistant-example { gap: 4px; padding-inline: 6px; }
 }
+.assistant-viewport-short { container: assistant-viewport / size; }
 .assistant-viewport-short .assistant-panel-header { min-height: 54px; padding-top: 5px; padding-bottom: 5px; }
 .assistant-viewport-short .assistant-context { display: none; }
 .assistant-viewport-short .assistant-start .assistant-workspace { justify-content: flex-end; padding-bottom: 0; }
@@ -203,4 +204,15 @@
 .assistant-viewport-short .assistant-composer { padding-top: 3px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
 .assistant-viewport-short .assistant-feedback { max-height: 66px; margin-bottom: 3px; padding-block: 4px; }
 .assistant-viewport-short .assistant-chat-status { max-height: 18px; margin-bottom: 3px !important; }
+/* When the keyboard leaves too little height to stack the controls, keep them beside the composer. */
+@container assistant-viewport (height < 180px) {
+  .assistant-panel { flex-direction: row-reverse; inset-block: 0; }
+  .assistant-viewport-short .assistant-panel-header {
+    flex-direction: column; justify-content: flex-end; gap: 0; min-height: 0; border: 0;
+    padding: 0 max(8px, env(safe-area-inset-right)) calc(5px + max(6px, env(safe-area-inset-bottom))) 0;
+  }
+  .assistant-panel-header .assistant-brand, .assistant-panel-header .assistant-heading, .assistant-examples { display: none; }
+  .assistant-workspace { min-width: 0; padding-inline: max(12px, env(safe-area-inset-left)) 6px; }
+  .assistant-composer { width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) { .assistant-panel button { transition: none; } }

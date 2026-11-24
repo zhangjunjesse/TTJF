@@ -70,9 +70,11 @@ async function draftUntouched() { assert.equal(await page.$eval('#original-draft
 async function geometry() {
   return page.evaluate(() => {
     const rect = node => node.getBoundingClientRect().toJSON(), viewport = visualViewport;
-    const controls = ['#assistant-chat-input', '#assistant-chat-send'].map(selector => {
-      const node = document.querySelector(selector), r = rect(node), hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-      return { selector, rect: r, hit: !!hit && (hit === node || node.contains(hit)) };
+    const controls = ['#assistant-chat-input', '.assistant-voice', '#assistant-chat-send'].map(selector => {
+      const node = document.querySelector(selector), r = rect(node);
+      const hit = [r.top + 1, r.y + r.height / 2, r.bottom - 1].every(y =>
+        node.contains(document.elementFromPoint(r.x + r.width / 2, y)));
+      return { selector, rect: r, hit };
     });
     return { panel: rect(document.querySelector('#family-assistant-panel')), controls, viewport: { top: viewport.offsetTop, left: viewport.offsetLeft, width: viewport.width, height: viewport.height }, focused: document.activeElement.id, caret: document.querySelector('#assistant-chat-input').selectionStart, documentWidth: document.documentElement.scrollWidth, width: innerWidth };
   });
@@ -143,6 +145,39 @@ async function layout() {
     assert.deepEqual({ listening, sentWhileListening, sent: await sentMessages() }, {
       listening: true, sentWhileListening: [], sent: [message]
     });
+    await page.close();
+  });
+  await check('An empty landscape composer stays tappable as the keyboard shrinks and pans the viewport', async () => {
+    await fixture(844, 390, { isMobile: true, hasTouch: true });
+    await open();
+    const input = '#assistant-chat-input';
+    await page.tap(input);
+    for (const [height, top] of [[120, 0], [150, 30], [188, 0], [390, 0], [120, 30]]) {
+      await page.evaluate((height, top) => {
+        Object.defineProperties(visualViewport, {
+          height: { configurable: true, value: height }, offsetTop: { configurable: true, value: top }
+        });
+        visualViewport.dispatchEvent(new Event('resize'));
+      }, height, top);
+      await settle();
+      const value = await geometry();
+      withinGeometry(value);
+      assert.ok(value.controls.every(({ rect }) => rect.height >= 48 && rect.width >= 48));
+      assert.equal(value.focused, 'assistant-chat-input');
+      if (height === 390) assert.ok(await page.$eval(a('example'), node => node.getClientRects().length), 'suggestions return when the keyboard closes');
+      if (height === 120 && top === 0) {
+        await page.screenshot({ path: path.join(OUT, 'empty-keyboard-120.png'), clip: { x: 0, y: 0, width: 844, height } });
+      }
+    }
+    await page.tap(a('voice'));
+    assert.equal((await state()).listening, true);
+    withinGeometry(await geometry());
+    await page.tap(input);
+    await page.keyboard.type('查积分');
+    await page.tap('#assistant-chat-send');
+    assert.deepEqual(await page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).map(call => call.body.text)), ['查积分']);
+    await page.tap(a('close'));
+    assert.equal((await state()).open, false);
     await page.close();
   });
 }
