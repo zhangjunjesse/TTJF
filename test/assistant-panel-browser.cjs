@@ -21,8 +21,8 @@ async function ready() { await page.waitForFunction(() => FamilyAssistantPanel.g
 async function open() { await page.click('#launcher'); await ready(); }
 async function write(value) { await page.$eval('#assistant-chat-input', (node, value) => { node.value = value; node.dispatchEvent(new Event('input', { bubbles: true })); }, value); }
 async function state() { return page.evaluate(() => FamilyAssistantPanel.getState()); }
-async function fixture(width = 390, height = 844) {
-  page = await browser.newPage(); await page.setViewport({ width, height, deviceScaleFactor: 1 });
+async function fixture(width = 390, height = 844, viewportOptions = {}) {
+  page = await browser.newPage(); await page.setViewport({ width, height, deviceScaleFactor: 1, ...viewportOptions });
   page.on('pageerror', error => { report.errors.push(error.message); save(); });
   await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><button id="launcher">家庭小助手</button><form id="editor-form"><input id="original-draft" name="name" value="手动底稿要保留"></form></body></html>');
   for (const name of ['styles.css', 'farm-world.css', 'assistant-panel.css']) await page.addStyleTag({ path: path.join(ROOT, name) });
@@ -128,6 +128,23 @@ async function layout() {
     });
     await page.close();
   }
+  await check('A single landscape tap starts dictation or sends the first message from a focused composer', async () => {
+    await fixture(844, 390, { isMobile: true, hasTouch: true });
+    await open();
+    const input = '#assistant-chat-input', message = '我现在有多少积分？';
+    const sentMessages = () => page.evaluate(() => __qaRequests.filter(call => call.url.endsWith('/turn')).map(call => call.body.text));
+    await page.tap(input);
+    await page.keyboard.type(message);
+    await page.tap(a('voice'));
+    const listening = (await state()).listening;
+    const sentWhileListening = await sentMessages();
+    await page.tap(input);
+    await page.tap('#assistant-chat-send');
+    assert.deepEqual({ listening, sentWhileListening, sent: await sentMessages() }, {
+      listening: true, sentWhileListening: [], sent: [message]
+    });
+    await page.close();
+  });
 }
 async function lifecycle() {
   await fixture(); await open();

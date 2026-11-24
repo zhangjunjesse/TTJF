@@ -193,7 +193,9 @@
 .assistant-viewport-short .assistant-panel-header { min-height: 54px; padding-top: 5px; padding-bottom: 5px; }
 .assistant-viewport-short .assistant-context { display: none; }
 .assistant-viewport-short .assistant-start .assistant-workspace { justify-content: flex-end; padding-bottom: 0; }
-.assistant-viewport-short .assistant-start .assistant-welcome, .assistant-viewport-short .assistant-start:has(textarea:focus) .assistant-examples { display: none; }
+/* A tap transfers focus before click. Keep the suggestions tied to the draft. */
+.assistant-viewport-short .assistant-start .assistant-welcome,
+.assistant-viewport-short .assistant-start:has(textarea:not(:placeholder-shown)) .assistant-examples { display: none; }
 .assistant-viewport-short .assistant-start .assistant-input-row { grid-template-columns: minmax(0, 1fr) auto auto; padding: 4px; border-radius: 18px; }
 .assistant-viewport-short .assistant-start .assistant-input-row textarea { grid-column: auto; }
 .assistant-viewport-short .assistant-examples { margin-top: 0; }
