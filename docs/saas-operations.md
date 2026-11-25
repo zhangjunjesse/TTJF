@@ -65,6 +65,17 @@ node --env-file=.env.saas.production saas-server.cjs
 反向代理只应把可信请求送到本机监听。应用默认不信任 `X-Forwarded-For`；确实经代理时，设置 `SAAS_TRUSTED_PROXIES` 为逗号分隔的精确 IPv4/IPv6 地址，不支持 CIDR 或通配符。代理必须覆盖客户端传入的转发头。TLS 站点可按实际环境采用：
 
 ```nginx
+location = /api/assistant/voice/stream {
+    proxy_pass http://127.0.0.1:4180;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_read_timeout 90s;
+    access_log off;
+}
 location / {
     proxy_pass http://127.0.0.1:4180;
     proxy_set_header Host $host;
@@ -75,6 +86,16 @@ location / {
 ```
 
 `GET /api/health` 检查数据库可用性，只返回健康状态。生产启动成功不等于 SMTP 已实际投递或 HTTPS 代理已验收；注册、邀请、找回应在授权测试账号完成外部验收。
+
+## 家长助手语音识别
+
+在服务进程读取的私有配置文件（本机 `.env.saas.local`，生产按实际服务配置）填写 `VOLC_ASR_API_KEY`，或填写旧版的一对 `VOLC_ASR_APP_KEY` 和 `VOLC_ASR_ACCESS_KEY`。使用火山语音控制台中与已开通资源对应的密钥。重启服务并重新打开页面后生效。凭证只由服务端读取。可用 `ASR_PROVIDER=browser` 切回浏览器听写。
+
+- 默认 `VOLC_ASR_MODE=bigmodel_async` 使用双向流式优化版，按住时显示中间字幕。也支持 `bigmodel` 和 `bigmodel_nostream`。后者适合等整段结果，短句录音期间可能没有字幕。默认资源 ID 为 `volc.seedasr.sauc.duration`，可用 `VOLC_ASR_RESOURCE_ID` 改为实际开通的资源。热词示例为 `VOLC_ASR_HOTWORDS=["积分","刷牙"]`。[火山流式识别协议](https://docs.volcengine.com/docs/doubao-voice/large-model-streaming-automatic-speech-recognition-api-1?lang=zh)
+- 浏览器申请单声道采集、回声消除、降噪和自动增益，实际效果取决于设备和环境。Web Audio 将采集结果转换成 16 kHz 单声道、16 位小端 PCM，每 50 毫秒发给本站。本站按火山建议合并为 200 毫秒一包，松手补发剩余采样。端点检测由火山处理。页面只显示中间结果，整段定稿才能进入助手。开始传输音频前可以自动重连一次，传输中断后需要重新录音。[火山双向流式接口](https://docs.volcengine.com/docs/doubao-voice/bidirectional-streaming-automatic-speech-recognition-websocket?lang=zh)
+- 外网需使用 HTTPS，本机可用 localhost 或回环地址。反向代理需支持上方 WebSocket 配置。音频从按住时开始传输，上滑取消无法撤回此前已传出的音频。时长计费以开通的资源为准，应将已发送的静音也计入费用估算。[火山计费说明](https://docs.volcengine.com/docs/doubao-voice/billing-instructions?lang=zh)
+
+火山收到的热词来自服务端配置。浏览器原有的家庭名称匹配只用于本地核对候选词。每次录音最长 60 秒。测试时可设置 `ASSISTANT_FLOW_CASE=cloud-voice` 再运行 `npm run test:assistant:flow`，用合成音频验证按住发送、取消、断线和听写草稿。嘈杂环境的识别效果需要用真实录音另测。
 
 ## 整库备份和恢复
 

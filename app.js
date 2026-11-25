@@ -1792,6 +1792,12 @@
   if (chat) chat.init({
     request:request, applyResult:applyAssistantCard, canOpen:assistantAvailable, context:assistantContext, onCleared:clearAssistantEditors,
     scope:scopeToken,
+    speechHints:function () {
+      if (!state) return [];
+      return [state.childName].concat(state.pointItems.concat(state.rewards).filter(function (item) {
+        return item.enabled && !item.deleted;
+      }).map(function (item) { return item.name; })).filter(Boolean);
+    },
     contextLabel:function () {
       var heading = document.getElementById('sheet-title');
       return ui.form && heading ? heading.textContent : ui.view === 'reminders' ? '提醒' : '';

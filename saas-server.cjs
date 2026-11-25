@@ -15,15 +15,17 @@ const { createLifecycle } = require('./saas/lifecycle.cjs');
 const { createClientAddress } = require('./saas/network.cjs');
 const { createMaintenance, maintenanceConfig } = require('./saas/maintenance.cjs');
 const { initialAccountFromEnv, ensureInitialAccount } = require('./saas/initial-account.cjs');
+const { readVolcConfig, createVolcSession } = require('./saas/volc-asr.cjs');
+const { createAsrGateway, TICKET_PATH } = require('./saas/asr-gateway.cjs');
 const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json; charset=utf-8' });
 const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js',
-  '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css', '/assistant-panel.js', '/assistant-panel.css']);
+  '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css', '/assistant-panel.js', '/assistant-panel.css', '/voice-input.js', '/voice-pcm-worklet.js']);
 const ASSET_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.ogg']);
 const BUSINESS = new Set(['/api/state', '/api/meta', '/api/parent/challenge', '/api/parent/verify', '/api/action', '/api/assistant',
-  '/api/assistant/chat/read', '/api/assistant/chat/turn', '/api/assistant/chat/clear']);
+  '/api/assistant/chat/read', '/api/assistant/chat/turn', '/api/assistant/chat/clear', TICKET_PATH]);
 
 function configuredOrigin(value, production) {
   if (!value) { throw new Error('PUBLIC_ORIGIN is required for mail links and origin validation'); }
@@ -90,6 +92,7 @@ async function createSaasServer(options = {}) {
   if (typeof now !== 'function' || !Number.isFinite(+new Date(now()))) { throw new Error('now must return a valid date'); }
   const maxBodyBytes = options.maxBodyBytes === undefined ? 256 * 1024 : options.maxBodyBytes;
   if (!Number.isSafeInteger(maxBodyBytes) || maxBodyBytes < 1) { throw new Error('Invalid maxBodyBytes'); }
+  const asrConfig = options.asrConfig === undefined ? readVolcConfig(options.env || process.env) : options.asrConfig;
   const rootDir = fs.realpathSync(path.resolve(options.rootDir || __dirname));
   const assistant = options.assistantService || require('./assistant-service.cjs').createAssistantService();
   if (!assistant || typeof assistant.status !== 'function' || typeof assistant.interpret !== 'function') { throw new Error('Invalid assistantService'); }
@@ -111,6 +114,8 @@ async function createSaasServer(options = {}) {
   const business = createBusiness({ store, auth, now, assistant });
   const lifecycle = createLifecycle({ store, auth, now });
   const maintenance = createMaintenance({ store, now, reportError, ...maintenanceOptions });
+  const voice = createAsrGateway({ store, auth, now, config: asrConfig, connect: options.asrConnect || createVolcSession,
+    limits: options.asrLimits, getCookie: request => cookieToken(request, cookieName), sameOrigin: request => sameOrigin(request, publicOrigin) });
   const commonHeaders = { 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Cross-Origin-Resource-Policy': 'same-origin',
     'Referrer-Policy': 'no-referrer', 'X-Frame-Options': 'SAMEORIGIN' };
   function respond(response, result) {
@@ -121,7 +126,7 @@ async function createSaasServer(options = {}) {
   function staticRequest(request, response, pathname) {
     if (pathname === '/runtime.js') {
       response.writeHead(200, { ...commonHeaders, 'Content-Type': MIME['.js'] });
-      return response.end(request.method === 'HEAD' ? undefined : 'window.__TTJF_SAAS__=true;\n');
+      return response.end(request.method === 'HEAD' ? undefined : 'window.__TTJF_SAAS__=true;\nwindow.__TTJF_VOLC_ASR__=' + voice.enabled + ';\n');
     }
     if (pathname === '/') { pathname = '/index.html'; }
     const isAsset = pathname.startsWith('/assets/');
@@ -195,6 +200,7 @@ async function createSaasServer(options = {}) {
         case '/api/assistant/chat/read': return business.chatRead(ctx, body);
         case '/api/assistant/chat/turn': return business.chatTurn(ctx, body);
         case '/api/assistant/chat/clear': return business.chatClear(ctx, body);
+        case TICKET_PATH: return voice.ticket(ctx);
       }
     }
     S.fail(404, 'NOT_FOUND', '接口不存在');
@@ -232,6 +238,7 @@ async function createSaasServer(options = {}) {
       respond(response, { status: known ? error.status : 503, body, headers });
     }
   });
+  server.on('upgrade', voice.upgrade);
   server.requestTimeout = 15000;
   server.headersTimeout = 10000;
   server.keepAliveTimeout = 5000;
@@ -241,7 +248,7 @@ async function createSaasServer(options = {}) {
   server.closeSaas = () => {
     if (!closing) {
       closing = (async () => {
-        try { await maintenance.close(); }
+        try { await voice.close(); await maintenance.close(); }
         finally {
           try {
             if (server.listening) {

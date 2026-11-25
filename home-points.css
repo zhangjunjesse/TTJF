@@ -1,6 +1,10 @@
 /* The points home has one layout vocabulary across screen sizes. */
+:root { --points-home-paper: #fdfdfb; }
+html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home) {
+  background-color: var(--points-home-paper);
+}
 .app-shell:has(.points-home) {
-  --ledger-page: #fdfdfb; --ledger-ink: #20382c; --ledger-muted: #52645a; --ledger-line: #dee6dd;
+  --ledger-page: var(--points-home-paper); --ledger-ink: #20382c; --ledger-muted: #52645a; --ledger-line: #dee6dd;
   --home-column-gap: 12px; --home-leading: 44px;
   --home-section-gap: clamp(24px,3.4vh,32px);
   background: var(--ledger-page);

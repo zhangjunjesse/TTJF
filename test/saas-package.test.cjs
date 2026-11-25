@@ -9,7 +9,7 @@ const ROOT = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(ROOT, file), 'utf8');
 // The runtime uses an explicit, single-line COPY list for top-level assets.
 // This deliberately checks that format instead of interpreting arbitrary Dockerfiles.
-const htmlAssets = [...new Set([...read('index.html').matchAll(/(?:src|href)="([^"/#?:]+)"/g)].map(match => match[1]))];
+const htmlAssets = [...new Set([...read('index.html').matchAll(/(?:src|href)="([^"/#?:]+)"/g)].map(match => match[1])), 'voice-pcm-worklet.js'];
 const rootCopies = read('Dockerfile.saas').split(/\r?\n/).filter(line => /^COPY\s/.test(line)).flatMap(line => {
   const parts = line.trim().split(/\s+/).slice(1).filter(part => !part.startsWith('--'));
   return parts.pop() === './' ? parts : [];

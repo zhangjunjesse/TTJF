@@ -57,7 +57,7 @@ async function fixture(t, overrides = {}) {
   const database = await createDatabase({ databasePath });
   databases.push(database);
   const clock = { value: Date.parse('2026-11-16T14:30:00.000Z') };
-  const options = { publicOrigin: ORIGIN, environment: 'test', now: () => new Date(clock.value),
+  const options = { publicOrigin: ORIGIN, environment: 'test', asrConfig: null, now: () => new Date(clock.value),
     mailer: { sendMail: async message => { mail.push(message); } }, onError() {},
     assistantService: { status: () => ({ mode: 'local', label: '指令演示' }), interpret: async () => ({ kind: 'clarify', question: '请补充具体内容' }) }, ...overrides };
   async function start(extra = {}) {

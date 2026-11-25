@@ -26,6 +26,8 @@
 !home-points.js
 !home-points.css
 !assistant-panel.js
+!voice-input.js
+!voice-pcm-worklet.js
 !assistant-panel.css
 !config/
 !config/assistant/

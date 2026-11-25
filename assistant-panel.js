@@ -7,7 +7,8 @@
   var hasMore = false, nextCursor = null, historyExpanded = false;
   var loaded = false, text = '', notice = '', error = '', retry = '', confirming = false;
   var opener = null, openingContext, hasOpeningContext = false, voice = null, voiceEpoch = 0;
-  var listening = false, voiceNote = '', applying = false;
+  var listening = false, voiceNote = '', applying = false, holding = null, editing = false, holdClickUntil = 0;
+  var MIN_HOLD_MS = 300;
   var SPEECH = root.SpeechRecognition || root.webkitSpeechRecognition;
 
   function esc(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -39,16 +40,23 @@
       button('clear', icon('clear'), 'assistant-tool assistant-clear', ' aria-label="清空助手对话" title="清空助手对话" hidden') + button('close', icon('close'), 'assistant-tool', ' aria-label="收起助手" title="收起助手"') + '</header>' +
       '<div class="assistant-workspace"><div class="assistant-welcome" hidden><h3>今天想做点什么？</h3></div>' +
       '<div id="assistant-chat-log" class="assistant-chat-log" role="log" aria-label="助手对话" aria-live="polite" aria-relevant="additions text"></div>' +
-      '<div class="assistant-feedback" id="assistant-chat-feedback" hidden><p id="assistant-chat-error" role="alert"></p>' + button('retry', '重试', 'assistant-retry') + '</div>' +
+      '<div class="assistant-feedback" id="assistant-chat-feedback" hidden><p id="assistant-chat-error" role="alert"></p>' + button('retry', '重试', 'assistant-retry') + '</div>' + examples() +
       '<form id="assistant-chat-form" class="assistant-composer"><p id="assistant-chat-status" class="assistant-chat-status" role="status" aria-live="polite"></p><label for="assistant-chat-input" class="assistant-sr-only">给家长助手发消息</label>' +
-      '<div class="assistant-input-row"><textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="给家长助手发消息…" enterkeyhint="enter" aria-describedby="assistant-composer-hint"></textarea>' +
+      '<div class="assistant-input-row">' + button('hold-voice', icon('mic') + '<span>按住说话</span>', 'assistant-hold-voice', ' aria-label="按住说话，松开发送，上滑取消，右滑转文字；可按住空格或回车" aria-describedby="assistant-hold-hint" aria-pressed="false"') +
+      '<textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="发消息…" enterkeyhint="enter" aria-describedby="assistant-composer-hint"></textarea>' +
       button('voice', icon('mic'), 'assistant-tool assistant-voice', ' aria-label="听写成文字" aria-pressed="false" title="听写成文字，核对后再发送"') +
       '<button id="assistant-chat-send" type="submit" class="assistant-send" aria-label="发送消息">' + icon('send') + '</button></div>' +
-      '<p id="assistant-composer-hint" class="assistant-sr-only">草稿可在原页面核对后保存。最多输入 1200 字。</p><span id="assistant-chat-count" hidden></span></form>' + examples() + '</div>' +
+      '<p id="assistant-composer-hint" class="assistant-sr-only">草稿可在原页面核对后保存。最多输入 1200 字。</p><p id="assistant-hold-hint" class="assistant-hold-hint">' +
+      (root.__TTJF_VOLC_ASR__ ? '火山语音识别 · ' : '') + '松开发送 · 上滑取消 · 右滑转文字</p><span id="assistant-chat-count" hidden></span></form></div>' +
+      '<div class="assistant-recording" data-cancel="false" data-review="false" hidden><p class="assistant-recording-text"></p><p class="assistant-recording-hint" role="status" aria-live="polite"></p>' +
+      '<div class="assistant-recording-wave" aria-hidden="true">' + '<span></span>'.repeat(48) + '</div></div>' +
       '<div id="assistant-clear-confirm" class="assistant-confirm-overlay" hidden><section class="assistant-confirm" role="alertdialog" aria-modal="true" aria-labelledby="assistant-clear-title" aria-describedby="assistant-clear-description"><h3 id="assistant-clear-title">清空这段对话？</h3><p id="assistant-clear-description">当前对话和未办理的助手草稿会清空，已保存的家庭记录会保留。</p><div>' + button('cancel-clear', '保留对话', 'assistant-button') + button('confirm-clear', '清空对话', 'assistant-button assistant-danger') + '</div></section></div></section>';
     doc.body.appendChild(host); box = doc.getElementById('family-assistant-panel'); input = doc.getElementById('assistant-chat-input'); log = doc.getElementById('assistant-chat-log');
     host.addEventListener('click', clicked); host.addEventListener('submit', submitted); input.addEventListener('input', typed);
-    doc.addEventListener('keydown', keydown, true); doc.addEventListener('focusin', focusin, true);
+    host.addEventListener('pointerdown', holdStarted); host.addEventListener('lostpointercapture', holdLost); host.addEventListener('contextmenu', holdContextMenu);
+    doc.addEventListener('pointermove', holdMoved); doc.addEventListener('pointerup', holdReleased); doc.addEventListener('pointercancel', holdCancelled);
+    doc.addEventListener('keydown', keydown, true); doc.addEventListener('keyup', keyup, true); doc.addEventListener('focusin', focusin, true);
+    root.addEventListener('blur', voiceInterrupted);
     root.addEventListener('resize', scheduleFit); root.addEventListener('focus', resumed); doc.addEventListener('visibilitychange', resumed);
     if (root.visualViewport) { root.visualViewport.addEventListener('resize', scheduleFit); root.visualViewport.addEventListener('scroll', scheduleFit); }
     renderConversation(false); updateControls();
@@ -157,20 +165,29 @@
   function updateControls() {
     if (!host) return;
     var sending = !!active && active.kind === 'turn' || !!serverPending, clearing = !!active && active.kind === 'clear';
-    var status = voiceNote || (listening ? '正在听写，只会转成文字。' : clearing ? '正在清空对话…' : sending ? '正在整理，可以收起后再来看。' : active && active.kind === 'read' ? '正在同步对话…' : notice);
+    var status = holding && holding.held ? '' : voiceNote || (listening ? '正在听写，只会转成文字。' : clearing ? '正在清空对话…' : sending ? '正在整理，可以收起后再来看。' : active && active.kind === 'read' ? '正在同步对话…' : notice);
     doc.getElementById('assistant-chat-status').textContent = status;
     var context = contextLabel(), contextNode = doc.getElementById('assistant-panel-context');
     contextNode.textContent = context;
     contextNode.hidden = !context;
-    doc.getElementById('assistant-chat-send').disabled = !loaded || !trim(text) || busy() || confirming || uncertainTurn();
+    var speechSupported = speechAvailable();
+    host.classList.toggle('assistant-is-editing', editing || !!trim(text) || !speechSupported);
+    input.readOnly = !!holding;
+    doc.getElementById('assistant-chat-send').disabled = !loaded || !trim(text) || busy() || confirming || uncertainTurn() || !!holding;
     doc.getElementById('assistant-chat-send').setAttribute('aria-busy', String(sending));
     var clearButton = host.querySelector('[data-assistant-action="clear"]');
     clearButton.hidden = !(messages.length || draft || pendingTurn || serverPending || text || confirming);
     clearButton.disabled = !loaded || clearing;
     var microphone = host.querySelector('[data-assistant-action="voice"]');
-    microphone.disabled = !SPEECH || clearing || confirming;
-    microphone.setAttribute('aria-pressed', String(listening)); microphone.setAttribute('aria-label', listening ? '停止听写' : '听写成文字');
-    microphone.title = SPEECH ? '听写成文字，核对后再发送' : '当前浏览器不支持听写，请输入文字';
+    microphone.disabled = !speechSupported || clearing || confirming || !!holding;
+    var dictating = !!voice && !holding;
+    microphone.setAttribute('aria-pressed', String(dictating)); microphone.setAttribute('aria-label', dictating ? '停止听写' : '听写成文字');
+    microphone.title = speechSupported ? '听写成文字，核对后再发送' : '当前浏览器不支持听写，请输入文字';
+    var holdButton = host.querySelector('[data-assistant-action="hold-voice"]');
+    holdButton.disabled = !speechSupported || !loaded || busy() || confirming || uncertainTurn() || !!holding && !holding.held;
+    holdButton.setAttribute('aria-pressed', String(!!holding && holding.held));
+    holdButton.title = speechSupported ? '按住说话，松开发送，上滑取消，右滑转文字；也可以按住空格或回车' : '当前浏览器不支持语音，请输入文字';
+    renderRecording();
     var count = doc.getElementById('assistant-chat-count');
     count.hidden = text.length < 1080;
     count.textContent = text.length + ' / 1200';
@@ -224,7 +241,7 @@
   }
   function accept(snapshot, earlier, cleared) {
     var previousGeneration = generation, changed = generation !== snapshot.generation, wasLoaded = loaded, top = log.scrollTop, height = log.scrollHeight;
-    if (generation && changed) { pendingTurn = null; text = ''; input.value = ''; }
+    if (generation && changed) { stopVoice(); pendingTurn = null; text = ''; input.value = ''; editing = false; voiceNote = ''; }
     if (changed) historyExpanded = false;
     generation = snapshot.generation;
     messages = changed || !loaded ? copy(snapshot.messages) : earlier ? mergeMessages(copy(snapshot.messages), messages) : mergeMessages(messages, copy(snapshot.messages)); loaded = true;
@@ -291,52 +308,259 @@
   }
   function uncertainTurn() { return pendingTurn && pendingTurn.turnId !== failedTurnId && retry === 'turn'; }
   function send() {
-    if (!current() || !loaded || busy() || confirming || !trim(text) || uncertainTurn()) return;
+    if (!current() || !loaded || busy() || confirming || holding || !trim(text) || uncertainTurn()) return;
     stopVoice();
     var turn;
     try { turn = { generation: generation, turnId: uuid(), text: trim(text), context: contextValue() }; }
     catch (e) { error = '页面信息暂时不可用，请收起后重新打开助手。'; updateControls(); return; }
-    text = ''; input.value = ''; growInput(); sendTurn(turn);
+    text = ''; input.value = ''; editing = doc.activeElement === input; growInput(); sendTurn(turn);
   }
   function clearConversation() {
     if (!current() || !loaded) return;
     confirming = false; stopVoice(); notice = ''; error = ''; retry = '';
     operation('clear', { generation: generation }, function (status, result) {
       var snapshot = snapshotOf(result);
-      if (status === 200 && snapshot) { pendingTurn = null; text = ''; input.value = ''; accept(snapshot, false, true); notice = '对话已清空。'; focus(box); }
+      if (status === 200 && snapshot) { pendingTurn = null; text = ''; input.value = ''; editing = false; accept(snapshot, false, true); notice = '对话已清空。'; focus(box); }
       else failed(status, result, 'clear');
     });
   }
 
-  function stopVoice() {
-    voiceEpoch++; var previous = voice; voice = null; listening = false;
-    if (previous) { previous.onresult = previous.onerror = previous.onend = null; try { previous.abort(); } catch (e) {} }
+  function speechHints() {
+    var hints;
+    try { hints = typeof config.speechHints === 'function' ? config.speechHints() : config.speechHints; } catch (e) { hints = []; }
+    return Array.isArray(hints) ? hints.filter(function (hint) { return typeof hint === 'string' && trim(hint); }) : [];
   }
-  function startVoice() {
-    if (!current() || !SPEECH || confirming) return;
-    if (voice) { try { voice.stop(); } catch (e) { stopVoice(); } listening = false; voiceNote = '正在整理听写…'; updateControls(); return; }
-    var recognition, token = ++voiceEpoch, base = text, voiceScope = scope, heard = false;
-    try { recognition = new SPEECH(); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
-    voice = recognition; listening = true; voiceNote = ''; recognition.lang = 'zh-CN'; recognition.interimResults = true; recognition.continuous = false;
-    function valid() { return voice === recognition && token === voiceEpoch && voiceScope === scopeKey() && current(); }
-    recognition.onresult = function (event) {
-      if (!valid()) return;
-      var words = ''; for (var i = 0; i < event.results.length; i++) if (event.results[i][0]) words += event.results[i][0].transcript || '';
-      if (!words) return;
-      heard = true; text = ((base ? base + '\n' : '') + words).slice(0, 1200); input.value = text; growInput(); updateControls();
+  function speechAvailable() {
+    if (root.__TTJF_VOLC_ASR__) return !!root.FamilyVolcVoice && root.FamilyVolcVoice.isSupported();
+    return !!SPEECH && !!root.FamilyAssistant && typeof root.FamilyAssistant.configureSpeech === 'function' && typeof root.FamilyAssistant.speechTranscript === 'function';
+  }
+  function createRecognizer(hints, onTranscript) {
+    if (root.__TTJF_VOLC_ASR__) {
+      // Family records are local matching hints. The cloud vocabulary is set on the server.
+      return root.FamilyVolcVoice.create({ request: config.request,
+        onPartialText: function (words) { onTranscript({ finalText: '', interimText: words }); },
+        onFinalText: function (words) { onTranscript({ finalText: words, interimText: '' }); }
+      });
+    }
+    var recognition = new SPEECH();
+    root.FamilyAssistant.configureSpeech(recognition);
+    recognition.onresult = function (event) { onTranscript(root.FamilyAssistant.speechTranscript(event.results, hints)); };
+    return recognition;
+  }
+  function captureStartEvent(recognition) {
+    // Native start signals service startup. The cloud adapter emits start once the microphone is connected.
+    return recognition.provider === 'volc' ? 'onstart' : 'onaudiostart';
+  }
+  function voiceFailure(event) {
+    if (event.error === 'network' || event.error === 'timeout') return '语音连接中断，请再说一次或直接输入文字。';
+    if (event.error === 'audio-capture') return '麦克风暂时不可用，请检查输入设备后重试。';
+    if (event.error === 'busy') return '语音正在使用中，请稍后再试。';
+    if (event.error === 'service-unavailable') return '语音服务暂时不可用，可以继续打字。';
+    return event.error === 'not-allowed' || event.error === 'service-not-allowed' ? '听写未获授权，可以继续打字。' : event.error === 'no-speech' ? '没有听清，再试一次或输入文字。' : '听写未完成，请核对文字或再试一次。';
+  }
+  function releaseCapture(session) {
+    if (session.pointerId == null || !session.target.releasePointerCapture) return;
+    try { session.target.releasePointerCapture(session.pointerId); } catch (e) {}
+  }
+  function stopVoice() {
+    voiceEpoch++; var session = holding, previous = voice || session && session.recognition;
+    voice = null; holding = null; listening = false;
+    if (session) { root.clearTimeout(session.timer); root.clearTimeout(session.limit); session.held = false; releaseCapture(session); }
+    if (previous) {
+      previous[captureStartEvent(previous)] = null;
+      previous.onlimit = previous.onspeechstart = previous.onspeechend = previous.onresult = previous.onerror = previous.onend = previous.onnomatch = null;
+      try { previous.abort(); } catch (e) {}
+    }
+    if (host) { input.readOnly = false; renderRecording(); }
+  }
+  function renderRecording() {
+    var recording = host.querySelector('.assistant-recording'), pressed = !!holding && holding.held;
+    var ready = pressed && holding.captureAt != null, preparing = pressed && !ready && !holding.ended && !holding.failed;
+    var needsReview = pressed && (holding.slowStart || holding.ended || holding.failed || holding.uncertain || holding.truncated || !!trim(holding.base));
+    host.classList.toggle('assistant-is-recording', pressed); recording.hidden = !pressed;
+    recording.setAttribute('data-ready', String(ready));
+    recording.setAttribute('data-cancel', String(pressed && holding.cancel));
+    recording.setAttribute('data-review', String(pressed && holding.review));
+    recording.setAttribute('data-speaking', String(!!(ready && !holding.ended && !holding.failed &&
+      (holding.speaking == null ? holding.interimText : holding.speaking))));
+    var target = host.querySelector('[data-assistant-action="hold-voice"]');
+    target.classList.toggle('is-recording', pressed);
+    var label = '按住说话', hint = '', words = '';
+    if (pressed) {
+      if (holding.cancel) { label = '松开取消'; hint = '松开取消，移回继续'; }
+      else if (preparing) { label = '准备中'; hint = '请继续按住，准备好后再说'; }
+      else if (holding.review) { label = '松开转文字'; hint = '松开转成文字，移回继续'; }
+      else if (needsReview) { label = '松开核对'; hint = '松开后核对文字'; }
+      else { label = '松开发送'; hint = '松开发送 · 上滑取消 · 右滑转文字'; }
+      words = (holding.finalText + holding.interimText).slice(0, 1200) || holding.failure;
+      if (!words) words = holding.ended ? '录音已结束' : preparing ? '正在准备麦克风…' : '正在听你说…';
+    }
+    target.querySelector('span').textContent = label;
+    recording.querySelector('.assistant-recording-hint').textContent = hint;
+    recording.querySelector('.assistant-recording-text').textContent = words;
+  }
+  function holdTarget(node) {
+    while (node && node !== host) { if (node.getAttribute && node.getAttribute('data-assistant-action') === 'hold-voice') return node; node = node.parentNode; }
+    return null;
+  }
+  function validHold(session) {
+    if (holding !== session || session.token !== voiceEpoch) return false;
+    if (!current() || session.scope !== scopeKey() || session.generation !== generation) { stopVoice(); updateControls(); return false; }
+    return true;
+  }
+  function finishHold(session, endedAfterRelease) {
+    if (!validHold(session)) return;
+    var finalWords = trim(session.finalText);
+    var words = session.recognition.provider === 'volc' ? finalWords : trim(session.finalText + session.interimText);
+    var sameDraft = text === session.base, tooShort = session.duration < MIN_HOLD_MS;
+    var reliable = endedAfterRelease && !session.slowStart && !session.naturalEnd && !session.failed && !session.uncertain && !session.truncated && !tooShort && finalWords && !trim(session.interimText);
+    var autoSend = reliable && !session.review && !trim(session.base) && sameDraft && loaded && !busy() && !confirming && !uncertainTurn();
+    var note = session.failure || (session.truncated ? '语音较长，已保留前 1200 字，请核对后发送。' : session.slowStart ? '麦克风启动较慢，请核对开头后再发送。' : session.uncertain ? '有些字没听准，已放入输入框，请核对后发送。' : '语音已放入输入框，核对后再发送。');
+    stopVoice(); holdClickUntil = Date.now() + 700;
+    if (words && sameDraft) {
+      text = ((session.base ? session.base + '\n' : '') + words).slice(0, 1200); input.value = text; editing = !autoSend; growInput();
+    }
+    if (autoSend) { send(); return; }
+    voiceNote = words ? note : session.failure || '没有听清，再试一次或输入文字。';
+    updateControls();
+  }
+  function cancelHold(note) {
+    if (!holding) return;
+    stopVoice(); holdClickUntil = Date.now() + 700; voiceNote = note || '已取消语音。'; updateControls();
+  }
+  function releaseHold(session) {
+    if (!validHold(session) || !session.held) return;
+    holdClickUntil = Date.now() + 700;
+    if (session.cancel) { cancelHold(); return; }
+    if (session.captureAt == null) { cancelHold(session.failure || '麦克风尚未就绪，请重新按住说话。'); return; }
+    session.held = false; session.released = true; session.duration = Date.now() - session.captureAt; root.clearTimeout(session.limit); releaseCapture(session);
+    if (session.ended) { finishHold(session, false); return; }
+    listening = false; voiceNote = '正在整理语音…'; updateControls();
+    session.timer = root.setTimeout(function () {
+      if (!validHold(session)) return;
+      session.uncertain = true;
+      if (session.recognition.provider === 'volc') session.failure = '等待语音定稿超时，请再说一次。';
+      finishHold(session, false);
+    }, session.recognition.provider === 'volc' ? 12000 : 1500);
+    try { session.recognition.stop(); } catch (e) { session.failed = true; finishHold(session, false); }
+  }
+  function startHold(target, event, keyboard) {
+    if (!current() || !speechAvailable() || !loaded || busy() || confirming || uncertainTurn() || holding || target.disabled) return;
+    stopVoice();
+    var recognition, session = { token: ++voiceEpoch, scope: scope, generation: generation, base: text, hints: speechHints(), target: target,
+      pointerId: keyboard ? null : event.pointerId, startX: event.clientX, key: keyboard ? event.key : '', rect: target.getBoundingClientRect(), started: Date.now(), held: true, released: false,
+      captureAt: null, slowStart: false, cancel: false, review: false, finalText: '', interimText: '', uncertain: false, truncated: false, failed: false, ended: false, naturalEnd: false, failure: '', timer: 0, limit: 0 };
+    try { recognition = createRecognizer(session.hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
+    holding = session; session.recognition = recognition; voice = recognition; listening = false; voiceNote = ''; holdClickUntil = Date.now() + 700;
+    var touch = event.pointerType === 'touch';
+    recognition[captureStartEvent(recognition)] = function () {
+      if (!validHold(session) || !session.held || session.failed || session.ended || session.captureAt != null) return;
+      session.captureAt = Date.now();
+      session.slowStart = session.captureAt - session.started >= MIN_HOLD_MS;
+      listening = true; updateControls();
+      if (touch && !session.cancel && typeof root.navigator.vibrate === 'function') {
+        try { root.navigator.vibrate(12); } catch (e) { /* Optional device feedback. */ }
+      }
+      if (recognition.provider !== 'volc') session.limit = root.setTimeout(limitReached, 60000);
     };
+    recognition.onlimit = limitReached;
+    recognition.onspeechstart = function () { if (validHold(session)) { session.speaking = true; renderRecording(); } };
+    recognition.onspeechend = function () { if (validHold(session)) { session.speaking = false; renderRecording(); } };
+    function received(result) {
+      if (!validHold(session)) return;
+      session.finalText = result.finalText; session.interimText = result.interimText;
+      session.uncertain = session.uncertain || !!result.uncertain;
+      session.truncated = session.truncated || (session.base ? session.base.length + 1 : 0) + session.finalText.length + session.interimText.length > 1200;
+      renderRecording();
+    }
     recognition.onerror = function (event) {
-      if (!valid()) return;
-      listening = false; voiceNote = event.error === 'not-allowed' || event.error === 'service-not-allowed' ? '听写未获授权，可以继续打字。' : event.error === 'no-speech' ? '没有听清，再试一次或输入文字。' : '听写未完成，可以继续打字或再试。'; updateControls();
+      if (!validHold(session)) return;
+      session.failed = true; session.failure = voiceFailure(event); listening = false; voiceNote = session.failure;
+      if (session.released) finishHold(session, false); else updateControls();
+    };
+    recognition.onnomatch = function () {
+      if (!validHold(session)) return;
+      session.uncertain = true; session.failure = '没有听准，请核对文字或再试一次。';
+      if (session.released) finishHold(session, false); else updateControls();
     };
     recognition.onend = function () {
+      if (!validHold(session)) return;
+      voice = null; listening = false; session.ended = true;
+      if (session.released) finishHold(session, true);
+      else { session.naturalEnd = true; voiceNote = session.failure || '录音已结束，松开后核对文字。'; updateControls(); }
+    };
+    if (session.pointerId != null && target.setPointerCapture) { try { target.setPointerCapture(session.pointerId); } catch (e) {} }
+    function limitReached() {
+      if (!validHold(session)) return;
+      session.review = true; session.failure = '录音已到 60 秒，请核对文字后发送。';
+      if (session.held) releaseHold(session);
+    }
+    try { recognition.start(); } catch (e) { cancelHold('当前无法听写，可以继续打字。'); return; }
+    updateControls();
+  }
+  function holdStarted(event) {
+    var target = holdTarget(event.target);
+    if (!target || event.isPrimary === false || event.button != null && event.button !== 0) return;
+    event.preventDefault(); event.stopPropagation(); startHold(target, event, false);
+  }
+  function holdMoved(event) {
+    var session = holding;
+    if (!session || !session.held || session.pointerId !== event.pointerId) return;
+    if (!validHold(session)) return;
+    var rect = session.rect;
+    session.cancel = event.clientY < rect.top - 56 || event.clientY > rect.bottom + 36 || event.clientX < rect.left - 36;
+    session.review = !session.cancel && event.clientX >= session.startX + 64;
+    renderRecording();
+  }
+  function holdReleased(event) { if (holding && holding.pointerId === event.pointerId) { holdMoved(event); if (holding) releaseHold(holding); } }
+  function holdCancelled(event) { if (holding && holding.pointerId === event.pointerId) cancelHold(); }
+  function holdLost(event) { if (holding && holding.held && holding.pointerId === event.pointerId) cancelHold(); }
+  function holdContextMenu(event) { if (holding || holdTarget(event.target)) event.preventDefault(); }
+  function voiceInterrupted() { if (holding) cancelHold('语音已停止，请重新按住说话。'); }
+  function startVoice() {
+    if (!current() || !speechAvailable() || confirming || holding) return;
+    if (voice) { voice[captureStartEvent(voice)] = null; listening = false; voiceNote = '正在整理听写…'; try { voice.stop(); } catch (e) { stopVoice(); voiceNote = '听写已中断，请重新录音。'; } updateControls(); return; }
+    var recognition, token = ++voiceEpoch, base = text, voiceScope = scope, heard = false, atLimit = false, hints = speechHints();
+    try { recognition = createRecognizer(hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
+    voice = recognition; listening = false; voiceNote = '正在准备麦克风…'; editing = true;
+    function valid() { return voice === recognition && token === voiceEpoch && voiceScope === scopeKey() && current(); }
+    var captureEvent = captureStartEvent(recognition);
+    recognition[captureEvent] = function () {
+      if (!valid() || !recognition[captureEvent]) return;
+      recognition[captureEvent] = null;
+      listening = true; voiceNote = ''; updateControls();
+    };
+    recognition.onlimit = function () {
+      if (valid()) { recognition[captureEvent] = null; atLimit = true; listening = false; voiceNote = '已到 60 秒，正在整理听写…'; updateControls(); }
+    };
+    function received(result) {
       if (!valid()) return;
-      voice = null; listening = false; if (!voiceNote || voiceNote === '正在整理听写…') voiceNote = heard ? '听写已放入输入框，核对后再发送。' : '没有听清，再试一次或输入文字。'; updateControls();
+      var words = result.finalText + result.interimText;
+      if (recognition.provider === 'volc' && !result.finalText) {
+        if (!atLimit) voiceNote = words ? '正在识别：' + words.slice(-120) : '';
+        updateControls(); return;
+      }
+      if (!words) return;
+      voiceNote = '';
+      heard = true; text = ((base ? base + '\n' : '') + words).slice(0, 1200); input.value = text; growInput(); updateControls();
+    }
+    recognition.onerror = function (event) {
+      if (!valid()) return;
+      recognition[captureEvent] = null; listening = false; voiceNote = voiceFailure(event); updateControls();
+    };
+    recognition.onnomatch = function () { if (valid()) { voiceNote = '没有听准，请核对文字或再试一次。'; updateControls(); } };
+    recognition.onend = function () {
+      if (!valid()) return;
+      voice = null; listening = false;
+      if (!voiceNote || voiceNote === '正在整理听写…' || voiceNote === '正在准备麦克风…') {
+        voiceNote = heard ? (atLimit ? '已到 60 秒，听写已放入输入框。' : '听写已放入输入框，核对后再发送。') : '没有听清，再试一次或输入文字。';
+      }
+      updateControls();
     };
     try { recognition.start(); } catch (e) { stopVoice(); voiceNote = '当前无法听写，可以继续打字。'; }
     updateControls();
   }
-  function typed() { if (voice) stopVoice(); text = input.value.slice(0, 1200); voiceNote = ''; notice = ''; growInput(); updateControls(); }
+  function typed() { if (voice || holding) stopVoice(); text = input.value.slice(0, 1200); editing = true; voiceNote = ''; notice = ''; growInput(); updateControls(); }
   function submitted(event) { event.preventDefault(); event.stopPropagation(); if (event.target.id === 'assistant-chat-form') send(); }
   function showConfirmation(show) { confirming = show; stopVoice(); voiceNote = ''; updateControls(); focus(show ? host.querySelector('[data-assistant-action="cancel-clear"]') : host.querySelector('[data-assistant-action="clear"]')); }
   function handoff(node, isRoute) {
@@ -353,7 +577,10 @@
   function clicked(event) {
     event.stopPropagation(); var node = event.target;
     while (node && node !== host && !node.getAttribute('data-assistant-action')) node = node.parentNode;
-    if (!node || node === host || !current() || node.disabled) return;
+    if (!current()) return;
+    // Changing composer height before click can move the pressed control out from under the pointer.
+    if (editing && !trim(text) && !voice && !holding && !doc.getElementById('assistant-chat-form').contains(event.target)) { editing = false; updateControls(); }
+    if (!node || node === host || node.disabled) return;
     var action = node.getAttribute('data-assistant-action');
     if (confirming && action !== 'cancel-clear' && action !== 'confirm-clear') return;
     if (action === 'close') close();
@@ -361,6 +588,7 @@
     else if (action === 'cancel-clear') showConfirmation(false);
     else if (action === 'confirm-clear') clearConversation();
     else if (action === 'voice') startVoice();
+    else if (action === 'hold-voice' && !holding && !event.detail && Date.now() >= holdClickUntil) startVoice();
     else if (action === 'history') readEarlier();
     else if (action === 'example') { stopVoice(); text = node.getAttribute('data-prompt') || ''; input.value = text; voiceNote = ''; notice = '已放进输入框，核对后再发送。'; growInput(); updateControls(); }
     else if (action === 'retry' && !active) { if (retry === 'turn' && pendingTurn && pendingTurn.generation === generation) sendTurn(pendingTurn); else read(false); }
@@ -370,22 +598,43 @@
     var container = confirming ? doc.getElementById('assistant-clear-confirm') : box;
     return Array.prototype.filter.call(container.querySelectorAll('button:not([disabled]),textarea:not([disabled]),[tabindex="0"]'), visible);
   }
-  function focusin(event) { if (opened && current() && !box.contains(event.target)) focus(confirming ? host.querySelector('[data-assistant-action="cancel-clear"]') : box); }
+  function focusin(event) {
+    if (!opened || !current()) return;
+    if (!box.contains(event.target)) { focus(confirming ? host.querySelector('[data-assistant-action="cancel-clear"]') : box); return; }
+    if (event.target === input) editing = true;
+    if (holding && holding.key && event.target !== holding.target) cancelHold();
+    updateControls();
+  }
   function keydown(event) {
     if (!opened) return;
     if (!current()) { close({ restoreFocus: false }); return; }
     if (event.key === 'Escape') {
       event.stopImmediatePropagation(); if (event.isComposing || event.keyCode === 229) return;
-      event.preventDefault(); if (confirming) showConfirmation(false); else close(); return;
+      event.preventDefault(); if (holding) cancelHold(); else if (confirming) showConfirmation(false); else close(); return;
     }
     if (event.key === 'Tab') {
+      if (holding) cancelHold();
       event.stopImmediatePropagation(); var nodes = focusables(), first = nodes[0], last = nodes[nodes.length - 1];
       if (!nodes.length) { event.preventDefault(); focus(box); }
       else if (!box.contains(doc.activeElement) || doc.activeElement === box || event.shiftKey && doc.activeElement === first || !event.shiftKey && doc.activeElement === last) { event.preventDefault(); focus(event.shiftKey ? last : first); }
     }
+    var holdButton = holdTarget(event.target);
+    if (holdButton && (event.key === ' ' || event.key === 'Spacebar' || event.key === 'Enter') && !event.isComposing && event.keyCode !== 229) {
+      event.preventDefault(); event.stopImmediatePropagation(); if (!event.repeat && !holding) startHold(holdButton, event, true); return;
+    }
     if (event.target === input && event.key === 'Enter' && (event.ctrlKey || event.metaKey) && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); event.stopImmediatePropagation(); send(); }
   }
-  function resumed() { if (opened && !doc.hidden) { if (!current()) close({ restoreFocus: false }); else if (!active) read(true); } }
+  function keyup(event) {
+    if (event.key === 'Tab' && opened && editing && !voice && !holding && !trim(text) && !doc.getElementById('assistant-chat-form').contains(doc.activeElement)) {
+      editing = false; updateControls(); return;
+    }
+    if (!holding || !holding.key || event.key !== holding.key) return;
+    event.preventDefault(); event.stopImmediatePropagation(); releaseHold(holding);
+  }
+  function resumed() {
+    if (doc.hidden) { if (voice || holding) { stopVoice(); voiceNote = '语音已停止，可以重新开始或输入文字。'; updateControls(); } return; }
+    if (opened) { if (!current()) close({ restoreFocus: false }); else if (!active && !voice && !holding) read(true); }
+  }
 
   function init(options) { if (host) reset(); config = options || {}; build(); updateControls(); return api; }
   function open(options) {
@@ -395,6 +644,7 @@
     opener = options.trigger || doc.activeElement; hasOpeningContext = Object.prototype.hasOwnProperty.call(options, 'context'); openingContext = options.context;
     scope = scopeKey(); opened = true; host.hidden = false; doc.body.classList.add('assistant-panel-open');
     if (typeof config.onOpen === 'function') config.onOpen();
+    if (!trim(text)) editing = false;
     input.value = text; fit(); updateControls(); focus(box); if (!active) read(false); return true;
   }
   function restore(node, savedScope, savedEpoch) {
@@ -415,10 +665,10 @@
     close({ restoreFocus: false, reason: 'reset' }); epoch++; cancelActive(); stopPoll(); stopVoice();
     generation = ''; messages = []; draft = null; serverPending = null; pendingTurn = null; failedTurnId = ''; loaded = false;
     hasMore = false; nextCursor = null; historyExpanded = false;
-    text = ''; notice = ''; error = ''; retry = ''; confirming = false; opener = null; openingContext = null; hasOpeningContext = false; scope = ''; voiceNote = '';
+    text = ''; notice = ''; error = ''; retry = ''; confirming = false; opener = null; openingContext = null; hasOpeningContext = false; scope = ''; voiceNote = ''; editing = false;
     if (input) input.value = ''; renderConversation(false); updateControls();
   }
-  function getState() { return { open: opened, loaded: loaded, busy: busy(), generation: generation, messageCount: messages.length, draft: copy(draft), pendingTurnId: pendingTurn ? pendingTurn.turnId : '', listening: listening, confirming: confirming, hasMore: hasMore, error: error }; }
+  function getState() { return { open: opened, loaded: loaded, busy: busy(), generation: generation, messageCount: messages.length, draft: copy(draft), pendingTurnId: pendingTurn ? pendingTurn.turnId : '', listening: listening, holding: !!holding && holding.held, voiceCancelling: !!holding && holding.cancel, voiceReview: !!holding && holding.review, voiceFinishing: !!holding && holding.released, confirming: confirming, hasMore: hasMore, error: error }; }
   var api = { init: init, mount: init, open: open, close: close, reset: reset, isOpen: function () { return opened; }, refresh: function () { read(false); }, read: function () { read(false); }, getState: getState };
   root.FamilyAssistantPanel = api;
 }(typeof window !== 'undefined' ? window : this));

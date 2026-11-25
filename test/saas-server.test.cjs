@@ -399,7 +399,7 @@ test('SaaS static runtime, no-store, origin and CSRF enforcement expose no priva
   const f = await H.fixture(t);
   const user = await H.family(f, await H.register(f, 'transport@example.test'));
   assert.deepEqual((await H.request(f.server, 'GET', '/api/health')).body, { ok: true });
-  assert.equal((await H.request(f.server, 'GET', '/runtime.js')).body, 'window.__TTJF_SAAS__=true;\n');
+  assert.equal((await H.request(f.server, 'GET', '/runtime.js')).body, 'window.__TTJF_SAAS__=true;\nwindow.__TTJF_VOLC_ASR__=false;\n');
   for (const route of ['/data/state.json', '/saas/migrations/001-initial.sql', '/.env.saas.local', '/saas-server.cjs', '/assets/../../saas-server.cjs']) {
     const response = await H.request(f.server, 'GET', route);
     assert.ok([400, 404].includes(response.status), route);
