@@ -1,10 +1,77 @@
 (function () {
   'use strict';
-  var limit = 3, maxBytes = 768 * 1024, viewer = null;
+  var limit = 3, maxBytes = 768 * 1024, viewer = null, releases = [];
   var uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
   function createDraft() { return { items: [], nextKey: 0, replaceKey: null, notice: '' }; }
   function ids(draft) { return draft.items.map(function (item) { return item.photoId; }).filter(Boolean); }
   function ready(draft) { return draft.items.every(function (item) { return !!item.photoId; }); }
+  function current(env) { return env.current ? env.current() : env.active(); }
+  function releaseScope(env) { var scope = env.scope || {}; return JSON.stringify([scope.userId, scope.familyId]); }
+  function photoRequest(env, path, body) {
+    return new Promise(function (resolve) {
+      var settled = false;
+      function done(status, response) { if (!settled) { settled = true; resolve({ status: status, body: response || {} }); } }
+      if (!current(env)) { done(0); return; }
+      try {
+        var xhr = env.request('POST', path, body, done);
+        // The account boundary suppresses callbacks from an aborted scope.
+        if (xhr === null) done(0);
+        else if (xhr && xhr.addEventListener) {
+          xhr.addEventListener('abort', function () { done(0); }, { once: true });
+          xhr.addEventListener('loadend', function () { done(0); }, { once: true });
+        }
+      } catch (_) { done(0); }
+    });
+  }
+  function queueRelease(photoIds, env) {
+    var scope = releaseScope(env);
+    photoIds.forEach(function (id) {
+      if (uuid.test(id) && !releases.some(function (entry) { return entry.scope === scope && entry.photoId === id; })) {
+        releases.push({ scope: scope, photoId: id, pending: null });
+      }
+    });
+    return flush(env);
+  }
+  function release(entry, env) {
+    if (entry.pending) return entry.pending;
+    if (!current(env)) return Promise.resolve(false);
+    var attempt = function (retry) {
+      return photoRequest(env, '/api/award-photos/discard', { photoIds: [entry.photoId] }).then(function (result) {
+        if (result.status >= 200 && result.status < 300) {
+          var index = releases.indexOf(entry); if (index >= 0) releases.splice(index, 1);
+          return true;
+        }
+        if (retry && current(env) && (!result.status || result.status >= 500)) return attempt(false);
+        return false;
+      });
+    };
+    entry.pending = attempt(true).then(function (ok) { entry.pending = null; return ok; });
+    return entry.pending;
+  }
+  function flush(env) {
+    var scope = releaseScope(env);
+    return Promise.all(releases.filter(function (entry) { return entry.scope === scope; }).map(function (entry) {
+      return release(entry, env);
+    })).then(function (results) { return results.every(Boolean); });
+  }
+  function discard(draft, env, committedIds) {
+    var items = draft.items.splice(0), photoIds = [];
+    draft.notice = ''; draft.replaceKey = null;
+    items.forEach(function (item) {
+      item.abandoned = true;
+      if ((committedIds || []).indexOf(item.photoId) < 0) photoIds.push(item.photoId || item.uploadId);
+    });
+    return queueRelease(photoIds, env);
+  }
+  function unavailable(draft, photoIds, env) {
+    var changed = false;
+    draft.items.forEach(function (item) {
+      if (!item.photoId || photoIds.indexOf(item.photoId) < 0) return;
+      queueRelease([item.photoId], env);
+      item.photoId = ''; item.uploadId = ''; item.error = '照片已过期或失效，请重试、重拍或只记积分。'; changed = true;
+    });
+    return changed;
+  }
   function button(action, label, key) {
     return '<button type="button" data-action="award-photo-' + action + '"' +
       (key == null ? '' : ' data-id="' + key + '"') + '>' + label + '</button>';
@@ -50,23 +117,30 @@
     } finally { URL.revokeObjectURL(url); }
   }
   async function upload(item, draft, env) {
-    function active() { return env.active() && draft.items.indexOf(item) >= 0; }
+    if (item.uploading || item.abandoned) return;
+    function active() { return !item.abandoned && env.active() && draft.items.indexOf(item) >= 0; }
+    item.uploading = true;
     item.error = '';
     try {
-      if (!item.dataUrl) item.dataUrl = await prepare(item.file);
-    } catch (_) {
-      if (active()) { item.error = '读不到这张照片，请重拍或换一张。'; env.refresh(); }
-      return;
-    }
-    if (!active()) return;
-    item.file = null;
-    env.refresh();
-    env.request('POST', '/api/award-photos', { dataUrl: item.dataUrl }, function (status, response) {
+      try { if (!item.dataUrl) item.dataUrl = await prepare(item.file); }
+      catch (_) { if (active()) item.error = '读不到这张照片，请重拍或换一张。'; return; }
       if (!active()) return;
-      if (status >= 200 && status < 300 && response && uuid.test(response.photoId)) item.photoId = response.photoId;
-      else item.error = '照片没传成功，积分尚未记入。';
-      env.refresh();
-    });
+      item.file = null; env.refresh();
+      // Free a removed/replaced selection before consuming another staging slot.
+      if (!await flush(env)) { if (active()) item.error = '照片清理尚未完成，请重试照片。'; return; }
+      if (!active()) return;
+      if (!item.uploadId) item.uploadId = window.crypto.randomUUID();
+      var result = await photoRequest(env, '/api/award-photos', { dataUrl: item.dataUrl, photoId: item.uploadId });
+      if (!active()) return;
+      if (result.status >= 200 && result.status < 300 && result.body.photoId === item.uploadId) item.photoId = result.body.photoId;
+      else {
+        if (['PHOTO_UNAVAILABLE', 'PHOTO_DISCARDED', 'PHOTO_ID_REUSED'].includes(result.body.code)) {
+          queueRelease([item.uploadId], env); item.uploadId = '';
+        }
+        item.error = '照片没传成功，积分尚未记入。';
+      }
+    } catch (_) { if (active()) item.error = '照片没传成功，积分尚未记入。'; }
+    finally { item.uploading = false; if (active()) env.refresh(); }
   }
   function change(input, draft, env) {
     if (!input || !input.hasAttribute('data-award-photo-input')) return false;
@@ -81,7 +155,8 @@
     if (replacement != null) {
       var index = draft.items.findIndex(function (item) { return item.key === replacement; });
       if (index < 0) return true;
-      draft.items.splice(index, 1, added[0]);
+      var removed = draft.items.splice(index, 1, added[0])[0];
+      discard({ items: [removed] }, env);
     } else draft.items.push.apply(draft.items, added);
     env.refresh();
     added.forEach(function (item) { upload(item, draft, env); });
@@ -101,9 +176,9 @@
         input.click();
       }
     } else if (action === 'award-photo-skip') {
-      draft.items.length = 0; draft.notice = ''; env.refresh();
+      discard(draft, env); env.refresh();
     } else if (index >= 0) {
-      if (action === 'award-photo-remove') { draft.items.splice(index, 1); draft.notice = ''; env.refresh(); }
+      if (action === 'award-photo-remove') { discard({ items: draft.items.splice(index, 1) }, env); draft.notice = ''; env.refresh(); }
       if (action === 'award-photo-retry' && draft.items[index].error) { upload(draft.items[index], draft, env); env.refresh(); }
       if (action === 'award-photo-preview') {
         var previews = draft.items.filter(function (item) { return !!item.dataUrl; });
@@ -183,5 +258,5 @@
     dialog.showModal(); show();
   }
   window.FamilyAwardPhotos = { createDraft: createDraft, editor: editor, change: change, handle: handle, ids: ids,
-    ready: ready, history: history, viewHistory: viewHistory, closeViewer: closeViewer };
+    ready: ready, discard: discard, flush: flush, unavailable: unavailable, history: history, viewHistory: viewHistory, closeViewer: closeViewer };
 }());

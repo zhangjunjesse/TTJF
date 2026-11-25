@@ -64,17 +64,58 @@ function dataUrl(data) { return PREFIX + Buffer.from(data).toString('base64'); }
 function createAwardPhotos({ run, at, rate }) {
   async function upload(ctx, body) {
     return run(ctx, async (client, who, family) => {
+      await rate(client, who, family, 'award-photo-request', 72);
+      if (Object.keys(body).some(key => !['dataUrl', 'photoId'].includes(key)) ||
+          (S.own(body, 'photoId') && (typeof body.photoId !== 'string' || !S.UUID.test(body.photoId)))) invalidPhoto();
+      const photoId = S.own(body, 'photoId') ? body.photoId.toLowerCase() : crypto.randomUUID(), sampled = at();
+      const discarded = (await client.query(`SELECT 1 FROM saas_award_photo_discards
+        WHERE family_id=$1 AND id=$2 AND uploaded_by=$3 AND expires_at>$4`, [family.id, photoId, who.user.id, sampled])).rows[0];
+      if (discarded) S.fail(410, 'PHOTO_DISCARDED', '照片已移除，请重新选择');
+      const data = decodeJpeg(body.dataUrl);
+      const prior = (await client.query('SELECT uploaded_by,data,action_id,expires_at FROM saas_award_photos WHERE family_id=$1 AND id=$2', [family.id, photoId])).rows[0];
+      if (prior) {
+        if (prior.uploaded_by?.toLowerCase() !== who.user.id.toLowerCase() || prior.action_id !== null || !data.equals(Buffer.from(prior.data))) {
+          S.fail(409, 'PHOTO_ID_REUSED', '照片编号已使用，请重新选择');
+        }
+        if (+prior.expires_at <= +sampled) S.fail(410, 'PHOTO_UNAVAILABLE', '照片已过期，请重新选择');
+        return { status: 200, body: { photoId } };
+      }
+      // Replaying a lost upload response does not consume a new staging slot or
+      // the existing new-upload allowance. The request rate above still bounds it.
       await rate(client, who, family, 'award-photo-upload', 12);
-      if (Object.keys(body).some(key => key !== 'dataUrl')) invalidPhoto();
-      const data = decodeJpeg(body.dataUrl), sampled = at();
       await client.query('DELETE FROM saas_award_photos WHERE family_id=$1 AND action_id IS NULL AND (expires_at<=$2 OR uploaded_by IS NULL)', [family.id, sampled]);
       const pending = (await client.query(`SELECT count(*) AS total,
         count(CASE WHEN uploaded_by=$2 THEN 1 END) AS own FROM saas_award_photos WHERE family_id=$1 AND action_id IS NULL`, [family.id, who.user.id])).rows[0];
       if (pending.own >= 12 || pending.total >= 36) S.fail(429, 'PHOTO_UPLOAD_LIMIT', '待提交照片较多，请先完成加分或稍后重试');
-      const photoId = crypto.randomUUID();
       await client.query(`INSERT INTO saas_award_photos(family_id,id,uploaded_by,data,created_at,expires_at)
         VALUES($1,$2,$3,$4,$5,$6)`, [family.id, photoId, who.user.id, data, sampled, new Date(+sampled + PHOTO_TTL_MS)]);
       return { status: 200, body: { photoId } };
+    });
+  }
+  async function discard(ctx, body) {
+    return run(ctx, async (client, who, family) => {
+      if (Object.keys(body).some(key => key !== 'photoIds') || !Array.isArray(body.photoIds) || body.photoIds.length > 12 ||
+          body.photoIds.some(id => typeof id !== 'string' || !S.UUID.test(id))) invalidPhoto();
+      const sampled = at(), entries = [];
+      for (const id of new Set(body.photoIds.map(id => id.toLowerCase()))) {
+        const photo = (await client.query('SELECT uploaded_by,action_id FROM saas_award_photos WHERE family_id=$1 AND id=$2', [family.id, id])).rows[0];
+        if (photo && (photo.action_id !== null || photo.uploaded_by?.toLowerCase() !== who.user.id.toLowerCase())) continue;
+        const marker = (await client.query(`SELECT expires_at FROM saas_award_photo_discards
+          WHERE family_id=$1 AND id=$2 AND uploaded_by=$3`, [family.id, id, who.user.id])).rows[0];
+        entries.push({ id, newMarker: !marker || +marker.expires_at <= +sampled });
+      }
+      // Charge only new markers, including unknown IDs needed to cancel a late
+      // upload. Validate the whole batch and its limits before deleting anything.
+      for (const entry of entries) if (entry.newMarker) await rate(client, who, family, 'award-photo-discard', 60);
+      for (const entry of entries) {
+        if (entry.newMarker) {
+          await client.query(`INSERT INTO saas_award_photo_discards(family_id,id,uploaded_by,expires_at) VALUES($1,$2,$3,$4)
+            ON CONFLICT(family_id,id,uploaded_by) DO UPDATE SET expires_at=excluded.expires_at`,
+          [family.id, entry.id, who.user.id, new Date(+sampled + PHOTO_TTL_MS)]);
+        }
+        await client.query('DELETE FROM saas_award_photos WHERE family_id=$1 AND id=$2 AND uploaded_by=$3 AND action_id IS NULL', [family.id, entry.id, who.user.id]);
+      }
+      return { status: 200, body: { ok: true } };
     });
   }
   async function read(ctx, body) {
@@ -102,6 +143,6 @@ function createAwardPhotos({ run, at, rate }) {
       if (changed.rowCount !== 1) throw new Error('Award photo changed inside the action transaction');
     }
   }
-  return { upload, read, assertAttachable, commit };
+  return { upload, discard, read, assertAttachable, commit };
 }
 module.exports = { MAX_PHOTO_BYTES, MAX_UPLOAD_JSON_BYTES, PHOTO_TTL_MS, decodeJpeg, dataUrl, createAwardPhotos };

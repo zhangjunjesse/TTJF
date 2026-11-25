@@ -12,12 +12,12 @@ function existsEntry(file) {
   try { fs.lstatSync(file); return true; }
   catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
-async function validateDatabase(database, { allowOlder = false } = {}) {
+async function validateDatabase(database, options) {
   const integrity = (await database.query('PRAGMA integrity_check')).rows;
   requireValue(integrity.length === 1 && Object.values(integrity[0])[0] === 'ok', 'SQLite integrity_check failed; nothing was restored.');
   const foreignKeys = (await database.query('PRAGMA foreign_key_check')).rows;
   requireValue(foreignKeys.length === 0, 'SQLite foreign_key_check failed; nothing was restored.');
-  await assertDatabaseSchema(database, { allowOlder });
+  await assertDatabaseSchema(database, options);
   const triggers = (await database.query("SELECT name FROM sqlite_schema WHERE type='trigger'")).rows;
   requireValue(triggers.length === 0, 'SQLite database contains unrecognized triggers. This application schema has no triggers; backup or restore was refused.');
 }
@@ -70,7 +70,8 @@ async function restoreDatabase({ source, output, appStopped = false }) {
         await client.query("UPDATE saas_assistant_turns SET failed_at=$1,failure_code='ASSISTANT_INTERRUPTED' WHERE completed_at IS NULL AND failed_at IS NULL", [new Date()]);
         await client.query('UPDATE saas_assistant_chats SET pending_turn_id=NULL,pending_expires_at=NULL');
         await client.query('DELETE FROM saas_award_photos WHERE action_id IS NULL');
-        for (const table of ['saas_assistant_leases', 'saas_parent_grants', 'saas_parent_challenges', 'saas_sessions', 'saas_email_tokens', 'saas_invitations']) {
+        await client.query('DELETE FROM saas_award_photo_discards');
+        for (const table of ['saas_assistant_leases', 'saas_parent_devices', 'saas_parent_grants', 'saas_parent_challenges', 'saas_sessions', 'saas_email_tokens', 'saas_invitations']) {
           await client.query('DELETE FROM ' + table);
         }
       });

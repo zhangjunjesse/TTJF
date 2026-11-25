@@ -179,6 +179,9 @@ test('whole SQLite backup restores photo bytes and idempotent receipts, but disc
   const owner = await H.family(f, await H.register(f, 'photos-backup@example.test'));
   await H.setup(f, owner, 'math');
   const photoId = await upload(f, owner), stagedId = await upload(f, owner);
+  assert.equal((await H.request(f.server, 'POST', '/api/parent/device', { enabled: true, credential: H.PASSWORD }, owner)).status, 200);
+  await f.database.query('INSERT INTO saas_award_photo_discards(family_id,id,uploaded_by,expires_at) VALUES($1,$2,$3,$4)',
+    [owner.familyId, crypto.randomUUID(), owner.userId, new Date(f.clock.value + PHOTO_TTL_MS)]);
   const { action, result } = await award(f, owner, 'backed-up-photo', [photoId]);
   const directory = path.dirname(f.databasePath), source = path.join(directory, 'photos-backup.sqlite'), output = path.join(directory, 'photos-restored.sqlite');
   await backupDatabase({ databasePath: f.databasePath, output: source });
@@ -189,6 +192,7 @@ test('whole SQLite backup restores photo bytes and idempotent receipts, but disc
   const database = await createDatabase({ databasePath: output, mustExist: true });
   try {
     assert.equal((await database.query('SELECT 1 FROM saas_award_photos WHERE id=$1', [stagedId])).rowCount, 0);
+    for (const table of ['saas_award_photo_discards', 'saas_parent_devices', 'saas_sessions']) assert.equal((await database.query('SELECT count(*) AS n FROM ' + table)).rows[0].n, 0, table);
     const server = await f.start({ database });
     assert.equal((await read(f, owner, photoId, server)).status, 401);
     const fresh = { ...await H.login(f, owner.email, H.PASSWORD, server), familyId: owner.familyId };
@@ -202,10 +206,10 @@ test('whole SQLite backup restores photo bytes and idempotent receipts, but disc
 test('supported older SQLite snapshots upgrade only their restored copy and keep real family ledger values', async t => {
   const f = await H.fixture(t, { maintenanceIntervalMs: 0 }), directory = path.dirname(f.databasePath);
   await f.server.closeSaas();
-  for (const version of [1, 2, 3]) {
+  for (const version of [1, 2, 3, 4]) {
     const source = path.join(directory, 'old-v' + version + '.sqlite'), output = path.join(directory, 'restored-v' + version + '.sqlite');
     const raw = new DatabaseSync(source), userId = crypto.randomUUID(), familyId = crypto.randomUUID();
-    for (const migration of ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql'].slice(0, version)) {
+    for (const migration of ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql', '004-parent-devices.sql'].slice(0, version)) {
       raw.exec(fs.readFileSync(path.join(__dirname, '..', 'saas', 'migrations', migration), 'utf8'));
     }
     const at = new Date(f.clock.value).toISOString(), state = M.apply(M.createEmptyFamily({ childName: '旧账本' }, at), H.credit('before-photo-feature', 9), at);
@@ -213,15 +217,20 @@ test('supported older SQLite snapshots upgrade only their restored copy and keep
     raw.prepare('INSERT INTO saas_users(id,email,password_hash,verified_at,created_at) VALUES(?,?,?,?,?)').run(userId, 'old-v' + version + '@example.test', '{}', at, at);
     raw.prepare('INSERT INTO saas_families(id,name,state,owner_user_id,created_at,updated_at) VALUES(?,?,?,?,?,?)').run(familyId, '旧家庭', JSON.stringify(state), userId, at, at);
     raw.prepare("INSERT INTO saas_memberships(family_id,user_id,role,created_at) VALUES(?,?,'owner',?)").run(familyId, userId, at);
+    const sessionHash = S.digest('old-v' + version + '-session');
+    raw.prepare('INSERT INTO saas_sessions(token_hash,user_id,csrf_hash,created_at,expires_at) VALUES(?,?,?,?,?)')
+      .run(sessionHash, userId, S.digest('old-csrf'), at, new Date(f.clock.value + 3600000).toISOString());
+    if (version === 4) raw.prepare('INSERT INTO saas_parent_devices(session_hash,family_id,user_id,created_at) VALUES(?,?,?,?)').run(sessionHash, familyId, userId, at);
     raw.exec('COMMIT'); raw.close();
     const bytes = fs.readFileSync(source);
     await restoreDatabase({ source, output, appStopped: true });
     assert.deepEqual(fs.readFileSync(source), bytes, 'old source v' + version + ' stays byte-identical');
     const restored = await createStore({ databasePath: output, migrate: false });
     try {
-      assert.deepEqual((await restored.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4]);
+      assert.deepEqual((await restored.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4, 5]);
       assert.deepEqual((await restored.database.query('SELECT state FROM saas_families WHERE id=$1', [familyId])).rows[0].state, state);
       assert.equal((await rows(restored.database)).rowCount, 0);
+      for (const table of ['saas_sessions', 'saas_parent_devices', 'saas_award_photo_discards']) assert.equal((await restored.database.query('SELECT count(*) AS n FROM ' + table)).rows[0].n, 0, table);
     } finally { await restored.close(); }
   }
 });

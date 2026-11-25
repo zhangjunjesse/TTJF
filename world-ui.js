@@ -40,7 +40,7 @@
     rewards: 'rewards', 'reward-list': 'rewards', reward: 'rewards', request: 'rewards', approve: 'rewards',
     records: 'history', homeWeek: 'history', petGrowth: 'history', homeInbox: 'reminders', task: 'reminders', taskAction: 'reminders',
     petHub: 'companion', petBuy: 'companion', petConfig: 'companion',
-    preferences: 'settings', profile: 'family', familySettings: 'family', parentConfig: 'authorization', voice: 'voice'
+    preferences: 'settings', profile: 'family', familySettings: 'family', parentConfig: 'authorization', parentDevice: 'authorization', voice: 'voice'
   };
   var accountPlaces = {
     account: 'family', families: 'family', onboarding: 'family', create: 'family', join: 'family', invite: 'family',

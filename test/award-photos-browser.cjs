@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, PIN, action: a, click, snapshot, ui } = Q;
 const CASE = process.env.AWARD_PHOTO_CASE || 'custom';
-const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired'];
+const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race'];
 assert.ok(CASES.includes(CASE), 'Unknown AWARD_PHOTO_CASE');
 const WIDTH = Number(process.env.AWARD_PHOTO_WIDTH || 390);
 const HEIGHT = Number(process.env.AWARD_PHOTO_HEIGHT || 844);
@@ -20,9 +20,9 @@ const PREVIEW = a('award-photo-preview');
 const HISTORY = a('award-photo-history');
 const VIEWER = '[data-award-photo-viewer]';
 const SOURCES = ['test/award-photos-browser.cjs', 'test/saas-browser.cjs', 'test/browser.cjs',
-  'award-photos.js', 'award-photos.css', 'app.js', 'index.html', 'model.js', 'saas-server.cjs',
-  'saas/business.cjs', 'saas/award-photos.cjs', 'saas/migrations/004-award-photos.sql'];
-const hashes = () => Object.fromEntries(SOURCES.filter(file => fs.existsSync(path.join(Q.ROOT, file))).map(file => [file,
+  'award-photos.js', 'award-photos.css', 'app.js', 'index.html', 'model.js', 'saas-client.js', 'saas-server.cjs',
+  'saas/business.cjs', 'saas/award-photos.cjs', 'saas/migrations/005-award-photos.sql'];
+const hashes = () => Object.fromEntries(SOURCES.map(file => [file,
   crypto.createHash('sha256').update(fs.readFileSync(path.join(Q.ROOT, file))).digest('hex')]));
 const report = Q.report.awardPhotos = { case: CASE, viewport: { width: WIDTH, height: HEIGHT }, sourceHashes: hashes(), uploads: [] };
 Q.report.command = 'AWARD_PHOTO_CASE=' + CASE + ' node test/award-photos-browser.cjs';
@@ -31,7 +31,7 @@ Q.report.boundaries = [
   'One selected award-photo group; unselected groups are not claimed as passed.',
   'Real headless Chromium, native file-input chooser, loopback SaaS HTTP and a temporary SQLite file; synthetic homework images only.',
   'Camera-button coverage opens the native file input with rear-camera capture intent. The picker-return group dispatches synthetic visibility events; a physical camera, OS image picker and iPad/Safari are not verified.',
-  'Upload-failure groups inject one identity-free 502 HTML proxy response or abort one browser request; subsequent uploads and all scoring requests use the real service.',
+  'Upload-failure groups inject one identity-free 502 HTML response or drop the response after the real service accepted an upload. All scoring requests use the real service.',
   'The overlap group delays the first real upload until a second native chooser is open. The expired group injects PHOTO_UNAVAILABLE for only its first challenge after a real staged upload.',
   'No production service, external SMTP, AI image provider or live family data is used.'
 ];
@@ -50,6 +50,18 @@ async function check(label, work) {
 }
 async function sql(id = familyId) {
   return (await env.database.query('SELECT revision,state FROM saas_families WHERE id=$1', [id])).rows[0];
+}
+async function storedPhotos(pending, committed = []) {
+  const expected = { pending: [...pending].sort(), committed: [...committed].sort() };
+  const until = Date.now() + 5000;
+  let actual;
+  do {
+    const { rows } = await env.database.query('SELECT id,action_id FROM saas_award_photos WHERE family_id=$1 ORDER BY id', [familyId]);
+    actual = { pending: rows.filter(row => !row.action_id).map(row => row.id), committed: rows.filter(row => row.action_id).map(row => row.id) };
+    if (JSON.stringify(actual) === JSON.stringify(expected)) return;
+    await B.delay(40);
+  } while (Date.now() < until);
+  assert.deepEqual(actual, expected, 'SQLite contains exactly the selected and committed photos');
 }
 async function fixtureAction(input, protectedAction = true) {
   const response = await env.api(page, '/api/state');
@@ -162,14 +174,17 @@ async function viewer(selector, multiple = false) {
   await Q.shot(page, 'photo-viewer-' + CASE + '-' + (++viewerSequence));
   await click(page, VIEWER + ' [data-photo-close]'); await page.waitForSelector(VIEWER, { hidden: true });
 }
-async function commit(before, ids, direct = false) {
+async function commit(before, ids, direct = false, trusted = false) {
   if (!direct) await click(page, Q.save);
   await page.waitForFunction(() => window.FamilyDemo.getUI().authPhase === 'confirm');
   await thumbnails(PREVIEW, ids.length);
   assert.deepEqual(await sql(), before, 'selecting photos and reviewing never commits a score');
   const marker = env.calls.length;
-  await click(page, a('points-confirm')); await page.waitForSelector('#parent-form [name="answer"]');
-  await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit);
+  await click(page, a('points-confirm'));
+  if (!trusted) {
+    await page.waitForSelector('#parent-form [name="answer"]');
+    await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit);
+  }
   await page.waitForFunction(() => { const current = window.FamilyDemo.getUI(); return !current.auth && !current.pending; });
   const after = await sql(), row = after.state.points.at(-1);
   assert.equal(after.state.points.length, before.state.points.length + 1);
@@ -177,7 +192,8 @@ async function commit(before, ids, direct = false) {
   assert.equal(new Set(row.photoIds || []).size, ids.length);
   assert.doesNotMatch(JSON.stringify(after.state), /data:image\/(?:jpeg|png);base64,/, 'the shared ledger stores references rather than image bytes');
   const writes = env.calls.slice(marker).filter(call => call.path === '/api/action' && call.action?.type === 'points.add');
-  assert.equal(writes.length, 1); assert.equal(writes[0].action.hasGrant, true);
+  assert.equal(writes.length, 1); assert.equal(writes[0].action.hasGrant, !trusted);
+  if (trusted) assert.equal(env.calls.slice(marker).some(call => call.path === '/api/parent/challenge'), false);
   assert.deepEqual(await snapshot(page), after.state); return row;
 }
 async function history(count, name = CUSTOM) {
@@ -193,12 +209,17 @@ async function custom() {
     const before = await sql(); await openCustom();
     await pick('album', files.png, 1);
     const first = await pick('camera', files.jpeg, 2);
-    await click(page, a('award-photo-remove'));
-    await thumbnails(PREVIEW, 1);
+    await withProxyFailure(async () => {
+      await click(page, a('award-photo-remove'));
+      await thumbnails(PREVIEW, 1);
+      await storedPhotos([first]);
+      assert.equal((await Q.status(page)).ready, true);
+    }, '/api/award-photos/discard');
     const second = await pick('album', files.png, 2);
     await viewer(PREVIEW, true); await Q.shot(page, 'custom-photo-draft');
     const row = await commit(before, [first, second]);
     assert.equal(row.name, CUSTOM); assert.equal(row.points, 7);
+    await storedPhotos([], [first, second]);
   });
   await check('Saved photo entries and full-size pages survive reload in point history', async () => {
     const before = await sql(); await reload(); await history(2); await viewer(HISTORY, true);
@@ -219,26 +240,24 @@ async function preset() {
     await Q.home(page); await history(1, COMMON); await viewer(HISTORY);
   });
 }
-async function withFailedUpload(work, fault = 'network') {
+async function withProxyFailure(work, route = '/api/award-photos') {
   let fail = true, aborted = 0;
   await page.setRequestInterception(true);
   const intercept = request => {
-    if (fail && request.method() === 'POST' && new URL(request.url()).pathname === '/api/award-photos') {
+    if (fail && request.method() === 'POST' && new URL(request.url()).pathname === route) {
       fail = false; aborted++;
-      if (fault === 'proxy') {
-        void request.respond({ status: 502, contentType: 'text/html', body: '<!doctype html><title>Bad Gateway</title><h1>502 Bad Gateway</h1>' });
-      } else void request.abort('failed');
-      (report.injectedFailures ||= []).push({ fault, ...(fault === 'proxy' ? { status: 502, contentType: 'text/html', identityAbsent: true } : {}) });
+      void request.respond({ status: 502, contentType: 'text/html', body: '<!doctype html><title>Bad Gateway</title><h1>502 Bad Gateway</h1>' });
+      (report.injectedFailures ||= []).push({ route, fault: 'proxy', status: 502, contentType: 'text/html', identityAbsent: true });
     } else void request.continue();
   };
   page.on('request', intercept);
-  try { await work(); assert.equal(aborted, 1, 'the intended photo upload actually failed'); }
+  try { await work(); assert.equal(aborted, 1, 'the selected photo request actually failed'); }
   finally { page.off('request', intercept); await page.setRequestInterception(false); }
 }
 async function retry() {
   await check('A 502 HTML proxy response preserves the photo draft and explicit retry saves one photo with one score', async () => {
     const before = await sql(); await openCustom();
-    await withFailedUpload(async () => {
+    await withProxyFailure(async () => {
       await pick('album', files.png, 1, true); assert.deepEqual(await sql(), before);
       const status = await Q.status(page);
       assert.equal(status.ready, true, 'an identity-free proxy error does not sign the parent out');
@@ -251,19 +270,28 @@ async function retry() {
       const id = await uploaded(received, marker, '.png retry');
       await thumbnails(PREVIEW, 1); await page.waitForSelector(a('award-photo-retry'), { hidden: true });
       await commit(before, [id]);
-    }, 'proxy');
+    });
     await history(1); await viewer(HISTORY);
   });
 }
 async function skip() {
   await check('After an upload failure, only-score explicitly removes the photo and still requires parent verification', async () => {
     const before = await sql(); await openCustom();
-    await withFailedUpload(async () => {
-      await pick('album', files.png, 1, true); assert.deepEqual(await sql(), before);
+    await pick('album', files.jpeg, 1);
+    const cdp = await page.createCDPSession();
+    await cdp.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/award-photos', requestStage: 'Response' }] });
+    cdp.once('Fetch.requestPaused', event => {
+      report.lostUploadStatus = event.responseStatusCode;
+      void cdp.send('Fetch.failRequest', { requestId: event.requestId, errorReason: 'Failed' });
+    });
+    try {
+      await pick('album', files.png, 2, true); assert.deepEqual(await sql(), before);
+      assert.equal(report.lostUploadStatus, 200, 'the server stored the JPEG before the upload response was lost');
       await click(page, a('award-photo-skip'));
       await page.waitForSelector(PREVIEW, { hidden: true }); await page.waitForSelector(a('award-photo-retry'), { hidden: true });
       const row = await commit(before, []); assert.equal(row.points, 7);
-    });
+      await storedPhotos([]);
+    } finally { await cdp.detach(); }
     await Q.home(page); await click(page, a('records'));
     assert.equal(await page.$(HISTORY), null, 'the score-only record has no broken photo thumbnail');
     await Q.shot(page, 'photo-failure-only-score-history');
@@ -336,11 +364,13 @@ async function presetReturn() {
     await click(page, '.ledger-award-dialog .sheet-header button[aria-label="取消本次加分"]');
     await page.waitForFunction(() => { const current = window.FamilyDemo.getUI(); return !current.auth && current.form === null; });
     assert.deepEqual(await sql(), before, 'X cancels the photo draft without scoring');
+    await storedPhotos([]);
     await click(page, a('choose-point', 'photo-common')); assert.equal((await ui(page)).authPhase, 'confirm');
     assert.equal(await page.$(PREVIEW), null, 'the cancelled photo never returns in the next direct review');
     const id = await pick('camera', files.jpeg, 1); assert.notEqual(id, discarded);
     const row = await commit(before, [id], true);
     assert.equal(row.itemId, 'photo-common'); assert.equal(row.points, 5);
+    await storedPhotos([], [id]);
     await history(1, COMMON); await viewer(HISTORY);
   });
 }
@@ -424,8 +454,64 @@ async function expired() {
     await history(1); await viewer(HISTORY);
   });
 }
+async function retake() {
+  await check('At the staging quota, retaking a photo frees its slot and preserves other drafts', async () => {
+    const enabled = await env.api(page, '/api/parent/device', 'POST', { enabled: true, credential: PIN });
+    assert.equal(enabled.status, 200); await reload();
+    const jpeg = 'data:image/jpeg;base64,' + fs.readFileSync(files.jpeg).toString('base64');
+    const otherDrafts = [];
+    for (let i = 0; i < 11; i++) {
+      const reply = await env.api(page, '/api/award-photos', 'POST', { dataUrl: jpeg });
+      assert.equal(reply.status, 200); otherDrafts.push(reply.body.photoId);
+    }
+    const before = await sql(); await openCustom();
+    const initial = await pick('album', files.png, 1);
+    await storedPhotos([...otherDrafts, initial]);
+    await click(page, Q.save);
+    await page.waitForFunction(() => window.FamilyDemo.getUI().authPhase === 'confirm');
+    await click(page, '.sheet-footer ' + a('parent-cancel'));
+    await thumbnails(PREVIEW, 1); await storedPhotos([...otherDrafts, initial]);
+    const cancelled = page.waitForFileChooser();
+    await click(page, a('award-photo-retake'));
+    await (await cancelled).cancel();
+    await thumbnails(PREVIEW, 1); await storedPhotos([...otherDrafts, initial]);
+    env.clock(env.now() + 61000);
+    const chooser = page.waitForFileChooser();
+    await click(page, a('award-photo-retake'));
+    const marker = uploads.length, received = uploadResponse();
+    await (await chooser).accept([files.jpeg]);
+    const replacement = await uploaded(received, marker, 'replacement camera shot');
+    assert.notEqual(replacement, initial);
+    await storedPhotos([...otherDrafts, replacement]);
+    await commit(before, [replacement], false, true); await storedPhotos(otherDrafts, [replacement]);
+  });
+}
+async function discardRace() {
+  await check('Removing a photo while its upload is in flight leaves no staged row or score', async () => {
+    const before = await sql(); await openCustom();
+    let held, released = false;
+    const intercept = request => {
+      if (!held && new URL(request.url()).pathname === '/api/award-photos' && request.method() === 'POST') held = request;
+      else void request.continue();
+    };
+    await page.setRequestInterception(true); page.on('request', intercept);
+    try {
+      const chooser = await openChooser('album');
+      const started = page.waitForRequest(request => new URL(request.url()).pathname === '/api/award-photos' && request.method() === 'POST');
+      await chooser.accept([files.png]); await started;
+      assert.ok(held); await click(page, a('award-photo-remove')); await thumbnails(PREVIEW, 0);
+      const finished = uploadResponse(); await held.continue(); released = true;
+      const outcome = await finished;
+      assert.ok(outcome.response, 'the retained upload must finish at the service');
+      await storedPhotos([]); assert.deepEqual(await sql(), before);
+    } finally {
+      if (held && !released) await held.continue().catch(() => {});
+      page.off('request', intercept); await page.setRequestInterception(false);
+    }
+  });
+}
 async function run() {
-  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired })[CASE]();
+  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace })[CASE]();
   assert.deepEqual(Q.report.pageErrors, []);
   report.finalSourceHashes = hashes(); report.sourceStable = JSON.stringify(report.sourceHashes) === JSON.stringify(report.finalSourceHashes);
   progress('Selected photo group complete');

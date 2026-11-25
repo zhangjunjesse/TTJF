@@ -49,7 +49,7 @@
       if (options.business && status !== 0 && !owns(result)) {
         // A proxy may reject a photo before the request reaches the family API.
         // Keep the draft and discard the unscoped response body.
-        if ((url === '/api/award-photos' || url === '/api/award-photos/read') &&
+        if (['/api/award-photos', '/api/award-photos/read', '/api/award-photos/discard'].includes(url) &&
             (status === 413 || status >= 500) && !result.userId && !result.familyId) {
           done(status, {}); return;
         }

@@ -4,7 +4,7 @@ const path = require('node:path');
 const S = require('./security.cjs');
 const { createDatabase } = require('./sqlite.cjs');
 
-const MIGRATIONS = ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql', '004-award-photos.sql'];
+const MIGRATIONS = ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql', '004-parent-devices.sql', '005-award-photos.sql'];
 const REQUIRED_COLUMNS = {
   saas_schema_migrations: ['version', 'applied_at'],
   saas_users: ['id', 'email', 'password_hash', 'verified_at', 'created_at'],
@@ -18,13 +18,15 @@ const REQUIRED_COLUMNS = {
   saas_action_receipts: ['family_id', 'action_id', 'receipt', 'revision', 'created_at'],
   saas_parent_challenges: ['token_hash', 'family_id', 'user_id', 'session_hash', 'revision', 'action_receipt', 'method', 'answer_hash', 'attempts', 'expires_at'],
   saas_parent_grants: ['token_hash', 'family_id', 'user_id', 'session_hash', 'revision', 'action_receipt', 'expires_at'],
+  saas_parent_devices: ['session_hash', 'family_id', 'user_id', 'created_at'],
   saas_assistant_leases: ['id', 'family_id', 'user_id', 'session_hash', 'expires_at'],
   saas_assistant_chats: ['family_id', 'user_id', 'generation', 'sequence', 'draft', 'context_result', 'pending_turn_id', 'pending_expires_at', 'created_at', 'updated_at'],
   saas_assistant_turns: ['family_id', 'user_id', 'generation', 'turn_id', 'sequence', 'input_digest', 'text', 'context', 'result', 'actions', 'source_revision', 'family_day', 'created_at', 'completed_at', 'failed_at', 'failure_code'],
   saas_award_photos: ['family_id', 'id', 'uploaded_by', 'data', 'action_id', 'created_at', 'expires_at', 'committed_at'],
+  saas_award_photo_discards: ['family_id', 'id', 'uploaded_by', 'expires_at'],
   saas_rate_limits: ['scope', 'count', 'expires_at']
 };
-const TABLE_VERSION = { saas_assistant_chats: 3, saas_assistant_turns: 3, saas_award_photos: 4 };
+const TABLE_VERSION = { saas_assistant_chats: 3, saas_assistant_turns: 3, saas_parent_devices: 4, saas_award_photos: 5, saas_award_photo_discards: 5 };
 async function assertDatabaseSchema(database, { allowOlder = false } = {}) {
   const names = new Set((await database.query("SELECT name FROM sqlite_schema WHERE type='table'")).rows.map(row => row.name));
   if (!names.has('saas_schema_migrations')) throw new Error('SQLite schema is missing or incomplete. Start the application once to initialize it, or select a complete existing SQLite database.');
