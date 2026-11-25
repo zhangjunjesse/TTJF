@@ -129,7 +129,10 @@
   }
   function cancelAwardPhotoInput(input) {
     var picker = input.__familyAwardPhotoTicket;
-    if (picker && picker === awardPhotoSelection && picker.input === input && !picker.consumed) discardAwardPhotoInput();
+    if (picker && picker === awardPhotoSelection && picker.input === input && !picker.consumed) {
+      discardAwardPhotoInput();
+      if (scopeReady()) reconcileSubmittedAwards();
+    }
   }
   function receiveAwardPhotoInput(input) {
     var picker = input.__familyAwardPhotoTicket;
@@ -138,7 +141,7 @@
       if (awardPhotoSelection || !scopeReady() || pending || !ui.form || ui.form.kind !== 'points' || (ui.auth && ui.auth.phase !== 'confirm')) return;
       var editor = document.querySelector('.award-photo-editor');
       if (!editor || !editor.contains(input)) return;
-      rememberDraft(); AwardPhotos.change(input, awardPhotos(ui.form), awardPhotoEnvironment(ui.form)); return;
+      rememberDraft(); AwardPhotos.change(input, awardPhotos(ui.form), awardPhotoEnvironment(ui.form)); return reconcileSubmittedAwards();
     }
     picker.received = true;
     if (!picker.permitted || !scopeCurrent(picker.scope)) return;
@@ -146,14 +149,15 @@
     picker.consumed = true;
     rememberDraft(); AwardPhotos.change(input, picker.draft, awardPhotoEnvironment(picker.form));
     if (awardPhotoSelection === picker) discardAwardPhotoInput();
+    return reconcileSubmittedAwards();
   }
   function restoreAwardPhotoInput() {
     var picker = awardPhotoSelection;
     if (!picker) return;
     if (!ui.form || ui.form.kind !== 'points' || awardPhotoKey(ui.form) !== picker.key) { discardAwardPhotoInput(); return; }
     picker.scope = scopeToken(); picker.form = ui.form; picker.draft = awardPhotos(ui.form); picker.permitted = true;
-    picker.draft.replaceKey = picker.replaceKey;
-    if (picker.received) receiveAwardPhotoInput(picker.input);
+    picker.draft.replaceKey = picker.draft.items.some(function (item) { return item.key === picker.replaceKey; }) ? picker.replaceKey : null;
+    if (picker.received) return receiveAwardPhotoInput(picker.input);
   }
   function discardAwardPhotos(f, committedIds) {
     if (!f || !f.awardPhotos) return;
@@ -253,6 +257,8 @@
     }
     if (pending && (!retryTx || !retryTx.inFlight || retryTx.action.id !== id)) return false;
     if (ui.auth && ui.auth.tx.action.id !== id) return false;
+    // Wait for change or cancel before deciding whether this chooser has edited the completed draft.
+    if (awardPhotoSelection && !awardPhotoSelection.consumed && ui.form && ui.form.kind === 'points' && awardPhotoKey(ui.form) === awardPhotoSelection.key) return false;
     var tx = retryTx && retryTx.action.id === id ? retryTx : award;
     rememberDraft();
     var source = award.form, detachedSource = source && [ui.form].concat(ui.stack).indexOf(source) < 0;
@@ -276,16 +282,18 @@
     }
     tx.action = copyAwardAction(tx.action);
     tx.action.name = record.name; tx.action.points = record.points; tx.action.reason = record.reason;
+    tx.action.at = record.at;
     if (record.photoIds && record.photoIds.length) tx.action.photoIds = record.photoIds.slice(); else delete tx.action.photoIds;
     finishTransaction(tx); return true;
   }
   function awardFormMatchesRecord(f, record, awardId, ignorePhotos) {
-    if (!f || f.kind !== 'points') return false;
+    if (!f || f.kind !== 'points' || (!ignorePhotos && !awardPhotosReady(f))) return false;
     try {
       var action = makeAction(f, f.data);
       if (f.data.recordDate && f.data.recordTime) action.at = M.calendarTimestamp(f.data.recordDate, f.data.recordTime, calendarZone());
+      var submitted = submittedAwards[awardId], usesDefaultTime = f.data.recordTimeEdited === false && submitted && submitted.form === f;
       return action.name === record.name && action.points === record.points && action.reason === record.reason &&
-        (!action.at || Date.parse(action.at) === Date.parse(record.at)) &&
+        (!action.at || Date.parse(action.at) === Date.parse(record.at) || usesDefaultTime) &&
         (action.saveAsTemplate ? record.itemId === 'item-' + awardId : (action.itemId || '') === record.itemId) &&
         (ignorePhotos || JSON.stringify(action.photoIds || []) === JSON.stringify(record.photoIds || []));
     } catch (e) { return false; }
@@ -319,9 +327,9 @@
     }
     return saved;
   }
-  function restorableForm(f, preserveAwardTime) {
+  function restorableForm(f, submittedAward) {
     if (!f) return null;
-    var d = f.data || {}, target;
+    var d = f.data || {}, target, preserveAwardTime = !!(submittedAward && (d.recordTimeEdited === true || find(state.points, 'points-' + submittedAward.action.id)));
     if (f.kind === 'task' && d.id) { target = find(state.tasks, d.id); if (!target || target.deleted) return null; }
     if (f.kind === 'taskAction') { target = find(state.tasks, d.taskId); if (!target || target.deleted) return null; }
     if (f.kind === 'pointItem' && d.id) { target = find(state.pointItems, d.id); if (!target) return { kind: 'point-list', data: {}, openedRevision: revision }; }
@@ -339,13 +347,13 @@
     ['view', 'homeMode', 'day', 'reminderMode', 'filter', 'history', 'petTab', 'homeFocus'].forEach(function (key) { if (saved[key] !== undefined) ui[key] = saved[key]; });
     var sent = saved.submittedAwards || {}, sentRows = Object.keys(sent).map(function (id) { return sent[id]; }), restoredStack = [];
     drafts = ordinary(saved.drafts || {}); awardPhotoDrafts = saved.awardPhotos || {}; ui.stack = (saved.stack || []).map(function (f, index) {
-      restoredStack[index] = restorableForm(f, sentRows.some(function (award) { return !award.currentForm && award.stackIndex === index; }));
+      restoredStack[index] = restorableForm(f, sentRows.filter(function (award) { return !award.currentForm && award.stackIndex === index; })[0]);
       return restoredStack[index];
     }).filter(function (f) { return !!f; });
-    ui.form = restorableForm(saved.form, sentRows.some(function (award) { return award.currentForm; })); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
+    ui.form = restorableForm(saved.form, sentRows.filter(function (award) { return award.currentForm; })[0]); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
     restoreSubmittedAwards(sent, restoredStack);
     // Only an exact ledger record confirms an aborted request; an absent record can still arrive later.
-    if (reconcileSubmittedAwards()) { discardAvatar(); return; }
+    if (reconcileSubmittedAwards()) { discardAvatar(); restoreAwardPhotoInput(); return; }
     if (AwardPhotos) AwardPhotos.flush(awardPhotoRequestEnvironment());
     if (saved.awardReview && saved.revision === revision && saved.awardReview.familyDay === today() && ui.form && ui.form.kind === 'points') {
       // Recreate an unsent review, never a previous challenge, grant, or PIN.
@@ -360,8 +368,8 @@
       if (picker.input) { picker.input.hidden = false; picker.input.setAttribute('data-saas-avatar-hold', 'false'); if (replacement && replacement !== picker.input && replacement.parentNode) replacement.parentNode.replaceChild(picker.input, replacement); }
       if (picker.file) loadAvatar(picker.file);
     } else discardAvatar();
-    restoreAwardPhotoInput();
-    if (saved.form && !ui.form) toast('内容已更新');
+    var completedAward = restoreAwardPhotoInput();
+    if (saved.form && !ui.form && !completedAward) toast('内容已更新');
   }
   function discardAvatar() {
     if (!avatarSelection) return;
@@ -512,7 +520,7 @@
           }
           if (meta.parent.configured === true) { failSetup(setupTx, '家长验证已设置'); return; }
         }
-        if (retryTx && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
+        if (retryTx && !submittedAwards[retryTx.action.id] && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
         refreshParentEditor();
         if (changed && canRefreshLedgerView()) render(false); else renderReminder();
         updateConnectionStatus();
@@ -696,10 +704,17 @@
     if (ui.form && ui.form.openedRevision !== revision) {
       ui.form.openedRevision = revision; render(false); showError('记录已更新 · 待确认'); return;
     }
-    var signature = action.type === 'points.add' ? awardSignature(action) : JSON.stringify(action), tx, reused = false;
+    var signature = action.type === 'points.add' ? awardSignature(action) : JSON.stringify(action), tx, reused = false, rebasedAwardTime = false;
     if (recoveringAward) {
-      // Retry the sent payload with fresh authorization; edits stay in the editor until the original result is known.
-      action = copyAwardAction(recoveringAward.action); signature = awardSignature(action); recoveringAward.form = ui.form;
+      var correctedAt = action.at;
+      rebasedAwardTime = !!recoveringAward.action.at && M.dateKey(recoveringAward.action.at, calendarZone()) !== today();
+      // A new family day requires a new time. Keep the operation ID so either payload can be booked only once.
+      action = copyAwardAction(recoveringAward.action);
+      if (rebasedAwardTime) {
+        if (correctedAt) action.at = correctedAt; else delete action.at;
+        if (ui.form && ui.form.kind === 'points') ui.form.data.recordDate = today();
+      }
+      signature = awardSignature(action); recoveringAward.form = ui.form;
       tx = { action: action, signature: signature, revision: revision, message: message, grant: null, uncertain: true,
         previousGrowth: recoveringAward.previousGrowth, assistantDraft: recoveringAward.assistantDraft }; reused = true;
     }
@@ -718,7 +733,7 @@
     retryTx = tx; invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; stopRecognition();
     if (isPublic(tx.action)) { submitTransaction(tx); return; }
     rememberSheetFocus();
-    ui.auth = { tx: tx, recoveryAward: !!recoveringAward, phase: tx.action.type === 'points.add' || canSkipParent(tx.action) ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
+    ui.auth = { tx: tx, recoveryAward: !!recoveringAward, rebasedAwardTime: rebasedAwardTime, phase: tx.action.type === 'points.add' || canSkipParent(tx.action) ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
     if (tx.uncertain && (tx.grant || tx.deviceAttempt)) { submitTransaction(tx); return; }
     render(false); if (ui.auth.phase === 'loading') issueChallenge(ui.auth);
   }
@@ -831,7 +846,10 @@
       }
       return;
     }
-    if (submittedAwards[tx.action.id]) submittedAwards[tx.action.id].revision = tx.revision;
+    if (submittedAwards[tx.action.id]) {
+      submittedAwards[tx.action.id].action = copyAwardAction(tx.action);
+      submittedAwards[tx.action.id].revision = tx.revision;
+    }
     pending = true; retryTx = tx; tx.inFlight = true;
     if (ui.auth) ui.auth.phase = 'saving'; render(false);
     request('POST', '/api/action', { revision: tx.revision, action: tx.action, grant: tx.grant || undefined, assistantDraft: tx.assistantDraft }, function (status, result) {
@@ -1825,6 +1843,7 @@
     var prompt = confirming ? ledgerAward ? '下一步由家长验证' : '请核对本次加分，确认后由家长验证。' : setup ? '请家长设置 6 位 PIN，保护每一次加分和兑换。' : a.method === 'math' ? '请家长完成算术验证后继续。' : '请家长输入 PIN，验证后完成本次操作。';
     if (confirming && skipParent) prompt = redeeming ? '请核对礼品和本次扣分，确认后完成兑换。' : '请核对本次加分，确认后记入积分。';
     if (a.recoveryAward) prompt = '上次加分结果待确认，下面是原操作。请先核对并完成原操作，你的修改已保留。';
+    if (a.rebasedAwardTime) prompt = '上次加分结果待确认，记录时间已改为今天。请核对后继续完成本次加分，其他修改已保留。';
     if (deletingItem) prompt = (setup ? '请先设置家长 PIN。' : '') + '删除后，这个行为会从常用列表中移除。过去的加分记录和积分都会保留。';
     var ledgerReview = ledgerAward || a.tx.ledgerRedemption, summaryContent;
     if (ledgerAward) summaryContent = ledgerAwardSummary(a.tx.action);
@@ -2150,7 +2169,7 @@
     if (input.id === 'behavior-search' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.query === input.value) return; ui.form.data.query = input.value; ui.form.data.page = 0; updatePicker(); return; }
     if (form && form.id === 'editor-form' && ui.form) {
       if (input.name !== 'aiText' && input.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1;
-      if (ui.form.kind === 'points' && input.name === 'recordTime') ui.form.data.recordTimeEdited = true;
+      if (ui.form.kind === 'points' && input.name === 'recordTime') { ui.form.data.recordTimeEdited = true; ui.form.data.recordDate = today(); }
       if (ui.form.kind === 'pointItem' && !ui.form.data.id && input.name === 'points') ui.form.data.templatePointsChosen = true;
       rememberDraft();
       if (ui.form.kind === 'points') refreshTemplatePreview();

@@ -365,6 +365,44 @@ test('returning the next day shows the committed award with its original date an
   assert.equal(h.xhrs.filter(request => request.url === '/api/action').length, 1);
 });
 
+test('a late original receipt shows the recorded time even after the parent has corrected it for today', () => {
+  const h = harness(); h.login();
+  function trustDevice() {
+    h.pending('/api/parent/device', 'GET').respond(200, { familyId: 'family-a', userId: USER.id, enabled: true });
+  }
+  function confirmForm() {
+    const form = h.api.get().ui.form;
+    h.api.action(h.api.makeAction(form, form.data));
+    assert.equal(h.ui().authPhase, 'confirm');
+    h.api.parent({});
+    return h.pending('/api/action').body.action;
+  }
+  function resumeWith(value) {
+    hide(h); show(h); h.session(); h.pending('/api/state').respond(200, value);
+  }
+  trustDevice();
+  h.api.open('points', { name: '订正作业', points: 3, recordDate: '2026-11-16', recordTime: '15:30' });
+  const first = confirmForm();
+  const nextDay = { ...snapshot('family-a'), familyDay: '2026-11-17', serverNow: '2026-11-16T16:02:00Z' };
+  resumeWith(nextDay); trustDevice();
+  const preview = h.api.get().ui.form;
+  preview.data.recordTime = '00:00'; preview.data.recordTimeEdited = true;
+  h.api.action(h.api.makeAction(preview, preview.data));
+  assert.equal(h.ui().authPhase, 'confirm');
+  resumeWith(nextDay); trustDevice();
+  const editor = h.api.get().ui.form;
+  editor.data.recordTime = '00:01'; editor.data.recordTimeEdited = true;
+  const corrected = confirmForm();
+  assert.equal(corrected.id, first.id);
+  assert.equal(corrected.at, '2026-11-16T16:01:00.000Z');
+  // The first request committed yesterday. The family sees its ledger row only on this second return.
+  const committed = M.apply(nextDay.state, first, NOW, 'Asia/Shanghai');
+  resumeWith({ ...nextDay, revision: 2, state: committed });
+  assert.match(h.elements.get('toast').textContent, /已记好.*订正作业.*昨天 15:30/);
+  assert.equal(h.state().points.filter(row => row.id === 'points-' + first.id).length, 1);
+  assert.equal(h.xhrs.filter(request => request.url === '/api/action').length, 2);
+});
+
 test('a second interrupted award gets its own receipt after the first draft was closed', () => {
   const h = harness(); h.login();
   const before = snapshot('family-a');

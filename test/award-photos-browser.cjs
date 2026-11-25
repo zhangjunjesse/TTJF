@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, PIN, action: a, click, snapshot, ui } = Q;
 const CASE = process.env.AWARD_PHOTO_CASE || 'custom';
-const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race', 'resume-committed', 'resume-uncommitted', 'resume-late'];
+const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race', 'resume-committed', 'resume-uncommitted', 'resume-late', 'resume-midnight', 'resume-chooser'];
 assert.ok(CASES.includes(CASE), 'Unknown AWARD_PHOTO_CASE');
 const WIDTH = Number(process.env.AWARD_PHOTO_WIDTH || 390);
 const HEIGHT = Number(process.env.AWARD_PHOTO_HEIGHT || 844);
@@ -35,6 +35,8 @@ Q.report.boundaries = [
   'The overlap group delays the first real upload until a second native chooser is open. The expired group injects PHOTO_UNAVAILABLE for only its first challenge after a real staged upload.',
   'The resume-committed group holds a real successful action callback across synthetic hide/show. The resume-uncommitted group aborts its first action before it reaches the real service, then requires explicit review and a fresh PIN before retry.',
   'The resume-late group forwards the unchanged original action body and grant to real HTTP after the first resumed snapshot. Credentials remain only in test memory; no service response or ledger snapshot is fabricated.',
+  'The resume-midnight group advances the injected Shanghai clock across midnight, interrupts both the old-day submit and a corrected new-day submit, then verifies fresh authorization, exact saved time and real-service replay behavior.',
+  'The resume-chooser group forwards an old authorized award while an edited draft has a native chooser open, accepts the new file while hidden, then verifies both distinct records and photo attachments in SQLite.',
   'No production service, external SMTP, AI image provider or live family data is used.'
 ];
 for (const name of CASES.filter(name => name !== CASE)) Q.report.skipped.push('AWARD_PHOTO_CASE=' + name + ' not selected');
@@ -503,6 +505,120 @@ async function resumeLate() {
     assert.equal((await sql()).state.points.length, before.state.points.length + 1);
   });
 }
+async function resumeMidnight() {
+  await env.setClock(Date.parse('2026-11-25T15:58:00Z')); await reload();
+  await check('An uncommitted photo award accepts a new-day time after midnight and retains that correction across another interrupted submit', async () => {
+    const before = await sql(); await openCustom();
+    const id = await pick('album', files.png, 1); await parentReview();
+    const original = await loseUncommittedAction(before), actionId = original.action.id;
+    assert.equal(original.action.at, '2026-11-25T15:58:00.000Z');
+    await env.setClock(Date.parse('2026-11-25T16:02:00Z')); await resumeAward();
+    assert.equal((await ui(page)).familyDay, '2026-11-26');
+    assert.equal((await ui(page)).auth, false); assert.deepEqual(await sql(), before);
+    await thumbnails(PREVIEW, 1); await storedPhotos([id]);
+    const time = '#editor-form [name="recordTime"]', correctedAt = '2026-11-25T16:01:00.000Z';
+    assert.equal(await page.$eval(time, node => node.value), '00:02', 'an uncommitted old-day default is refreshed to the current family day');
+    await page.$eval(time, node => {
+      node.value = '00:01'; node.dispatchEvent(new Event('input', { bubbles: true })); node.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    assert.equal(await page.$eval(time, node => node.checkValidity()), true, 'the edited new-day time is valid for the visible form');
+    await parentReview();
+    assert.equal(awardRequests.challenges.length, 2, 'editing time requires a new explicit confirmation and challenge');
+    const correctedAction = { ...original.action, at: correctedAt };
+    assert.deepEqual(awardRequests.challenges[1].action, correctedAction, 'the review authorizes the chosen time and original operation identity');
+    assert.deepEqual(await sql(), before, 'editing and review never record points');
+    const interruptedCorrection = await loseUncommittedAction(before);
+    assert.deepEqual(interruptedCorrection.action, correctedAction);
+    assert.notEqual(interruptedCorrection.grant, original.grant, 'the corrected submit uses fresh parent authority');
+    assert.notEqual(awardRequests.verifications[1].challengeId, awardRequests.verifications[0].challengeId);
+    await resumeAward(); await thumbnails(PREVIEW, 1);
+    assert.equal(await page.$eval(time, node => node.value), '00:01', 'a second resume keeps the corrected time');
+    assert.equal((await ui(page)).auth, false); assert.equal(await page.$('#parent-form [name="answer"]'), null);
+    assert.equal(await Q.visible(page, '#toast.points-receipt'), false); assert.deepEqual(await sql(), before);
+    await parentReview();
+    assert.equal(awardRequests.challenges.length, 3);
+    assert.deepEqual(awardRequests.challenges[2].action, correctedAction, 'the second resume never revives the rejected old-day payload');
+    assert.equal(awardRequests.actions.length, 2, 'each retry still waits for an explicit fresh PIN');
+    await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit);
+    await page.waitForFunction(() => { const current = window.FamilyDemo.getUI(); return !current.auth && !current.pending && current.form === null; });
+    assert.equal(awardRequests.actions.length, 3); assert.equal(awardRequests.verifications.length, 3);
+    assert.deepEqual(awardRequests.actions[2].action, correctedAction);
+    assert.notEqual(awardRequests.actions[2].grant, interruptedCorrection.grant);
+    assert.notEqual(awardRequests.verifications[2].challengeId, awardRequests.verifications[1].challengeId);
+    const after = await sql(), row = after.state.points.at(-1);
+    assert.equal(after.revision, before.revision + 1); assert.equal(after.state.points.length, before.state.points.length + 1);
+    assert.equal(row.id, 'points-' + actionId); assert.equal(row.name, CUSTOM); assert.equal(row.points, 7);
+    assert.equal(row.at, correctedAt); assert.deepEqual(row.photoIds, [id]); assert.equal(uploads.length, 1);
+    await storedPhotos([], [id]); assert.deepEqual(await snapshot(page), after.state);
+    assert.ok(await Q.visible(page, '#toast.points-receipt'));
+    const lateOriginal = await env.api(page, '/api/action', 'POST', original);
+    assert.equal(lateOriginal.status, 400); assert.equal(lateOriginal.body.code, 'ACTION_ID_REUSED', 'the old timestamp cannot replace the corrected receipt');
+    const lateCorrection = await env.api(page, '/api/action', 'POST', interruptedCorrection);
+    assert.equal(lateCorrection.status, 200, 'the exact corrected request replays its authoritative receipt');
+    assert.deepEqual(await sql(), after, 'late requests never add a duplicate or change the chosen time');
+    report.resume = { actionId, photoId: id, originalAt: original.action.at, correctedAt, hideShowCycles: 2,
+      freshChallenges: 3, committedAwards: 1, lateOriginalStatus: lateOriginal.status, lateCorrectionStatus: lateCorrection.status };
+    await Q.shot(page, 'midnight-photo-correction-confirmed');
+    await history(1); await viewer(HISTORY); await noStoredAward(actionId, id);
+    assert.deepEqual(await sql(), after);
+  });
+}
+async function resumeChooser() {
+  await check('A late old award receipt preserves a new photo selected in an edited draft and both awards commit exactly once', async () => {
+    const oldName = '第一笔尚在途', newName = '第二笔正在选照片', before = await sql();
+    await openCustom(oldName); const oldPhoto = await pick('album', files.png, 1); await parentReview();
+    const original = await loseUncommittedAction(before), actionId = original.action.id;
+    await resumeAward(); await thumbnails(PREVIEW, 1);
+    await B.fillForm(page, { name: newName, reason: '为第二笔单独选择的新照片' });
+    const chooser = await openChooser('album'), marker = uploads.length;
+    const late = await env.api(page, '/api/action', 'POST', original);
+    assert.equal(late.status, 200, 'the original authorized request commits while the next chooser remains open');
+    const oldCommitted = await sql(), oldRow = oldCommitted.state.points.at(-1);
+    assert.equal(oldCommitted.revision, before.revision + 1); assert.equal(oldCommitted.state.points.length, before.state.points.length + 1);
+    assert.equal(oldRow.id, 'points-' + actionId); assert.equal(oldRow.name, oldName); assert.deepEqual(oldRow.photoIds, [oldPhoto]);
+    await hideAward(); const received = uploadResponse();
+    await chooser.accept([files.jpeg]); await resumeAward();
+    const selected = await received;
+    assert.ok(selected.response, 'returning from the chooser uploads the selected new image');
+    const newPhoto = await uploaded(Promise.resolve(selected), marker, '.jpg selected while the old award finished');
+    assert.notEqual(newPhoto, oldPhoto); await thumbnails(PREVIEW, 1);
+    assert.equal(await page.$eval('#editor-form [name="name"]', node => node.value), newName);
+    assert.equal(await page.$eval('#editor-form [name="reason"]', node => node.value), '为第二笔单独选择的新照片');
+    assert.equal((await ui(page)).auth, false); assert.equal((await ui(page)).pending, false);
+    assert.equal(await page.$('#parent-form [name="answer"]'), null);
+    assert.equal(uploads.length - marker, 1, 'the new selection uploads exactly once after receipt reconciliation');
+    assert.equal(awardRequests.actions.length, 1, 'a returned file never submits the edited award automatically');
+    assert.equal(awardRequests.challenges.length, 1); assert.equal(awardRequests.verifications.length, 1);
+    assert.deepEqual(await sql(), oldCommitted); assert.deepEqual(await snapshot(page), oldCommitted.state);
+    await storedPhotos([newPhoto], [oldPhoto]); await Q.shot(page, 'late-receipt-new-photo-retained');
+    await click(page, Q.save);
+    if ((await ui(page)).authPhase !== 'confirm') {
+      assert.match(await page.$eval('#form-error', node => node.textContent), /记录已更新 · 待确认/, 'an older draft may first require reviewing the changed ledger');
+      assert.deepEqual(await sql(), oldCommitted); await click(page, Q.save);
+    }
+    await page.waitForFunction(() => window.FamilyDemo.getUI().authPhase === 'confirm');
+    const newRow = await commit(oldCommitted, [newPhoto], true);
+    assert.equal(newRow.name, newName); assert.equal(newRow.reason, '为第二笔单独选择的新照片'); assert.equal(newRow.points, 7);
+    assert.notEqual(newRow.id, oldRow.id, 'the edited award has its own operation identity');
+    assert.equal(awardRequests.challenges.length, 2); assert.equal(awardRequests.verifications.length, 2); assert.equal(awardRequests.actions.length, 2);
+    assert.notEqual(awardRequests.actions[1].action.id, actionId); assert.notEqual(awardRequests.actions[1].grant, original.grant);
+    assert.notEqual(awardRequests.verifications[1].challengeId, awardRequests.verifications[0].challengeId);
+    const after = await sql();
+    assert.equal(after.revision, before.revision + 2); assert.equal(after.state.points.length, before.state.points.length + 2);
+    assert.deepEqual(after.state.points.find(row => row.id === oldRow.id), oldRow, 'the old record keeps only its original photo');
+    assert.deepEqual(after.state.points.find(row => row.id === newRow.id).photoIds, [newPhoto]);
+    await storedPhotos([], [oldPhoto, newPhoto]); assert.equal(uploads.length, 2);
+    const replay = await env.api(page, '/api/action', 'POST', original);
+    assert.equal(replay.status, 200); assert.deepEqual(await sql(), after, 'a repeated old receipt never repeats either award');
+    report.resume = { oldActionId: actionId, newActionId: awardRequests.actions[1].action.id,
+      oldPhotoId: oldPhoto, newPhotoId: newPhoto, newSelectionUploads: uploads.length - marker, committedAwards: 2 };
+    await history(1, newName);
+    assert.match(await page.$eval('.record-list', node => node.textContent), new RegExp(oldName));
+    assert.equal(await page.$$(HISTORY).then(nodes => nodes.length), 2, 'both separately photographed records appear in history');
+    await noStoredAward(actionId, oldPhoto); await noStoredAward(awardRequests.actions[1].action.id, newPhoto);
+    assert.deepEqual(await sql(), after);
+  });
+}
 async function pickerReturn() {
   await check('A file-picker result returns to the same draft after hide/show and still needs explicit parent verification', async () => {
     const before = await sql(); await openCustom();
@@ -692,7 +808,7 @@ async function discardRace() {
   });
 }
 async function run() {
-  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace, 'resume-committed': resumeCommitted, 'resume-uncommitted': resumeUncommitted, 'resume-late': resumeLate })[CASE]();
+  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace, 'resume-committed': resumeCommitted, 'resume-uncommitted': resumeUncommitted, 'resume-late': resumeLate, 'resume-midnight': resumeMidnight, 'resume-chooser': resumeChooser })[CASE]();
   assert.deepEqual(Q.report.pageErrors, []);
   report.finalSourceHashes = hashes(); report.sourceStable = JSON.stringify(report.sourceHashes) === JSON.stringify(report.finalSourceHashes);
   progress('Selected photo group complete');
