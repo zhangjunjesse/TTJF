@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, PIN, action: a, click, snapshot, ui } = Q;
 const CASE = process.env.AWARD_PHOTO_CASE || 'custom';
-const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return'];
+const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired'];
 assert.ok(CASES.includes(CASE), 'Unknown AWARD_PHOTO_CASE');
 const WIDTH = Number(process.env.AWARD_PHOTO_WIDTH || 390);
 const HEIGHT = Number(process.env.AWARD_PHOTO_HEIGHT || 844);
@@ -32,10 +32,11 @@ Q.report.boundaries = [
   'Real headless Chromium, native file-input chooser, loopback SaaS HTTP and a temporary SQLite file; synthetic homework images only.',
   'Camera-button coverage opens the native file input with rear-camera capture intent. The picker-return group dispatches synthetic visibility events; a physical camera, OS image picker and iPad/Safari are not verified.',
   'Upload-failure groups inject one identity-free 502 HTML proxy response or abort one browser request; subsequent uploads and all scoring requests use the real service.',
+  'The overlap group delays the first real upload until a second native chooser is open. The expired group injects PHOTO_UNAVAILABLE for only its first challenge after a real staged upload.',
   'No production service, external SMTP, AI image provider or live family data is used.'
 ];
 for (const name of CASES.filter(name => name !== CASE)) Q.report.skipped.push('AWARD_PHOTO_CASE=' + name + ' not selected');
-let env, page, familyId, files, sequence = 0;
+let env, page, familyId, files, sequence = 0, viewerSequence = 0;
 const uploads = [];
 
 function progress(message) {
@@ -158,7 +159,7 @@ async function viewer(selector, multiple = false) {
       const image = document.querySelector(target + ' img'); return image && image.src !== original && image.complete && image.naturalWidth > 0;
     }, {}, VIEWER, first);
   }
-  await Q.shot(page, 'photo-viewer-' + CASE);
+  await Q.shot(page, 'photo-viewer-' + CASE + '-' + (++viewerSequence));
   await click(page, VIEWER + ' [data-photo-close]'); await page.waitForSelector(VIEWER, { hidden: true });
 }
 async function commit(before, ids, direct = false) {
@@ -343,8 +344,88 @@ async function presetReturn() {
     await history(1, COMMON); await viewer(HISTORY);
   });
 }
+async function overlap() {
+  await check('Finishing one upload while a second native chooser is open keeps both photos in the same authorized award in order', async () => {
+    const before = await sql(); await openCustom();
+    let held, released = false, first, second;
+    const intercept = request => {
+      if (!held && request.method() === 'POST' && new URL(request.url()).pathname === '/api/award-photos') held = request;
+      else void request.continue();
+    };
+    await page.setRequestInterception(true); page.on('request', intercept);
+    try {
+      const initial = await openChooser('album'), firstMarker = uploads.length;
+      const started = page.waitForRequest(request => request.method() === 'POST' && new URL(request.url()).pathname === '/api/award-photos', { timeout: 6000 });
+      await initial.accept([files.png]); await started;
+      assert.ok(held, 'the first actual upload is held before the real service');
+      const next = await openChooser('album');
+      assert.equal(await page.evaluate(() => document.hidden), false, 'this overlap happens without suspending the page');
+      const firstResponse = uploadResponse(); await held.continue(); released = true;
+      first = await uploaded(firstResponse, firstMarker, '.png completed while second chooser is open');
+      await page.waitForFunction(selector => {
+        const button = document.querySelector(selector); return button && !button.disabled;
+      }, { timeout: 6000 }, Q.save);
+      report.overlap = { firstUploadFinishedWhileSecondChooserOpen: true };
+      progress('First upload finished while the second native chooser remains open');
+      const secondMarker = uploads.length, secondResponse = uploadResponse();
+      await next.accept([files.jpeg]);
+      progress('Second native selection accepted; waiting for its real upload');
+      second = await uploaded(secondResponse, secondMarker, '.jpg selected after first upload finished');
+      await thumbnails(PREVIEW, 2);
+      assert.equal(uploads.length - firstMarker, 2, 'both real selections uploaded once');
+      assert.deepEqual(await sql(), before, 'overlapping selection does not record points');
+      assert.equal(await page.$eval('#editor-form [name="name"]', node => node.value), CUSTOM);
+      report.overlap.secondSelectionPreserved = true;
+      await Q.shot(page, 'overlapping-photo-selection-preserved');
+    } finally {
+      if (held && !released) await held.continue().catch(() => {});
+      page.off('request', intercept); await page.setRequestInterception(false);
+    }
+    const row = await commit(before, [first, second]);
+    assert.equal(row.name, CUSTOM); assert.equal(row.points, 7);
+    await history(2); await viewer(HISTORY, true);
+  });
+}
+async function expired() {
+  await check('An unavailable staged photo keeps its JPEG for explicit retry with a new reference and one authorized award', async () => {
+    const before = await sql(); await openCustom();
+    const firstMarker = uploads.length, initial = await pick('album', files.png, 1);
+    const originalJpeg = uploads[firstMarker].dataUrl, identity = await Q.status(page);
+    await click(page, Q.save); await page.waitForFunction(() => window.FamilyDemo.getUI().authPhase === 'confirm');
+    let failed = 0, rejected;
+    const intercept = request => {
+      if (failed === 0 && request.method() === 'POST' && new URL(request.url()).pathname === '/api/parent/challenge') {
+        failed++; rejected = JSON.parse(request.postData());
+        void request.respond({ status: 400, contentType: 'application/json', body: JSON.stringify({
+          code: 'PHOTO_UNAVAILABLE', error: '照片已过期或不可用于本次加分，请重新选择',
+          familyId, userId: identity.userId
+        }) });
+      } else void request.continue();
+    };
+    await page.setRequestInterception(true); page.on('request', intercept);
+    try {
+      const marker = env.calls.length;
+      await click(page, a('points-confirm')); await page.waitForSelector(a('award-photo-retry'), { visible: true });
+      assert.equal(failed, 1); assert.deepEqual(rejected.action.photoIds, [initial]);
+      assert.equal((await Q.status(page)).ready, true);
+      assert.equal((await Q.status(page)).familyId, familyId);
+      assert.deepEqual(await sql(), before, 'an expired attachment never commits its score');
+      assert.deepEqual(env.calls.slice(marker).filter(call => call.path === '/api/action'), []);
+      assert.equal(await page.$('#parent-form [name="answer"]'), null, 'an unavailable photo does not advance to PIN entry');
+      await Q.shot(page, 'expired-photo-ready-for-retry');
+      const retryMarker = uploads.length, received = uploadResponse(); await click(page, a('award-photo-retry'));
+      const replacement = await uploaded(received, retryMarker, '.png retried after PHOTO_UNAVAILABLE');
+      assert.notEqual(replacement, initial, 'retry gets a new staged-photo reference');
+      assert.equal(uploads[retryMarker].dataUrl, originalJpeg, 'retry reuses the retained JPEG without another file selection');
+      await thumbnails(PREVIEW, 1); await page.waitForSelector(a('award-photo-retry'), { hidden: true });
+      report.expired = { initialPhotoId: initial, replacementPhotoId: replacement, retainedJpegReused: true };
+      await commit(before, [replacement], (await ui(page)).authPhase === 'confirm');
+    } finally { page.off('request', intercept); await page.setRequestInterception(false); }
+    await history(1); await viewer(HISTORY);
+  });
+}
 async function run() {
-  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn })[CASE]();
+  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired })[CASE]();
   assert.deepEqual(Q.report.pageErrors, []);
   report.finalSourceHashes = hashes(); report.sourceStable = JSON.stringify(report.sourceHashes) === JSON.stringify(report.finalSourceHashes);
   progress('Selected photo group complete');

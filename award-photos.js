@@ -94,10 +94,10 @@
       draft.replaceKey = action === 'award-photo-retake' ? key : null;
       var kind = action === 'award-photo-album' ? 'album' : 'camera';
       // The confirmation sheet can cover an editor with its own file input.
-      var inputs = document.querySelectorAll('[data-award-photo-input="' + kind + '"]');
+      var inputs = document.querySelectorAll('.award-photo-editor [data-award-photo-input="' + kind + '"]');
       if (inputs.length) {
         var input = inputs[inputs.length - 1];
-        if (env.beforePick) env.beforePick(input);
+        if (env && env.beforePick) input = env.beforePick(input) || input;
         input.click();
       }
     } else if (action === 'award-photo-skip') {

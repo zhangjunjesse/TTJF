@@ -55,10 +55,28 @@
     var unsigned = Object.assign({}, auth.tx.action); delete unsigned.id;
     auth.tx.signature = JSON.stringify(unsigned); auth.tx.grant = null;
   }
+  function recoverUnavailableAwardPhotos(tx) {
+    if (!AwardPhotos || tx.action.type !== 'points.add' || !tx.form || tx.form !== ui.form || tx.form.kind !== 'points') return false;
+    var draft = awardPhotos(tx.form), rejected = tx.action.photoIds || [], changed = false;
+    draft.items.forEach(function (item) {
+      if (!item.photoId || rejected.indexOf(item.photoId) < 0) return;
+      item.photoId = ''; item.error = '照片已过期或失效，请重试、重拍或只记积分。'; changed = true;
+    });
+    if (!changed) return false;
+    tx.grant = null; tx.uncertain = false; tx.signature = ''; addAwardPhotoIds(tx.action, tx.form);
+    var auth = ui.auth && ui.auth.tx === tx ? ui.auth : null;
+    if (auth) {
+      auth.phase = 'confirm'; auth.busy = false; auth.autoPin = null; auth.challengeId = null; auth.expiresAt = null;
+      auth.question = ''; auth.pristinePresetReview = false; delete auth.localAnswer;
+      updateAwardPhotoAction(auth);
+    } else if (retryTx === tx) retryTx = null;
+    AwardPhotos.closeViewer(); render(false); showError('照片已过期或失效，请重试、重拍，或选择只记积分。');
+    return true;
+  }
   function awardPhotoEnvironment(f) {
     var scope = scopeToken(), draft = awardPhotos(f), key = f.awardPhotoKey;
     function active() { return scopeCurrent(scope) && awardPhotoDrafts[key] === draft; }
-    return { request: request, active: active, beforePick: function (input) { prepareAwardPhotoInput(input, f, draft); }, refresh: function () {
+    return { request: request, active: active, beforePick: function (input) { return prepareAwardPhotoInput(input, f, draft).input; }, refresh: function () {
       if (!active() || !ui.form || awardPhotos(ui.form) !== draft) return;
       rememberDraft(); updateAwardPhotoAction(ui.auth); render(false);
     } };
@@ -68,7 +86,7 @@
     var saved = {};
     Object.keys(awardPhotoDrafts).forEach(function (key) {
       var draft = awardPhotoDrafts[key];
-      saved[key] = { nextKey: draft.nextKey, replaceKey: draft.replaceKey, notice: draft.notice, items: draft.items.map(function (item) {
+      saved[key] = { nextKey: draft.nextKey, replaceKey: null, notice: draft.notice, items: draft.items.map(function (item) {
         return { key: item.key, photoId: item.photoId, dataUrl: item.dataUrl,
           error: item.photoId ? '' : item.error || (item.dataUrl ? '照片上传已暂停，请重试。' : '照片准备已暂停，请重拍或重新选择。') };
       }) };
@@ -77,38 +95,50 @@
   }
   function discardAwardPhotoInput() {
     var picker = awardPhotoSelection; if (!picker) return;
+    if (picker.draft) picker.draft.replaceKey = null;
     awardPhotoSelection = null; picker.cancelled = true; picker.permitted = false; picker.form = null; picker.draft = null;
+    if (picker.input) picker.input.value = '';
     if (picker.input && picker.input.parentNode === document.body) picker.input.parentNode.removeChild(picker.input);
   }
   function prepareAwardPhotoInput(input, f, draft) {
+    var replacement = draft.replaceKey;
     discardAwardPhotoInput();
-    awardPhotoSelection = { input: input, kind: input.getAttribute('data-award-photo-input'), scope: scopeToken(), form: f,
-      draft: draft, key: f.awardPhotoKey, permitted: true, cancelled: false, received: false };
-    input.__familyAwardPhotoTicket = awardPhotoSelection;
+    // Native choosers can stay open while an upload or sync rebuilds the entire form.
+    var held = input.cloneNode(false); held.hidden = true; held.value = '';
+    held.removeAttribute('id'); held.removeAttribute('name'); held.removeAttribute('form');
+    held.setAttribute('data-saas-photo-hold', 'true'); document.body.appendChild(held);
+    draft.replaceKey = replacement;
+    awardPhotoSelection = { input: held, scope: scopeToken(), form: f, draft: draft, key: f.awardPhotoKey,
+      replaceKey: replacement, permitted: true, cancelled: false, received: false, consumed: false };
+    held.__familyAwardPhotoTicket = awardPhotoSelection;
     return awardPhotoSelection;
+  }
+  function cancelAwardPhotoInput(input) {
+    var picker = input.__familyAwardPhotoTicket;
+    if (picker && picker === awardPhotoSelection && picker.input === input && !picker.consumed) discardAwardPhotoInput();
   }
   function receiveAwardPhotoInput(input) {
     var picker = input.__familyAwardPhotoTicket;
-    if (picker && (picker.cancelled || picker !== awardPhotoSelection)) return;
+    if (picker && (picker.cancelled || picker !== awardPhotoSelection || picker.input !== input || picker.consumed)) return;
     if (!picker) {
-      if (!scopeReady() || !ui.form || ui.form.kind !== 'points' || (ui.auth && ui.auth.phase !== 'confirm')) return;
-      picker = prepareAwardPhotoInput(input, ui.form, awardPhotos(ui.form));
+      if (awardPhotoSelection || !scopeReady() || pending || !ui.form || ui.form.kind !== 'points' || (ui.auth && ui.auth.phase !== 'confirm')) return;
+      var editor = document.querySelector('.award-photo-editor');
+      if (!editor || !editor.contains(input)) return;
+      rememberDraft(); AwardPhotos.change(input, awardPhotos(ui.form), awardPhotoEnvironment(ui.form)); return;
     }
     picker.received = true;
-    if (!picker.permitted || !scopeCurrent(picker.scope) || ui.form !== picker.form || awardPhotos(ui.form) !== picker.draft) return;
-    if (pending || (ui.auth && ui.auth.phase !== 'confirm')) { discardAwardPhotoInput(); return; }
-    rememberDraft(); AwardPhotos.change(input, picker.draft, awardPhotoEnvironment(picker.form)); discardAwardPhotoInput();
+    if (!picker.permitted || !scopeCurrent(picker.scope)) return;
+    if (pending || ui.form !== picker.form || awardPhotos(ui.form) !== picker.draft || (ui.auth && ui.auth.phase !== 'confirm')) { discardAwardPhotoInput(); return; }
+    picker.consumed = true;
+    rememberDraft(); AwardPhotos.change(input, picker.draft, awardPhotoEnvironment(picker.form));
+    if (awardPhotoSelection === picker) discardAwardPhotoInput();
   }
   function restoreAwardPhotoInput() {
     var picker = awardPhotoSelection;
     if (!picker) return;
     if (!ui.form || ui.form.kind !== 'points' || awardPhotoKey(ui.form) !== picker.key) { discardAwardPhotoInput(); return; }
     picker.scope = scopeToken(); picker.form = ui.form; picker.draft = awardPhotos(ui.form); picker.permitted = true;
-    var replacement = document.querySelector('.sheet [data-award-photo-input="' + picker.kind + '"]');
-    if (picker.input) {
-      picker.input.setAttribute('data-saas-photo-hold', 'false');
-      if (replacement && replacement !== picker.input && replacement.parentNode) replacement.parentNode.replaceChild(picker.input, replacement);
-    }
+    picker.draft.replaceKey = picker.replaceKey;
     if (picker.received) receiveAwardPhotoInput(picker.input);
   }
   function discardAwardPhotos(f) {
@@ -156,7 +186,6 @@
     if (AwardPhotos) AwardPhotos.closeViewer();
     if (awardPhotoSelection) {
       awardPhotoSelection.permitted = false;
-      if (awardPhotoSelection.input) { awardPhotoSelection.input.setAttribute('data-saas-photo-hold', 'true'); document.body.appendChild(awardPhotoSelection.input); }
     }
     if (avatarSelection) {
       avatarSelection.permitted = false;
@@ -528,6 +557,7 @@
       if (ui.auth !== auth) return;
       auth.busy = false;
       if (status === 200 && result.challengeId) { auth.challengeId = result.challengeId; auth.method = result.method; auth.question = result.question || ''; auth.expiresAt = result.expiresAt; ready(); }
+      else if (result.code === 'PHOTO_UNAVAILABLE' && recoverUnavailableAwardPhotos(auth.tx)) return;
       else if (result.code === 'PARENT_SETUP_REQUIRED') {
         acceptParent(result.parent || { configured: false, method: null }, typeof result.revision === 'number' ? result.revision : auth.tx.revision);
         auth.autoPin = null;
@@ -619,6 +649,7 @@
     request('POST', '/api/action', { revision: tx.revision, action: tx.action, grant: tx.grant || undefined, assistantDraft: tx.assistantDraft }, function (status, result) {
       pending = false;
       if (status === 200 && result.state) { setSnapshot(result); finishTransaction(tx); }
+      else if (result.code === 'PHOTO_UNAVAILABLE' && recoverUnavailableAwardPhotos(tx)) return;
       else if (status === 409) conflict(tx, result);
       else if (status === 0) { tx.uncertain = true; connected = false; if (ui.auth) ui.auth.phase = 'retry'; render(false); showError(tx.action.type === 'pet.care' ? '照料结果待确认' : '连接中断 · 结果待确认'); sync(); }
       else if (status === 403 || status === 410) { tx.grant = null; tx.uncertain = false; if (ui.auth) { ui.auth.phase = 'challenge-error'; ui.auth.busy = false; } render(false); showError(errorText(result)); }
@@ -1900,6 +1931,7 @@
     }
   }
   document.addEventListener('input', draftInput);
+  document.addEventListener('cancel', function (event) { if (AwardPhotos && event.target.getAttribute('data-award-photo-input')) cancelAwardPhotoInput(event.target); }, true);
   document.addEventListener('change', function (event) {
     if (AwardPhotos && event.target.getAttribute('data-award-photo-input')) { receiveAwardPhotoInput(event.target); return; }
     if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; }
