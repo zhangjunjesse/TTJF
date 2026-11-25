@@ -214,14 +214,10 @@
 .assistant-panel textarea { touch-action: none; }
 .assistant-panel textarea:focus:not(:placeholder-shown) { touch-action: pan-y; }
 .assistant-panel .assistant-hold-voice { display: inline-flex; align-items: center; justify-content: center; width: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 50%; color: #315b40; background: transparent; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
-.assistant-hold-voice span { display: none; }
 .assistant-hold-voice .assistant-icon { width: 20px; height: 20px; }
 .assistant-panel .assistant-hold-voice.is-recording { color: #1e4b9f; background: #dfeafb; }
 .assistant-is-editing .assistant-hold-voice,
 .assistant-input-row:has(textarea:not(:placeholder-shown)) .assistant-hold-voice { display: none; }
-.assistant-hold-hint { margin: 5px 8px 0 !important; color: #647568; font-size: 11px; line-height: 18px; text-align: center; }
-.assistant-is-editing .assistant-hold-hint,
-.assistant-composer:has(textarea:not(:placeholder-shown)) .assistant-hold-hint { display: none; }
 .assistant-voice { display: none; width: 48px; min-width: 48px; min-height: 48px; }
 .assistant-is-editing .assistant-voice,
 .assistant-input-row:has(textarea:not(:placeholder-shown)) .assistant-voice { display: inline-flex; }
@@ -318,7 +314,6 @@
 .assistant-viewport-short .assistant-examples { margin-bottom: 3px; }
 .assistant-viewport-short .assistant-chat-log { padding-block: 10px; }
 .assistant-viewport-short .assistant-composer { padding-top: 3px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
-.assistant-viewport-short .assistant-hold-hint { display: none; }
 .assistant-viewport-short .assistant-feedback { max-height: 66px; margin-bottom: 3px; padding-block: 4px; }
 .assistant-viewport-short .assistant-chat-status { max-height: 18px; margin-bottom: 3px !important; }
 .assistant-viewport-short .assistant-recording { gap: 8px; height: min(220px, 100%); min-height: 0; padding-block: 18px max(18px, env(safe-area-inset-bottom, 0px)); }
