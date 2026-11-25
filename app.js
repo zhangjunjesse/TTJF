@@ -12,6 +12,7 @@
   function farmClock() { return !local && serverTime ? new Date(serverTime + Math.max(0, monotonic() - serverReceived)) : new Date(); }
   var privateConfig = readStore(PRIVATE, null), drafts = readStore(DRAFT, {}), reminderSound = '';
   var meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
+  var parentDevice = { enabled: null, loading: false, busy: false, sequence: 0 };
   var homePreferenceKey = 'ttjf-device-home-v1';
   function savedHomeMode() {
     try {
@@ -46,6 +47,7 @@
     syncBusy = false; pending = false; retryTx = null; setupTx = null; privateConfig = null; drafts = {}; reminderSound = '';
     familyDay = null; serverTime = 0; serverReceived = 0; assistantSequence++; avatarSequence++; ui = freshUI();
     meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
+    parentDevice = { enabled: null, loading: false, busy: false, sequence: 0 };
     var notice = document.getElementById('toast'); if (notice) { notice.textContent = ''; notice.className = 'toast'; notice.style.display = 'none'; }
     document.getElementById('app').innerHTML = ''; document.body.className = 'saas-screen';
   }
@@ -53,7 +55,7 @@
     if (value === null || typeof value !== 'object') return value;
     if (Array.isArray(value)) return value.map(ordinary);
     var out = {};
-    Object.keys(value).forEach(function (key) { if (!/^(password|currentPassword|confirmPassword|pin|confirmPin|setupPin|setupConfirm|answer|grant|challenge|challengeId|autoPin|tx|action|actionId|signature|token|csrfToken)$/i.test(key)) out[key] = ordinary(value[key]); });
+    Object.keys(value).forEach(function (key) { if (!/^(password|currentPassword|confirmPassword|credential|pin|confirmPin|setupPin|setupConfirm|answer|grant|challenge|challengeId|autoPin|tx|action|actionId|signature|token|csrfToken)$/i.test(key)) out[key] = ordinary(value[key]); });
     return out;
   }
   function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), assistantDraft: f.assistantDraft && clone(f.assistantDraft), openedRevision: f.openedRevision, ledgerAward: !!f.ledgerAward, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
@@ -256,10 +258,49 @@
   function loadMeta() {
     if (!scopeReady()) return;
     if (local) { meta.parent = { configured: !!privateConfig, method: privateConfig ? privateConfig.method : null }; parentRevision = revision; return; }
+    if (saas) loadParentDevice();
     request('GET', '/api/meta', null, function (status, result) { if (status === 200) { if (result.assistant) meta.assistant = result.assistant; acceptParent(result.parent, result.revision); refreshParentEditor(); if (!ui.form && !ui.auth) render(false); } });
   }
+  function loadParentDevice() {
+    if (!saas || !scopeReady() || parentDevice.busy) return;
+    var device = parentDevice, sequence = ++device.sequence;
+    device.loading = true;
+    request('GET', '/api/parent/device', null, function (status, result) {
+      if (parentDevice !== device || sequence !== device.sequence) return;
+      device.loading = false;
+      device.enabled = status === 200 && typeof result.enabled === 'boolean' ? result.enabled : null;
+      if (device.enabled && ui.form && ui.form.kind === 'parentDevice') { ui.form = ui.stack.pop() || null; render(false); }
+      else if (ui.form && ui.form.kind === 'parentConfig') {
+        var control = document.getElementById('parent-device-settings');
+        if (control) control.innerHTML = parentDeviceControl();
+      } else if (ui.auth && ui.auth.phase === 'confirm') render(false);
+    });
+  }
+  function saveParentDevice(enabled, credential) {
+    if (!saas || !scopeReady() || parentDevice.busy || meta.parent.configured !== true) return;
+    var device = parentDevice, f = ui.form, body = { enabled: enabled };
+    if (enabled) body.credential = credential;
+    device.sequence++; device.loading = false; device.busy = true; render(false);
+    request('POST', '/api/parent/device', body, function (status, result) {
+      if (parentDevice !== device) return;
+      device.busy = false;
+      if (status === 200 && typeof result.enabled === 'boolean') {
+        device.enabled = result.enabled;
+        if (ui.form === f && f.kind === 'parentDevice' && result.enabled) ui.form = ui.stack.pop() || null;
+        render(false); toast(result.enabled ? '本机日常免验证已开启' : '本机日常验证已恢复');
+      } else {
+        if (status === 0) { device.enabled = null; loadParentDevice(); }
+        render(false);
+        if (ui.form === f) showError(status === 0 ? '本机设置结果待确认' : errorText(result));
+      }
+    });
+    credential = ''; delete body.credential;
+  }
+  function canSkipParent(action) {
+    return saas && meta.parent.configured === true && parentDevice.enabled === true && ['points.add', 'redemption.approve', 'reward.redeem'].indexOf(action.type) >= 0;
+  }
   function errorText(result) {
-    var codes = { RATE_LIMITED: '操作频繁', CHALLENGE_EXPIRED: '验证已过期', VERIFICATION_FAILED: '验证未通过', PARENT_REQUIRED: '待家长验证', PARENT_SETUP_REQUIRED: '家长验证未设置', PARENT_ALREADY_CONFIGURED: '家长验证已设置', GRANT_EXPIRED: '验证已过期', GRANT_INVALID: '验证已失效', ACTION_ID_REUSED: '操作已提交', BODY_TOO_LARGE: '内容超出限制', SAVE_FAILED: '保存失败', INTERNAL_ERROR: '服务暂不可用', ASSISTANT_UNAVAILABLE: '指令服务不可用' };
+    var codes = { RATE_LIMITED: '操作频繁', CHALLENGE_EXPIRED: '验证已过期', VERIFICATION_FAILED: '验证未通过', PASSWORD_INVALID: '账号密码不正确', INVALID_CREDENTIALS: '验证未通过', PARENT_REQUIRED: '待家长验证', PARENT_SETUP_REQUIRED: '家长验证未设置', PARENT_ALREADY_CONFIGURED: '家长验证已设置', GRANT_EXPIRED: '验证已过期', GRANT_INVALID: '验证已失效', ACTION_ID_REUSED: '操作已提交', BODY_TOO_LARGE: '内容超出限制', SAVE_FAILED: '保存失败', INTERNAL_ERROR: '服务暂不可用', ASSISTANT_UNAVAILABLE: '指令服务不可用' };
     if (result && codes[result.code]) return codes[result.code];
     var text = typeof result === 'string' ? result : result && (result.error || result.message) || '', match;
     if (/^(?:一次说一件事就好|请输入不超过)[\s\S]*1200\s*字/.test(text)) return '指令 · 1–1200字';
@@ -395,10 +436,10 @@
     if (!tx.uncertain) { tx.revision = revision; tx.previousGrowth = M.growth(state); tx.previousPetStatus = playStatus(); }
     try { if (action.type !== 'parent.configure' && (local || (action.type !== 'pet.care' && action.type.indexOf('farm.') !== 0))) M.apply(state, tx.action, appClock(), calendarZone()); } catch (e) { showError(errorText(e)); return; }
     retryTx = tx; invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; stopRecognition();
-    if (tx.uncertain && tx.grant) { submitTransaction(tx); return; }
     if (isPublic(tx.action)) { submitTransaction(tx); return; }
     rememberSheetFocus();
-    ui.auth = { tx: tx, phase: tx.action.type === 'points.add' ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
+    ui.auth = { tx: tx, phase: tx.action.type === 'points.add' || canSkipParent(tx.action) ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
+    if (tx.uncertain && (tx.grant || tx.deviceAttempt)) { submitTransaction(tx); return; }
     render(false); if (ui.auth.phase === 'loading') issueChallenge(ui.auth);
   }
   function issueChallenge(auth) {
@@ -477,6 +518,7 @@
     var auth = ui.auth; if (!auth || auth.busy || pending) return;
     if (auth.phase === 'confirm') {
       if (auth.tx.revision !== revision) { conflict(auth.tx, { revision: revision, state: state }); return; }
+      if (canSkipParent(auth.tx.action)) { auth.tx.deviceAttempt = true; submitTransaction(auth.tx); return; }
       auth.phase = meta.parent.configured === false ? 'setup' : 'loading';
       render(false); if (auth.phase === 'loading') issueChallenge(auth); return;
     }
@@ -511,6 +553,10 @@
       if (status === 200 && result.state) { setSnapshot(result); finishTransaction(tx); }
       else if (status === 409) conflict(tx, result);
       else if (status === 0) { tx.uncertain = true; connected = false; if (ui.auth) ui.auth.phase = 'retry'; render(false); showError(tx.action.type === 'pet.care' ? '照料结果待确认' : '连接中断 · 结果待确认'); sync(); }
+      else if (status === 403 && tx.deviceAttempt && !tx.grant && result.code === 'PARENT_REQUIRED' && ui.auth && ui.auth.tx === tx) {
+        tx.deviceAttempt = false; tx.uncertain = false; parentDevice.enabled = false;
+        loadParentDevice(); issueChallenge(ui.auth);
+      }
       else if (status === 403 || status === 410) { tx.grant = null; tx.uncertain = false; if (ui.auth) { ui.auth.phase = 'challenge-error'; ui.auth.busy = false; } render(false); showError(errorText(result)); }
       else { tx.grant = null; tx.uncertain = false; ui.auth = null; render(false); showError(tx.action.type === 'pet.care' && !ui.form ? '照料未完成' : errorText(result)); if (tx.action.type === 'pet.care') sync(); }
     });
@@ -567,7 +613,7 @@
   function rememberDraft() {
     if (!ui.form || ui.auth) return;
     var values = fields(), f = ui.form;
-    Object.keys(values).forEach(function (key) { if (['pin', 'confirmPin', 'setupPin', 'setupConfirm', 'answer'].indexOf(key) < 0) f.data[key] = values[key]; });
+    Object.keys(values).forEach(function (key) { if (['pin', 'confirmPin', 'setupPin', 'setupConfirm', 'answer', 'credential'].indexOf(key) < 0) f.data[key] = values[key]; });
     if (!f.assistantDraft && ['points', 'petBuy', 'task', 'reward', 'pointItem', 'voice'].indexOf(f.kind) >= 0) { drafts[draftKey(f)] = clone(f.data); saveStore(DRAFT, drafts); }
   }
   function focusKey(element) { if (!element || !element.getAttribute) return null; return { tag: element.tagName, type: element.type || '', id: element.id || '', name: element.name || '', action: element.getAttribute('data-action') || '', dataId: element.getAttribute('data-id') || '' }; }
@@ -591,7 +637,9 @@
     if (restore && drafts[draftKey(f)]) f.data = clone(drafts[draftKey(f)]);
     if (kind === 'task' && !f.data.id && f.data.date < today()) f.data.date = today();
     if (kind === 'points' && (!f.data.recordTime || f.data.recordDate !== today())) { f.data.recordTime = clock(); f.data.recordDate = today(); }
-    ui.form = f; ui.auth = null; if (!deferRender) render(false);
+    ui.form = f; ui.auth = null;
+    if (kind === 'parentConfig' && saas) loadParentDevice();
+    if (!deferRender) render(false);
   }
   function closeForm(exitPresetReview) {
     if (pending && !setupTx) return;
@@ -716,7 +764,7 @@
         (inDock ? ' aria-description="轻点聊天，长按说话"' : '') + ' aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
   }
   function assistantAvailable() {
-    return scopeReady() && !ui.auth && !pending && !(ui.form && ui.form.kind === 'parentConfig');
+    return scopeReady() && !ui.auth && !pending && !(ui.form && ['parentConfig', 'parentDevice'].indexOf(ui.form.kind) >= 0);
   }
   function openAssistant(element, press) {
     rememberDraft(); rememberSheetFocus(); stopRecognition();
@@ -1127,6 +1175,12 @@
     var capabilities = '<details class="preferences-capabilities"' + (capabilitiesOpen ? ' open' : '') + '><summary id="preferences-capabilities-toggle" tabindex="0"><span class="menu-symbol">' + icon('info') + '</span><b>功能状态</b><span class="preferences-row-value">听写与指令</span>' + icon('chevron') + '</summary>' + facts([['听写', !speech ? '不支持' : window.isSecureContext === false ? '不可用' : recognition ? '听写中' : '未开启'], ['免触摸唤醒', '未开启'], ['指令', meta.assistant.formOnly ? '新建常用行为已接入 AI' : assistantLabel('general')]], 'capability-values') + '</details>';
     return '<div class="preferences-panel"><section class="preferences-section" aria-labelledby="preferences-family-heading"><h3 id="preferences-family-heading">家庭与安全</h3><div class="menu-group">' + family + '</div></section><section class="preferences-section" aria-labelledby="preferences-device-heading"><h3 id="preferences-device-heading">本机偏好</h3><div class="menu-group">' + device + '</div></section><section class="preferences-section preferences-secondary" aria-label="记录与功能"><div class="menu-group">' + menuRow('export', '导出家庭记录', 'JSON', 'download', { inline: true, chevron: false }) + capabilities + '</div></section><p id="sync-status" class="sync-status">' + syncLabel() + '</p>' + (saas ? menuRow('saas-logout', '退出登录', '', 'logout', { chevron: false }) : '') + '</div>';
   }
+  function parentDeviceControl() {
+    var busy = parentDevice.loading || parentDevice.busy, configured = meta.parent.configured === true;
+    var note = !configured ? '先设置家长验证' : busy ? '正在确认本机设置' : parentDevice.enabled == null ? '状态待确认，点此重试' : '仅当前账号和家庭；加分、兑换仍需确认';
+    var row = menuRow('parent-device-toggle', '本机日常免验证', note, 'lock', { checked: parentDevice.enabled === true, busy: busy, label: '本机日常免验证，' + note });
+    return row.replace('<button ', '<button' + (busy || !configured ? ' disabled' : '') + ' ');
+  }
   function listManagement(kind) {
     var isReward = kind === 'reward-list', rows = isReward ? state.rewards : state.pointItems;
     return '<div class="manage-list">' + rows.map(function (r) { return button(isReward ? 'reward-edit' : 'point-item-edit', '<span><b>' + esc(r.name) + '</b><small>' + r.points + ' 分 · ' + (isReward ? category(r.category) + ' · ' : '') + (r.enabled ? '启用中' : '已停用') + '</small></span>' + icon('chevron'), 'manage-row', r.id); }).join('') + '</div>';
@@ -1363,7 +1417,7 @@
             body += '<p class="gift-request-note">家长确认后才扣分。</p>';
             if (existing && existing.rewardId !== r.id) body += '<p class="gift-request-note">这次申请会替换正在等待确认的「' + esc(existing.name) + '」。</p>';
           }
-          if (f.kind === 'approve') submit = '去家长验证';
+          if (f.kind === 'approve') submit = canSkipParent({ type: 'redemption.approve' }) ? '核对兑换' : '去家长验证';
         } else {
           body = '<div class="redeem-preview"><span class="reward-symbol ' + r.category + '">' + icon(r.icon) + '</span><h3>' + esc(r.name) + '</h3><strong>' + r.points + '<small> 分</small></strong></div><div class="redemption-math"><div><span>可用</span><b>' + total.available + '</b></div><span>−</span><div><span>兑换扣分</span><b>' + r.points + '</b></div><span>=</span><div><span>兑换后</span><b>' + (total.available - r.points) + '</b></div></div>' + (f.kind === 'request' ? facts([['本次申请扣分', '0'], ['审批', '家长']]) : '');
         }
@@ -1400,16 +1454,21 @@
       else {
         body = (!initial ? facts([['当前方式', meta.parent.method === 'math' ? '算术题' : 'PIN']]) : '') + select('验证方式', 'method', method, [['pin', '6位 PIN'], ['math', '算术题']]) + field(initial ? '设置PIN' : '新PIN', 'pin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ') + field(initial ? '确认PIN' : '确认新PIN', 'confirmPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"' + (method === 'math' ? ' disabled' : ''), 'password').replace('<label ', '<label' + (method === 'math' ? ' hidden' : '') + ' ');
       }
+      if (saas) body += '<section id="parent-device-settings" class="parent-device-settings" aria-label="本机日常免验证">' + parentDeviceControl() + '</section>';
+    } else if (f.kind === 'parentDevice') {
+      var pinCredential = meta.parent.method === 'pin';
+      title = '开启本机日常免验证'; submit = '验证并开启';
+      body = '<p class="status-line">仅此账号在当前家庭使用这台浏览器时生效。加分和兑换仍需逐笔确认。</p>' + field(pinCredential ? '当前家长PIN' : '账号密码', 'credential', '', 'required maxlength="' + (pinCredential ? '12' : '128') + '" autocomplete="' + (pinCredential ? 'off' : 'current-password') + '"' + (pinCredential ? ' inputmode="numeric" minlength="6" pattern="[0-9]{6,12}"' : ''), 'password');
     } else if (f.kind === 'assistantReview') {
       title = d.title; submit = '确认办理'; body = assistantReviewBody(d.command);
     } else if (f.kind === 'voice') {
       title = '指令'; sub = assistantLabel('general'); submit = ui.assistantBusy ? '整理中' : '发送';
       body = '<div class="voice-box">' + button('listen', icon('mic') + (recognition ? '停止听写' : '听写'), 'btn voice-start') + '<p id="voice-status">' + (recognition ? '听写中' : '') + '</p></div>' + area('指令内容', 'speech', d.speech || '', 'required maxlength="1000"') + (d.answer ? '<div class="assistant-answer" role="status">' + esc(d.answer) + '</div>' : '');
     }
-    var isEditor = ['points', 'petBuy', 'request', 'approve', 'task', 'taskAction', 'reward', 'pointItem', 'point-list', 'profile', 'petConfig', 'familySettings', 'parentConfig', 'assistantReview', 'voice'].indexOf(f.kind) >= 0;
+    var isEditor = ['points', 'petBuy', 'request', 'approve', 'task', 'taskAction', 'reward', 'pointItem', 'point-list', 'profile', 'petConfig', 'familySettings', 'parentConfig', 'parentDevice', 'assistantReview', 'voice'].indexOf(f.kind) >= 0;
     if (!chat && ['points', 'pointItem', 'point-list'].indexOf(f.kind) >= 0) actions = button('ai-toggle', icon('spark'), 'icon-button' + (f.aiOpen ? ' active' : ''), '', '指令填写').replace('<button ', '<button aria-expanded="' + !!f.aiOpen + '" ') + actions;
     if (submit) {
-      var submitBusy = pending || (f.kind === 'voice' && ui.assistantBusy) || (f.kind === 'profile' && f.avatarBusy);
+      var submitBusy = pending || (f.kind === 'voice' && ui.assistantBusy) || (f.kind === 'profile' && f.avatarBusy) || (['parentConfig', 'parentDevice'].indexOf(f.kind) >= 0 && parentDevice.busy);
       var submitLabel = f.kind === 'points' ? '核对加分' : f.kind === 'request' ? '申请兑换' : f.kind === 'approve' ? '确认兑换' : f.kind === 'petBuy' ? '确认购买' : /^保存|^设置/.test(submit) ? '保存' : submit;
       var giftFooter = ledgerGiftFlow() && (f.kind === 'request' || f.kind === 'approve');
       var saveButton = '<button type="submit" form="editor-form" class="btn primary sheet-save" aria-label="' + esc(submit) + '" data-label="' + esc(submit) + '" aria-busy="' + !!submitBusy + '"' + (submitBusy || submitBlocked ? ' disabled' : '') + '>' + (pending ? '保存中' : f.kind === 'profile' && f.avatarBusy ? '处理中' : giftFooter ? submit : submitLabel) + '</button>';
@@ -1426,6 +1485,7 @@
     var rows = [], req, r, target, t = M.totals(state);
     if (action.type === 'points.add') { rows = [['孩子', state.childName], ['行为', action.name], ['本次加分', '+' + action.points + ' 分'], ['记录时间', action.at ? niceTime(action.at) : '确认完成时'], ['原因', action.reason || '未填写']]; if (action.saveAsTemplate) rows.push(['新增常用', action.name]); }
     else if (action.type === 'redemption.approve') { req = find(state.requests, action.requestId); r = req && find(state.rewards, req.rewardId); rows = [['礼品', r ? r.name : '已更新'], ['本次扣分', '−' + action.expectedPoints], ['兑换后余额', t.available - action.expectedPoints]]; if (action.note) rows.push(['备注', action.note]); }
+    else if (action.type === 'reward.redeem') { r = find(state.rewards, action.rewardId); var cost = action.expectedPoints == null && r ? r.points : action.expectedPoints; rows = [['礼品', r ? r.name : '已更新'], ['本次扣分', '−' + cost], ['兑换后余额', t.available - cost]]; }
     else if (action.type === 'pet.buy') { var status = playStatus(); target = status && find(status.catalog, action.itemId); rows = [['道具', target ? target.name : action.itemId], ['单价', (target ? target.points : 3) + ' 分 / 件'], ['数量', action.quantity], ['本次扣分', '−' + action.expectedPoints], ['购买后余额', t.available - action.expectedPoints]]; }
     else if (action.type === 'reward.save') rows = [['礼品', action.reward.name], ['所需积分', action.reward.points], ['兑换日期', category(action.reward.category)], ['状态', action.reward.enabled ? '启用' : '停用']];
     else if (action.type === 'pointItem.save') { rows = [['常用加分项', action.item.name], ['默认分值', action.item.points], ['状态', action.item.enabled ? '启用' : '停用']]; if (action.item.reason) rows.push(['预设原因', action.item.reason]); }
@@ -1446,8 +1506,9 @@
   }
   function parentContent() {
     var a = ui.auth, confirming = a.phase === 'confirm', setup = a.phase === 'setup' || a.phase === 'setup-saving' || a.phase === 'setup-retry';
-    var deletingItem = a.tx.action.type === 'pointItem.delete', ledgerAward = isLedgerAward(a);
+    var deletingItem = a.tx.action.type === 'pointItem.delete', ledgerAward = isLedgerAward(a), skipParent = canSkipParent(a.tx.action), redeeming = ['redemption.approve', 'reward.redeem'].indexOf(a.tx.action.type) >= 0;
     var prompt = confirming ? ledgerAward ? '下一步由家长验证' : '请核对本次加分，确认后由家长验证。' : setup ? '请家长设置 6 位 PIN，保护每一次加分和兑换。' : a.method === 'math' ? '请家长完成算术验证后继续。' : '请家长输入 PIN，验证后完成本次操作。';
+    if (confirming && skipParent) prompt = redeeming ? '请核对礼品和本次扣分，确认后完成兑换。' : '请核对本次加分，确认后记入积分。';
     if (deletingItem) prompt = (setup ? '请先设置家长 PIN。' : '') + '删除后，这个行为会从常用列表中移除。过去的加分记录和积分都会保留。';
     var ledgerReview = ledgerAward || a.tx.ledgerRedemption, summaryContent;
     if (ledgerAward) summaryContent = ledgerAwardSummary(a.tx.action);
@@ -1459,7 +1520,7 @@
     } else summaryContent = actionSummary(a.tx.action);
     var summary = '<div class="authorization-summary">' + summaryContent + '</div>';
     var body = (ledgerReview ? summary : '') + '<p id="parent-dialog-prompt" class="parent-dialog-prompt">' + prompt + '</p>', submit = '验证并完成';
-    if (confirming) submit = ledgerAward ? '去家长验证' : '确认加' + a.tx.action.points + '分';
+    if (confirming) submit = redeeming ? skipParent ? '确认兑换' : '去家长验证' : ledgerAward && !skipParent ? '去家长验证' : '确认加' + a.tx.action.points + '分';
     else if (a.phase === 'setup') { body += field('设置PIN', 'setupPin', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password') + field('确认PIN', 'setupConfirm', '', 'required inputmode="numeric" autocomplete="new-password" minlength="6" maxlength="6" pattern="[0-9]{6}"', 'password'); submit = '设置并完成'; }
     else if (a.phase === 'verify') { body += (a.method === 'math' ? '<p class="math-question">' + esc(a.question) + '</p>' : '') + field(a.method === 'math' ? '答案' : a.tx.action.type === 'parent.configure' ? '当前PIN' : '家长PIN', 'answer', '', 'required inputmode="numeric" autocomplete="off"' + (a.method === 'pin' ? ' minlength="6" maxlength="12" pattern="[0-9]{6,12}"' : ''), a.method === 'pin' ? 'password' : 'text'); }
     else if (a.phase === 'loading') submit = '准备中';
@@ -1477,9 +1538,9 @@
       else if (a.phase === 'saving') submit = verb + '中';
       else if (a.phase === 'retry') submit = '重试' + verb;
     }
-    var title = deletingItem ? '确认删除常用行为' : confirming ? ledgerAward ? '核对加分' : '确认本次加分' : setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证';
+    var title = deletingItem ? '确认删除常用行为' : confirming ? redeeming ? '确认兑换' : ledgerAward ? '核对加分' : '确认本次加分' : setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证';
     var actions = isPristinePresetReview(a) ? button('points-cancel', icon('close'), 'icon-button ledger-award-cancel', '', '取消本次加分') : '';
-    return sheet(title, ledgerReview ? '' : confirming ? '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true, actions);
+    return sheet(title, ledgerReview ? '' : confirming ? redeeming ? '核对礼品与扣分' : '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true, actions);
   }
   function isAppPage() {
     if (!ui.form) return ui.view === 'reminders';
@@ -1735,6 +1796,11 @@
     else if (action === 'form-day') { rememberDraft(); ui.form.data.date = day(Number(id)); render(false); }
     else if (action === 'family-settings') openForm('familySettings', { childName: state.childName, monthEndDays: state.settings.monthEndDays });
     else if (action === 'parent-config') openForm('parentConfig', { method: meta.parent && meta.parent.method || 'pin' });
+    else if (action === 'parent-device-toggle' && saas && ui.form && ui.form.kind === 'parentConfig' && !parentDevice.loading && !parentDevice.busy && meta.parent.configured === true) {
+      if (parentDevice.enabled == null) loadParentDevice();
+      else if (parentDevice.enabled) saveParentDevice(false);
+      else openForm('parentDevice', {});
+    }
     else if (action === 'voice') openForm('voice', {}, true);
     else if (action === 'listen') listen();
     else if (action === 'sound') { ui.sound = !ui.sound; if (saas) saveSoundPreference(ui.sound); else saveStore(PREF, { sound: ui.sound }); render(false); if (ui.sound) play('complete'); }
@@ -1769,7 +1835,13 @@
     if (setupTx && setupTx.uncertain && setupTx.form === ui.form && !setupTx.auth) { submitSetup(setupTx); return; }
     if (ui.form.kind === 'profile' && ui.form.avatarBusy) { showError('照片处理中'); return; }
     if (ui.form.kind === 'point-list') { contextualInterpret('pointItems'); return; }
+    if (['parentConfig', 'parentDevice'].indexOf(ui.form.kind) >= 0 && parentDevice.busy) return;
     if (!event.target.checkValidity()) { var bad = event.target.querySelector(':invalid'); if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.setAttribute('aria-describedby', 'form-error'); } showError(fieldError(bad)); if (bad) bad.focus(); return; }
+    if (ui.form.kind === 'parentDevice') {
+      var credentialInput = event.target.elements.credential, credential = credentialInput ? credentialInput.value : '';
+      if (credentialInput) credentialInput.value = '';
+      saveParentDevice(true, credential); credential = ''; return;
+    }
     if (ui.form.kind === 'voice') { interpret(); return; }
     try { var action = makeAction(ui.form, fields()), message = action.type === 'points.add' ? '已加 ' + action.points + ' 分。' : action.type === 'redemption.request' ? '申请已提交' : action.type === 'redemption.approve' ? '兑换成功 · −' + action.expectedPoints + ' 分' : '已保存。'; beginAction(action, message); } catch (e) { showError(errorText(e)); }
   });
@@ -1882,5 +1954,5 @@
   } else { persist(); loadMeta(); render(false); sync(); }
   var lastDay = today();
   setInterval(function () { if (!scopeReady()) return; sync(); renderReminder(); if (Farm && farmIsVisible()) Farm.tick(); if (lastDay !== today()) { lastDay = today(); if (!ui.auth && (!ui.form || ui.form.kind === 'homeWeek' || (local && ui.form.kind === 'petHub'))) render(false); } }, 5000);
-  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { if (!scopeReady()) return { ready: false, view: 'account', connected: false, revision: 0, form: null, auth: false, pending: false, aiBusy: false, screenAwake: false, farmView: null, farmStatus: null, farmRender: Farm ? Farm.diagnostics() : null }; return { ready: true, view: ui.view, homeMode: ui.homeMode, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeItemLimit()).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: saas || local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches, farmView: ui.form && ui.form.kind === 'farm' ? ui.form.data.view : null, farmStatus: Farm && M.farmStatus ? Farm.status() : null, farmRender: Farm ? Farm.diagnostics() : null }; } };
+  window.FamilyDemo = { getState: function () { return clone(state); }, getUI: function () { if (!scopeReady()) return { ready: false, view: 'account', connected: false, revision: 0, form: null, auth: false, pending: false, aiBusy: false, screenAwake: false, farmView: null, farmStatus: null, farmRender: Farm ? Farm.diagnostics() : null }; return { ready: true, view: ui.view, homeMode: ui.homeMode, connected: connected, revision: revision, form: ui.form ? ui.form.kind : null, auth: !!ui.auth, authPhase: ui.auth ? ui.auth.phase : null, parentConfigured: meta.parent.configured, parentMethod: meta.parent.method, parentDeviceEnabled: parentDevice.enabled, parentDeviceBusy: !!(parentDevice.loading || parentDevice.busy), setupUncertain: !!(setupTx && setupTx.uncertain), pending: pending, assistantMode: meta.assistant.mode, aiBusy: ui.assistantBusy || !!(ui.form && ui.form.aiBusy), petReaction: ui.petReaction, petKind: currentPet().kind, growth: growthInfo(), homeLayout: homeWide() ? 'landscape' : 'portrait', frequentItemIds: rankedItems().slice(0, homeItemLimit()).map(function (p) { return p.id; }), picker: ui.form && ui.form.kind === 'behaviorPicker' ? pickerData() : null, inboxCount: dueTasks().length + (state.requests || []).filter(function (r) { return r.status === 'pending'; }).length, screenAwake: !!ui.display, homeFeedback: ui.homeFeedback, familyDay: saas || local ? today() : familyDay, petStatus: playStatus(), careBusy: ui.careBusy || !!(pending && retryTx && retryTx.action.type === 'pet.care'), petTab: ui.form && ui.form.kind === 'petHub' ? ui.form.data.tab : ui.petTab, pointsMode: ui.form && ui.form.kind === 'points' ? ui.form.data.itemId ? 'common' : 'custom' : null, saveAsTemplate: !!(ui.form && ui.form.kind === 'points' && !ui.form.data.itemId && ui.form.data.saveAsTemplate), petTouches: ui.petTouches, farmView: ui.form && ui.form.kind === 'farm' ? ui.form.data.view : null, farmStatus: Farm && M.farmStatus ? Farm.status() : null, farmRender: Farm ? Farm.diagnostics() : null }; } };
 }());

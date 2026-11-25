@@ -24,7 +24,7 @@ const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/
 const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js',
   '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css', '/assistant-panel.js', '/assistant-panel.css', '/voice-input.js', '/voice-pcm-worklet.js']);
 const ASSET_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.ogg']);
-const BUSINESS = new Set(['/api/state', '/api/meta', '/api/parent/challenge', '/api/parent/verify', '/api/action', '/api/assistant',
+const BUSINESS = new Set(['/api/state', '/api/meta', '/api/parent/device', '/api/parent/challenge', '/api/parent/verify', '/api/action', '/api/assistant',
   '/api/assistant/chat/read', '/api/assistant/chat/turn', '/api/assistant/chat/clear', TICKET_PATH]);
 
 function configuredOrigin(value, production) {
@@ -189,10 +189,11 @@ async function createSaasServer(options = {}) {
       return section === 'members' ? families.members(ctx, familyId) : ctx.method === 'GET' ? families.invitations(ctx, familyId) : families.invite(ctx, familyId, body);
     }
     if (BUSINESS.has(p)) {
-      requireMethod(ctx, ['/api/state', '/api/meta'].includes(p) ? ['GET'] : ['POST']);
+      requireMethod(ctx, p === '/api/parent/device' ? ['GET', 'POST'] : ['/api/state', '/api/meta'].includes(p) ? ['GET'] : ['POST']);
       switch (p) {
         case '/api/state': return business.state(ctx);
         case '/api/meta': return business.meta(ctx);
+        case '/api/parent/device': return business.device(ctx, body);
         case '/api/parent/challenge': return business.challenge(ctx, body);
         case '/api/parent/verify': return business.verify(ctx, body);
         case '/api/action': return business.action(ctx, body);

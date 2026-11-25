@@ -6,18 +6,18 @@ const crypto = require('node:crypto');
 const { parseArgs } = require('node:util');
 const { DatabaseSync, backup } = require('node:sqlite');
 const { createDatabase, resolveDatabasePath } = require('../saas/sqlite.cjs');
-const { createStore, assertDatabaseSchema } = require('../saas/store.cjs');
+const { createStore, migrate, assertDatabaseSchema } = require('../saas/store.cjs');
 function requireValue(condition, message) { if (!condition) throw new Error(message); }
 function existsEntry(file) {
   try { fs.lstatSync(file); return true; }
   catch (error) { if (error.code === 'ENOENT') return false; throw error; }
 }
-async function validateDatabase(database) {
+async function validateDatabase(database, options) {
   const integrity = (await database.query('PRAGMA integrity_check')).rows;
   requireValue(integrity.length === 1 && Object.values(integrity[0])[0] === 'ok', 'SQLite integrity_check failed; nothing was restored.');
   const foreignKeys = (await database.query('PRAGMA foreign_key_check')).rows;
   requireValue(foreignKeys.length === 0, 'SQLite foreign_key_check failed; nothing was restored.');
-  await assertDatabaseSchema(database);
+  await assertDatabaseSchema(database, options);
   const triggers = (await database.query("SELECT name FROM sqlite_schema WHERE type='trigger'")).rows;
   requireValue(triggers.length === 0, 'SQLite database contains unrecognized triggers. This application schema has no triggers; backup or restore was refused.');
 }
@@ -50,7 +50,7 @@ async function restoreDatabase({ source, output, appStopped = false }) {
   let stage, stageCreated = false;
   try {
     // Validate the source without provisioning schema or modifying backup bytes.
-    await validateDatabase(snapshot);
+    await validateDatabase(snapshot, { allowV3Backup: true });
     fs.mkdirSync(path.dirname(target), { recursive: true, mode: 0o700 });
     stage = target + '.restore-' + crypto.randomBytes(12).toString('hex');
     const stageDescriptor = fs.openSync(stage, 'wx', 0o600);
@@ -61,12 +61,15 @@ async function restoreDatabase({ source, output, appStopped = false }) {
     fs.chmodSync(stage, 0o600);
     const database = await createDatabase({ databasePath: stage, mustExist: true });
     try {
+      // Only the private temporary copy is upgraded. Existing v3 backup bytes
+      // stay read-only; current schema validation still gates final publication.
+      await migrate(database);
       await database.transaction(async client => {
         // Pending provider work cannot survive an offline restore. Preserve
         // completed conversation history while releasing the interrupted turn.
         await client.query("UPDATE saas_assistant_turns SET failed_at=$1,failure_code='ASSISTANT_INTERRUPTED' WHERE completed_at IS NULL AND failed_at IS NULL", [new Date()]);
         await client.query('UPDATE saas_assistant_chats SET pending_turn_id=NULL,pending_expires_at=NULL');
-        for (const table of ['saas_assistant_leases', 'saas_parent_grants', 'saas_parent_challenges', 'saas_sessions', 'saas_email_tokens', 'saas_invitations']) {
+        for (const table of ['saas_assistant_leases', 'saas_parent_devices', 'saas_parent_grants', 'saas_parent_challenges', 'saas_sessions', 'saas_email_tokens', 'saas_invitations']) {
           await client.query('DELETE FROM ' + table);
         }
       });

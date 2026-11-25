@@ -158,6 +158,49 @@ test('first PIN only continues its assistant award with the matching server resu
   }
 });
 
+test('device bypass retry from a reopened editor retains its assistant action and falls back to PIN after revocation', () => {
+  const h = harness(); h.login();
+  const scope = { familyId: 'family-a', userId: USER.id };
+  h.pending('/api/parent/device', 'GET').respond(200, { ...scope, enabled: true });
+  h.api.open('points', { name: '重试阅读', points: 7, reason: '' });
+  const binding = { generation: 'device-retry-generation', turnId: 'device-retry-turn', actionId: 'device-retry-award',
+    type: 'points.add', sourceRevision: 1, familyDay: '2026-11-16' };
+  h.api.get().ui.form.assistantDraft = binding;
+  const action = { type: 'points.add', name: '重试阅读', points: 7, reason: '' };
+  h.api.action({ ...action }, '已保存'); h.api.parent({});
+  const lost = h.pending('/api/action'), original = copy(lost.body), before = M.totals(h.state());
+  assert.equal(original.grant, undefined);
+  lost.respond(0, {});
+  assert.equal(h.ui().authPhase, 'retry');
+  h.click('parent-cancel', null, true);
+  assert.equal(h.ui().form, 'points'); assert.equal(h.ui().auth, false);
+  h.pending('/api/state').respond(200, snapshot('family-a'));
+  h.api.action({ ...action }, '已保存');
+  assert.equal(h.ui().pending, true); assert.equal(h.ui().auth, true);
+  const retried = h.pending('/api/action'); assert.deepEqual(copy(retried.body), original);
+  retried.respond(403, { ...scope, code: 'PARENT_REQUIRED' });
+  assert.equal(h.ui().pending, false); assert.equal(h.ui().authPhase, 'loading');
+  assert.deepEqual(M.totals(h.state()), before);
+  assert.equal(h.xhrs.filter(x => x.url === '/api/action').length, 2);
+  const challenge = h.pending('/api/parent/challenge');
+  assert.deepEqual(copy(challenge.body.action), original.action);
+  assert.deepEqual(copy(challenge.body.assistantDraft), original.assistantDraft);
+  assert.equal(challenge.body.revision, original.revision);
+  challenge.respond(200, { ...scope, challengeId: 'device-retry-challenge', method: 'pin', expiresAt: new Date(+NOW + 120000).toISOString() });
+  h.api.parent({ elements: { answer: { value: '246810' } } });
+  h.pending('/api/parent/verify').respond(200, { ...scope, grant: 'device-retry-grant' });
+  const authorized = h.pending('/api/action');
+  assert.deepEqual(copy(authorized.body.action), original.action);
+  assert.deepEqual(copy(authorized.body.assistantDraft), original.assistantDraft);
+  assert.equal(authorized.body.grant, 'device-retry-grant');
+  const committed = snapshot('family-a', 2);
+  committed.state = M.apply(h.state(), authorized.body.action, NOW, 'Asia/Shanghai');
+  authorized.respond(200, committed);
+  assert.equal(h.ui().pending, false); assert.equal(h.ui().auth, false);
+  assert.equal(h.state().points.filter(row => row.id === 'points-' + binding.actionId).length, 1);
+  assert.equal(M.totals(h.state()).earned, before.earned + 7);
+});
+
 test('v13 registration waits for email, unverified login cannot load or create a family, fragments require explicit POST', () => {
   const h = harness(); h.pending('/api/session').respond(200, { authenticated: false });
   h.click('register'); h.submit('register', { email: 'new@example.test', password: 'Password-test-13', confirmPassword: 'Password-test-13' });

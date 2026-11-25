@@ -6,6 +6,7 @@ const { createAssistantChats } = require('./assistant-chat.cjs');
 // Private, immutable by callers: these are the existing daily business actions.
 const PUBLIC = new Set(['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel',
   'pet.configure', 'pet.care', 'pet.scene', 'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare']);
+const DEVICE_ACTIONS = new Set(['points.add', 'redemption.approve', 'reward.redeem']);
 
 function createBusiness({ store, auth, now, assistant }) {
   const at = () => new Date(now());
@@ -61,6 +62,40 @@ function createBusiness({ store, auth, now, assistant }) {
     if (row && +row.expires_at > +at() && row.count >= 5) { rateError(row.expires_at); }
   }
   async function failure(client, family) { await store.rate('parent-failures:' + family.id, 5, 300000, at(), client); }
+  async function deviceEnabled(client, who, family) {
+    return family.parent.configured && (await client.query(`SELECT 1 FROM saas_parent_devices
+      WHERE session_hash=$1 AND family_id=$2 AND user_id=$3`, [who.session.token_hash, family.id, who.user.id])).rowCount > 0;
+  }
+  async function device(ctx, body) {
+    return run(ctx, async (client, who, family) => {
+      if (ctx.method === 'GET') return result({ enabled: await deviceEnabled(client, who, family) });
+      if (typeof body.enabled !== 'boolean' || Object.keys(body).some(key => !['enabled', 'credential'].includes(key)) ||
+          (S.own(body, 'credential') && (typeof body.credential !== 'string' || body.credential.length > 128))) {
+        return error(400, 'VALIDATION_ERROR', '免验证设置无效');
+      }
+      const scope = [who.session.token_hash, family.id, who.user.id];
+      if (!body.enabled) {
+        await client.query('DELETE FROM saas_parent_devices WHERE session_hash=$1 AND family_id=$2 AND user_id=$3', scope);
+        return result({ enabled: false });
+      }
+      if (!family.parent.configured) return setupRequired(family);
+      await rate(client, who, family, 'device-enable', 10);
+      await failuresAllowed(client, family);
+      let valid = false;
+      if (family.parent.method === 'pin' && /^\d{6,12}$/.test(body.credential || '')) {
+        valid = S.equal(await S.slowHash(body.credential, family.parent.salt, family.parent.n || 16384), family.parent.hash);
+      } else if (family.parent.method === 'math' && typeof body.credential === 'string') {
+        valid = await S.checkPassword(body.credential, who.user.password_hash);
+      }
+      if (!valid) {
+        await failure(client, family);
+        return error(403, 'VERIFICATION_FAILED', '验证未通过，请重试');
+      }
+      await client.query(`INSERT INTO saas_parent_devices(session_hash,family_id,user_id,created_at) VALUES($1,$2,$3,$4)
+        ON CONFLICT(session_hash,family_id,user_id) DO NOTHING`, [...scope, at()]);
+      return result({ enabled: true });
+    });
+  }
   function configValues(action, family) {
     if (!['pin', 'math'].includes(action.method)) { S.fail(400, 'VALIDATION_ERROR', '家长核验方式无效'); }
     if (action.type === 'parent.setup') {
@@ -176,18 +211,22 @@ function createBusiness({ store, auth, now, assistant }) {
       let grantHash;
       if (!settingUp && !PUBLIC.has(body.action.type)) {
         if (!family.parent.configured) { return setupRequired(family); }
-        if (!body.grant) { return error(403, 'PARENT_REQUIRED', '此操作需要家长验证'); }
-        grantHash = typeof body.grant === 'string' && S.TOKEN.test(body.grant) ? S.digest(body.grant) : '';
-        const grant = (await client.query(`SELECT * FROM saas_parent_grants WHERE token_hash=$1 AND family_id=$2 AND user_id=$3 AND session_hash=$4`,
-          [grantHash, family.id, who.user.id, who.session.token_hash])).rows[0];
-        if (grant && +grant.expires_at <= +at()) {
-          await client.query('DELETE FROM saas_parent_grants WHERE token_hash=$1', [grantHash]);
-          return error(410, 'GRANT_EXPIRED', '本次授权已过期，请重新验证');
+        if (!body.grant && !(DEVICE_ACTIONS.has(body.action.type) && await deviceEnabled(client, who, family))) {
+          return error(403, 'PARENT_REQUIRED', '此操作需要家长验证');
         }
-        if (grant && grant.action_receipt.algorithm === 'scrypt') { await failuresAllowed(client, family); }
-        if (!grant || Number(grant.revision) !== body.revision || !await S.matchesReceipt(grant.action_receipt, body.action)) {
-          if (grant && grant.action_receipt.algorithm === 'scrypt') { await failure(client, family); }
-          return error(403, 'GRANT_INVALID', '本次授权与操作不匹配，请重新验证');
+        if (body.grant) {
+          grantHash = typeof body.grant === 'string' && S.TOKEN.test(body.grant) ? S.digest(body.grant) : '';
+          const grant = (await client.query(`SELECT * FROM saas_parent_grants WHERE token_hash=$1 AND family_id=$2 AND user_id=$3 AND session_hash=$4`,
+            [grantHash, family.id, who.user.id, who.session.token_hash])).rows[0];
+          if (grant && +grant.expires_at <= +at()) {
+            await client.query('DELETE FROM saas_parent_grants WHERE token_hash=$1', [grantHash]);
+            return error(410, 'GRANT_EXPIRED', '本次授权已过期，请重新验证');
+          }
+          if (grant && grant.action_receipt.algorithm === 'scrypt') { await failuresAllowed(client, family); }
+          if (!grant || Number(grant.revision) !== body.revision || !await S.matchesReceipt(grant.action_receipt, body.action)) {
+            if (grant && grant.action_receipt.algorithm === 'scrypt') { await failure(client, family); }
+            return error(403, 'GRANT_INVALID', '本次授权与操作不匹配，请重新验证');
+          }
         }
       }
       let state, parent = family.parent;
@@ -204,6 +243,7 @@ function createBusiness({ store, auth, now, assistant }) {
       const revision = family.revision + 1, receipt = await S.makeReceipt(body.action);
       await client.query('UPDATE saas_families SET state=$2,parent=$3,revision=$4,updated_at=$5 WHERE id=$1', [family.id, state, parent, revision, at()]);
       await client.query('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES($1,$2,$3,$4,$5)', [family.id, body.action.id, receipt, revision, at()]);
+      if (body.action.type === 'parent.configure') { await client.query('DELETE FROM saas_parent_devices WHERE family_id=$1', [family.id]); }
       if (grantHash) { await client.query('DELETE FROM saas_parent_grants WHERE token_hash=$1', [grantHash]); }
       const updatedFamily = { ...family, state, parent, revision };
       await chats.committed(client, who, updatedFamily, binding, revision);
@@ -244,6 +284,6 @@ function createBusiness({ store, auth, now, assistant }) {
     return run(ctx, async () => output);
   }
   const chats = createAssistantChats({ store, run, assistant, at, rate });
-  return { state, meta, challenge, verify, action, interpret, chatRead: chats.read, chatTurn: chats.turn, chatClear: chats.clear };
+  return { state, meta, device, challenge, verify, action, interpret, chatRead: chats.read, chatTurn: chats.turn, chatClear: chats.clear };
 }
 module.exports = { createBusiness };

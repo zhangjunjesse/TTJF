@@ -4,7 +4,7 @@ const path = require('node:path');
 const S = require('./security.cjs');
 const { createDatabase } = require('./sqlite.cjs');
 
-const MIGRATIONS = ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql'];
+const MIGRATIONS = ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql', '004-parent-devices.sql'];
 const REQUIRED_COLUMNS = {
   saas_schema_migrations: ['version', 'applied_at'],
   saas_users: ['id', 'email', 'password_hash', 'verified_at', 'created_at'],
@@ -18,19 +18,23 @@ const REQUIRED_COLUMNS = {
   saas_action_receipts: ['family_id', 'action_id', 'receipt', 'revision', 'created_at'],
   saas_parent_challenges: ['token_hash', 'family_id', 'user_id', 'session_hash', 'revision', 'action_receipt', 'method', 'answer_hash', 'attempts', 'expires_at'],
   saas_parent_grants: ['token_hash', 'family_id', 'user_id', 'session_hash', 'revision', 'action_receipt', 'expires_at'],
+  saas_parent_devices: ['session_hash', 'family_id', 'user_id', 'created_at'],
   saas_assistant_leases: ['id', 'family_id', 'user_id', 'session_hash', 'expires_at'],
   saas_assistant_chats: ['family_id', 'user_id', 'generation', 'sequence', 'draft', 'context_result', 'pending_turn_id', 'pending_expires_at', 'created_at', 'updated_at'],
   saas_assistant_turns: ['family_id', 'user_id', 'generation', 'turn_id', 'sequence', 'input_digest', 'text', 'context', 'result', 'actions', 'source_revision', 'family_day', 'created_at', 'completed_at', 'failed_at', 'failure_code'],
   saas_rate_limits: ['scope', 'count', 'expires_at']
 };
-async function assertDatabaseSchema(database) {
+async function assertDatabaseSchema(database, { allowV3Backup = false } = {}) {
   const names = new Set((await database.query("SELECT name FROM sqlite_schema WHERE type='table'")).rows.map(row => row.name));
-  if (Object.keys(REQUIRED_COLUMNS).some(name => !names.has(name))) throw new Error('SQLite schema is missing or incomplete. Start the application once to initialize it, or select a complete existing SQLite database.');
+  if (!names.has('saas_schema_migrations')) throw new Error('SQLite schema is missing or incomplete. Start the application once to initialize it, or select a complete existing SQLite database.');
   const versions = (await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version);
-  if (versions.length !== MIGRATIONS.length || versions.some((version, index) => version !== index + 1)) {
+  const version3 = allowV3Backup && versions.length === 3;
+  if ((!version3 && versions.length !== MIGRATIONS.length) || versions.some((version, index) => version !== index + 1)) {
     throw new Error('SQLite schema version is unsupported. Use the matching application version or select a compatible existing SQLite database.');
   }
-  for (const [table, required] of Object.entries(REQUIRED_COLUMNS)) {
+  const tables = Object.entries(REQUIRED_COLUMNS).filter(([name]) => !version3 || name !== 'saas_parent_devices');
+  if (tables.some(([name]) => !names.has(name))) throw new Error('SQLite schema is missing or incomplete. Start the application once to initialize it, or select a complete existing SQLite database.');
+  for (const [table, required] of tables) {
     const columns = new Set((await database.query('PRAGMA table_info(' + table + ')')).rows.map(row => row.name));
     if (required.some(column => !columns.has(column))) throw new Error('SQLite schema is missing required columns in ' + table + '. Use a complete matching backup.');
   }

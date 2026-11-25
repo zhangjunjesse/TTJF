@@ -238,7 +238,7 @@ test('SQLite UUID comparisons, foreign keys and unique identities preserve case-
 test('SQLite migrations are queued/idempotent, preserve supplied databases and refuse unrelated schemas', async t => {
   const f = fixture(t), database = await f.open();
   await Promise.all([migrate(database), migrate(database)]);
-  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }, { version: 3 }]);
+  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
   const supplied = await f.store({ database });
   await supplied.close();
   assert.equal((await database.query('SELECT 1 AS value')).rows[0].value, 1);
@@ -247,7 +247,7 @@ test('SQLite migrations are queued/idempotent, preserve supplied databases and r
   await other.exec('CREATE TABLE unrelated(value TEXT) STRICT;');
   await assert.rejects(migrate(other), /another schema/);
   assert.deepEqual((await other.query("SELECT name FROM sqlite_schema WHERE type='table'")).rows, [{ name: 'unrelated' }]);
-  await database.query('INSERT INTO saas_schema_migrations(version) VALUES(4)');
+  await database.query('INSERT INTO saas_schema_migrations(version) VALUES(5)');
   await assert.rejects(migrate(database), /unsupported/);
 });
 
@@ -263,6 +263,28 @@ test('SQLite schema validation rejects missing columns and reports broken foreig
   await database.query('DELETE FROM saas_sessions');
   await database.exec('ALTER TABLE saas_users DROP COLUMN verified_at;');
   await assert.rejects(assertDatabaseSchema(database), /missing required columns in saas_users/);
+});
+
+test('SQLite version 3 upgrades to current parent-device schema without changing existing account or family data', async t => {
+  const f = fixture(t), database = await f.open();
+  for (const file of ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql']) {
+    await database.exec(fs.readFileSync(path.join(__dirname, '../saas/migrations', file), 'utf8'));
+  }
+  const store = { transaction: callback => database.transaction(callback) };
+  const existing = await family(store);
+  const accounts = (await database.query('SELECT * FROM saas_users')).rows;
+  const families = (await database.query('SELECT * FROM saas_families')).rows;
+  await assert.rejects(assertDatabaseSchema(database), /unsupported/);
+  await assertDatabaseSchema(database, { allowV3Backup: true });
+  await Promise.all([migrate(database), migrate(database)]);
+  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4]);
+  assert.deepEqual((await database.query('SELECT * FROM saas_users')).rows, accounts);
+  assert.deepEqual((await database.query('SELECT * FROM saas_families')).rows, families);
+  assert.deepEqual((await database.query('SELECT * FROM saas_parent_devices')).rows, []);
+  assert.ok(existing);
+  await database.exec('DROP TABLE saas_parent_devices');
+  await assert.rejects(assertDatabaseSchema(database), /missing or incomplete/);
+  await assert.rejects(assertDatabaseSchema(database, { allowV3Backup: true }), /missing or incomplete/, 'v4 cannot omit its current authorization table');
 });
 
 test('SQLite uses DELETE journaling, FULL synchronization, foreign keys and a bounded busy wait', async t => {

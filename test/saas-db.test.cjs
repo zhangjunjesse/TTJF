@@ -27,9 +27,10 @@ test('whole database backup reopens consistently and restore preserves business 
   const invitation = await H.request(f.server, 'POST', '/api/families/' + owner.familyId + '/invitations', { email: 'snapshot-invitee@example.test' }, owner);
   assert.equal(invitation.status, 200);
   const sessionHash = S.digest(owner.cookie.split('=')[1]);
+  assert.equal((await H.request(f.server, 'POST', '/api/parent/device', { enabled: true, credential: H.PIN }, owner)).status, 200);
   await f.database.query('INSERT INTO saas_assistant_leases(id,family_id,user_id,session_hash,expires_at) VALUES($1,$2,$3,$4,$5)',
     [crypto.randomUUID(), owner.familyId, owner.userId, sessionHash, new Date(f.clock.value + 60000)]);
-  const transient = ['saas_sessions', 'saas_email_tokens', 'saas_invitations', 'saas_parent_grants', 'saas_parent_challenges', 'saas_assistant_leases'];
+  const transient = ['saas_sessions', 'saas_email_tokens', 'saas_invitations', 'saas_parent_devices', 'saas_parent_grants', 'saas_parent_challenges', 'saas_assistant_leases'];
   for (const table of transient) assert.ok(await count(f.database, table) > 0, table + ' was populated by real workflows');
   const permanent = (await f.database.query('SELECT * FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
   const receipts = (await f.database.query('SELECT * FROM saas_action_receipts ORDER BY action_id')).rows;
@@ -41,6 +42,7 @@ test('whole database backup reopens consistently and restore preserves business 
   try {
     assert.deepEqual((await reopened.database.query('SELECT * FROM saas_families WHERE id=$1', [owner.familyId])).rows[0], permanent);
     assert.equal(await count(reopened.database, 'saas_sessions'), await count(f.database, 'saas_sessions'));
+    assert.equal(await count(reopened.database, 'saas_parent_devices'), 1);
   } finally { await reopened.close(); }
   // Stop every HTTP application before restore, matching the operator contract.
   await f.server.closeSaas();
@@ -83,6 +85,48 @@ test('database tools refuse existing outputs, public paths and missing databases
     await assert.rejects(restoreDatabase({ source: snapshot, output, appStopped: true }), /private|path|env|URL/i);
   }
   assert.deepEqual(fs.readFileSync(snapshot), bytes);
+});
+
+test('version 3 backups restore through a private upgraded copy without modifying source bytes or reviving logins', async t => {
+  const f = await H.fixture(t), owner = await H.family(f, await H.register(f, 'v3-restore@example.test'));
+  await H.setup(f, owner);
+  const action = H.credit('v3-permanent-credit', 19), grant = await H.grant(f, owner, action);
+  assert.equal((await H.request(f.server, 'POST', '/api/action', { revision: 2, action, grant }, owner)).status, 200);
+  const families = (await f.database.query('SELECT * FROM saas_families')).rows;
+  const receipts = (await f.database.query('SELECT * FROM saas_action_receipts ORDER BY action_id')).rows;
+  await f.server.closeSaas();
+  // Migration 4 adds only this table and indexes. Removing it and its version
+  // recreates the exact v3 schema, with real account and ledger API data.
+  await f.database.exec('DROP TABLE saas_parent_devices; DELETE FROM saas_schema_migrations WHERE version=4;');
+  const directory = path.dirname(f.databasePath), source = path.join(directory, 'historical-v3.sqlite');
+  const output = path.join(directory, 'restored-v4.sqlite');
+  await f.database.backup(source);
+  const original = fs.readFileSync(source);
+  assert.equal((await restoreDatabase({ source, output, appStopped: true })).credentialsInvalidated, true);
+  assert.deepEqual(fs.readFileSync(source), original, 'only the staging copy was migrated');
+  const restored = await createStore({ databasePath: output, migrate: false });
+  try {
+    assert.deepEqual((await restored.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4]);
+    assert.deepEqual((await restored.database.query('SELECT * FROM saas_families')).rows, families);
+    assert.deepEqual((await restored.database.query('SELECT * FROM saas_action_receipts ORDER BY action_id')).rows, receipts);
+    for (const table of ['saas_sessions', 'saas_parent_devices', 'saas_parent_challenges', 'saas_parent_grants']) assert.equal(await count(restored.database, table), 0);
+    const server = await f.start({ database: restored.database });
+    assert.equal((await H.request(server, 'GET', '/api/parent/device', undefined, owner)).status, 401);
+    const fresh = { ...await H.login(f, owner.email, H.PASSWORD, server), familyId: owner.familyId };
+    assert.deepEqual((await H.request(server, 'GET', '/api/parent/device', undefined, fresh)).body,
+      { enabled: false, familyId: owner.familyId, userId: owner.userId });
+    const replay = await H.request(server, 'POST', '/api/action', { revision: 2, action }, fresh);
+    assert.equal(replay.status, 200); assert.equal(replay.body.revision, 3);
+    await server.closeSaas();
+  } finally { await restored.close(); }
+  const incomplete = path.join(directory, 'incomplete-v3.sqlite');
+  fs.copyFileSync(source, incomplete);
+  const raw = new DatabaseSync(incomplete);
+  raw.exec('ALTER TABLE saas_users DROP COLUMN created_at'); raw.close();
+  const rejected = path.join(directory, 'must-not-restore-v3.sqlite');
+  await assert.rejects(restoreDatabase({ source: incomplete, output: rejected, appStopped: true }), /required columns/);
+  assert.equal(fs.existsSync(rejected), false);
+  assert.deepEqual(fs.readdirSync(directory).filter(name => name.includes('.restore-')), []);
 });
 
 test('restore rejects invalid, corrupt and foreign-key-broken backups before creating a target', async t => {
@@ -191,7 +235,7 @@ test('restore never removes an existing staging directory entry when exclusive c
 test('init creates private real SMTP settings and bootstrap provisions SQLite with the configured account', async t => {
   const f = await H.fixture(t), directory = path.join(path.dirname(f.databasePath), 'isolated-project');
   const project = path.resolve(__dirname, '..');
-  for (const file of ['tools/saas-local.cjs', 'saas/initial-account.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql', 'saas/migrations/003-assistant-chat.sql']) {
+  for (const file of ['tools/saas-local.cjs', 'saas/initial-account.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql', 'saas/migrations/003-assistant-chat.sql', 'saas/migrations/004-parent-devices.sql']) {
     fs.mkdirSync(path.dirname(path.join(directory, file)), { recursive: true });
     fs.copyFileSync(path.join(project, file), path.join(directory, file));
   }
@@ -225,7 +269,7 @@ test('init creates private real SMTP settings and bootstrap provisions SQLite wi
   assert.equal(result.databasePath, path.join(directory, 'data', 'ttjf.sqlite'));
   const raw = new DatabaseSync(result.databasePath, { readOnly: true });
   try {
-    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3]);
+    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4]);
     const account = raw.prepare('SELECT email,verified_at FROM saas_users').get();
     assert.equal(account.email, '391504704@qq.com');
     assert.ok(account.verified_at);
