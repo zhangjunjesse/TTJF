@@ -16,9 +16,10 @@
   flex: 0 0 auto;
   isolation: isolate;
   overflow: hidden;
+  border: 1px solid #d7f7ed;
   border-radius: 50%;
-  background: radial-gradient(circle at 37% 26%, #fafbf6 2%, #dfedea 42%, #a6bfca 73%, #678897 100%);
-  box-shadow: 0 2px 3px #3f5b5633;
+  background: radial-gradient(circle at 26% 15%, #297f83 0%, #155365 49%, #293454 100%);
+  box-shadow: inset 0 1px 2px #c7fff45e, inset 0 -1px 2px #11254066, 0 2px 5px #17374826;
 }
 .assistant-orb::before, .assistant-orb::after {
   content: "";
@@ -28,26 +29,62 @@
   pointer-events: none;
 }
 .assistant-orb::before {
-  inset: -15%;
+  inset: -18%;
   background:
-    radial-gradient(ellipse 36% 33% at 59% 57%, #efb5dbed, transparent),
-    radial-gradient(ellipse 54% 27% at 40% 69%, #8cdacc, transparent),
-    radial-gradient(ellipse 30% 38% at 72% 32%, #bab0ed, transparent),
-    radial-gradient(ellipse 40% 29% at 33% 32%, #fff5cb, transparent);
+    radial-gradient(ellipse 63% 44% at 21% 81%, #4bcaac9c, transparent 76%),
+    radial-gradient(ellipse 67% 63% at 83% 22%, #8273d791, transparent 72%),
+    radial-gradient(ellipse 50% 35% at 23% 10%, #a5ffe545, transparent 74%);
 }
 .assistant-orb::after {
-  background: radial-gradient(ellipse 38% 18% at 35% 21%, #fffffbb0, transparent);
-  box-shadow: inset 1px 1px 2px #faf9f5, inset -2px -3px 4px #485f8580;
+  background: radial-gradient(ellipse 44% 19% at 36% 12%, #dbfff329, transparent);
+  box-shadow: inset 0 0 0 1px #edfff92e;
 }
 .assistant-launcher, .assistant-sheet-entry { width: 48px; height: 48px; padding: 0; border: 0; }
-.assistant-launcher { justify-self: center; }
+/* A steady voice mark stays legible while the aurora moves beneath it. The
+   more specific selector also restores its color on the quiet points home. */
+.assistant-dock .assistant-launcher.assistant-orb {
+  justify-self: center;
+  width: 52px;
+  height: 52px;
+  min-width: 52px;
+  min-height: 52px;
+  border: 1px solid #d7f7ed;
+  color: #f0fffb;
+  filter: none;
+  box-shadow: inset 0 0 0 1px #d1fff338, inset 0 1px 2px #e0fff759, inset 0 -2px 4px #122c496b, 0 3px 8px #17374829, 0 0 0 1px #244c6024;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.assistant-launcher::after {
+  inset: 12px;
+  border-radius: 0;
+  background: currentColor;
+  box-shadow: none;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M3 11v6M8.5 7.5v13M14 3.5v21M19.5 7.5v13M25 11v6' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M3 11v6M8.5 7.5v13M14 3.5v21M19.5 7.5v13M25 11v6' fill='none' stroke='white' stroke-width='2.6' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  filter: drop-shadow(0 1px 1px #102c4966);
+}
+@media (hover: hover) and (forced-colors: none) {
+  .assistant-dock .assistant-launcher.assistant-orb:enabled:hover:not(:active, [data-hold-pending="true"]) {
+    border-color: #f1fff9;
+    box-shadow: inset 0 0 0 1px #e4fff65c, inset 0 1px 2px #e0fff759, inset 0 -2px 4px #122c496b, 0 4px 12px #17374838, 0 0 0 1px #244c603d;
+  }
+}
+.assistant-dock .assistant-launcher.assistant-orb:enabled:active,
+.assistant-dock .assistant-launcher.assistant-orb[data-hold-pending="true"] {
+  border-color: #f0fff8;
+  box-shadow: inset 0 0 0 2px #b4f5dd, inset 0 2px 6px #0d314c80, 0 2px 6px #17374826, 0 0 0 1px #31756d59;
+}
+.assistant-launcher[data-hold-pending="true"]::before { animation-play-state: paused; }
 @media (prefers-reduced-motion: no-preference) and (forced-colors: none) {
-  .assistant-launcher::before { animation: assistant-pearl-drift 5s ease-in-out infinite alternate; }
+  .assistant-launcher::before { animation: assistant-aurora-drift 7s ease-in-out infinite alternate; }
   body:has(> .assistant-panel-host:not([hidden])) .assistant-launcher::before { animation-play-state: paused; }
 }
-@keyframes assistant-pearl-drift {
-  from { transform: rotate(-20deg) translateX(-4%); }
-  to { transform: rotate(26deg) translateX(4%); }
+@keyframes assistant-aurora-drift {
+  from { transform: rotate(-18deg) translateX(-3%); }
+  to { transform: rotate(22deg) translateX(3%); }
 }
 .assistant-sheet-entry { display: grid; place-items: center; color: #4e6254; background: transparent; border-radius: 12px; }
 .assistant-sheet-entry .icon { width: 22px; height: 22px; margin: 0; }
@@ -55,7 +92,7 @@
   .assistant-sheet-entry:hover { background: #edf3e8; }
 }
 .assistant-sheet-entry:active { background: #e2ebdd; }
-.assistant-launcher:focus-visible { outline: 3px solid #835b16; outline-offset: 2px; }
+.assistant-launcher:focus-visible { outline: 2px solid #445394; outline-offset: 1px; }
 .assistant-sheet-entry:focus-visible { outline: 2px solid currentColor; outline-offset: -4px; }
 /* The reminder list has its own side panel on landscape tablets. Keep the
    shared navigation aligned with the viewport and clear of the list. */
@@ -77,10 +114,16 @@
   }
 }
 @media (forced-colors: active) {
-  .assistant-orb { forced-color-adjust: none; background: ButtonText; box-shadow: none; }
+  .assistant-orb { forced-color-adjust: none; border: 1px solid ButtonText; background: ButtonFace; box-shadow: none; }
   .assistant-orb::before, .assistant-orb::after { content: none; }
+  .assistant-dock .assistant-launcher.assistant-orb,
+  .assistant-dock .assistant-launcher.assistant-orb:enabled:active { border: 2px solid ButtonText; color: ButtonText; background: ButtonFace; box-shadow: none; }
+  .assistant-launcher::after { content: ""; filter: none; }
+  .assistant-dock .assistant-launcher.assistant-orb[data-hold-pending="true"],
+  .assistant-dock .assistant-launcher.assistant-orb[data-hold-pending="true"]:enabled:active { border-color: Highlight; outline: 2px solid Highlight; outline-offset: -5px; }
   .assistant-launcher:focus-visible, .assistant-sheet-entry:focus-visible { outline-color: Highlight; }
 }
+@media (prefers-reduced-motion: reduce) { .assistant-launcher, .assistant-launcher::before, .assistant-launcher::after { animation: none; transition: none; } }
 /* Kept outside #app so opening the assistant never replaces a form draft. */
 .assistant-panel-host { position: fixed; z-index: 130; top: 0; left: 0; width: 100%; height: 100%; color: #293e32; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
 .assistant-panel-host[hidden], .assistant-panel-host [hidden] { display: none !important; }
@@ -165,7 +208,10 @@
 .assistant-panel textarea { display: block; min-width: 0; min-height: 48px; max-height: 144px; width: 100%; margin: 0; padding: 12px 8px 12px 13px; resize: none; border: 0; outline: none; color: #20382c; background: transparent; font: inherit; font-size: 16px; line-height: 24px; -webkit-overflow-scrolling: touch; }
 .assistant-panel textarea:focus { outline: none; }
 .assistant-panel textarea::placeholder { color: #617366; opacity: 1; }
-.assistant-panel .assistant-hold-voice { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 112px; min-height: 48px; padding: 10px 13px; border: 0; border-radius: 15px; color: #315b40; background: #eaf2e5; font-size: 14px; font-weight: 650; line-height: 22px; white-space: nowrap; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.assistant-panel textarea { touch-action: none; }
+.assistant-panel textarea:focus:not(:placeholder-shown) { touch-action: pan-y; }
+.assistant-panel .assistant-hold-voice { display: inline-flex; align-items: center; justify-content: center; width: 48px; min-height: 48px; padding: 0; border: 0; border-radius: 50%; color: #315b40; background: transparent; touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.assistant-hold-voice span { display: none; }
 .assistant-hold-voice .assistant-icon { width: 20px; height: 20px; }
 .assistant-panel .assistant-hold-voice.is-recording { color: #1e4b9f; background: #dfeafb; }
 .assistant-is-editing .assistant-hold-voice,
@@ -256,7 +302,6 @@
 @media (max-width: 360px) {
   .assistant-examples { gap: 4px; }
   .assistant-panel .assistant-example { gap: 4px; padding-inline: 7px; }
-  .assistant-panel .assistant-hold-voice { min-width: 106px; padding-inline: 10px; }
   .assistant-recording-hint { font-size: 13px; line-height: 21px; }
 }
 .assistant-viewport-short { container: assistant-viewport / size; }

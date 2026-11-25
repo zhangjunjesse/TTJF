@@ -712,10 +712,63 @@
   function chatEntry(inDock) {
     var mark = inDock ? '' : icon('assistant');
     return button('assistant-open', mark, inDock ? 'assistant-launcher assistant-orb' : 'assistant-sheet-entry', '', '打开家长助手')
-      .replace('<button ', '<button title="打开家长助手" aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
+      .replace('<button ', '<button title="' + (inDock ? '轻点聊天，长按说话' : '打开家长助手') + '"' +
+        (inDock ? ' aria-description="轻点聊天，长按说话"' : '') + ' aria-haspopup="dialog" aria-controls="family-assistant-panel" ');
   }
   function assistantAvailable() {
     return scopeReady() && !ui.auth && !pending && !(ui.form && ui.form.kind === 'parentConfig');
+  }
+  function openAssistant(element, press) {
+    rememberDraft(); rememberSheetFocus(); stopRecognition();
+    if (press) return chat.beginLauncherHold(element, press);
+    return chat.open({trigger:element});
+  }
+  function bindLauncherHold() {
+    var candidate = null, consumeClick = false;
+    function clearPress() {
+      if (!candidate) return;
+      clearTimeout(candidate.timer);
+      candidate.target.removeAttribute('data-hold-pending');
+      candidate = null;
+    }
+    document.addEventListener('pointerdown', function (event) {
+      if (!event.isPrimary || event.button !== 0) return;
+      clearPress(); consumeClick = false;
+      var target = event.target.closest && event.target.closest('.assistant-launcher');
+      if (!target || chat.isOpen() || !assistantAvailable()) return;
+      var press = {target:target, scope:scopeToken(), pointerId:event.pointerId, pointerType:event.pointerType,
+        startX:event.clientX, startY:event.clientY, clientX:event.clientX, clientY:event.clientY};
+      candidate = press; target.setAttribute('data-hold-pending', 'true');
+      press.timer = setTimeout(function () {
+        if (candidate !== press) return;
+        clearPress();
+        consumeClick = true;
+        if (document.hidden || !document.contains(target) || !scopeCurrent(press.scope) || !assistantAvailable() || chat.isOpen()) return;
+        openAssistant(target, press);
+      }, chat.holdPressDelay);
+    }, true);
+    document.addEventListener('pointermove', function (event) {
+      if (!candidate || candidate.pointerId !== event.pointerId) return;
+      candidate.clientX = event.clientX; candidate.clientY = event.clientY;
+      var dx = event.clientX - candidate.startX, dy = event.clientY - candidate.startY;
+      if (dx * dx + dy * dy > chat.holdMoveTolerance * chat.holdMoveTolerance) {
+        consumeClick = true; clearPress();
+      }
+    }, true);
+    function ended(event) { if (candidate && candidate.pointerId === event.pointerId) clearPress(); }
+    document.addEventListener('pointerup', ended, true);
+    document.addEventListener('pointercancel', ended, true);
+    document.addEventListener('lostpointercapture', ended, true);
+    window.addEventListener('blur', clearPress);
+    document.addEventListener('visibilitychange', function () { if (document.hidden) clearPress(); });
+    document.addEventListener('contextmenu', function (event) {
+      if (event.target.closest && event.target.closest('.assistant-launcher')) event.preventDefault();
+    });
+    // A touch click after release can land on the dialog that opened under the finger.
+    document.addEventListener('click', function (event) {
+      if (!consumeClick || !event.detail) return;
+      consumeClick = false; event.preventDefault(); event.stopImmediatePropagation();
+    }, true);
   }
   function clearAssistantEditors(generation) {
     function belongs(form) { return form && form.assistantDraft && form.assistantDraft.generation === generation; }
@@ -1586,8 +1639,7 @@
   function onAction(action, id, element) {
     if (!scopeReady()) return;
     if (action === 'assistant-open' && chat && assistantAvailable()) {
-      rememberDraft(); rememberSheetFocus(); stopRecognition();
-      chat.open({trigger:element}); return;
+      openAssistant(element); return;
     }
     if (saas && action === 'saas-account') { SaaS.openSettings(); return; }
     if (saas && action === 'saas-logout') { SaaS.logout(); return; }
@@ -1689,6 +1741,7 @@
     else if (action === 'display') displayMode();
     else if (action === 'export') exportData();
   }
+  if (chat) bindLauncherHold();
   document.addEventListener('click', function (event) { var el = event.target; while (el && el !== document) { if (el.getAttribute && el.getAttribute('data-action')) { event.preventDefault(); onAction(el.getAttribute('data-action'), el.getAttribute('data-id'), el); return; } el = el.parentNode; } });
   function draftInput(event) {
     var input = event.target, form = input.form;

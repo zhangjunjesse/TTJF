@@ -8,7 +8,8 @@
   var loaded = false, text = '', notice = '', error = '', retry = '', confirming = false;
   var opener = null, openingContext, hasOpeningContext = false, voice = null, voiceEpoch = 0;
   var listening = false, voiceNote = '', applying = false, holding = null, editing = false, holdClickUntil = 0;
-  var MIN_HOLD_MS = 300;
+  var composerPress = null, composerClick = null, composing = false;
+  var MIN_HOLD_MS = 300, HOLD_PRESS_MS = 360, HOLD_MOVE_PX = 12;
   var SPEECH = root.SpeechRecognition || root.webkitSpeechRecognition;
 
   function esc(value) { return String(value == null ? '' : value).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -43,10 +44,10 @@
       '<div class="assistant-feedback" id="assistant-chat-feedback" hidden><p id="assistant-chat-error" role="alert"></p>' + button('retry', '重试', 'assistant-retry') + '</div>' + examples() +
       '<form id="assistant-chat-form" class="assistant-composer"><p id="assistant-chat-status" class="assistant-chat-status" role="status" aria-live="polite"></p><label for="assistant-chat-input" class="assistant-sr-only">给家长助手发消息</label>' +
       '<div class="assistant-input-row">' + button('hold-voice', icon('mic') + '<span>按住说话</span>', 'assistant-hold-voice', ' aria-label="按住说话，松开发送，上滑取消，右滑转文字；可按住空格或回车" aria-describedby="assistant-hold-hint" aria-pressed="false"') +
-      '<textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="发消息…" enterkeyhint="enter" aria-describedby="assistant-composer-hint"></textarea>' +
+      '<textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="发消息或按住说话…" enterkeyhint="enter" aria-describedby="assistant-composer-hint assistant-hold-hint"></textarea>' +
       button('voice', icon('mic'), 'assistant-tool assistant-voice', ' aria-label="听写成文字" aria-pressed="false" title="听写成文字，核对后再发送"') +
       '<button id="assistant-chat-send" type="submit" class="assistant-send" aria-label="发送消息">' + icon('send') + '</button></div>' +
-      '<p id="assistant-composer-hint" class="assistant-sr-only">草稿可在原页面核对后保存。最多输入 1200 字。</p><p id="assistant-hold-hint" class="assistant-hold-hint">' +
+      '<p id="assistant-composer-hint" class="assistant-sr-only">轻点输入框打字。最多输入 1200 字。草稿可在原页面核对后保存。</p><p id="assistant-hold-hint" class="assistant-hold-hint">' +
       (root.__TTJF_VOLC_ASR__ ? '火山语音识别 · ' : '') + '松开发送 · 上滑取消 · 右滑转文字</p><span id="assistant-chat-count" hidden></span></form></div>' +
       '<div class="assistant-recording" data-cancel="false" data-review="false" hidden><p class="assistant-recording-text"></p><p class="assistant-recording-hint" role="status" aria-live="polite"></p>' +
       '<div class="assistant-recording-wave" aria-hidden="true">' + '<span></span>'.repeat(48) + '</div></div>' +
@@ -54,7 +55,13 @@
     doc.body.appendChild(host); box = doc.getElementById('family-assistant-panel'); input = doc.getElementById('assistant-chat-input'); log = doc.getElementById('assistant-chat-log');
     host.addEventListener('click', clicked); host.addEventListener('submit', submitted); input.addEventListener('input', typed);
     host.addEventListener('pointerdown', holdStarted); host.addEventListener('lostpointercapture', holdLost); host.addEventListener('contextmenu', holdContextMenu);
+    // A normal swipe scrolls a long draft. Once a hold starts, its movement belongs to the recording.
+    input.addEventListener('touchmove', function (event) {
+      if (holding && holding.held && holding.target === input && event.cancelable) event.preventDefault();
+    }, { passive: false });
     doc.addEventListener('pointermove', holdMoved); doc.addEventListener('pointerup', holdReleased); doc.addEventListener('pointercancel', holdCancelled);
+    input.addEventListener('compositionstart', function () { composing = true; cancelComposerPress(); }); input.addEventListener('compositionend', function () { composing = false; });
+    doc.addEventListener('selectionchange', composerSelectionChanged);
     doc.addEventListener('keydown', keydown, true); doc.addEventListener('keyup', keyup, true); doc.addEventListener('focusin', focusin, true);
     root.addEventListener('blur', voiceInterrupted);
     root.addEventListener('resize', scheduleFit); root.addEventListener('focus', resumed); doc.addEventListener('visibilitychange', resumed);
@@ -171,6 +178,7 @@
     contextNode.textContent = context;
     contextNode.hidden = !context;
     var speechSupported = speechAvailable();
+    input.placeholder = speechSupported ? '发消息或按住说话…' : '发消息…';
     host.classList.toggle('assistant-is-editing', editing || !!trim(text) || !speechSupported);
     input.readOnly = !!holding;
     doc.getElementById('assistant-chat-send').disabled = !loaded || !trim(text) || busy() || confirming || uncertainTurn() || !!holding;
@@ -184,7 +192,7 @@
     microphone.setAttribute('aria-pressed', String(dictating)); microphone.setAttribute('aria-label', dictating ? '停止听写' : '听写成文字');
     microphone.title = speechSupported ? '听写成文字，核对后再发送' : '当前浏览器不支持听写，请输入文字';
     var holdButton = host.querySelector('[data-assistant-action="hold-voice"]');
-    holdButton.disabled = !speechSupported || !loaded || busy() || confirming || uncertainTurn() || !!holding && !holding.held;
+    holdButton.disabled = !speechSupported || holdBusy() || confirming || uncertainTurn() || !!holding && !holding.held;
     holdButton.setAttribute('aria-pressed', String(!!holding && holding.held));
     holdButton.title = speechSupported ? '按住说话，松开发送，上滑取消，右滑转文字；也可以按住空格或回车' : '当前浏览器不支持语音，请输入文字';
     renderRecording();
@@ -244,6 +252,8 @@
     if (generation && changed) { stopVoice(); pendingTurn = null; text = ''; input.value = ''; editing = false; voiceNote = ''; }
     if (changed) historyExpanded = false;
     generation = snapshot.generation;
+    // A first history read establishes the recording's generation; it is not a conversation reset.
+    if (holding && !previousGeneration && !holding.generation) holding.generation = generation;
     messages = changed || !loaded ? copy(snapshot.messages) : earlier ? mergeMessages(copy(snapshot.messages), messages) : mergeMessages(messages, copy(snapshot.messages)); loaded = true;
     if (earlier || !historyExpanded) { hasMore = !!snapshot.hasMore; nextCursor = snapshot.nextCursor || null; }
     if (earlier) historyExpanded = true;
@@ -363,6 +373,7 @@
     try { session.target.releasePointerCapture(session.pointerId); } catch (e) {}
   }
   function stopVoice() {
+    cancelComposerPress();
     voiceEpoch++; var session = holding, previous = voice || session && session.recognition;
     voice = null; holding = null; listening = false;
     if (session) { root.clearTimeout(session.timer); root.clearTimeout(session.limit); session.held = false; releaseCapture(session); }
@@ -376,7 +387,7 @@
   function renderRecording() {
     var recording = host.querySelector('.assistant-recording'), pressed = !!holding && holding.held;
     var ready = pressed && holding.captureAt != null, preparing = pressed && !ready && !holding.ended && !holding.failed;
-    var needsReview = pressed && (holding.slowStart || holding.ended || holding.failed || holding.uncertain || holding.truncated || !!trim(holding.base));
+    var needsReview = pressed && (!voiceHistoryReady() || holding.slowStart || holding.ended || holding.failed || holding.uncertain || holding.truncated || !!trim(holding.base));
     host.classList.toggle('assistant-is-recording', pressed); recording.hidden = !pressed;
     recording.setAttribute('data-ready', String(ready));
     recording.setAttribute('data-cancel', String(pressed && holding.cancel));
@@ -414,8 +425,8 @@
     var words = session.recognition.provider === 'volc' ? finalWords : trim(session.finalText + session.interimText);
     var sameDraft = text === session.base, tooShort = session.duration < MIN_HOLD_MS;
     var reliable = endedAfterRelease && !session.slowStart && !session.naturalEnd && !session.failed && !session.uncertain && !session.truncated && !tooShort && finalWords && !trim(session.interimText);
-    var autoSend = reliable && !session.review && !trim(session.base) && sameDraft && loaded && !busy() && !confirming && !uncertainTurn();
-    var note = session.failure || (session.truncated ? '语音较长，已保留前 1200 字，请核对后发送。' : session.slowStart ? '麦克风启动较慢，请核对开头后再发送。' : session.uncertain ? '有些字没听准，已放入输入框，请核对后发送。' : '语音已放入输入框，核对后再发送。');
+    var autoSend = reliable && !session.syncReview && !session.review && !trim(session.base) && sameDraft && voiceHistoryReady() && !busy() && !confirming && !uncertainTurn();
+    var note = session.failure || (session.truncated ? '语音较长，已保留前 1200 字，请核对后发送。' : session.syncReview ? '对话还在同步，语音已留在输入框，请核对后发送。' : session.slowStart ? '麦克风启动较慢，请核对开头后再发送。' : session.uncertain ? '有些字没听准，已放入输入框，请核对后发送。' : '语音已放入输入框，核对后再发送。');
     stopVoice(); holdClickUntil = Date.now() + 700;
     if (words && sameDraft) {
       text = ((session.base ? session.base + '\n' : '') + words).slice(0, 1200); input.value = text; editing = !autoSend; growInput();
@@ -433,6 +444,8 @@
     holdClickUntil = Date.now() + 700;
     if (session.cancel) { cancelHold(); return; }
     if (session.captureAt == null) { cancelHold(session.failure || '麦克风尚未就绪，请重新按住说话。'); return; }
+    // Releasing before history is ready always leaves a draft, even if that read finishes before ASR does.
+    session.syncReview = !voiceHistoryReady();
     session.held = false; session.released = true; session.duration = Date.now() - session.captureAt; root.clearTimeout(session.limit); releaseCapture(session);
     if (session.ended) { finishHold(session, false); return; }
     listening = false; voiceNote = '正在整理语音…'; updateControls();
@@ -444,14 +457,18 @@
     }, session.recognition.provider === 'volc' ? 12000 : 1500);
     try { session.recognition.stop(); } catch (e) { session.failed = true; finishHold(session, false); }
   }
-  function startHold(target, event, keyboard) {
-    if (!current() || !speechAvailable() || !loaded || busy() || confirming || uncertainTurn() || holding || target.disabled) return;
+  function holdBusy() { return !!serverPending || !!active && active.kind !== 'read'; }
+  function voiceHistoryReady() { return loaded && !(active && active.kind === 'read') && retry !== 'read'; }
+  function startHold(target, event, keyboard, press) {
+    if (!current() || !speechAvailable() || holdBusy() || confirming || uncertainTurn() || holding || target.disabled) return false;
+    press = press || {};
     stopVoice();
     var recognition, session = { token: ++voiceEpoch, scope: scope, generation: generation, base: text, hints: speechHints(), target: target,
-      pointerId: keyboard ? null : event.pointerId, startX: event.clientX, key: keyboard ? event.key : '', rect: target.getBoundingClientRect(), started: Date.now(), held: true, released: false,
+      pointerId: keyboard ? null : event.pointerId, startX: press.startX == null ? event.clientX : press.startX, key: keyboard ? event.key : '', rect: press.rect || target.getBoundingClientRect(), started: Date.now(), held: true, released: false,
       captureAt: null, slowStart: false, cancel: false, review: false, finalText: '', interimText: '', uncertain: false, truncated: false, failed: false, ended: false, naturalEnd: false, failure: '', timer: 0, limit: 0 };
-    try { recognition = createRecognizer(session.hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
+    try { recognition = createRecognizer(session.hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return false; }
     holding = session; session.recognition = recognition; voice = recognition; listening = false; voiceNote = ''; holdClickUntil = Date.now() + 700;
+    if (target === input) { composerClick = { pointerId: event.pointerId }; focus(box); }
     var touch = event.pointerType === 'touch';
     recognition[captureStartEvent(recognition)] = function () {
       if (!validHold(session) || !session.held || session.failed || session.ended || session.captureAt != null) return;
@@ -495,15 +512,46 @@
       session.review = true; session.failure = '录音已到 60 秒，请核对文字后发送。';
       if (session.held) releaseHold(session);
     }
-    try { recognition.start(); } catch (e) { cancelHold('当前无法听写，可以继续打字。'); return; }
+    try { recognition.start(); } catch (e) { cancelHold('当前无法听写，可以继续打字。'); return false; }
     updateControls();
+    return true;
+  }
+  function cancelComposerPress() {
+    if (composerPress) root.clearTimeout(composerPress.timer);
+    composerPress = null;
+  }
+  function composerSelectionChanged() {
+    if (composerPress && input.selectionStart !== input.selectionEnd) cancelComposerPress();
+  }
+  function composerPressed(event) {
+    cancelComposerPress(); composerClick = null;
+    if (!current() || !speechAvailable() || holdBusy() || confirming || uncertainTurn() || holding || composing || event.ctrlKey || event.metaKey || event.altKey || event.shiftKey) return;
+    if (input.selectionStart !== input.selectionEnd || event.detail > 1) return;
+    var press = { pointerId: event.pointerId, pointerType: event.pointerType, clientX: event.clientX, clientY: event.clientY,
+      startX: event.clientX, startY: event.clientY, rect: input.getBoundingClientRect(), scope: scope, epoch: epoch, base: input.value, timer: 0 };
+    composerPress = press;
+    // Keep pointerdown's native focus/caret behavior, so the first short tap opens the keyboard.
+    press.timer = root.setTimeout(function () {
+      if (composerPress !== press) return;
+      composerPress = null;
+      if (!current() || press.scope !== scopeKey() || press.epoch !== epoch || composing || input.value !== press.base) return;
+      // Leave an established selection to the browser; an ordinary long press starts speech.
+      if (input.selectionStart !== input.selectionEnd) return;
+      startHold(input, press, false, press);
+    }, HOLD_PRESS_MS);
   }
   function holdStarted(event) {
+    if (event.isPrimary === false || event.button != null && event.button !== 0) return;
+    if (event.target === input) { composerPressed(event); return; }
     var target = holdTarget(event.target);
-    if (!target || event.isPrimary === false || event.button != null && event.button !== 0) return;
+    if (!target) return;
     event.preventDefault(); event.stopPropagation(); startHold(target, event, false);
   }
   function holdMoved(event) {
+    if (composerPress && composerPress.pointerId === event.pointerId) {
+      var dx = event.clientX - composerPress.startX, dy = event.clientY - composerPress.startY;
+      if (dx * dx + dy * dy > HOLD_MOVE_PX * HOLD_MOVE_PX) cancelComposerPress();
+    }
     var session = holding;
     if (!session || !session.held || session.pointerId !== event.pointerId) return;
     if (!validHold(session)) return;
@@ -512,11 +560,14 @@
     session.review = !session.cancel && event.clientX >= session.startX + 64;
     renderRecording();
   }
-  function holdReleased(event) { if (holding && holding.pointerId === event.pointerId) { holdMoved(event); if (holding) releaseHold(holding); } }
-  function holdCancelled(event) { if (holding && holding.pointerId === event.pointerId) cancelHold(); }
-  function holdLost(event) { if (holding && holding.held && holding.pointerId === event.pointerId) cancelHold(); }
-  function holdContextMenu(event) { if (holding || holdTarget(event.target)) event.preventDefault(); }
-  function voiceInterrupted() { if (holding) cancelHold('语音已停止，请重新按住说话。'); }
+  function holdReleased(event) {
+    if (composerPress && composerPress.pointerId === event.pointerId) cancelComposerPress();
+    if (holding && holding.pointerId === event.pointerId) { holdMoved(event); if (holding) releaseHold(holding); }
+  }
+  function holdCancelled(event) { if (composerPress && composerPress.pointerId === event.pointerId) cancelComposerPress(); if (holding && holding.pointerId === event.pointerId) cancelHold(); }
+  function holdLost(event) { if (composerPress && composerPress.pointerId === event.pointerId) cancelComposerPress(); if (holding && holding.held && holding.pointerId === event.pointerId) cancelHold(); }
+  function holdContextMenu(event) { if (holding || holdTarget(event.target)) event.preventDefault(); else if (event.target === input) cancelComposerPress(); }
+  function voiceInterrupted() { cancelComposerPress(); if (holding) cancelHold('语音已停止，请重新按住说话。'); }
   function startVoice() {
     if (!current() || !speechAvailable() || confirming || holding) return;
     if (voice) { voice[captureStartEvent(voice)] = null; listening = false; voiceNote = '正在整理听写…'; try { voice.stop(); } catch (e) { stopVoice(); voiceNote = '听写已中断，请重新录音。'; } updateControls(); return; }
@@ -576,6 +627,7 @@
   }
   function clicked(event) {
     event.stopPropagation(); var node = event.target;
+    if (event.target === input && composerClick && (event.pointerId == null || event.pointerId === composerClick.pointerId)) { event.preventDefault(); composerClick = null; return; }
     while (node && node !== host && !node.getAttribute('data-assistant-action')) node = node.parentNode;
     if (!current()) return;
     // Changing composer height before click can move the pressed control out from under the pointer.
@@ -602,11 +654,13 @@
     if (!opened || !current()) return;
     if (!box.contains(event.target)) { focus(confirming ? host.querySelector('[data-assistant-action="cancel-clear"]') : box); return; }
     if (event.target === input) editing = true;
+    else cancelComposerPress();
     if (holding && holding.key && event.target !== holding.target) cancelHold();
     updateControls();
   }
   function keydown(event) {
     if (!opened) return;
+    cancelComposerPress();
     if (!current()) { close({ restoreFocus: false }); return; }
     if (event.key === 'Escape') {
       event.stopImmediatePropagation(); if (event.isComposing || event.keyCode === 229) return;
@@ -632,20 +686,30 @@
     event.preventDefault(); event.stopImmediatePropagation(); releaseHold(holding);
   }
   function resumed() {
-    if (doc.hidden) { if (voice || holding) { stopVoice(); voiceNote = '语音已停止，可以重新开始或输入文字。'; updateControls(); } return; }
+    if (doc.hidden) { cancelComposerPress(); if (voice || holding) { stopVoice(); voiceNote = '语音已停止，可以重新开始或输入文字。'; updateControls(); } return; }
     if (opened) { if (!current()) close({ restoreFocus: false }); else if (!active && !voice && !holding) read(true); }
   }
 
   function init(options) { if (host) reset(); config = options || {}; build(); updateControls(); return api; }
   function open(options) {
     options = options || {}; if (!allowed() || typeof config.request !== 'function') return false;
-    build(); if (opened && scope !== scopeKey()) reset();
+    build(); if (scope && scope !== scopeKey()) reset();
     if (opened) { fit(); updateControls(); focus(box); if (!active) read(false); return true; }
     opener = options.trigger || doc.activeElement; hasOpeningContext = Object.prototype.hasOwnProperty.call(options, 'context'); openingContext = options.context;
     scope = scopeKey(); opened = true; host.hidden = false; doc.body.classList.add('assistant-panel-open');
     if (typeof config.onOpen === 'function') config.onOpen();
     if (!trim(text)) editing = false;
     input.value = text; fit(); updateControls(); focus(box); if (!active) read(false); return true;
+  }
+  function beginLauncherHold(trigger, press) {
+    var rect = trigger.getBoundingClientRect();
+    if (!open({ trigger: trigger })) return false;
+    holdClickUntil = Date.now() + 700;
+    if (!speechAvailable()) { voiceNote = '当前浏览器不支持语音，请输入文字。'; updateControls(); return true; }
+    if (holdBusy() || confirming || uncertainTurn() || holding) { voiceNote = '请先核对当前消息，再按住说话。'; updateControls(); return true; }
+    startHold(box, press, false, { rect: rect, startX: press.startX });
+    if (holding) holdMoved(press);
+    return true;
   }
   function restore(node, savedScope, savedEpoch) {
     root.requestAnimationFrame(function () {
@@ -656,7 +720,7 @@
   }
   function close(options) {
     options = options || {}; if (!opened) return;
-    var saved = opener, savedScope = scope; opened = false; epoch++; cancelActive(); stopPoll(); stopVoice(); confirming = false; voiceNote = '';
+    var saved = opener, savedScope = scope; opened = false; epoch++; cancelActive(); stopPoll(); stopVoice(); confirming = false; composing = false; voiceNote = '';
     host.hidden = true; doc.body.classList.remove('assistant-panel-open'); if (frame) root.cancelAnimationFrame(frame); frame = 0;
     if (typeof config.onClose === 'function') config.onClose({ reason: options.reason || 'close', restoreFocus: options.restoreFocus !== false });
     if (options.restoreFocus !== false) restore(saved, savedScope, epoch);
@@ -665,10 +729,10 @@
     close({ restoreFocus: false, reason: 'reset' }); epoch++; cancelActive(); stopPoll(); stopVoice();
     generation = ''; messages = []; draft = null; serverPending = null; pendingTurn = null; failedTurnId = ''; loaded = false;
     hasMore = false; nextCursor = null; historyExpanded = false;
-    text = ''; notice = ''; error = ''; retry = ''; confirming = false; opener = null; openingContext = null; hasOpeningContext = false; scope = ''; voiceNote = ''; editing = false;
+    text = ''; notice = ''; error = ''; retry = ''; confirming = false; opener = null; openingContext = null; hasOpeningContext = false; scope = ''; voiceNote = ''; editing = false; composerClick = null; composing = false;
     if (input) input.value = ''; renderConversation(false); updateControls();
   }
   function getState() { return { open: opened, loaded: loaded, busy: busy(), generation: generation, messageCount: messages.length, draft: copy(draft), pendingTurnId: pendingTurn ? pendingTurn.turnId : '', listening: listening, holding: !!holding && holding.held, voiceCancelling: !!holding && holding.cancel, voiceReview: !!holding && holding.review, voiceFinishing: !!holding && holding.released, confirming: confirming, hasMore: hasMore, error: error }; }
-  var api = { init: init, mount: init, open: open, close: close, reset: reset, isOpen: function () { return opened; }, refresh: function () { read(false); }, read: function () { read(false); }, getState: getState };
+  var api = { init: init, mount: init, open: open, beginLauncherHold: beginLauncherHold, holdPressDelay: HOLD_PRESS_MS, holdMoveTolerance: HOLD_MOVE_PX, close: close, reset: reset, isOpen: function () { return opened; }, refresh: function () { read(false); }, read: function () { read(false); }, getState: getState };
   root.FamilyAssistantPanel = api;
 }(typeof window !== 'undefined' ? window : this));
