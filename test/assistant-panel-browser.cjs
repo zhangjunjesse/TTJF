@@ -7,8 +7,8 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const B = require('./browser.cjs');
 const ROOT = path.resolve(__dirname, '..');
-const CASE = process.env.ASSISTANT_PANEL_CASE || 'layout';
-assert.ok(['layout', 'lifecycle', 'drafts', 'voice', 'hold', 'hold-touch', 'native-readiness', 'history', 'receipts', 'mixed-notes'].includes(CASE));
+const CASE = process.argv[2] || process.env.ASSISTANT_PANEL_CASE || 'layout';
+assert.ok(['layout', 'footer', 'lifecycle', 'drafts', 'voice', 'hold', 'hold-touch', 'native-readiness', 'history', 'receipts', 'mixed-notes'].includes(CASE));
 const OUT = process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(ROOT, 'data', 'assistant-panel-verification', CASE);
 const report = { case: CASE, startedAt: new Date().toISOString(), checks: [], errors: [], boundary: 'Real Edge/Chromium, isolated panel and deterministic callback transport. VisualViewport and microphone events are controlled fixtures. This does not verify native iPad/Safari, an OS keyboard, a real microphone, an external model or the integrated SaaS host.' };
 report.sourceHashes = Object.fromEntries(['assistant.js', 'assistant-panel.js', 'assistant-panel.css', 'test/assistant-panel-browser.cjs'].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex')]));
@@ -21,12 +21,14 @@ async function ready() { await page.waitForFunction(() => FamilyAssistantPanel.g
 async function open() { await page.click('#launcher'); await ready(); }
 async function write(value) { await page.$eval('#assistant-chat-input', (node, value) => { node.value = value; node.dispatchEvent(new Event('input', { bubbles: true })); }, value); }
 async function state() { return page.evaluate(() => FamilyAssistantPanel.getState()); }
-async function fixture(width = 390, height = 844, viewportOptions = {}) {
+async function fixture(width = 390, height = 844, viewportOptions = {}, cloudVoice = false) {
   page = await browser.newPage(); await page.setViewport({ width, height, deviceScaleFactor: 1, ...viewportOptions });
   page.on('pageerror', error => { report.errors.push(error.message); save(); });
   await page.setContent('<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"></head><body><button id="launcher">家庭小助手</button><form id="editor-form"><input id="original-draft" name="name" value="手动底稿要保留"></form></body></html>');
   for (const name of ['styles.css', 'farm-world.css', 'assistant-panel.css']) await page.addStyleTag({ path: path.join(ROOT, name) });
-  await page.evaluate(() => {
+  await page.evaluate(cloudVoice => {
+    window.__TTJF_VOLC_ASR__ = cloudVoice;
+    if (cloudVoice) window.FamilyVolcVoice = { isSupported: () => true };
     const duplicate = value => JSON.parse(JSON.stringify(value));
     window.__qaScope = 'family-a'; window.__qaAllowed = true; window.__qaRequests = []; window.__qaHeld = []; window.__qaApplies = []; window.__qaClose = []; window.__qaCleared = [];
     window.__qaModes = {}; window.__qaEscapes = 0; window.__qaPages = {};
@@ -63,7 +65,7 @@ async function fixture(width = 390, height = 844, viewportOptions = {}) {
       this.abort = function () { this.aborted = true; };
     };
     document.addEventListener('keydown', event => { if (event.key === 'Escape') __qaEscapes++; });
-  });
+  }, cloudVoice);
   await page.addScriptTag({ path: path.join(ROOT, 'assistant.js') });
   await page.addScriptTag({ path: path.join(ROOT, 'assistant-panel.js') });
   await page.evaluate(() => {
@@ -102,6 +104,86 @@ function visibleComposer(value, editing) {
   assert.deepEqual(value.controls.map(control => control.selector), editing
     ? ['#assistant-chat-input', '.assistant-voice', '#assistant-chat-send']
     : ['#assistant-chat-input', '[data-assistant-action="hold-voice"]']);
+}
+async function visibleFooterCopy() {
+  return page.$eval('#family-assistant-panel', panel => {
+    const text = [], walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT);
+    const panelRect = panel.getBoundingClientRect(), composer = panel.querySelector('.assistant-composer').getBoundingClientRect();
+    const footer = { left: panelRect.left, right: panelRect.right, top: composer.top, bottom: panelRect.bottom };
+    const intersect = (rect, clip, x = true, y = true) => ({
+      left: x ? Math.max(rect.left, clip.left) : rect.left,
+      right: x ? Math.min(rect.right, clip.right) : rect.right,
+      top: y ? Math.max(rect.top, clip.top) : rect.top,
+      bottom: y ? Math.min(rect.bottom, clip.bottom) : rect.bottom
+    });
+    let node;
+    while ((node = walker.nextNode())) {
+      const words = node.textContent.trim(), parent = node.parentElement;
+      if (!words || parent.closest('button, textarea, input, select')) continue;
+      const range = document.createRange(); range.selectNodeContents(node);
+      let rects = Array.from(range.getClientRects(), rect => intersect(rect, footer));
+      for (let ancestor = parent; ancestor && rects.length; ancestor = ancestor.parentElement) {
+        const style = getComputedStyle(ancestor), bounds = ancestor.getBoundingClientRect();
+        if (style.display === 'none' || style.visibility !== 'visible' || Number(style.opacity) === 0) { rects = []; break; }
+        // Screen-reader descriptions have text ranges but their painted area is clipped away.
+        const clip = style.clip.match(/^rect\(([^)]+)\)$/);
+        if (clip) {
+          const [top, right, bottom, left] = clip[1].split(/[,\s]+/).map(parseFloat);
+          rects = rects.map(rect => intersect(rect, { left: bounds.left + left, right: bounds.left + right, top: bounds.top + top, bottom: bounds.top + bottom }));
+        }
+        const clipX = style.overflowX !== 'visible', clipY = style.overflowY !== 'visible';
+        if (clipX || clipY) rects = rects.map(rect => intersect(rect, bounds, clipX, clipY));
+        rects = rects.filter(rect => rect.right > rect.left && rect.bottom > rect.top);
+      }
+      if (rects.length) text.push(words);
+    }
+    return text;
+  });
+}
+async function footer() {
+  for (const cloudVoice of [false, true]) {
+    const mode = cloudVoice ? 'cloud voice' : 'browser voice';
+    await fixture(390, 844, {}, cloudVoice); await open();
+    const noPermanentCopy = async name => {
+      const words = await visibleFooterCopy();
+      report.footer = (report.footer || []).concat({ mode, state: name, words }); save();
+      assert.deepEqual(words, [], mode + ': ' + name + ' shows only input controls');
+    };
+    await check(mode + ' idle composer has no visible footer copy', async () => {
+      visibleComposer(await geometry(), false);
+      await noPermanentCopy('idle');
+      assert.equal(await page.$eval('#assistant-chat-input', node => node.placeholder), '发消息…');
+      const titles = await page.$$eval('.assistant-composer [title]', nodes => nodes.map(node => node.title).filter(Boolean));
+      assert.ok(titles.every(title => ['按住说话', '听写成文字'].includes(title)), 'hover tooltips name the action without teaching gestures');
+      const descriptions = await page.$$eval('#assistant-chat-input, [data-assistant-action="hold-voice"]', nodes =>
+        nodes.map(node => (node.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean).map(id => document.getElementById(id)?.textContent.trim())));
+      assert.ok(descriptions.every(items => items.length && items.every(Boolean)), 'input controls keep their accessible descriptions');
+    });
+    await check(mode + ' editing and returning to idle keep the footer clear', async () => {
+      await page.click('#assistant-chat-input'); await write('我现在有多少积分？'); await settle();
+      visibleComposer(await geometry(), true); await noPermanentCopy('editing');
+      await write(''); await page.click('#assistant-panel-title'); await settle();
+      visibleComposer(await geometry(), false); await noPermanentCopy('returned to idle');
+    });
+    await check(mode + ' near-limit text shows only the character count', async () => {
+      await write('读'.repeat(1150));
+      assert.deepEqual(await visibleFooterCopy(), ['1150 / 1200']);
+      await write('查积分'); await noPermanentCopy('shortened draft');
+      const titles = await page.$$eval('.assistant-composer [title]', nodes => nodes.map(node => node.title).filter(Boolean));
+      assert.ok(titles.every(title => ['按住说话', '听写成文字'].includes(title)), 'editing keeps hover tooltips limited to action names');
+    });
+    await check(mode + ' footer guard observes arbitrary wording', async () => {
+      await page.$eval('.assistant-composer', composer => {
+        const copy = document.createElement('p'); copy.id = 'qa-footer-copy'; copy.textContent = '这是一段任意的底部文案';
+        copy.style.order = '4'; composer.after(copy);
+      });
+      assert.deepEqual(await visibleFooterCopy(), ['这是一段任意的底部文案']);
+      await page.$eval('#qa-footer-copy', node => node.remove());
+      await noPermanentCopy('after guard probe');
+    });
+    await page.screenshot({ path: path.join(OUT, 'footer-' + (cloudVoice ? 'cloud' : 'browser') + '.png') });
+    await page.close();
+  }
 }
 async function layout() {
   for (const [width, height] of [[390, 844], [320, 568], [1024, 768], [844, 390], [1366, 768]]) {
@@ -517,6 +599,7 @@ async function editableTranscript(expected) {
 async function hold() {
   await check('A reliable final stays on the recording overlay until release, then sends only once after recognition ends', async () => {
     await holdFixture(390, 844, true); const gesture = await startHold();
+    assert.equal(await page.$eval('.assistant-recording-hint', node => node.innerText), '录音中');
     await hear([{ text: '我现在有多少积分？', final: true, confidence: 0.96 }]);
     assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
     assert.match(await page.$eval('.assistant-recording', node => node.textContent), /我现在有多少积分/);
@@ -1014,7 +1097,7 @@ async function mixedNotes() {
 (async () => {
   save(); browser = await B.launch();
   try {
-    await ({ layout, lifecycle, drafts, voice, hold, 'hold-touch': holdTouch, 'native-readiness': nativeReadiness, history, receipts, 'mixed-notes':mixedNotes })[CASE]();
+    await ({ layout, footer, lifecycle, drafts, voice, hold, 'hold-touch': holdTouch, 'native-readiness': nativeReadiness, history, receipts, 'mixed-notes':mixedNotes })[CASE]();
     if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'panel.png') });
     assert.deepEqual(report.errors, []); report.passed = true;
   } catch (error) { report.passed = false; report.failure = { message: error.message, stack: error.stack }; if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'failure.png') }); throw error; }

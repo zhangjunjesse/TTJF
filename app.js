@@ -979,7 +979,11 @@
     document.addEventListener('contextmenu', function (event) {
       if (event.target.closest && event.target.closest('.assistant-launcher')) event.preventDefault();
     });
-    // A touch click after release can land on the dialog that opened under the finger.
+    // Stop the synthetic mouse press from focusing the dialog control now under the finger.
+    document.addEventListener('touchend', function (event) {
+      if (consumeClick && event.target.closest && event.target.closest('.assistant-launcher')) event.preventDefault();
+    }, {capture:true, passive:false});
+    // A release click can also land on the dialog that opened under the pointer.
     document.addEventListener('click', function (event) {
       if (!consumeClick || !event.detail) return;
       consumeClick = false; event.preventDefault(); event.stopImmediatePropagation();
