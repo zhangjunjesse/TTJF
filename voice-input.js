@@ -316,6 +316,11 @@
         }
         run.trackEnded = function () { if (live(run) && !run.audioReleased) fail(run, 'audio-capture', 'MICROPHONE_ENDED'); };
         stream.getTracks().forEach(function (track) { if (track.addEventListener) track.addEventListener('ended', run.trackEnded); });
+        // On a first touch hold the browser may allow Web Audio only after the microphone is live.
+        if (context.state === 'suspended') {
+          try { Promise.resolve(context.resume()).catch(function (error) { if (live(run)) contextError(run, error); }); }
+          catch (error) { contextError(run, error); return; }
+        }
         capture(run);
       }, function (error) {
         run.micPending = false;

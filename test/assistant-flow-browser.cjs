@@ -555,9 +555,31 @@ async function entryGesturesFlow(page, env, family) {
     await Q.shot(page, 'entry-gestures-textarea-typing-phone');
     const gesture = await press(input); await recording(); await hear('补充的语音');
     assert.equal(await text(), '保留的手打草稿', 'the original draft stays intact during capture');
+    await move(gesture, gesture.x, gesture.y - 20);
+    assert.equal((await state()).listening, true, 'a small vertical drift keeps recording');
+    assert.equal((await state()).voiceCancelling, false);
+    await move(gesture, gesture.x, gesture.y);
     await release(gesture); await late();
     assert.equal(await text(), '保留的手打草稿\n补充的语音'); assert.equal(turns.length, 1);
     assert.equal((await state()).listening, false); progress('draft-preserved');
+  });
+  await Q.check('a swipe scrolls a long draft, while a held swipe can enter and leave the recording cancel zone', async () => {
+    const draft = Array.from({length:25}, (_, i) => '草稿第' + (i + 1) + '行').join('\n');
+    await B.fill(page, input, draft);
+    await page.$eval(input, node => { node.focus(); node.scrollTop = 0; });
+    const count = await started(), swipe = await press(input);
+    await move(swipe, swipe.x, swipe.y - 35);
+    await move(swipe, swipe.x, swipe.y - 65);
+    await release(swipe);
+    assert.ok(await page.$eval(input, node => node.scrollTop > 0), 'dragging before the hold threshold scrolls the text');
+    assert.equal(await started(), count);
+    const hold = await press(input); await recording(); await hear('保留语音');
+    await move(hold, hold.x, hold.y - 160);
+    assert.equal((await state()).voiceCancelling, true);
+    await move(hold, hold.x, hold.y);
+    assert.equal((await state()).listening, true); assert.equal((await state()).voiceCancelling, false);
+    await release(hold);
+    assert.equal(await text(), draft + '\n保留语音'); assert.equal(turns.length, 1);
   });
   await Q.check('sliding right from the textarea leaves an editable transcript and sends only the manually corrected text', async () => {
     await B.fill(page, input, '');
@@ -605,7 +627,7 @@ async function entryGesturesFlow(page, env, family) {
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
   assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'voice-award', 'launcher-phone', 'launcher-tablet',
-    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent', 'cloud-voice', 'entry-gestures'].includes(device));
+    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent', 'cloud-voice', 'cloud-voice-cold', 'entry-gestures'].includes(device));
   if (device.startsWith('launcher-')) {
     Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
   }
@@ -631,8 +653,9 @@ async function run() {
   } : {apiKey:''});
   if (device === 'template') assistant.chat = async (text, state, now) =>
     executeTool('draft_award', {itemId:'reading-rule'}, state, now);
-  const provider = device === 'cloud-voice' ? cloudVoice.fixture() : null;
-  const env = await Q.initialize({assistantService:assistant, asrConfig:provider && {}, asrConnect:provider?.connect});
+  const coldCloud = device === 'cloud-voice-cold';
+  const provider = device === 'cloud-voice' || coldCloud ? cloudVoice.fixture() : null;
+  const env = await Q.initialize({assistantService:assistant, asrConfig:provider && {}, asrConnect:provider?.connect, fakeMicrophone:coldCloud});
   // The server clock is frozen while the UI estimates elapsed time between polls.
   // Start at a whole minute so the default award time cannot run ahead during input.
   env.clock(Date.parse('2026-11-23T04:30:00Z'));
@@ -642,6 +665,7 @@ async function run() {
   page.setDefaultTimeout(7000);
   await Q.registerAndVerify(page, 'assistant-' + device + '-' + Q.RUN + '@example.test');
   const family = await Q.createFamily(page, '助手体验测试家庭', '小禾');
+  if (coldCloud) { Q.phase(device); await cloudVoice.verifyColdHome(page, env, provider); return; }
   const initial = await env.api(page, '/api/state');
   const setup = device.startsWith('first-pin') ? null : await env.api(page, '/api/action', 'POST', {
     revision:initial.body.revision, action:{id:'assistant-test-pin',type:'parent.setup',method:'pin',pin:Q.PIN,confirmPin:Q.PIN}

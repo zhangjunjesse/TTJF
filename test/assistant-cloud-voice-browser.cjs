@@ -333,4 +333,69 @@ async function verify(page, env, provider) {
   await cdp.detach();
 }
 
-module.exports = { fixture, setup, verify };
+async function verifyColdHome(setupPage, env, provider) {
+  const page = await env.newPage({context:setupPage.browserContext()});
+  Q.active(page);
+  await page.evaluateOnNewDocument(() => {
+    const getUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    window.micTracks = [];
+    navigator.mediaDevices.getUserMedia = async constraints => {
+      const stream = await getUserMedia(constraints);
+      micTracks.push(...stream.getAudioTracks());
+      return stream;
+    };
+  });
+  const cdp = await page.createCDPSession();
+  await cdp.send('Emulation.setDeviceMetricsOverride', {width:390, height:844, deviceScaleFactor:1, mobile:true});
+  await cdp.send('Emulation.setTouchEmulationEnabled', {enabled:true, maxTouchPoints:1});
+  await page.goto(env.origin, {waitUntil:'load'});
+  async function read(expression) {
+    // Puppeteer's usual page.evaluate/$eval grants activation and masks this failure.
+    const result = await cdp.send('Runtime.evaluate', {expression, userGesture:false, returnByValue:true});
+    assert.equal(result.exceptionDetails, undefined, JSON.stringify(result.exceptionDetails));
+    return result.result.value;
+  }
+  async function until(predicate, label) {
+    const deadline = Date.now() + 7000;
+    while (!(await predicate())) {
+      if (Date.now() >= deadline) assert.fail(label);
+      await Q.B.delay(50);
+    }
+  }
+  const turns = () => env.calls.filter(call => call.path === '/api/assistant/chat/turn').length;
+  const touch = (type, touchPoints) => cdp.send('Input.dispatchTouchEvent', {type, touchPoints});
+  try {
+    await Q.check('a first touch on the home orb streams native microphone audio while still held', async () => {
+      await until(() => read('window.FamilyDemo?.getUI().connected && !!document.querySelector(".assistant-launcher")'), 'home not ready');
+      assert.equal(await read('navigator.userActivation.hasBeenActive'), false);
+      assert.equal(await read('micTracks.length'), 0);
+      const point = await read(`(() => {
+        const button = document.querySelector('.assistant-launcher'), rect = button.getBoundingClientRect();
+        const x = rect.left + rect.width / 2, y = rect.top + rect.height / 2;
+        if (!button.contains(document.elementFromPoint(x, y))) throw Error('Home orb is covered');
+        return {x, y, id:1};
+      })()`);
+      await touch('touchStart', [point]);
+      // Eight 50 ms frames also ensure this is long enough to auto-send on release.
+      await until(() => provider.sessions[0]?.nonzero && provider.sessions[0].sizes.length >= 8, 'no native PCM during first hold');
+      assert.equal(await read('navigator.userActivation.hasBeenActive'), false);
+      assert.equal(await read('FamilyAssistantPanel.getState().listening'), true);
+      assert.deepEqual(await read('micTracks.map(track => track.readyState)'), ['live']);
+      await until(() => read('FamilyAssistantPanel.getState().loaded && !FamilyAssistantPanel.getState().busy'), 'history not ready');
+      assert.equal(turns(), 0);
+    });
+    await Q.check('releasing that first touch sends the final once and stops the microphone', async () => {
+      await touch('touchEnd', []);
+      await until(() => read('FamilyAssistantPanel.getState().messageCount === 2'), 'final was not submitted');
+      const users = await read('Array.from(document.querySelectorAll(".assistant-message-user .assistant-message-text"), node => node.textContent)');
+      assert.deepEqual(users, [final]);
+      assert.deepEqual(await read('micTracks.map(track => track.readyState)'), ['ended']);
+      assert.equal(turns(), 1);
+      assert.equal(provider.sessions.length, 1);
+      assert.ok(provider.sessions[0].finished && provider.sessions[0].closed);
+      assert.deepEqual(Q.report.pageErrors, []);
+    });
+  } finally { await cdp.detach(); await page.close(); }
+}
+
+module.exports = { fixture, setup, verify, verifyColdHome };

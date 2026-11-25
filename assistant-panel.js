@@ -55,6 +55,10 @@
     doc.body.appendChild(host); box = doc.getElementById('family-assistant-panel'); input = doc.getElementById('assistant-chat-input'); log = doc.getElementById('assistant-chat-log');
     host.addEventListener('click', clicked); host.addEventListener('submit', submitted); input.addEventListener('input', typed);
     host.addEventListener('pointerdown', holdStarted); host.addEventListener('lostpointercapture', holdLost); host.addEventListener('contextmenu', holdContextMenu);
+    // A normal swipe scrolls a long draft. Once a hold starts, its movement belongs to the recording.
+    input.addEventListener('touchmove', function (event) {
+      if (holding && holding.held && holding.target === input && event.cancelable) event.preventDefault();
+    }, { passive: false });
     doc.addEventListener('pointermove', holdMoved); doc.addEventListener('pointerup', holdReleased); doc.addEventListener('pointercancel', holdCancelled);
     input.addEventListener('compositionstart', function () { composing = true; cancelComposerPress(); }); input.addEventListener('compositionend', function () { composing = false; });
     doc.addEventListener('selectionchange', composerSelectionChanged);

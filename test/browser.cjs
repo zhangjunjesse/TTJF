@@ -41,12 +41,13 @@ async function homeView(page, mode) {
     { timeout: 6000 }, mode);
 }
 
-async function launch() {
+async function launch({fakeMicrophone = false} = {}) {
   return puppeteer.launch({
     executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
     headless: true, protocolTimeout: 30000,
     args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding']
+      '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding',
+      ...(fakeMicrophone ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : [])]
   });
 }
 async function createEnvironment(browser, options = {}) {
