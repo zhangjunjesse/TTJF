@@ -2,8 +2,13 @@
 /* v0.10: one action hierarchy across navigation, forms and daily controls. */
 :root { --action-primary: #326c51; --action-on-primary: #fff; --action-secondary: #eaf0e7; --action-secondary-ink: #36533e; --action-tool: #5d705f; --action-danger: #a33b37; --action-danger-soft: #fbece8; --action-disabled: #e2e7df; --action-disabled-ink: #5a685b; --action-focus: #9a7023; }
 * { box-sizing: border-box; }
+:root { --app-paper: #fdfdfb; }
 html { width: 100%; height: 100%; overflow: hidden; -webkit-text-size-adjust: 100%; }
 body { position: fixed; inset: 0; margin: 0; overflow: hidden; background: #f6f7f3; color: #263b32; font: 16px/1.5 -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif; -webkit-font-smoothing: antialiased; }
+/* Keep the installed app's canvas the same color as its launch theme across views. */
+@media (display-mode: standalone) {
+  :root, :root > body { background-color: var(--app-paper); }
+}
 button, input, textarea, select { font: inherit; }
 button, a, input, textarea, select, summary { -webkit-tap-highlight-color: transparent; }
 button { border: 0; color: inherit; background: none; cursor: pointer; touch-action: manipulation; transition: filter .12s, background-color .12s, box-shadow .12s; }

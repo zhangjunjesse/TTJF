@@ -373,9 +373,9 @@ async function audit(page, name, primary = []) {
   assert.deepEqual(problems, [], name + ' layout');
 }
 
-async function initialize({fakeMicrophone = false, ...options} = {}) {
+async function initialize({fakeMicrophone = false, browserPipe = false, ...options} = {}) {
   fs.mkdirSync(OUT, { recursive: true });
-  browser = await B.launch({fakeMicrophone}); report.browserVersion = await browser.version(); env = await createEnvironment(options);
+  browser = await B.launch({fakeMicrophone, pipe:browserPipe}); report.browserVersion = await browser.version(); env = await createEnvironment(options);
   return env;
 }
 async function run() {
