@@ -7,7 +7,7 @@
   var chat = saas ? window.FamilyAssistantPanel : null;
   var AwardPhotos = saas ? window.FamilyAwardPhotos : null, awardPhotoDrafts = {}, awardPhotoSelection = null;
   var local = !saas && (location.protocol === 'file:' || window.__FAMILY_OFFLINE__ === true), state = null, revision = 0, connected = false, serverReached = false;
-  var syncBusy = false, pending = false, retryTx = null, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
+  var syncBusy = false, pending = false, retryTx = null, submittedAwards = {}, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
   var assistantSequence = 0, avatarSequence = 0, petTimer = null, familyDay = null, serverTime = 0, serverReceived = 0, avatarSelection = null;
   function monotonic() { return window.performance && window.performance.now ? window.performance.now() : Date.now(); }
   function farmClock() { return !local && serverTime ? new Date(serverTime + Math.max(0, monotonic() - serverReceived)) : new Date(); }
@@ -52,16 +52,22 @@
     return action;
   }
   function updateAwardPhotoAction(auth) {
-    if (!auth || auth.phase !== 'confirm' || auth.tx.action.type !== 'points.add') return;
+    if (!auth || auth.recoveryAward || auth.phase !== 'confirm' || auth.tx.action.type !== 'points.add') return;
     addAwardPhotoIds(auth.tx.action, auth.tx.form);
-    var unsigned = Object.assign({}, auth.tx.action); delete unsigned.id;
-    auth.tx.signature = JSON.stringify(unsigned); auth.tx.grant = null;
+    auth.tx.signature = awardSignature(auth.tx.action); auth.tx.grant = null;
   }
   function recoverUnavailableAwardPhotos(tx) {
     if (!AwardPhotos || tx.action.type !== 'points.add' || !tx.form || tx.form !== ui.form || tx.form.kind !== 'points') return false;
     var draft = awardPhotos(tx.form), rejected = tx.action.photoIds || [];
     var changed = AwardPhotos.unavailable(draft, rejected, awardPhotoRequestEnvironment());
-    if (!changed) return false;
+    var interrupted = submittedAwards[tx.action.id];
+    if (!changed && !interrupted) return false;
+    if (interrupted) {
+      delete submittedAwards[tx.action.id]; tx.grant = null; tx.uncertain = false;
+      if (retryTx === tx) retryTx = null;
+      if (ui.auth && ui.auth.tx === tx) ui.auth = null;
+      AwardPhotos.closeViewer(); render(false); showError('照片已过期或失效，请重试、重拍，或选择只记积分。'); return true;
+    }
     tx.grant = null; tx.uncertain = false; tx.signature = ''; addAwardPhotoIds(tx.action, tx.form);
     var auth = ui.auth && ui.auth.tx === tx ? ui.auth : null;
     if (auth) {
@@ -178,7 +184,7 @@
     if (Farm) Farm.dispose();
     if (window.FamilyWorldUI) window.FamilyWorldUI.reset();
     state = null; revision = 0; parentRevision = -1; connected = false; serverReached = false;
-    syncBusy = false; pending = false; retryTx = null; setupTx = null; privateConfig = null; drafts = {}; awardPhotoDrafts = {}; reminderSound = '';
+    syncBusy = false; pending = false; retryTx = null; submittedAwards = {}; setupTx = null; privateConfig = null; drafts = {}; awardPhotoDrafts = {}; reminderSound = '';
     familyDay = null; serverTime = 0; serverReceived = 0; assistantSequence++; avatarSequence++; ui = freshUI();
     meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
     parentDevice = { enabled: null, loading: false, busy: false, sequence: 0 };
@@ -193,9 +199,113 @@
     return out;
   }
   function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), assistantDraft: f.assistantDraft && clone(f.assistantDraft), openedRevision: f.openedRevision, ledgerAward: !!f.ledgerAward, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
+  function copyAwardAction(action) {
+    var saved = {};
+    ['id', 'type', 'itemId', 'name', 'points', 'reason', 'at', 'saveAsTemplate', 'photoIds'].forEach(function (key) {
+      if (action[key] !== undefined) saved[key] = ordinary(action[key]);
+    });
+    return saved;
+  }
+  function awardSignature(action) { var unsigned = copyAwardAction(action); delete unsigned.id; return JSON.stringify(unsigned); }
+  function rememberSubmittedAward(tx) {
+    if (!saas || tx.action.type !== 'points.add' || submittedAwards[tx.action.id]) return;
+    submittedAwards[tx.action.id] = { action: copyAwardAction(tx.action), revision: tx.revision, previousGrowth: ordinary(tx.previousGrowth),
+      assistantDraft: tx.assistantDraft && { generation: tx.assistantDraft.generation, turnId: tx.assistantDraft.turnId },
+      form: tx.form, ledgerAward: !!tx.ledgerAward };
+  }
+  function savedSubmittedAwards() {
+    var saved = {};
+    Object.keys(submittedAwards).forEach(function (id) {
+      var award = submittedAwards[id];
+      saved[id] = { action: copyAwardAction(award.action), revision: award.revision, previousGrowth: ordinary(award.previousGrowth),
+        assistantDraft: award.assistantDraft && ordinary(award.assistantDraft), ledgerAward: award.ledgerAward,
+        form: savedForm(award.form), currentForm: award.form === ui.form, stackIndex: ui.stack.indexOf(award.form) };
+    });
+    return saved;
+  }
+  function restoreSubmittedAwards(saved, restoredStack) {
+    Object.keys(saved || {}).forEach(function (id) {
+      var value = saved[id];
+      if (!value.action || value.action.type !== 'points.add' || value.action.id !== id) return;
+      var award = submittedAwards[id] = { action: copyAwardAction(value.action), revision: value.revision, previousGrowth: ordinary(value.previousGrowth),
+        assistantDraft: value.assistantDraft && ordinary(value.assistantDraft), ledgerAward: !!value.ledgerAward,
+        form: value.currentForm ? ui.form : restoredStack[value.stackIndex] || value.form };
+      if (award.form && award.form.kind === 'points') awardPhotos(award.form);
+      if (award.form === ui.form) retryTx = { action: copyAwardAction(award.action), signature: awardSignature(award.action), revision: revision,
+        previousGrowth: award.previousGrowth, assistantDraft: award.assistantDraft, ledgerAward: award.ledgerAward,
+        form: award.form, grant: null, uncertain: true };
+    });
+  }
+  function reconcileSubmittedAwards() {
+    var completed = false;
+    Object.keys(submittedAwards).forEach(function (id) { if (reconcileSubmittedAward(submittedAwards[id])) completed = true; });
+    return completed;
+  }
+  function reconcileSubmittedAward(award) {
+    if (!award) return false;
+    var id = award.action.id, record = find(state.points, 'points-' + id);
+    if (!record) {
+      // A newer ledger version excludes this request: its old revision can no longer commit.
+      if (revision > award.revision && !(ui.auth && ui.auth.tx.action.id === id) && !(pending && retryTx && retryTx.action.id === id)) {
+        delete submittedAwards[id]; if (retryTx && retryTx.action.id === id) retryTx = null;
+      }
+      return false;
+    }
+    if (pending && (!retryTx || !retryTx.inFlight || retryTx.action.id !== id)) return false;
+    if (ui.auth && ui.auth.tx.action.id !== id) return false;
+    var tx = retryTx && retryTx.action.id === id ? retryTx : award;
+    rememberDraft();
+    var source = award.form, detachedSource = source && [ui.form].concat(ui.stack).indexOf(source) < 0;
+    var unchangedSource = awardFormMatchesRecord(source, record, id, detachedSource);
+    if (source && unchangedSource) {
+      ui.stack = ui.stack.filter(function (f) { return f !== source; });
+      var retainedDraft = [ui.form].concat(ui.stack).some(function (f) { return f && f !== source && draftKey(f) === draftKey(source); });
+      if (!retainedDraft) { delete drafts[draftKey(source)]; saveStore(DRAFT, drafts); }
+    }
+    tx.keepAwardDraft = !!ui.form && (ui.form !== source || !awardFormMatchesRecord(ui.form, record, id));
+    if (tx.keepAwardDraft) {
+      var retainedForms = [ui.form].concat(ui.stack);
+      if (tx.form && (!unchangedSource || retainedForms.some(function (f) { return f && (f === tx.form || (tx.form.awardPhotos && tx.form.awardPhotos === f.awardPhotos)); }))) tx.form = null;
+      retainedForms.forEach(function (f) {
+        if (!f || !f.awardPhotos) return;
+        f.awardPhotos.items = f.awardPhotos.items.filter(function (item) {
+          if ((record.photoIds || []).indexOf(item.photoId) < 0) return true;
+          item.abandoned = true; return false;
+        });
+      });
+    }
+    tx.action = copyAwardAction(tx.action);
+    tx.action.name = record.name; tx.action.points = record.points; tx.action.reason = record.reason;
+    if (record.photoIds && record.photoIds.length) tx.action.photoIds = record.photoIds.slice(); else delete tx.action.photoIds;
+    finishTransaction(tx); return true;
+  }
+  function awardFormMatchesRecord(f, record, awardId, ignorePhotos) {
+    if (!f || f.kind !== 'points') return false;
+    try {
+      var action = makeAction(f, f.data);
+      if (f.data.recordDate && f.data.recordTime) action.at = M.calendarTimestamp(f.data.recordDate, f.data.recordTime, calendarZone());
+      return action.name === record.name && action.points === record.points && action.reason === record.reason &&
+        (!action.at || Date.parse(action.at) === Date.parse(record.at)) &&
+        (action.saveAsTemplate ? record.itemId === 'item-' + awardId : (action.itemId || '') === record.itemId) &&
+        (ignorePhotos || JSON.stringify(action.photoIds || []) === JSON.stringify(record.photoIds || []));
+    } catch (e) { return false; }
+  }
+  function submittedAwardDraft(action) {
+    if (action.type !== 'points.add' || !ui.form) return null;
+    var matched = null;
+    Object.keys(submittedAwards).some(function (id) {
+      var award = submittedAwards[id], original = award.action;
+      if (ui.form !== award.form && !((!ui.form.assistantDraft || ui.form.assistantDraft.actionId === id) &&
+          (action.itemId || '') === (original.itemId || '') && action.name === original.name && action.points === original.points &&
+          (action.reason || '') === (original.reason || '') && !!action.saveAsTemplate === !!original.saveAsTemplate && action.at === original.at)) return false;
+      matched = award; return true;
+    });
+    return matched;
+  }
   function suspendFamily() {
     rememberDraft(); rememberSheetFocus();
-    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), awardPhotos: savedAwardPhotoDrafts(), scrollTop: main ? main.scrollTop : 0, revision: revision };
+    if (retryTx && retryTx.action.type === 'points.add' && (retryTx.inFlight || retryTx.uncertain)) rememberSubmittedAward(retryTx);
+    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), awardPhotos: savedAwardPhotoDrafts(), submittedAwards: savedSubmittedAwards(), scrollTop: main ? main.scrollTop : 0, revision: revision };
     if (ui.auth && ui.auth.phase === 'confirm' && ui.auth.tx.action.type === 'points.add' && ui.auth.tx.form === ui.form && !ui.auth.busy && !pending && !ui.auth.challengeId && !ui.auth.tx.grant && !ui.auth.tx.uncertain) {
       saved.awardReview = { pristine: isPristinePresetReview(ui.auth), familyDay: today() };
     }
@@ -209,7 +319,7 @@
     }
     return saved;
   }
-  function restorableForm(f) {
+  function restorableForm(f, preserveAwardTime) {
     if (!f) return null;
     var d = f.data || {}, target;
     if (f.kind === 'task' && d.id) { target = find(state.tasks, d.id); if (!target || target.deleted) return null; }
@@ -220,15 +330,22 @@
     if (f.kind === 'approve') { target = find(state.requests, d.requestId); if (!target || target.status !== 'pending') return { kind: 'homeInbox', data: {}, openedRevision: revision }; }
     if (typeof f.openedRevision !== 'number') f.openedRevision = revision;
     if (f.kind === 'parentConfig') f.parentConfigured = meta.parent.configured;
-    if (f.kind === 'points' && d.recordDate !== today()) { d.recordDate = today(); d.recordTime = clock(); }
+    if (f.kind === 'points' && d.recordDate !== today() && preserveAwardTime !== true) { d.recordDate = today(); d.recordTime = clock(); }
     awardPhotos(f);
     return f;
   }
   function restoreFamily(saved) {
     if (!saved) { discardAvatar(); return; }
     ['view', 'homeMode', 'day', 'reminderMode', 'filter', 'history', 'petTab', 'homeFocus'].forEach(function (key) { if (saved[key] !== undefined) ui[key] = saved[key]; });
-    drafts = ordinary(saved.drafts || {}); awardPhotoDrafts = saved.awardPhotos || {}; ui.stack = (saved.stack || []).map(restorableForm).filter(function (f) { return !!f; });
-    ui.form = restorableForm(saved.form); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
+    var sent = saved.submittedAwards || {}, sentRows = Object.keys(sent).map(function (id) { return sent[id]; }), restoredStack = [];
+    drafts = ordinary(saved.drafts || {}); awardPhotoDrafts = saved.awardPhotos || {}; ui.stack = (saved.stack || []).map(function (f, index) {
+      restoredStack[index] = restorableForm(f, sentRows.some(function (award) { return !award.currentForm && award.stackIndex === index; }));
+      return restoredStack[index];
+    }).filter(function (f) { return !!f; });
+    ui.form = restorableForm(saved.form, sentRows.some(function (award) { return award.currentForm; })); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
+    restoreSubmittedAwards(sent, restoredStack);
+    // Only an exact ledger record confirms an aborted request; an absent record can still arrive later.
+    if (reconcileSubmittedAwards()) { discardAvatar(); return; }
     if (AwardPhotos) AwardPhotos.flush(awardPhotoRequestEnvironment());
     if (saved.awardReview && saved.revision === revision && saved.awardReview.familyDay === today() && ui.form && ui.form.kind === 'points') {
       // Recreate an unsent review, never a previous challenge, grant, or PIN.
@@ -386,6 +503,7 @@
       if (status === 200 && result.state && result.state.tasks && result.revision >= revision) {
         var changed = !connected || result.revision !== revision || (result.familyDay && result.familyDay !== familyDay);
         setSnapshot(result);
+        if (reconcileSubmittedAwards()) return;
         if (setupTx && !setupTx.cancelled && setupTx.uncertain) {
           if (state.appliedActions.indexOf(setupTx.action.id) >= 0) {
             // The receipt retry must also confirm which assistant draft was resumed.
@@ -480,6 +598,9 @@
   function showError(message) { var el = document.getElementById(ui.auth ? 'parent-error' : 'form-error'); if (el) { el.textContent = message; el.hidden = false; } else toast(message); }
   function isPublic(action) { return ['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene', 'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare'].indexOf(action.type) >= 0; }
   function conflict(tx, result) {
+    if (submittedAwards[tx.action.id] && result.state) {
+      setSnapshot(result); if (reconcileSubmittedAward(submittedAwards[tx.action.id])) return;
+    }
     if (tx.assistantDraft && /^ASSISTANT_/.test(result.code || '')) {
       tx.grant = null; retryTx = null; ui.auth = null;
       render(false); showError('助手草稿已变化，请打开助手重新核对'); return;
@@ -567,15 +688,22 @@
     if (action.type === 'parent.configure' && meta.parent.configured === false) { if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); return; }
     if (!local && !connected) { showError('未连接 · 草稿已保留'); return; }
     rememberDraft();
-    var binding = ui.form && ui.form.assistantDraft;
+    if (reconcileSubmittedAwards()) return;
+    var recoveringAward = submittedAwardDraft(action), binding = !recoveringAward && ui.form && ui.form.assistantDraft;
     if (binding && (binding.type !== action.type || binding.familyDay !== today() || binding.sourceRevision !== revision)) {
       showError('助手草稿已变化，请打开助手重新核对'); return;
     }
     if (ui.form && ui.form.openedRevision !== revision) {
       ui.form.openedRevision = revision; render(false); showError('记录已更新 · 待确认'); return;
     }
-    var signature = JSON.stringify(action), tx, reused = false;
-    if (retryTx && retryTx.signature === signature && (binding ? retryTx.action.id === binding.actionId : !retryTx.assistantDraft)) { tx = retryTx; reused = true; }
+    var signature = action.type === 'points.add' ? awardSignature(action) : JSON.stringify(action), tx, reused = false;
+    if (recoveringAward) {
+      // Retry the sent payload with fresh authorization; edits stay in the editor until the original result is known.
+      action = copyAwardAction(recoveringAward.action); signature = awardSignature(action); recoveringAward.form = ui.form;
+      tx = { action: action, signature: signature, revision: revision, message: message, grant: null, uncertain: true,
+        previousGrowth: recoveringAward.previousGrowth, assistantDraft: recoveringAward.assistantDraft }; reused = true;
+    }
+    else if (retryTx && retryTx.signature === signature && !submittedAwards[retryTx.action.id] && (binding ? retryTx.action.id === binding.actionId : !retryTx.assistantDraft)) { tx = retryTx; reused = true; }
     else {
       action.id = binding ? binding.actionId : uid();
       tx = { action: action, signature: signature, revision: revision, message: message, grant: null, previousGrowth: M.growth(state) };
@@ -590,7 +718,7 @@
     retryTx = tx; invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; stopRecognition();
     if (isPublic(tx.action)) { submitTransaction(tx); return; }
     rememberSheetFocus();
-    ui.auth = { tx: tx, phase: tx.action.type === 'points.add' || canSkipParent(tx.action) ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
+    ui.auth = { tx: tx, recoveryAward: !!recoveringAward, phase: tx.action.type === 'points.add' || canSkipParent(tx.action) ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
     if (tx.uncertain && (tx.grant || tx.deviceAttempt)) { submitTransaction(tx); return; }
     render(false); if (ui.auth.phase === 'loading') issueChallenge(ui.auth);
   }
@@ -620,7 +748,7 @@
         if (auth.tx.action.type === 'parent.configure') { clearParentSecrets(auth.tx); retryTx = null; ui.auth = null; if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); }
         else { auth.phase = 'setup'; render(false); }
       } else if (status === 409) conflict(auth.tx, result);
-      else { auth.phase = 'challenge-error'; render(false); showError(errorText(result)); }
+      else { auth.phase = 'challenge-error'; render(false); showError(errorText(result)); if (result.code === 'ACTION_ID_REUSED' && submittedAwards[auth.tx.action.id]) sync(); }
     });
   }
   function randomSalt() { var values = new Uint8Array(16); window.crypto.getRandomValues(values); return Array.prototype.map.call(values, function (v) { return ('0' + v.toString(16)).slice(-2); }).join(''); }
@@ -670,8 +798,10 @@
   function submitParent(form) {
     var auth = ui.auth; if (!auth || auth.busy || pending) return;
     if (auth.phase === 'confirm') {
-      if (!awardPhotosReady(auth.tx.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
-      updateAwardPhotoAction(auth);
+      if (!auth.recoveryAward) {
+        if (!awardPhotosReady(auth.tx.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
+        updateAwardPhotoAction(auth);
+      }
       if (auth.tx.revision !== revision) { conflict(auth.tx, { revision: revision, state: state }); return; }
       if (canSkipParent(auth.tx.action)) { auth.tx.deviceAttempt = true; submitTransaction(auth.tx); return; }
       auth.phase = meta.parent.configured === false ? 'setup' : 'loading';
@@ -701,11 +831,13 @@
       }
       return;
     }
-    pending = true; retryTx = tx;
+    if (submittedAwards[tx.action.id]) submittedAwards[tx.action.id].revision = tx.revision;
+    pending = true; retryTx = tx; tx.inFlight = true;
     if (ui.auth) ui.auth.phase = 'saving'; render(false);
     request('POST', '/api/action', { revision: tx.revision, action: tx.action, grant: tx.grant || undefined, assistantDraft: tx.assistantDraft }, function (status, result) {
-      pending = false;
-      if (status === 200 && result.state) { setSnapshot(result); finishTransaction(tx); }
+      if (tx.finished) return;
+      pending = false; tx.inFlight = false;
+      if (status === 200 && result.state) { setSnapshot(result); if (!reconcileSubmittedAward(submittedAwards[tx.action.id])) finishTransaction(tx); }
       else if (result.code === 'PHOTO_UNAVAILABLE' && recoverUnavailableAwardPhotos(tx)) return;
       else if (status === 409) conflict(tx, result);
       else if (status === 0) { tx.uncertain = true; connected = false; if (ui.auth) ui.auth.phase = 'retry'; render(false); showError(tx.action.type === 'pet.care' ? '照料结果待确认' : '连接中断 · 结果待确认'); sync(); }
@@ -714,7 +846,7 @@
         loadParentDevice(); issueChallenge(ui.auth);
       }
       else if (status === 403 || status === 410) { tx.grant = null; tx.uncertain = false; if (ui.auth) { ui.auth.phase = 'challenge-error'; ui.auth.busy = false; } render(false); showError(errorText(result)); }
-      else { tx.grant = null; tx.uncertain = false; ui.auth = null; render(false); showError(tx.action.type === 'pet.care' && !ui.form ? '照料未完成' : errorText(result)); if (tx.action.type === 'pet.care') sync(); }
+      else { tx.grant = null; tx.uncertain = false; ui.auth = null; render(false); showError(tx.action.type === 'pet.care' && !ui.form ? '照料未完成' : errorText(result)); if (tx.action.type === 'pet.care' || (result.code === 'ACTION_ID_REUSED' && submittedAwards[tx.action.id])) sync(); }
     });
   }
   function pointsReceipt(action) {
@@ -725,6 +857,9 @@
     return '已记好：' + record.name + ' +' + record.points + ' 分 · ' + label + ' ' + recorded.time;
   }
   function finishTransaction(tx) {
+    if (tx.finished) return;
+    tx.finished = true;
+    delete submittedAwards[tx.action.id];
     if (AwardPhotos) AwardPhotos.closeViewer();
     var giftFlow = ui.form === tx.form && ledgerGiftFlow();
     if (['points.add', 'pet.care', 'pet.scene'].indexOf(tx.action.type) >= 0 && ui.form && ui.form !== tx.form) rememberDraft();
@@ -742,7 +877,7 @@
       }
     }
     var message = tx.message || '已保存';
-    if (tx.action.type === 'points.add') { discardAwardPhotos(tx.form, tx.action.photoIds || []); discardOpenAwardPhotos(); stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; var g = growthInfo(), pet = currentPet(); message = '+' + tx.action.points + ' 分 · ' + (tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' : '记好啦！'); ui.petReaction = 'celebrate'; ui.petMessage = message; }
+    if (tx.action.type === 'points.add') { discardAwardPhotos(tx.form, tx.action.photoIds || []); if (!tx.keepAwardDraft) { discardOpenAwardPhotos(); stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; } var g = growthInfo(), pet = currentPet(); message = '+' + tx.action.points + ' 分 · ' + (tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' : '记好啦！'); ui.petReaction = 'celebrate'; ui.petMessage = message; }
     if (tx.action.type === 'pet.buy') { message = '补给已入背包'; if (ui.form && ui.form.kind === 'petHub') { ui.form.data.tab = 'bag'; ui.form.openedRevision = revision; } }
     if (tx.action.type === 'pet.care') {
       var status = playStatus(), before = tx.previousPetStatus, unlocked = status && status.unlockedScenes.filter(function (id) { return !before || before.unlockedScenes.indexOf(id) < 0; }), newest = unlocked && unlocked.length ? find(status.scenes, unlocked[unlocked.length - 1]) : null;
@@ -1689,6 +1824,7 @@
     var deletingItem = a.tx.action.type === 'pointItem.delete', ledgerAward = isLedgerAward(a), skipParent = canSkipParent(a.tx.action), redeeming = ['redemption.approve', 'reward.redeem'].indexOf(a.tx.action.type) >= 0;
     var prompt = confirming ? ledgerAward ? '下一步由家长验证' : '请核对本次加分，确认后由家长验证。' : setup ? '请家长设置 6 位 PIN，保护每一次加分和兑换。' : a.method === 'math' ? '请家长完成算术验证后继续。' : '请家长输入 PIN，验证后完成本次操作。';
     if (confirming && skipParent) prompt = redeeming ? '请核对礼品和本次扣分，确认后完成兑换。' : '请核对本次加分，确认后记入积分。';
+    if (a.recoveryAward) prompt = '上次加分结果待确认，下面是原操作。请先核对并完成原操作，你的修改已保留。';
     if (deletingItem) prompt = (setup ? '请先设置家长 PIN。' : '') + '删除后，这个行为会从常用列表中移除。过去的加分记录和积分都会保留。';
     var ledgerReview = ledgerAward || a.tx.ledgerRedemption, summaryContent;
     if (ledgerAward) summaryContent = ledgerAwardSummary(a.tx.action);
@@ -1711,10 +1847,10 @@
     else submit = '重新验证';
     if (!ledgerReview) body += summary;
     if (AwardPhotos && a.tx.action.type === 'points.add' && a.tx.form && a.tx.form.kind === 'points') {
-      if (confirming) body += AwardPhotos.editor(awardPhotos(a.tx.form));
+      if (confirming && !a.recoveryAward) body += AwardPhotos.editor(awardPhotos(a.tx.form));
       else if (a.tx.action.photoIds && a.tx.action.photoIds.length) body += '<p class="award-photo-count">本次照片 ' + a.tx.action.photoIds.length + ' 张</p>';
     }
-    var parentBusy = !!(a.busy || pending), photoBlocked = confirming && !awardPhotosReady(a.tx.form), dangerous = deletingItem || a.tx.action.type === 'task.delete';
+    var parentBusy = !!(a.busy || pending), photoBlocked = confirming && !a.recoveryAward && !awardPhotosReady(a.tx.form), dangerous = deletingItem || a.tx.action.type === 'task.delete';
     if (dangerous) {
       var verb = deletingItem ? '删除' : '取消';
       if (a.phase === 'verify') submit = '验证并' + verb;

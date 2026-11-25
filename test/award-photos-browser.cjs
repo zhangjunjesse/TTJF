@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, PIN, action: a, click, snapshot, ui } = Q;
 const CASE = process.env.AWARD_PHOTO_CASE || 'custom';
-const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race'];
+const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race', 'resume-committed', 'resume-uncommitted', 'resume-late'];
 assert.ok(CASES.includes(CASE), 'Unknown AWARD_PHOTO_CASE');
 const WIDTH = Number(process.env.AWARD_PHOTO_WIDTH || 390);
 const HEIGHT = Number(process.env.AWARD_PHOTO_HEIGHT || 844);
@@ -31,13 +31,16 @@ Q.report.boundaries = [
   'One selected award-photo group; unselected groups are not claimed as passed.',
   'Real headless Chromium, native file-input chooser, loopback SaaS HTTP and a temporary SQLite file; synthetic homework images only.',
   'Camera-button coverage opens the native file input with rear-camera capture intent. The picker-return group dispatches synthetic visibility events; a physical camera, OS image picker and iPad/Safari are not verified.',
-  'Upload-failure groups inject one identity-free 502 HTML response or drop the response after the real service accepted an upload. All scoring requests use the real service.',
+  'Upload-failure groups inject one identity-free 502 HTML response or drop the response after the real service accepted an upload. All completed scoring requests use the real service.',
   'The overlap group delays the first real upload until a second native chooser is open. The expired group injects PHOTO_UNAVAILABLE for only its first challenge after a real staged upload.',
+  'The resume-committed group holds a real successful action callback across synthetic hide/show. The resume-uncommitted group aborts its first action before it reaches the real service, then requires explicit review and a fresh PIN before retry.',
+  'The resume-late group forwards the unchanged original action body and grant to real HTTP after the first resumed snapshot. Credentials remain only in test memory; no service response or ledger snapshot is fabricated.',
   'No production service, external SMTP, AI image provider or live family data is used.'
 ];
 for (const name of CASES.filter(name => name !== CASE)) Q.report.skipped.push('AWARD_PHOTO_CASE=' + name + ' not selected');
 let env, page, familyId, files, sequence = 0, viewerSequence = 0;
 const uploads = [];
+const awardRequests = { challenges: [], verifications: [], actions: [] };
 
 function progress(message) {
   fs.mkdirSync(Q.OUT, { recursive: true });
@@ -89,9 +92,14 @@ async function setup() {
   page = await env.newPage({ controlledClock: true, width: WIDTH, height: HEIGHT }); Q.active(page);
   page.setDefaultTimeout(6000);
   page.on('request', request => {
-    if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/award-photos') {
-      uploads.push(JSON.parse(request.postData()));
-    }
+    if (request.method() !== 'POST') return;
+    const route = new URL(request.url()).pathname;
+    if (!['/api/award-photos', '/api/parent/challenge', '/api/parent/verify', '/api/action'].includes(route)) return;
+    const body = JSON.parse(request.postData() || '{}');
+    if (route === '/api/award-photos') uploads.push(body);
+    if (route === '/api/parent/challenge' && body.action?.type === 'points.add') awardRequests.challenges.push(body);
+    if (route === '/api/parent/verify') awardRequests.verifications.push(body);
+    if (route === '/api/action' && body.action?.type === 'points.add') awardRequests.actions.push(body);
   });
   await Q.registerAndVerify(page, 'award-photo-' + CASE + '-' + Q.RUN + '@example.test');
   familyId = await Q.createFamily(page, '合成照片家庭-' + CASE, CHILD);
@@ -322,6 +330,179 @@ async function visibility(hidden) {
     document.dispatchEvent(new Event('visibilitychange'));
   }, hidden);
 }
+async function parentReview() {
+  await click(page, Q.save);
+  await page.waitForFunction(() => window.FamilyDemo.getUI().authPhase === 'confirm');
+  await click(page, a('points-confirm'));
+  await page.waitForSelector('#parent-form [name="answer"]', { visible: true });
+  assert.equal(await page.$eval('#parent-form [name="answer"]', node => node.value), '', 'each parent verification starts with an empty PIN');
+}
+async function hideAward() {
+  await visibility(true); await page.waitForFunction(() => !window.FamilySaas.status().ready);
+  assert.equal(await snapshot(page), null, 'the hidden page masks family state');
+  assert.doesNotMatch(await page.$eval('body', node => node.textContent), new RegExp(CUSTOM));
+}
+async function resumeAward() { await visibility(false); await Q.ready(page, familyId); }
+async function loseUncommittedAction(before) {
+  let held;
+  const marker = awardRequests.actions.length;
+  const intercept = request => {
+    if (!held && request.method() === 'POST' && new URL(request.url()).pathname === '/api/action') held = request;
+    else void request.continue();
+  };
+  await page.setRequestInterception(true); page.on('request', intercept);
+  try {
+    const sent = page.waitForRequest(request => request.method() === 'POST' && new URL(request.url()).pathname === '/api/action');
+    await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit); await sent;
+    assert.ok(held, 'the actual browser action is held before the real service');
+    assert.equal(awardRequests.actions.length, marker + 1); assert.ok(awardRequests.actions[marker].grant);
+    assert.deepEqual(await sql(), before, 'the first action has not reached SQLite');
+    await hideAward(); await held.abort('aborted').catch(() => {});
+  } finally { page.off('request', intercept); await page.setRequestInterception(false); }
+  return awardRequests.actions[marker];
+}
+async function noStoredAward(actionId, photoId) {
+  const values = await page.evaluate(() => {
+    const legacy = new Set(['little-steps-demo-v1', 'little-steps-drafts-v03', 'little-steps-parent-private-v03']);
+    return [localStorage, sessionStorage].flatMap(storage => Object.keys(storage).filter(key => !legacy.has(key)).map(key => storage.getItem(key)));
+  });
+  const stored = JSON.stringify(values);
+  for (const value of [actionId, photoId, CUSTOM, PIN]) assert.equal(stored.includes(value), false, 'business data and PIN stay out of browser storage');
+  assert.equal((await page.evaluate(() => window.__qaStorage.inspect())).unchanged, true, 'the poisoned legacy business stores stay untouched');
+}
+async function resumeCommitted() {
+  await check('A committed photo award with a lost response resumes as success once and clears its old draft', async () => {
+    const before = await sql(); await openCustom();
+    const id = await pick('album', files.png, 1); await parentReview();
+    await page.evaluate(() => window.__qaTransport.arm({ path: '/api/action', status: 200, method: 'POST' }));
+    await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit);
+    await page.waitForFunction(() => window.__qaTransport.pending().length === 1);
+    assert.equal(awardRequests.actions.length, 1);
+    const actionId = awardRequests.actions[0].action.id, persisted = await sql();
+    assert.equal(persisted.revision, before.revision + 1);
+    assert.equal(persisted.state.points.length, before.state.points.length + 1);
+    assert.equal(persisted.state.points.at(-1).id, 'points-' + actionId);
+    assert.deepEqual(persisted.state.points.at(-1).photoIds, [id]);
+    await hideAward(); await resumeAward();
+    const current = await ui(page);
+    report.resume = { committedBeforeHide: true, actionId, photoId: id, restoredForm: current.form };
+    progress('Inspecting the authoritative committed award after resume');
+    assert.equal(current.form, null, 'a committed photo award never reopens its completed form');
+    assert.equal(current.auth, false); assert.equal(current.pending, false);
+    assert.ok(await Q.visible(page, '#toast.points-receipt'), 'resume shows the normal visible success receipt');
+    assert.match(await page.$eval('#toast.points-receipt', node => node.textContent), new RegExp('已记好：' + CUSTOM + ' \\+7 分'));
+    assert.equal(await page.$(PREVIEW), null, 'committed staged IDs no longer appear as draft thumbnails');
+    assert.equal(await page.$('#parent-form [name="answer"]'), null);
+    assert.deepEqual(await snapshot(page), persisted.state); await storedPhotos([], [id]);
+    assert.equal(awardRequests.challenges.length, 1); assert.equal(awardRequests.actions.length, 1, 'resuming never resubmits the completed award');
+    await Q.shot(page, 'committed-photo-resumed-success');
+    await page.evaluate(() => window.__qaTransport.release()); await B.delay(120);
+    assert.deepEqual(await sql(), persisted, 'the late original response cannot repeat the commit');
+    assert.equal((await ui(page)).form, null);
+    await click(page, a('add-points')); await click(page, a('points-new'));
+    assert.equal(await page.$eval('#editor-form [name="name"]', node => node.value), '', 'the completed name is removed from the next new draft');
+    assert.equal(await page.$eval('#editor-form [name="reason"]', node => node.value), '', 'the completed reason is removed from the next new draft');
+    assert.equal(await page.$(PREVIEW), null, 'the next award has no old staged photo reference');
+    await history(1); await viewer(HISTORY); await noStoredAward(actionId, id);
+    assert.deepEqual(await sql(), persisted); assert.equal(awardRequests.actions.length, 1);
+  });
+}
+async function resumeUncommitted() {
+  await check('An uncommitted photo award keeps its action ID across repeated resumes and needs a fresh explicit authorization to retry', async () => {
+    const before = await sql(); await openCustom();
+    const id = await pick('album', files.png, 1); await parentReview();
+    const original = await loseUncommittedAction(before), actionId = original.action.id;
+    for (let round = 0; round < 2; round++) {
+      if (round) await hideAward();
+      await resumeAward();
+      assert.equal((await ui(page)).form, 'points', 'an uncommitted award retains the editable draft');
+      assert.equal((await ui(page)).auth, false, 'resuming never restores parent verification authority');
+      assert.equal(await page.$('#parent-form [name="answer"]'), null);
+      assert.equal(await page.$eval('#editor-form [name="name"]', node => node.value), CUSTOM);
+      assert.equal(await page.$eval('#editor-form [name="reason"]', node => node.value), '自己完成并核对两页练习');
+      await thumbnails(PREVIEW, 1); await storedPhotos([id]);
+      assert.equal(await Q.visible(page, '#toast.points-receipt'), false, 'an uncommitted award has no fabricated success');
+      assert.doesNotMatch((await ui(page)).homeFeedback, /已记好|记好啦/);
+      assert.deepEqual(await sql(), before, 'resuming does not record points automatically');
+      assert.equal(awardRequests.actions.length, 1); assert.equal(awardRequests.challenges.length, 1);
+      assert.equal(awardRequests.verifications.length, 1, 'returning never replays the old PIN');
+      await noStoredAward(actionId, id);
+    }
+    await Q.shot(page, 'uncommitted-photo-draft-resumed');
+    await parentReview();
+    assert.equal(awardRequests.challenges.length, 2);
+    assert.equal(awardRequests.challenges[1].action.id, actionId, 'explicit retry preserves the original operation identity');
+    assert.deepEqual(awardRequests.challenges[1].action, original.action, 'retry authorizes the same award and photo references');
+    assert.equal(awardRequests.actions.length, 1, 'review and challenge alone never submit the retry');
+    assert.deepEqual(await sql(), before);
+    await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit);
+    await page.waitForFunction(() => { const current = window.FamilyDemo.getUI(); return !current.auth && !current.pending && current.form === null; });
+    assert.equal(awardRequests.verifications.length, 2);
+    assert.ok(awardRequests.verifications[1].challengeId !== awardRequests.verifications[0].challengeId, 'retry verifies a new challenge');
+    assert.equal(awardRequests.actions.length, 2);
+    assert.equal(awardRequests.actions[1].action.id, actionId);
+    assert.ok(awardRequests.actions[1].grant); assert.ok(awardRequests.actions[1].grant !== original.grant, 'retry uses fresh parent authority');
+    const after = await sql();
+    assert.equal(after.revision, before.revision + 1); assert.equal(after.state.points.length, before.state.points.length + 1);
+    assert.equal(after.state.points.at(-1).id, 'points-' + actionId); assert.deepEqual(after.state.points.at(-1).photoIds, [id]);
+    assert.deepEqual(await snapshot(page), after.state); await storedPhotos([], [id]);
+    report.resume = { committedBeforeHide: false, actionId, photoId: id, hideShowCycles: 2, explicitRetry: true, freshChallenge: true, freshGrant: true };
+    await history(1); await viewer(HISTORY); assert.deepEqual(await sql(), after);
+  });
+}
+async function resumeLate() {
+  await check('An original photo award arriving after an empty resume snapshot races a fresh authorized retry without duplicate scoring', async () => {
+    const before = await sql(); await openCustom();
+    const id = await pick('album', files.png, 1); await parentReview();
+    const original = await loseUncommittedAction(before), actionId = original.action.id;
+    await resumeAward(); await thumbnails(PREVIEW, 1);
+    assert.equal((await ui(page)).auth, false); assert.equal(await Q.visible(page, '#toast.points-receipt'), false);
+    assert.deepEqual(await sql(), before); assert.equal(awardRequests.actions.length, 1, 'resume does not write before an explicit retry');
+    const probe = await env.api(page, '/api/action', 'POST', { revision: original.revision, action: original.action });
+    assert.equal(probe.status, 403); assert.equal(probe.body.code, 'PARENT_REQUIRED', 'an absent receipt requires fresh parent authority');
+    assert.deepEqual(await sql(), before);
+    await parentReview();
+    assert.equal(awardRequests.challenges.length, 2);
+    assert.equal(awardRequests.challenges[1].action.id, actionId, 'the retry keeps the in-flight operation identity before the original arrives');
+    assert.deepEqual(awardRequests.challenges[1].action, original.action);
+    let held, released = false;
+    const intercept = request => {
+      if (!held && request.method() === 'POST' && new URL(request.url()).pathname === '/api/action') held = request;
+      else void request.continue();
+    };
+    await page.setRequestInterception(true); page.on('request', intercept);
+    try {
+      const sent = page.waitForRequest(request => request.method() === 'POST' && new URL(request.url()).pathname === '/api/action');
+      await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit); await sent;
+      assert.ok(held); assert.equal(awardRequests.actions.length, 2);
+      const retried = awardRequests.actions[1];
+      assert.equal(retried.action.id, actionId); assert.deepEqual(retried.action, original.action);
+      assert.ok(retried.grant); assert.ok(retried.grant !== original.grant, 'the explicit retry has a new grant');
+      assert.ok(awardRequests.verifications[1].challengeId !== awardRequests.verifications[0].challengeId, 'the explicit retry verifies a new challenge');
+      const late = await env.api(page, '/api/action', 'POST', original);
+      assert.equal(late.status, 200, 'the original authorized body reaches the real service only after resume and retry review');
+      assert.equal(late.body.state.points.length, before.state.points.length + 1);
+      assert.equal(late.body.state.points.at(-1).id, 'points-' + actionId);
+      assert.deepEqual(late.body.state.points.at(-1).photoIds, [id]);
+      const replay = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/action');
+      await held.continue(); released = true;
+      assert.equal((await replay).status(), 200, 'the retry returns the existing receipt from the real service');
+      await page.waitForFunction(() => { const current = window.FamilyDemo.getUI(); return !current.auth && !current.pending && current.form === null; });
+      const after = await sql();
+      assert.equal(after.revision, before.revision + 1); assert.equal(after.state.points.length, before.state.points.length + 1);
+      assert.equal(after.state.points.filter(row => row.id === 'points-' + actionId).length, 1);
+      assert.deepEqual(after.state.points.at(-1).photoIds, [id]); await storedPhotos([], [id]);
+      assert.deepEqual(await snapshot(page), after.state); assert.ok(await Q.visible(page, '#toast.points-receipt'));
+      await Q.shot(page, 'late-original-photo-award-converged');
+      report.resume = { committedBeforeFirstResume: false, actionId, photoId: id, noGrantProbe: probe.body.code, lateOriginalStatus: late.status, retryStatus: 200, committedAwards: 1 };
+    } finally {
+      if (held && !released) await held.abort('aborted').catch(() => {});
+      page.off('request', intercept); await page.setRequestInterception(false);
+    }
+    await history(1); await viewer(HISTORY); await noStoredAward(actionId, id);
+    assert.equal((await sql()).state.points.length, before.state.points.length + 1);
+  });
+}
 async function pickerReturn() {
   await check('A file-picker result returns to the same draft after hide/show and still needs explicit parent verification', async () => {
     const before = await sql(); await openCustom();
@@ -511,7 +692,7 @@ async function discardRace() {
   });
 }
 async function run() {
-  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace })[CASE]();
+  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace, 'resume-committed': resumeCommitted, 'resume-uncommitted': resumeUncommitted, 'resume-late': resumeLate })[CASE]();
   assert.deepEqual(Q.report.pageErrors, []);
   report.finalSourceHashes = hashes(); report.sourceStable = JSON.stringify(report.sourceHashes) === JSON.stringify(report.finalSourceHashes);
   progress('Selected photo group complete');
