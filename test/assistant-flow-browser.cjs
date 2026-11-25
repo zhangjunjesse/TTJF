@@ -43,7 +43,7 @@ async function launcherLayout(page, name) {
     const decoration = ['::before','::after'].map(pseudo => {
       const value = getComputedStyle(launcher,pseudo);
       return {pseudo, visible:value.content !== 'none' && value.content !== 'normal' && value.display !== 'none' && value.visibility !== 'hidden' && Number(value.opacity) > 0,
-        pointerEvents:value.pointerEvents, background:value.backgroundImage};
+        pointerEvents:value.pointerEvents, background:value.backgroundImage, mask:value.maskImage, fill:value.backgroundColor};
     });
     return { viewport:{width:innerWidth,height:innerHeight}, nav:nav.getBoundingClientRect().toJSON(), controls,
       sceneBottom:splitScene && stage && rendered(stage) ? stage.getBoundingClientRect().bottom : null,
@@ -62,8 +62,13 @@ async function launcherLayout(page, name) {
   assert.equal(value.orb.button, true, name + ': the sphere itself is the assistant button');
   assert.equal(value.orb.text, '', name + ': the sphere has no visible label');
   assert.deepEqual(value.orb.children, [], name + ': the sphere has no nested icon or ornament');
-  assert.ok(value.orb.decoration.every(layer => layer.visible && layer.pointerEvents === 'none' && /radial-gradient\(/.test(layer.background)),
-    name + ': the pearl colors and sheen are visible material layers without pointer targets');
+  assert.ok(value.orb.decoration.every(layer => layer.visible && layer.pointerEvents === 'none'),
+    name + ': aurora and voice mark remain visible without pointer targets');
+  const aurora = value.orb.decoration.find(layer => layer.pseudo === '::before');
+  const voiceMark = value.orb.decoration.find(layer => layer.pseudo === '::after');
+  assert.match(aurora.background, /radial-gradient\(/, name + ': the aurora is a clipped color layer');
+  assert.match(voiceMark.mask, /data:image\/svg\+xml/, name + ': the steady voice mark uses its soundwave mask');
+  assert.notEqual(voiceMark.fill, 'rgba(0, 0, 0, 0)', name + ': the voice mark has visible ink');
   assert.equal(value.orb.overflow, 'hidden', name + ': material layers are clipped inside the sphere');
   assert.ok(value.orb.corners.every(([x,y]) => x >= launcher.width / 2 - .5 && y >= launcher.height / 2 - .5), name + ': all edges form a circle');
   assert.match(value.orb.background, /radial-gradient\(/, name + ': the sphere has light and shade');
@@ -94,7 +99,7 @@ function launcherSnapshot(page) {
       const style = getComputedStyle(node,pseudo);
       return {index,pseudo,content:style.content,animation:style.animationName,animationDuration:style.animationDuration,playState:style.animationPlayState,
         transitionDuration:style.transitionDuration,transform:style.transform,translate:style.translate,rotate:style.rotate,scale:style.scale,
-        opacity:style.opacity,filter:style.filter,background:style.backgroundImage,position:style.backgroundPosition.split(',').map(value => value.trim()),
+        opacity:style.opacity,filter:style.filter,color:style.color,fill:style.backgroundColor,mask:style.maskImage,background:style.backgroundImage,position:style.backgroundPosition.split(',').map(value => value.trim()),
         size:style.backgroundSize,radius:style.borderRadius,shadow:style.boxShadow};
     })),
     animations:launcher.getAnimations({subtree:true}).map(animation => ({playState:animation.playState,pending:animation.pending}))
@@ -106,13 +111,13 @@ async function launcherMotion(page) {
   const first = await launcherSnapshot(page); await B.delay(200);
   const middle = await launcherSnapshot(page); await B.delay(300); const last = await launcherSnapshot(page);
   Q.report.assistantLauncher.motion = {...Q.report.assistantLauncher.motion,'no-preference':{first,middle,last}};
-  launcherProgress('pearl-motion');
+  launcherProgress('aurora-motion');
   assert.deepEqual(first.media, {reduced:false,forcedColors:false}, 'the normal motion preference is active');
-  assert.equal(first.animations.length, 1, 'one CSS animation moves the internal pearl colors');
+  assert.equal(first.animations.length, 1, 'one CSS animation moves the internal aurora colors');
   assert.ok([first,middle,last].every(sample => sample.animations.length === 1 && sample.animations[0].playState === 'running' && !sample.animations[0].pending),
-    'the pearl colors are drifting during the samples');
+    'the aurora colors are drifting during the samples');
   const drift = sample => sample.styles.find(style => style.index === 0 && style.pseudo === '::before').transform;
-  assert.ok([middle,last].some(sample => drift(sample) !== drift(first)), 'the internal pearl colors advance in real time');
+  assert.ok([middle,last].some(sample => drift(sample) !== drift(first)), 'the internal aurora colors advance in real time');
   const fixedBody = sample => ({...sample,styles:sample.styles.map(style => style.index === 0 && style.pseudo === '::before' ? {...style,transform:null} : style)});
   [middle,last].forEach(sample => assert.deepEqual(fixedBody(sample), fixedBody(first), 'the circle, location, shadow and surface sheen stay still'));
 }
@@ -129,8 +134,15 @@ async function launcherStill(page, motion) {
   assert.deepEqual(first.styles.filter(style => style.animation !== 'none' && style.animationDuration.split(',').some(duration => parseFloat(duration) > 0)), [],
     motion + ': the sphere and its decoration do not animate');
   assert.deepEqual(last, first, motion + ': the idle sphere does not rotate, breathe or move');
-  if (forcedColors) assert.ok(first.styles.filter(style => style.pseudo).every(style => style.content === 'none'),
-    'forced colors hide the pearl material layers');
+  if (forcedColors) {
+    const body = first.styles.find(style => style.pseudo === null);
+    const aurora = first.styles.find(style => style.pseudo === '::before');
+    const voiceMark = first.styles.find(style => style.pseudo === '::after');
+    assert.equal(aurora.content, 'none', 'forced colors hide the decorative aurora');
+    assert.equal(voiceMark.content, '\"\"', 'forced colors retain the recognizable voice mark');
+    assert.match(voiceMark.mask, /data:image\/svg\+xml/, 'forced colors retain the soundwave mask');
+    assert.equal(voiceMark.fill, body.color, 'forced colors draw the voice mark in the system button text color');
+  }
   if (motion === 'reduce') assert.deepEqual(first.styles.filter(style => style.transitionDuration.split(',').some(duration => parseFloat(duration) > 0)), [],
     'reduced motion stops entry transitions');
 }
@@ -150,22 +162,22 @@ async function launcherFlow(page, env, device, open) {
     await page.waitForFunction(() => FamilyDemo.getUI().view === 'points');
     await launcherLayout(page, 'returned-home');
   });
-  await Q.check(device + ': only internal pearl colors move, and reduced motion and forced colors keep it still', async () => {
+  await Q.check(device + ': only internal aurora colors move, and reduced motion and forced colors keep it still', async () => {
     await launcherMotion(page);
     await launcherStill(page, 'forced-colors'); await Q.shot(page, device + '-forced-colors-entry');
     await launcherStill(page, 'reduce');
     await launcherLayout(page, 'reduced-motion-home'); await Q.shot(page, device + '-reduced-motion-entry');
     await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'no-preference'},{name:'forced-colors',value:'none'}]);
   });
-  await Q.check(device + ': the pearl colors pause behind the panel and pointer and keyboard activation restore focus', async () => {
+  await Q.check(device + ': the aurora colors pause behind the panel and pointer and keyboard activation restore focus', async () => {
     await open(); await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded);
     assert.equal(await page.evaluate(() => document.activeElement.id), 'family-assistant-panel', 'opening does not focus the keyboard');
     await B.delay(200); const first = await launcherSnapshot(page); await B.delay(300); const last = await launcherSnapshot(page);
     Q.report.assistantLauncher.motion['panel-open'] = {first,last}; launcherProgress('panel-open-paused');
-    assert.equal(first.animations.length, 1, 'the pearl drift remains available to resume');
-    assert.equal(first.animations[0].playState, 'paused', 'the pearl colors pause behind the open panel');
+    assert.equal(first.animations.length, 1, 'the aurora drift remains available to resume');
+    assert.equal(first.animations[0].playState, 'paused', 'the aurora colors pause behind the open panel');
     assert.equal(first.animations[0].pending, false, 'the pause has settled');
-    assert.deepEqual(last, first, 'the pearl colors stay fixed while the assistant is open');
+    assert.deepEqual(last, first, 'the aurora colors stay fixed while the assistant is open');
     assert.equal(await page.$eval('.assistant-panel-header .assistant-orb', node => node.getAnimations({subtree:true}).length), 0,
       'the panel brand does not animate');
     await Q.shot(page, device + '-assistant-open');
@@ -442,10 +454,158 @@ async function awardUnitFlow(page, env, family, open, useVoice = false) {
   });
 }
 
+async function entryGesturesFlow(page, env, family) {
+  const input = '#assistant-chat-input', turns = [], marker = env.calls.length;
+  const sql = async () => (await env.database.query('SELECT revision,state FROM saas_families WHERE id=$1', [family])).rows[0];
+  const before = await sql(), state = () => page.evaluate(() => FamilyAssistantPanel.getState());
+  const text = () => page.$eval(input, node => node.value);
+  const ready = () => page.waitForFunction(() => FamilyAssistantPanel.getState().loaded && !FamilyAssistantPanel.getState().busy);
+  const started = () => page.evaluate(() => (window.__qaRecognizers || []).length);
+  const settle = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+  page.on('request', request => {
+    if (new URL(request.url()).pathname === '/api/assistant/chat/turn') {
+      const {text,turnId} = JSON.parse(request.postData()); turns.push({text,turnId});
+    }
+  });
+  Q.report.assistantEntryGestures = {boundary:'Real mobile touch events in desktop Chromium and real isolated SaaS/SQLite. Speech recognition callbacks are simulated; native microphone permissions and iPad/Safari are not verified.'};
+  const progress = stage => {
+    Q.report.assistantEntryGestures.stage = stage;
+    fs.writeFileSync(path.join(Q.OUT, 'entry-gestures-progress.json'), JSON.stringify({stage,checks:Q.report.checks,turns,updatedAt:new Date().toISOString()}, null, 2) + '\n');
+  };
+  async function press(target) {
+    const point = await page.$eval(target, node => {
+      const r = node.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+      return {x,y,hit:node.contains(document.elementFromPoint(x,y)),disabled:!!node.disabled};
+    });
+    assert.equal(point.hit, true, target + ' is touch reachable'); assert.equal(point.disabled, false);
+    const client = await page.createCDPSession();
+    await client.send('Input.dispatchTouchEvent', {type:'touchStart',touchPoints:[{x:point.x,y:point.y,id:1}]});
+    return {...point,client};
+  }
+  async function move(gesture, x, y) {
+    await gesture.client.send('Input.dispatchTouchEvent', {type:'touchMove',touchPoints:[{x,y,id:1}]}); await settle();
+  }
+  async function release(gesture, cancel = false) {
+    await page.evaluate(() => { window.__qaNow += 1500; });
+    await gesture.client.send('Input.dispatchTouchEvent', {type:cancel ? 'touchCancel' : 'touchEnd',touchPoints:[]});
+    await gesture.client.detach(); await settle();
+  }
+  async function recording(waitForAudio = true) {
+    await page.waitForFunction(audio => {
+      const s = FamilyAssistantPanel.getState(), overlay = document.querySelector('.assistant-recording');
+      return s.open && s.holding && (!audio || s.listening) && overlay && !overlay.hidden;
+    }, {timeout:3000}, waitForAudio);
+    await page.evaluate(() => {
+      __qaSavedRecognizer = {start:__qaRecognizer.onstart,audio:__qaRecognizer.onaudiostart,result:__qaRecognizer.onresult,end:__qaRecognizer.onend};
+    });
+  }
+  async function hear(words) {
+    await page.evaluate(words => {
+      const row = Object.assign([{transcript:words,confidence:0.97}], {isFinal:true});
+      __qaRecognizer.onresult({results:[row]});
+    }, words);
+  }
+  async function late() {
+    await page.evaluate(() => {
+      const saved = __qaSavedRecognizer, row = Object.assign([{transcript:'迟到的语音不应发送或覆盖',confidence:0.99}], {isFinal:true});
+      saved.start?.(); saved.audio?.(); saved.result?.({results:[row]}); saved.end?.(); saved.end?.();
+    }); await settle();
+  }
+  async function cold() {
+    await page.reload({waitUntil:'load'}); await Q.ready(page, family);
+    await page.evaluate(() => __qaTransport.arm({path:'/api/assistant/chat/read',status:200,method:'POST'}));
+  }
+  progress('fixture-ready');
+  await Q.check('a genuine mobile orb tap opens chat without starting the microphone or keyboard', async () => {
+    await Q.shot(page, 'entry-gestures-home-phone');
+    await page.tap(entry); await ready();
+    assert.equal((await state()).open, true); assert.equal((await state()).listening, false);
+    assert.equal(await started(), 0); assert.notEqual(await page.evaluate(() => document.activeElement.id), 'assistant-chat-input');
+    assert.deepEqual(turns, []); await page.tap('button' + selector('close'));
+    progress('tap-checked');
+  });
+  await Q.check('the first orb long press captures during history loading and sends its reliable final exactly once on the same release', async () => {
+    await cold(); const gesture = await press(entry); await recording();
+    await page.waitForFunction(() => __qaTransport.pending().length === 1);
+    assert.equal((await state()).loaded, false, 'recording starts before the real history callback returns');
+    assert.equal(await started(), 1);
+    await hear('我现在有多少积分？'); assert.deepEqual(turns, []);
+    await Q.shot(page, 'entry-gestures-first-hold-listening-phone');
+    await page.evaluate(() => __qaTransport.release()); await ready();
+    assert.equal((await state()).listening, true, 'accepting the first generation keeps the original gesture alive');
+    await release(gesture); await page.waitForFunction(() => FamilyAssistantPanel.getState().messageCount === 2); await ready();
+    await late(); assert.deepEqual(turns.map(turn => turn.text), ['我现在有多少积分？']);
+    assert.equal(await started(), 1, 'release does not generate an extra microphone click');
+    assert.equal((await state()).listening, false); assert.equal(await text(), '');
+    await Q.shot(page, 'entry-gestures-first-hold-sent-phone'); progress('first-hold-sent');
+  });
+  await Q.check('sliding the held homepage orb upward cancels and ignores both its release click and late recognition', async () => {
+    await page.tap('button' + selector('close'));
+    const gesture = await press(entry); await recording(); await hear('这句首页语音要取消');
+    await move(gesture, gesture.x, gesture.y - 150);
+    assert.equal(await page.$eval('.assistant-recording', node => node.dataset.cancel), 'true');
+    const count = await started(); await release(gesture); await late();
+    assert.equal(await started(), count); assert.equal((await state()).listening, false); assert.equal(await text(), '');
+    assert.equal(turns.length, 1); progress('orb-cancelled');
+  });
+  await Q.check('a textarea tap types normally while a long press preserves and appends to its existing draft without sending', async () => {
+    const count = await started(); await page.tap(input);
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'assistant-chat-input');
+    await page.keyboard.type('保留的手打草稿'); assert.equal(await started(), count);
+    await Q.shot(page, 'entry-gestures-textarea-typing-phone');
+    const gesture = await press(input); await recording(); await hear('补充的语音');
+    assert.equal(await text(), '保留的手打草稿', 'the original draft stays intact during capture');
+    await release(gesture); await late();
+    assert.equal(await text(), '保留的手打草稿\n补充的语音'); assert.equal(turns.length, 1);
+    assert.equal((await state()).listening, false); progress('draft-preserved');
+  });
+  await Q.check('sliding right from the textarea leaves an editable transcript and sends only the manually corrected text', async () => {
+    await B.fill(page, input, '');
+    const gesture = await press(input); await recording(); await hear('先留在输入框核对');
+    await move(gesture, gesture.x + 100, gesture.y);
+    assert.deepEqual(await page.$eval('.assistant-recording', node => ({cancel:node.dataset.cancel,review:node.dataset.review})), {cancel:'false',review:'true'});
+    await Q.shot(page, 'entry-gestures-textarea-review-phone');
+    const count = await started(); await release(gesture); await late();
+    assert.equal(await text(), '先留在输入框核对'); assert.equal(turns.length, 1); assert.equal(await started(), count);
+    await page.tap(input); assert.equal(await page.evaluate(() => document.activeElement.id), 'assistant-chat-input');
+    await B.fill(page, input, '我现在还有多少可兑换积分？'); await page.tap('#assistant-chat-send');
+    await page.waitForFunction(() => FamilyAssistantPanel.getState().messageCount === 4); await ready(); await late();
+    assert.deepEqual(turns.map(turn => turn.text), ['我现在有多少积分？','我现在还有多少可兑换积分？']);
+    assert.equal(new Set(turns.map(turn => turn.turnId)).size, 2); progress('review-sent');
+  });
+  await Q.check('a system touch cancellation and a late microphone start cannot send or overwrite the textarea draft', async () => {
+    await B.fill(page, input, '系统打断后仍保留这份草稿');
+    await page.evaluate(() => { window.__qaDeferVoiceStart = true; });
+    const gesture = await press(input); await recording(false);
+    assert.equal((await state()).listening, false);
+    const count = await started(); await release(gesture, true); await late();
+    await page.evaluate(() => { window.__qaDeferVoiceStart = false; });
+    assert.equal(await text(), '系统打断后仍保留这份草稿'); assert.equal(turns.length, 2);
+    assert.equal(await started(), count); assert.equal((await state()).listening, false); assert.equal((await state()).holding, false);
+    progress('late-start-rejected');
+  });
+  await Q.check('release before cold history arrives keeps a safe draft through that real late response and a cancelled orb tap never opens later', async () => {
+    await cold(); const gesture = await press(entry); await recording();
+    await page.waitForFunction(() => __qaTransport.pending().length === 1);
+    await hear('历史还没加载好时先保留这段话'); await release(gesture);
+    assert.equal(turns.length, 2, 'an unresolved conversation cannot auto-send');
+    assert.equal(await text(), '历史还没加载好时先保留这段话');
+    await page.evaluate(() => __qaTransport.release()); await ready(); await late();
+    assert.equal(await text(), '历史还没加载好时先保留这段话'); assert.equal(turns.length, 2);
+    await Q.shot(page, 'entry-gestures-cold-history-draft-phone');
+    await page.tap('button' + selector('close'));
+    const count = await started(), short = await press(entry); await release(short, true);
+    await B.delay(650); assert.equal((await state()).open, false); assert.equal(await started(), count);
+    assert.deepEqual(await sql(), before, 'all gestures leave the real family ledger unchanged');
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/action','/api/parent/challenge','/api/parent/verify'].includes(call.path)), []);
+    assert.deepEqual(Q.report.pageErrors, []); progress('complete');
+  });
+}
+
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
   assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'voice-award', 'launcher-phone', 'launcher-tablet',
-    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent', 'cloud-voice'].includes(device));
+    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent', 'cloud-voice', 'entry-gestures'].includes(device));
   if (device.startsWith('launcher-')) {
     Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
   }
@@ -497,21 +657,28 @@ async function run() {
     const saved = await env.api(page, '/api/action', 'POST', {revision,action:rule,grant:verified.body.grant});
     assert.equal(saved.status, 200);
   }
-  if (device === 'voice-award') await page.evaluateOnNewDocument(() => {
+  if (device === 'voice-award' || device === 'entry-gestures') await page.evaluateOnNewDocument(() => {
     window.SpeechRecognition = class {
-      start() { window.__qaRecognizer = this; this.onstart?.(); this.onaudiostart?.(); }
+      start() {
+        window.__qaRecognizer = this; (window.__qaRecognizers ||= []).push(this);
+        if (!window.__qaDeferVoiceStart) { this.onstart?.(); this.onaudiostart?.(); }
+      }
       stop() { this.onend?.(); }
       abort() { this.onend?.(); }
     };
   });
   if (provider) await cloudVoice.setup(page);
+  // Change mobile emulation only after reaching the same-origin fixture: Puppeteer
+  // reloads the page when enabling touch, and its storage probe cannot run on about:blank.
+  if (device === 'entry-gestures') await page.setViewport({...size,deviceScaleFactor:1,isMobile:true,hasTouch:true});
   await page.reload({waitUntil:'load'}); await Q.ready(page, family);
   const ledger = async () => (await env.api(page, '/api/state')).body.state.points;
   const open = async () => {
     await click(page, entry);
     await page.waitForSelector('#assistant-chat-input', {visible:true});
   };
-  if (provider) { await open(); await cloudVoice.verify(page, env, provider); return; }
+  if (provider) { await cloudVoice.verify(page, env, provider); return; }
+  if (device === 'entry-gestures') { Q.phase(device); await entryGesturesFlow(page, env, family); return; }
   if (device === 'first-pin' || device === 'first-pin-retry') { await firstPinFlow(page, env, device, open); return; }
   if (device.startsWith('first-pin-')) { await firstPinConflictFlow(page, env, device, open); return; }
   if (device.startsWith('launcher-')) { await launcherFlow(page, env, device, open); return; }

@@ -119,8 +119,7 @@ async function verify(page, env, provider) {
     };
   });
   Q.report.assistantCloudVoice = {readiness:[], duration:[]};
-  async function press() {
-    const selector = '[data-assistant-action="hold-voice"]';
+  async function press(selector = '[data-assistant-action="hold-voice"]') {
     await page.waitForFunction(s => !document.querySelector(s).disabled, {}, selector);
     const point = await page.$eval(selector, button => {
       const rect = button.getBoundingClientRect();
@@ -129,8 +128,8 @@ async function verify(page, env, provider) {
     await gesture('touchStart', point);
     return point;
   }
-  async function hold() {
-    const point = await press();
+  async function hold(selector) {
+    const point = await press(selector);
     await page.waitForFunction(words => document.querySelector('.assistant-recording-text').textContent === words, {}, partial);
     await page.evaluate(() => { window.__qaNow += 1200; });
     return point;
@@ -143,8 +142,8 @@ async function verify(page, env, provider) {
       return !state.listening && !state.holding && !state.voiceFinishing;
     });
   }
-  await Q.check('live PCM displays a preview and submits one final after touch release', async () => {
-    await hold();
+  await Q.check('holding the home launcher opens chat, streams live PCM and submits one final on release', async () => {
+    await hold('.assistant-launcher');
     assert.equal(await drafts(), '');
     assert.equal(turns(), 0);
     const constraints = await page.evaluate(() => window.__qaConstraints);
@@ -160,8 +159,8 @@ async function verify(page, env, provider) {
     assert.ok(session.nonzero && session.finished && session.closed);
     assert.deepEqual(await page.evaluate(() => window.__qaBuzz), [12]);
   });
-  await Q.check('sliding up discards a streamed preview and stops the microphone', async () => {
-    const point = await hold();
+  await Q.check('holding the input and sliding up discards a streamed preview and stops the microphone', async () => {
+    const point = await hold('#assistant-chat-input');
     await gesture('touchMove', {...point, y:point.y - 120});
     await page.waitForSelector('.assistant-recording[data-cancel="true"]');
     await gesture('touchEnd');
