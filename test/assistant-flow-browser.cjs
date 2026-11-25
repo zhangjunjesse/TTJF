@@ -6,6 +6,7 @@ const { createAssistantService } = require('../assistant-service.cjs');
 const { executeTool } = require('../assistant-tools.cjs');
 const Q = require('./saas-browser.cjs');
 const cloudVoice = require('./assistant-cloud-voice-browser.cjs');
+const standaloneCanvas = require('./standalone-canvas-browser.cjs');
 const { B, action, click } = Q;
 const selector = name => '[data-assistant-action="' + name + '"]';
 const entry = '[data-action="assistant-open"]';
@@ -627,7 +628,8 @@ async function entryGesturesFlow(page, env, family) {
 async function run() {
   const device = process.env.ASSISTANT_FLOW_CASE || 'phone';
   assert.ok(['phone', 'tablet', 'landscape', 'template', 'greeting', 'award-unit', 'voice-award', 'launcher-phone', 'launcher-tablet',
-    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent', 'cloud-voice', 'cloud-voice-cold', 'entry-gestures'].includes(device));
+    'first-pin', 'first-pin-retry', 'first-pin-conflict', 'first-pin-concurrent', 'cloud-voice', 'cloud-voice-cold', 'entry-gestures', 'standalone-canvas'].includes(device));
+  if (device === 'standalone-canvas') { await standaloneCanvas.run(); return; }
   if (device.startsWith('launcher-')) {
     Q.phase(device); Q.report.assistantLauncher = {case:device}; launcherProgress('creating-fixture');
   }

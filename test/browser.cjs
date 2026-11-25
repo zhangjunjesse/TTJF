@@ -41,10 +41,10 @@ async function homeView(page, mode) {
     { timeout: 6000 }, mode);
 }
 
-async function launch({fakeMicrophone = false} = {}) {
+async function launch({fakeMicrophone = false, pipe = false} = {}) {
   return puppeteer.launch({
     executablePath: process.env.BROWSER_PATH || 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
-    headless: true, protocolTimeout: 30000,
+    headless: true, protocolTimeout: 30000, pipe,
     args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-background-timer-throttling',
       '--disable-backgrounding-occluded-windows', '--disable-renderer-backgrounding',
       ...(fakeMicrophone ? ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'] : [])]
