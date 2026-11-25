@@ -153,6 +153,8 @@ async function verify(page, env, provider) {
     assert.equal(await page.$eval('.assistant-message-user .assistant-message-text', node => node.textContent), final);
     assert.equal(turns(), 1);
     await released();
+    assert.notEqual(await page.evaluate(() => document.activeElement.id), 'assistant-chat-input',
+      'releasing the home launcher does not focus the composer under the finger');
     const session = provider.sessions[0];
     assert.equal(session.sizes[0], 1600);
     assert.deepEqual(session.events.hotwords, [], 'family names are not uploaded as cloud vocabulary');

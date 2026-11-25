@@ -43,12 +43,12 @@
       '<div id="assistant-chat-log" class="assistant-chat-log" role="log" aria-label="助手对话" aria-live="polite" aria-relevant="additions text"></div>' +
       '<div class="assistant-feedback" id="assistant-chat-feedback" hidden><p id="assistant-chat-error" role="alert"></p>' + button('retry', '重试', 'assistant-retry') + '</div>' + examples() +
       '<form id="assistant-chat-form" class="assistant-composer"><p id="assistant-chat-status" class="assistant-chat-status" role="status" aria-live="polite"></p><label for="assistant-chat-input" class="assistant-sr-only">给家长助手发消息</label>' +
-      '<div class="assistant-input-row">' + button('hold-voice', icon('mic') + '<span>按住说话</span>', 'assistant-hold-voice', ' aria-label="按住说话，松开发送，上滑取消，右滑转文字；可按住空格或回车" aria-describedby="assistant-hold-hint" aria-pressed="false"') +
-      '<textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="发消息或按住说话…" enterkeyhint="enter" aria-describedby="assistant-composer-hint assistant-hold-hint"></textarea>' +
-      button('voice', icon('mic'), 'assistant-tool assistant-voice', ' aria-label="听写成文字" aria-pressed="false" title="听写成文字，核对后再发送"') +
+      '<div class="assistant-input-row">' + button('hold-voice', icon('mic'), 'assistant-hold-voice', ' aria-label="按住说话" aria-describedby="assistant-hold-hint" aria-pressed="false"') +
+      '<textarea id="assistant-chat-input" name="assistantMessage" rows="1" maxlength="1200" placeholder="发消息…" enterkeyhint="enter" aria-describedby="assistant-composer-hint assistant-hold-hint"></textarea>' +
+      button('voice', icon('mic'), 'assistant-tool assistant-voice', ' aria-label="听写成文字" aria-pressed="false"') +
       '<button id="assistant-chat-send" type="submit" class="assistant-send" aria-label="发送消息">' + icon('send') + '</button></div>' +
-      '<p id="assistant-composer-hint" class="assistant-sr-only">轻点输入框打字。最多输入 1200 字。草稿可在原页面核对后保存。</p><p id="assistant-hold-hint" class="assistant-hold-hint">' +
-      (root.__TTJF_VOLC_ASR__ ? '火山语音识别 · ' : '') + '松开发送 · 上滑取消 · 右滑转文字</p><span id="assistant-chat-count" hidden></span></form></div>' +
+      '<p id="assistant-composer-hint" class="assistant-sr-only">轻点输入框打字。最多输入 1200 字。草稿可在原页面核对后保存。</p>' +
+      '<p id="assistant-hold-hint" hidden>按住说话，松开发送，上滑取消，右滑转文字。语音按钮也支持按住空格或回车。</p><span id="assistant-chat-count" hidden></span></form></div>' +
       '<div class="assistant-recording" data-cancel="false" data-review="false" hidden><p class="assistant-recording-text"></p><p class="assistant-recording-hint" role="status" aria-live="polite"></p>' +
       '<div class="assistant-recording-wave" aria-hidden="true">' + '<span></span>'.repeat(48) + '</div></div>' +
       '<div id="assistant-clear-confirm" class="assistant-confirm-overlay" hidden><section class="assistant-confirm" role="alertdialog" aria-modal="true" aria-labelledby="assistant-clear-title" aria-describedby="assistant-clear-description"><h3 id="assistant-clear-title">清空这段对话？</h3><p id="assistant-clear-description">当前对话和未办理的助手草稿会清空，已保存的家庭记录会保留。</p><div>' + button('cancel-clear', '保留对话', 'assistant-button') + button('confirm-clear', '清空对话', 'assistant-button assistant-danger') + '</div></section></div></section>';
@@ -178,7 +178,7 @@
     contextNode.textContent = context;
     contextNode.hidden = !context;
     var speechSupported = speechAvailable();
-    input.placeholder = speechSupported ? '发消息或按住说话…' : '发消息…';
+    input.setAttribute('aria-describedby', speechSupported ? 'assistant-composer-hint assistant-hold-hint' : 'assistant-composer-hint');
     host.classList.toggle('assistant-is-editing', editing || !!trim(text) || !speechSupported);
     input.readOnly = !!holding;
     doc.getElementById('assistant-chat-send').disabled = !loaded || !trim(text) || busy() || confirming || uncertainTurn() || !!holding;
@@ -190,11 +190,11 @@
     microphone.disabled = !speechSupported || clearing || confirming || !!holding;
     var dictating = !!voice && !holding;
     microphone.setAttribute('aria-pressed', String(dictating)); microphone.setAttribute('aria-label', dictating ? '停止听写' : '听写成文字');
-    microphone.title = speechSupported ? '听写成文字，核对后再发送' : '当前浏览器不支持听写，请输入文字';
+    microphone.title = speechSupported ? microphone.getAttribute('aria-label') : '当前浏览器不支持听写，请输入文字';
     var holdButton = host.querySelector('[data-assistant-action="hold-voice"]');
     holdButton.disabled = !speechSupported || holdBusy() || confirming || uncertainTurn() || !!holding && !holding.held;
     holdButton.setAttribute('aria-pressed', String(!!holding && holding.held));
-    holdButton.title = speechSupported ? '按住说话，松开发送，上滑取消，右滑转文字；也可以按住空格或回车' : '当前浏览器不支持语音，请输入文字';
+    holdButton.title = speechSupported ? '按住说话' : '当前浏览器不支持语音，请输入文字';
     renderRecording();
     var count = doc.getElementById('assistant-chat-count');
     count.hidden = text.length < 1080;
@@ -396,17 +396,17 @@
       (holding.speaking == null ? holding.interimText : holding.speaking))));
     var target = host.querySelector('[data-assistant-action="hold-voice"]');
     target.classList.toggle('is-recording', pressed);
-    var label = '按住说话', hint = '', words = '';
+    var hint = '', words = '';
     if (pressed) {
-      if (holding.cancel) { label = '松开取消'; hint = '松开取消，移回继续'; }
-      else if (preparing) { label = '准备中'; hint = '请继续按住，准备好后再说'; }
-      else if (holding.review) { label = '松开转文字'; hint = '松开转成文字，移回继续'; }
-      else if (needsReview) { label = '松开核对'; hint = '松开后核对文字'; }
-      else { label = '松开发送'; hint = '松开发送 · 上滑取消 · 右滑转文字'; }
+      if (holding.cancel) hint = '松开取消，移回继续';
+      else if (preparing) hint = '请继续按住，准备好后再说';
+      else if (holding.review) hint = '松开转成文字，移回继续';
+      else if (needsReview) hint = '松开后核对文字';
+      else hint = '录音中';
       words = (holding.finalText + holding.interimText).slice(0, 1200) || holding.failure;
-      if (!words) words = holding.ended ? '录音已结束' : preparing ? '正在准备麦克风…' : '正在听你说…';
+      if (!words && holding.ended) words = '录音已结束';
+      else if (!words && preparing) words = '正在准备麦克风…';
     }
-    target.querySelector('span').textContent = label;
     recording.querySelector('.assistant-recording-hint').textContent = hint;
     recording.querySelector('.assistant-recording-text').textContent = words;
   }
