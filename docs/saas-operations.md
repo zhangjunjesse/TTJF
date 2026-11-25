@@ -95,7 +95,11 @@ location / {
 - 浏览器申请单声道采集、回声消除、降噪和自动增益，实际效果取决于设备和环境。Web Audio 将采集结果转换成 16 kHz 单声道、16 位小端 PCM，每 50 毫秒发给本站。本站按火山建议合并为 200 毫秒一包，松手补发剩余采样。端点检测由火山处理。页面只显示中间结果，整段定稿才能进入助手。开始传输音频前可以自动重连一次，传输中断后需要重新录音。[火山双向流式接口](https://docs.volcengine.com/docs/doubao-voice/bidirectional-streaming-automatic-speech-recognition-websocket?lang=zh)
 - 外网需使用 HTTPS，本机可用 localhost 或回环地址。反向代理需支持上方 WebSocket 配置。音频从按住时开始传输，上滑取消无法撤回此前已传出的音频。时长计费以开通的资源为准，应将已发送的静音也计入费用估算。[火山计费说明](https://docs.volcengine.com/docs/doubao-voice/billing-instructions?lang=zh)
 
-火山收到的热词来自服务端配置。浏览器原有的家庭名称匹配只用于本地核对候选词。每次录音最长 60 秒。测试时可设置 `ASSISTANT_FLOW_CASE=cloud-voice` 再运行 `npm run test:assistant:flow`，用合成音频验证按住发送、取消、断线和听写草稿。嘈杂环境的识别效果需要用真实录音另测。
+同一标签页一次只采集一路麦克风。火山录音最长 60 秒，切到后台导致录音中断时，回到页面重新按住即可。火山收到的热词来自服务端配置。浏览器原有的家庭名称匹配只用于本地核对候选词。
+
+在 Android 等移动设备上，浏览器和麦克风会影响回声消除与降噪的效果。用目标手机分别在安静处和有人说话时读同一句含名字、分数的指令，核对最终文字。排查字幕慢时，分别记录按住到提示收音、开始说话到首条字幕、松手到定稿的时间。音频采集、分包、网络和识别都会影响等待时间。`bigmodel_nostream` 模式主要看松手到定稿。[浏览器音频采集规范](https://www.w3.org/TR/mediacapture-streams/#media-track-constraints)
+
+测试时可设置 `ASSISTANT_FLOW_CASE=cloud-voice` 再运行 `npm run test:assistant:flow`，用合成音频验证按住发送、取消、断线和听写草稿。
 
 ## 整库备份和恢复
 
