@@ -96,6 +96,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
       } else {
         await client.query('UPDATE saas_users SET password_hash=$2 WHERE id=$1', [entry.user_id, newHash]);
         await client.query('UPDATE saas_sessions SET revoked_at=$2 WHERE user_id=$1 AND revoked_at IS NULL', [entry.user_id, sampled]);
+        await client.query('DELETE FROM saas_parent_devices WHERE user_id=$1', [entry.user_id]);
         await client.query("UPDATE saas_email_tokens SET consumed_at=$2 WHERE user_id=$1 AND purpose='reset' AND consumed_at IS NULL", [entry.user_id, sampled]);
       }
       return { status: 200, body: { ok: true } };
@@ -121,6 +122,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
     return store.transaction(async client => {
       const who = await identity(client, ctx);
       await client.query('UPDATE saas_sessions SET revoked_at=$2 WHERE token_hash=$1', [who.session.token_hash, at()]);
+      await client.query('DELETE FROM saas_parent_devices WHERE session_hash=$1', [who.session.token_hash]);
       return { status: 200, body: { ok: true }, headers: { 'Set-Cookie': cookie('') } };
     });
   }
@@ -137,6 +139,7 @@ function createAuth({ store, mail, now, publicOrigin, cookieName, secureCookie, 
       // Revoke outstanding one-use confirmations, including those in this session.
       await client.query('DELETE FROM saas_parent_grants WHERE user_id=$1', [who.user.id]);
       await client.query('DELETE FROM saas_parent_challenges WHERE user_id=$1', [who.user.id]);
+      await client.query('DELETE FROM saas_parent_devices WHERE user_id=$1', [who.user.id]);
       return { status: 200, body: { ok: true } };
     });
   }

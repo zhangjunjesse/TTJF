@@ -722,6 +722,17 @@ body .sheet.ledger-gift-sheet[data-form-kind]:not(.global-dialog) {
 .sheet[data-form-kind="preferences"] [aria-checked="true"] .preferences-switch { border-color: #326346; background: #326346; }
 .sheet[data-form-kind="preferences"] [aria-checked="true"] .preferences-switch > span { transform: translateX(16px); }
 .sheet[data-form-kind="preferences"] [aria-busy="true"] .preferences-switch { border-style: dashed; }
+.parent-device-settings { margin-top: 20px; padding-top: 12px; border-top: 1px solid #dce5d8; }
+.parent-device-settings .menu-row { min-height: 64px; margin: 0; padding: 8px 0; border: 0; color: #243c2d; background: transparent; box-shadow: none; }
+.parent-device-settings .preferences-row-copy { flex: 1; min-width: 0; }
+.parent-device-settings .preferences-row-copy > :is(b, small) { white-space: normal; overflow-wrap: anywhere; }
+.parent-device-settings .preferences-row-copy > small { color: #5b6b5e; line-height: 18px; }
+.parent-device-settings .preferences-switch { position: relative; display: block; flex: 0 0 38px; width: 38px; height: 22px; margin-left: 10px; border: 1px solid #96a99a; border-radius: 20px; background: #aebeb1; }
+.parent-device-settings .preferences-switch > span { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px #18332226; transition: transform .14s ease; }
+.parent-device-settings [aria-checked="true"] .preferences-switch { border-color: #326346; background: #326346; }
+.parent-device-settings [aria-checked="true"] .preferences-switch > span { transform: translateX(16px); }
+.parent-device-settings [aria-busy="true"] .preferences-switch { border-style: dashed; }
+.parent-device-settings .menu-row:disabled { opacity: .7; }
 .sheet[data-form-kind="preferences"] .preferences-secondary { padding-top: 6px; border-top: 1px solid #dce5d8; }
 .sheet[data-form-kind="preferences"] .preferences-capabilities > summary { display: flex; align-items: center; min-width: 0; min-height: 48px; padding: 8px 0; color: #243c2d; list-style: none; cursor: pointer; }
 .sheet[data-form-kind="preferences"] .preferences-capabilities > summary::-webkit-details-marker { display: none; }
@@ -752,10 +763,15 @@ body .sheet.ledger-gift-sheet[data-form-kind]:not(.global-dialog) {
 }
 @media (prefers-reduced-motion: reduce) {
   .sheet[data-form-kind="preferences"] .preferences-switch > span { transition: none; }
+  .parent-device-settings .preferences-switch > span { transition: none; }
 }
 @media (forced-colors: active) {
   .sheet[data-form-kind="preferences"] .preferences-switch { border: 1px solid ButtonText; background: Canvas; }
   .sheet[data-form-kind="preferences"] .preferences-switch > span { background: ButtonText; }
   .sheet[data-form-kind="preferences"] [aria-checked="true"] .preferences-switch { border-color: Highlight; background: Highlight; }
   .sheet[data-form-kind="preferences"] [aria-checked="true"] .preferences-switch > span { background: HighlightText; }
+  .parent-device-settings .preferences-switch { border: 1px solid ButtonText; background: Canvas; }
+  .parent-device-settings .preferences-switch > span { background: ButtonText; }
+  .parent-device-settings [aria-checked="true"] .preferences-switch { border-color: Highlight; background: Highlight; }
+  .parent-device-settings [aria-checked="true"] .preferences-switch > span { background: HighlightText; }
 }
