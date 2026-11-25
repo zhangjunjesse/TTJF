@@ -205,8 +205,12 @@ function read(name, args, state, now) {
       const label=range.period==='week'?'本周':'最近七日', data = {...range,earned,spent,net:earned-spent,completed,available:totals.available};
       return answer(label+'小结',label+' '+since + ' 至 ' + today + '：获得 ' + earned + ' 分，消费 ' + spent + ' 分，净变化 ' + (earned-spent) + ' 分；该范围安排中已完成 ' + completed + ' 条提醒。当前可用 ' + totals.available + ' 分。',{type:'week',period:range.period},data);
     }
+    const query={type:'ledger',days,...(args.period?{period:args.period}:{}),...(args.behavior?{behavior:args.behavior}:{})};
+    const summary=since+' 至 '+today+(args.behavior?'，“'+args.behavior+'”相关加分':'')+'：共获得 '+earned+' 分，消费 '+spent+' 分（'+rows.length+' 笔记录）。';
+    if (args.summaryOnly) return answer('积分合计',summary,{...query,summaryOnly:true},{...range,total:rows.length,earned,spent});
     const data={...range,...pageRows(rows,args.limit || 20),earned,spent};
-    return answer('积分流水',data.rows.length ? since + ' 至 ' + today + (args.behavior?'，“'+args.behavior+'”相关加分':'')+'：\n' + data.rows.map(row => row.day+' '+row.name+' '+(row.points>0?'+':'')+row.points+' 分').join('\n')+moreText(data) : since+' 至 '+today+' 没有符合条件的积分流水。',{type:'ledger',days,...(args.period?{period:args.period}:{}),...(args.behavior?{behavior:args.behavior}:{}),limit:data.limit},data);
+    const details=data.rows.length?'\n'+data.rows.map(row => row.day+' '+row.name+' '+(row.points>0?'+':'')+row.points+' 分').join('\n')+moreText(data):'\n没有符合条件的积分流水。';
+    return answer('积分流水',summary+details,{...query,limit:data.limit},data);
   }
   if (name === 'read_rules') {
     const data=pageRows(state.pointItems.filter(row=>args.includeDisabled || row.enabled).map(row=>copy(row,['id','name','points','enabled'])),args.limit);
