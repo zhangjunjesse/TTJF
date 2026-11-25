@@ -30,19 +30,25 @@
       "type": "function",
       "function": {
         "name": "read_ledger",
-        "description": "读取最近若干家庭日的真实积分流水，包含加分、礼品扣分与伙伴道具消费；条数有上限。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 period=week按上海周一到今天；last7为含今天的最近七日。behavior仅筛该行为加分；先全量匹配再截返回条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "description": "查询最近若干上海家庭日的真实积分合计和流水，包含加分、礼品扣分与伙伴道具消费。days=N表示含今天的最近N个家庭日，默认7；period=week为周一至今天，last7为最近七日，指定period时优先于days。只问获得或消费合计时用summaryOnly=true。earned、spent和total按完整匹配记录计算，limit只限制明细，不能用截断明细重新相加代替合计。behavior仅筛该行为加分；上下文未列出的记录仍可在本地完整读取。可选after引用本轮先前候选的零起始下标；确认保存这些候选后，再按最新记录查询。",
         "parameters": {
           "type": "object",
           "properties": {
             "days": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 366
+              "maximum": 366,
+              "description": "含今天的最近几个上海家庭日；最近三天传3。第N天是序数单日，缺起点先问起点，不能当成最近N天。未要求特定范围的流水查询默认7。"
             },
             "limit": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 50
+              "maximum": 50,
+              "description": "最多展示的明细条数，不影响完整范围的积分合计。"
+            },
+            "summaryOnly": {
+              "type": "boolean",
+              "description": "只返回完整范围的获得、消费与记录数，不列明细。只问加了多少分时设为true。"
             },
             "period": {
               "type": "string",
@@ -76,7 +82,7 @@
       "type": "function",
       "function": {
         "name": "read_week_summary",
-        "description": "按上海家庭日只读汇总真实记录：period=week为本周周一到今天；period=last7为包含今天的最近七日，未指定默认last7。behavior可筛指定行为，只汇总该行为真实加分，不能把其他行为算入。返回真实日期范围，不写账。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "description": "按上海家庭日只读汇总真实记录：period=week为本周周一到今天；period=last7为包含今天的最近七日，未指定默认last7。其他最近N天的积分合计使用read_ledger(days=N,summaryOnly=true)。behavior可筛指定行为，只汇总该行为真实加分，不能把其他行为算入。返回真实日期范围，不写账。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -112,7 +118,7 @@
       "type": "function",
       "function": {
         "name": "read_rules",
-        "description": "列出真实常用行为规则及每次默认分值；查询规则不是实际加分。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
+        "description": "查询家长想查看的常用行为或默认分值。家长给出了本次行为和分数时，直接用 draft_award，当前家庭可以没有任何规则。 上下文未列出目标时，可在本地完整记录中读取并让家长选择；不把无关清单发送给模型。 返回清单有界，data.total为全量匹配数、hasMore标示还有记录；先匹配完整家庭记录，再限制显示条数。 可选 after 为本轮工具调用中先前候选操作的零起始索引数组；提供后，查询等待这些候选在应用内确认保存，再按最新记录执行。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -335,7 +341,7 @@
       "type": "function",
       "function": {
         "name": "draft_award",
-        "description": "准备一次性加分草稿，也可修改当前待确认的加分。行为和分值已知时直接传 name 和 points，不需要已有规则、itemId 或先查规则。若家长指定按一条已有规则加分，可用其真实 itemId。reason 只填家长明确给出的本次原因。确认前不记账。",
+        "description": "准备本次加分草稿，也可修改当前待确认的同一笔加分。普通行为加分值默认本次，无需追问一次还是常用。行为和本次分值明确时直接传name和points，不需要已有规则或先查规则；指定按已有规则加分时才用其真实itemId。新行为的缺失分值不能沿用上一笔。name可删明确赘字，保留原意、条件和否定；reason只填明确给出的本次原因。有影响分值或行为的歧义时先澄清。确认前不记账。",
         "parameters": {
           "type": "object",
           "properties": {
@@ -351,7 +357,8 @@
             "points": {
               "type": "integer",
               "minimum": 1,
-              "maximum": 9007199254740991
+              "maximum": 9007199254740991,
+              "description": "本笔明确的整数分值。新行为后没有积分单位、又可解释成生活动作的同音表达，先确认含义和分值；不能因上一笔是一分就猜本笔也是一分。"
             },
             "reason": {
               "type": "string",
@@ -367,7 +374,7 @@
       "type": "function",
       "function": {
         "name": "draft_rule",
-        "description": "新建或编辑常用行为规则候选，支持改名、改分、预设原因、启用停用；id只用于真实现有项。以后/每天/每次的规则不能当成本次加分；不确定是哪种就追问。缺少名称/分值可填写新建表单。",
+        "description": "家长明确要建立或修改以后反复使用的常用行为规则时使用，支持改名、改分、预设原因、启用停用；id只用于真实现有项。普通行为加分值默认用draft_award准备本次加分。已确定是在建规则但缺名称或分值时，可填写新建表单。",
         "parameters": {
           "type": "object",
           "properties": {
