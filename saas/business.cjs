@@ -3,6 +3,7 @@ const crypto = require('node:crypto');
 const M = require('../model.js');
 const S = require('./security.cjs');
 const { createAssistantChats } = require('./assistant-chat.cjs');
+const { createAwardPhotos } = require('./award-photos.cjs');
 // Private, immutable by callers: these are the existing daily business actions.
 const PUBLIC = new Set(['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel',
   'pet.configure', 'pet.care', 'pet.scene', 'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare']);
@@ -101,7 +102,12 @@ function createBusiness({ store, auth, now, assistant }) {
       if (PUBLIC.has(body.action.type)) { return error(400, 'VALIDATION_ERROR', '此日常操作无需家长验证'); }
       if (family.state.appliedActions.includes(body.action.id)) { return error(400, 'ACTION_ID_REUSED', '此操作已提交，请使用相同内容直接重试'); }
       if (body.action.type === 'parent.configure') { configValues(body.action, family); }
-      else { applyModel(family, body.action); }
+      else {
+        const proposed = applyModel(family, body.action);
+        if (body.action.type === 'points.add') {
+          await photos.assertAttachable(client, who, family, proposed.points.at(-1).photoIds || []);
+        }
+      }
       const raw = S.token(), method = family.parent.method, expiresAt = new Date(+at() + 120000);
       const receipt = await S.makeReceipt(body.action);
       const response = { challengeId: raw, method, expiresAt: expiresAt.toISOString() };
@@ -201,9 +207,12 @@ function createBusiness({ store, auth, now, assistant }) {
         state.appliedActions.push(body.action.id);
       } else { state = applyModel(family, body.action); }
       if (!Number.isSafeInteger(family.revision + 1)) { return error(500, 'REVISION_LIMIT', '版本号已达到上限'); }
+      const photoIds = body.action.type === 'points.add' ? state.points.at(-1).photoIds || [] : [];
+      await photos.assertAttachable(client, who, family, photoIds);
       const revision = family.revision + 1, receipt = await S.makeReceipt(body.action);
       await client.query('UPDATE saas_families SET state=$2,parent=$3,revision=$4,updated_at=$5 WHERE id=$1', [family.id, state, parent, revision, at()]);
       await client.query('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES($1,$2,$3,$4,$5)', [family.id, body.action.id, receipt, revision, at()]);
+      await photos.commit(client, who, family, body.action, photoIds);
       if (grantHash) { await client.query('DELETE FROM saas_parent_grants WHERE token_hash=$1', [grantHash]); }
       const updatedFamily = { ...family, state, parent, revision };
       await chats.committed(client, who, updatedFamily, binding, revision);
@@ -244,6 +253,8 @@ function createBusiness({ store, auth, now, assistant }) {
     return run(ctx, async () => output);
   }
   const chats = createAssistantChats({ store, run, assistant, at, rate });
-  return { state, meta, challenge, verify, action, interpret, chatRead: chats.read, chatTurn: chats.turn, chatClear: chats.clear };
+  const photos = createAwardPhotos({ run, at, rate });
+  return { state, meta, challenge, verify, action, interpret, photoUpload: photos.upload, photoRead: photos.read,
+    chatRead: chats.read, chatTurn: chats.turn, chatClear: chats.clear };
 }
 module.exports = { createBusiness };

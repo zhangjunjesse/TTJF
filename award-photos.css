@@ -1,0 +1,21 @@
+.award-photo-editor { display: grid; gap: 8px; margin: 12px 0; }
+.award-photo-heading, .award-photo-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.award-photo-heading { justify-content: space-between; }
+.award-photo-heading small { font-weight: 400; }
+.award-photo-editor ul { margin: 0; padding: 0; display: grid; gap: 8px; list-style: none; }
+.award-photo-editor li { display: flex; gap: 12px; align-items: center; }
+.award-photo-editor li span[role=status] { font-size: .875rem; }
+.award-photo-editor button, .award-photo-history button { min-height: 44px; border: 1px solid #b5c8bf; border-radius: 10px; padding: 6px 12px; background: #fff; color: #20503f; font: inherit; cursor: pointer; }
+.award-photo-editor button[data-action=award-photo-preview] { padding: 2px; }
+.award-photo-editor img { display: block; width: 76px; height: 68px; object-fit: contain; }
+.award-photo-history { display: block; margin-top: 4px; }
+.award-photo-viewer[open] { display: flex; flex-direction: column; width: min(96vw, 940px); height: 88vh; height: 88dvh; max-height: 100%; border: 0; padding: 12px; border-radius: 16px; color: #fff; background: #17231f; }
+.award-photo-viewer::backdrop { background: rgb(12 18 16 / 83%); }
+.award-photo-viewer header, .award-photo-viewer footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px; flex-wrap: wrap; }
+.award-photo-viewer button { min-height: 44px; padding: 4px 14px; border: 1px solid #82978d; border-radius: 8px; background: #233e31; color: white; font: inherit; }
+.award-photo-viewer button:disabled { opacity: .5; }
+.award-photo-stage { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.award-photo-stage img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.award-photo-stage img[hidden] { display: none; }
+.award-photo-stage.zoomed img { width: max(180%, 900px); height: auto; max-width: none; }
+.award-photo-stage span:not(:empty) { position: absolute; inset: 40% 0 auto; text-align: center; }

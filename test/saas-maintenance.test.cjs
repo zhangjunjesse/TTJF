@@ -74,6 +74,8 @@ test('v14 SQLite cleanup is bounded, preserves active credentials and all durabl
       [hash, owner.familyId, owner.userId, sessionHash, { algorithm: 'sha256', digest: 'a'.repeat(64) }, expiry]);
     await f.database.query('INSERT INTO saas_assistant_leases(id,family_id,user_id,session_hash,expires_at) VALUES($1,$2,$3,$4,$5)', [uuid, owner.familyId, owner.userId, sessionHash, expiry]);
     await f.database.query('INSERT INTO saas_rate_limits(scope,count,expires_at) VALUES($1,1,$2)', [hash, expiry]);
+    await f.database.query('INSERT INTO saas_award_photos(family_id,id,uploaded_by,data,created_at,expires_at) VALUES($1,$2,$3,$4,$5,$6)',
+      [owner.familyId, uuid, owner.userId, Buffer.alloc(16), current, expiry]);
     if (i === 3) { keep.hash = hash; keep.id = uuid; }
   }
   await f.database.query('INSERT INTO saas_family_imports(family_id,source_sha256,source_revision,imported_at) VALUES($1,$2,1,$3)', [owner.familyId, 'f'.repeat(64), current]);
@@ -89,7 +91,7 @@ test('v14 SQLite cleanup is bounded, preserves active credentials and all durabl
   await f.server.ops.cleanupExpired({ batchSize: 2 });
   for (const [table, key, value] of [['saas_sessions', 'token_hash', keep.hash], ['saas_email_tokens', 'token_hash', keep.hash],
     ['saas_invitations', 'id', keep.id], ['saas_parent_challenges', 'token_hash', keep.hash], ['saas_parent_grants', 'token_hash', keep.hash],
-    ['saas_assistant_leases', 'id', keep.id], ['saas_rate_limits', 'scope', keep.hash]]) {
+    ['saas_assistant_leases', 'id', keep.id], ['saas_rate_limits', 'scope', keep.hash], ['saas_award_photos', 'id', keep.id]]) {
     assert.equal((await f.database.query('SELECT count(*) n FROM ' + table + ' WHERE expires_at<=$1', [current])).rows[0].n, 0, table);
     assert.equal((await f.database.query('SELECT count(*) n FROM ' + table + ' WHERE ' + key + '=$1', [value])).rows[0].n, 1, table);
   }

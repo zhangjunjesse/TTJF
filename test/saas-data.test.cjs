@@ -8,7 +8,7 @@ const path = require('node:path');
 const { spawn } = require('node:child_process');
 const M = require('../model.js');
 const S = require('../saas/security.cjs');
-const { fixture,register,family,request,grant,PIN } = require('../saas/testing.cjs');
+const { fixture,register,family,request,grant,setup,PIN } = require('../saas/testing.cjs');
 const { importFamily,backupFamily,validateEnvelope } = require('../tools/saas-data.cjs');
 function temporary(t) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(),'ttjf-v13-import-'));
@@ -180,4 +180,36 @@ test('operator CLI backs up, validates, restores and refuses overwrite using a t
     assert.equal(replay.status,200);
     assert.equal(replay.body.revision,legacy.envelope.revision);
   }
+});
+
+test('family backup restores the photos on each award and excludes unfinished uploads', async t => {
+  const f = await fixture(t);
+  const user = await register(f, 'photo-backup@example.test');
+  const first = await family(f, user, '原家庭');
+  const second = await family(f, user, '恢复目标');
+  const image = fs.readFileSync(path.resolve(__dirname, '../assets/capybara.jpg'));
+  const dataUrl = 'data:image/jpeg;base64,' + image.toString('base64');
+  const upload = () => request(f.server, 'POST', '/api/award-photos', { dataUrl }, first);
+  const attached = await upload();
+  assert.ok(attached.status === 200 || attached.status === 201, 'a photo can be staged');
+  const pending = await upload();
+  await setup(f, first);
+  const photoId = attached.body.photoId;
+  const action = { id: 'book-photo', type: 'points.add', name: '完成作业', points: 5, photoIds: [photoId] };
+  const approval = await grant(f, first, action);
+  const award = await request(f.server, 'POST', '/api/action', { revision: 2, action, grant: approval }, first);
+  assert.equal(award.status, 200);
+  const output = path.join(temporary(t), 'family-with-photo.json');
+  await backupFamily(f.server.store, { familyId: first.familyId, ownerEmail: user.email, output });
+  const archive = JSON.parse(fs.readFileSync(output, 'utf8'));
+  assert.deepEqual(Object.keys(archive.photos), [photoId]);
+  assert.throws(() => validateEnvelope({ ...archive, photos: {} }), /photo/i);
+  assert.throws(() => validateEnvelope({ ...archive, photos: { ...archive.photos, [pending.body.photoId]: dataUrl } }), /photo/i);
+  await importFamily(f.server.store, { source: output, familyId: second.familyId, ownerEmail: user.email, apply: true });
+  const restored = await request(f.server, 'POST', '/api/award-photos/read', { photoId }, second);
+  assert.equal(restored.status, 200);
+  assert.equal(restored.body.dataUrl, dataUrl);
+  const replay = await request(f.server, 'POST', '/api/action', { revision: 2, action }, second);
+  assert.equal(replay.status, 200);
+  assert.equal(replay.body.state.points.length, 1);
 });

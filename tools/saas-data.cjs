@@ -8,10 +8,12 @@ const M = require('../model.js');
 const S = require('../saas/security.cjs');
 const { createStore } = require('../saas/store.cjs');
 const { resolveDatabasePath } = require('../saas/sqlite.cjs');
+const { decodeJpeg, dataUrl } = require('../saas/award-photos.cjs');
+const MAX_ARCHIVE_BYTES = 64 * 1024 * 1024;
 const isObject = value => value && typeof value === 'object' && !Array.isArray(value);
 function requireValue(condition, message) { if (!condition) throw new Error(message); }
 function validateEnvelope(value) {
-  requireValue(isObject(value) && Object.keys(value).every(key => ['revision','state','parent','receipts'].includes(key)), 'Expected a private family envelope, not a public business export.');
+  requireValue(isObject(value) && Object.keys(value).every(key => ['revision','state','parent','receipts','photos'].includes(key)), 'Expected a private family envelope, not a public business export.');
   requireValue(Number.isSafeInteger(value.revision) && value.revision >= 1 && value.revision < Number.MAX_SAFE_INTEGER, 'Invalid source revision.');
   M.totals(value.state);
   const parent = value.parent;
@@ -37,12 +39,24 @@ function validateEnvelope(value) {
       requireValue(Object.keys(receipt).every(key => ['algorithm','digest','salt','n'].includes(key)), 'Unexpected private receipt field.');
     } else requireValue(Object.keys(receipt).every(key => ['algorithm','digest'].includes(key)), 'Unexpected receipt field.');
   }
+  const photos = value.photos === undefined ? {} : value.photos;
+  requireValue(isObject(photos), 'Invalid family backup photos.');
+  const referenced = new Set();
+  for (const record of value.state.points) {
+    for (const id of record.photoIds || []) {
+      requireValue(record.id.startsWith('points-') && Object.hasOwn(value.receipts, record.id.slice(7)), 'Photo has no matching award receipt.');
+      requireValue(!referenced.has(id) && Object.hasOwn(photos, id), 'Duplicate or missing award photo.');
+      decodeJpeg(photos[id]);
+      referenced.add(id);
+    }
+  }
+  requireValue(Object.keys(photos).length === referenced.size, 'Unreferenced photo in family backup.');
   return JSON.parse(JSON.stringify(value));
 }
 function readEnvelope(file) {
   const absolute = path.resolve(file);
   const size = fs.statSync(absolute).size;
-  requireValue(size <= 64 * 1024 * 1024, 'Source exceeds the 64 MiB operator import limit.');
+  requireValue(size <= MAX_ARCHIVE_BYTES, 'Source exceeds the 64 MiB operator import limit.');
   const bytes = fs.readFileSync(absolute);
   let value;
   try { value = JSON.parse(bytes.toString('utf8')); } catch (_) { throw new Error('Source is not valid JSON; nothing was changed.'); }
@@ -87,6 +101,12 @@ async function importFamily(store, {source, familyId, ownerEmail, apply = false,
     for (const [actionId,receipt] of Object.entries(envelope.receipts)) {
       await client.query('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES($1,$2,$3,$4,$5)',[familyId,actionId,receipt,revision,at]);
     }
+    for (const record of envelope.state.points) {
+      for (const id of record.photoIds || []) {
+        await client.query(`INSERT INTO saas_award_photos(family_id,id,data,action_id,created_at,expires_at,committed_at)
+          VALUES($1,$2,$3,$4,$5,$5,$5)`, [familyId, id, decodeJpeg(envelope.photos[id]), record.id.slice(7), at]);
+      }
+    }
     await client.query('INSERT INTO saas_family_imports(family_id,source_sha256,source_revision,imported_at) VALUES($1,$2,$3,$4)',[familyId,digest,envelope.revision,at]);
     return result;
   });
@@ -100,9 +120,22 @@ async function backupFamily(store, {familyId, ownerEmail, output}) {
     const rows = (await client.query('SELECT action_id,receipt FROM saas_action_receipts WHERE family_id=$1 ORDER BY action_id',[familyId])).rows;
     const receipts = Object.create(null);
     for (const row of rows) receipts[row.action_id] = row.receipt;
-    return validateEnvelope({revision:Number(family.revision),state:family.state,parent:family.parent,receipts});
+    const archive = {revision:Number(family.revision),state:family.state,parent:family.parent,receipts};
+    let remaining = MAX_ARCHIVE_BYTES - Buffer.byteLength(JSON.stringify(archive));
+    for (const record of family.state.points) {
+      for (const id of record.photoIds || []) {
+        const row = (await client.query('SELECT data FROM saas_award_photos WHERE family_id=$1 AND action_id=$2 AND id=$3', [familyId, record.id.slice(7), id])).rows[0];
+        requireValue(row, 'Cannot back up a missing award photo.');
+        remaining -= Math.ceil(row.data.length / 3) * 4;
+        requireValue(remaining >= 0, 'Family exceeds the 64 MiB import limit. Use the SQLite database backup.');
+        if (!archive.photos) archive.photos = {};
+        archive.photos[id] = dataUrl(row.data);
+      }
+    }
+    return validateEnvelope(archive);
   });
   const bytes = Buffer.from(JSON.stringify(envelope,null,2) + '\n','utf8');
+  requireValue(bytes.length <= MAX_ARCHIVE_BYTES, 'Family exceeds the 64 MiB import limit. Use the SQLite database backup.');
   fs.mkdirSync(path.dirname(target),{recursive:true,mode:0o700});
   const fd = fs.openSync(target,'wx',0o600);
   try { fs.writeFileSync(fd,bytes); fs.fsyncSync(fd); } finally { fs.closeSync(fd); }

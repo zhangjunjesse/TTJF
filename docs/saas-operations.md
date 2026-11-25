@@ -76,6 +76,13 @@ location = /api/assistant/voice/stream {
     proxy_read_timeout 90s;
     access_log off;
 }
+location = /api/award-photos {
+    proxy_pass http://127.0.0.1:4180;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-For $remote_addr;
+    proxy_set_header X-Forwarded-Proto https;
+    client_max_body_size 1028k;
+}
 location / {
     proxy_pass http://127.0.0.1:4180;
     proxy_set_header Host $host;
@@ -84,6 +91,8 @@ location / {
     client_max_body_size 256k;
 }
 ```
+
+启用加分照片时，请同步更新反向代理的上传路径限制。每张 JPEG 压缩后最多 768 KiB，经过 Base64 编码的上传请求最多 1028 KiB。已入账照片随 SQLite 备份，也可随单家庭 JSON 备份迁移。单家庭 JSON 超过 64 MiB 时使用整库备份。
 
 `GET /api/health` 检查数据库可用性，只返回健康状态。生产启动成功不等于 SMTP 已实际投递或 HTTPS 代理已验收；注册、邀请、找回应在授权测试账号完成外部验收。
 

@@ -25,7 +25,7 @@ function recordOf(rows, id) {
 function ledgerReceipt(action, state) {
   const type = action.type;
   if (type === 'points.add') {
-    const record = recordOf(state.points, 'points-' + action.id), payload = pick(record, ['itemId', 'name', 'points', 'reason', 'at']);
+    const record = recordOf(state.points, 'points-' + action.id), payload = pick(record, ['itemId', 'name', 'points', 'reason', 'at', 'photoIds']);
     if (action.saveAsTemplate) { payload.itemId = ''; payload.saveAsTemplate = true; }
     return { payload, title: '已加分', summary: record.name + ' · +' + record.points + ' 分' +
       (record.reason ? ' · ' + brief(record.reason) : '') + (action.saveAsTemplate ? ' · 已保存为常用行为' : '') };

@@ -128,6 +128,21 @@
   function optionalId(value, label) {
     return value === undefined || value === null || value === '' ? '' : id(value, label);
   }
+  function awardPhotoIds(value) {
+    if (!Array.isArray(value) || value.length > 3) { fail('每次加分最多附3张照片'); }
+    var seen = Object.create(null);
+    var result = [];
+    var photoId;
+    for (var i = 0; i < value.length; i += 1) {
+      photoId = value[i];
+      if (typeof photoId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(photoId)) { fail('照片标识无效'); }
+      photoId = photoId.toLowerCase();
+      if (seen[photoId]) { fail('照片不能重复'); }
+      seen[photoId] = true;
+      result.push(photoId);
+    }
+    return result;
+  }
   function integer(value, label, minimum, maximum) {
     if (typeof value !== 'number' || !isFinite(value) || Math.floor(value) !== value ||
         value < minimum || value > (maximum === undefined ? MAX_INTEGER : maximum)) {
@@ -397,12 +412,19 @@
       member(row.icon, ['pencil', 'burger', 'mountain'], '奖励图标');
       bool(row.enabled, '启用状态');
     });
+    var usedPhotos = Object.create(null);
     validateRows(state.points, '加分记录', function (row) {
       text(row.name, '加分名称', true, 120);
       integer(row.points, '加分分值', 1);
       text(row.reason, '加分原因', false);
       optionalId(row.itemId, '加分项标识');
       storedTimestamp(row.at);
+      if (row.photoIds !== undefined) {
+        awardPhotoIds(row.photoIds).forEach(function (photoId) {
+          if (usedPhotos[photoId]) { fail('照片不能用于多次加分'); }
+          usedPhotos[photoId] = true;
+        });
+      }
     });
     validateRows(state.redemptions, '兑换记录', function (row) {
       id(row.rewardId, '奖励标识');
@@ -912,6 +934,7 @@
         reason: text(action.reason, '加分原因', false),
         at: at
       };
+      if (own.call(action, 'photoIds')) { record.photoIds = awardPhotoIds(action.photoIds); }
       if (action.saveAsTemplate) {
         record.itemId = id('item-' + action.id, '加分项标识');
         if (find(next.pointItems, record.itemId)) { fail('新常用项标识已存在，请重新确认'); }

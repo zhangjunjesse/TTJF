@@ -5,6 +5,7 @@
   var DRAFT = 'little-steps-drafts-v03', PRIVATE = 'little-steps-parent-private-v03', SOUND = 'ttjf-saas-device-sound-v1';
   var saas = window.__TTJF_SAAS__ === true, SaaS = window.FamilySaas;
   var chat = saas ? window.FamilyAssistantPanel : null;
+  var AwardPhotos = saas ? window.FamilyAwardPhotos : null, awardPhotoDrafts = {}, awardPhotoSelection = null;
   var local = !saas && (location.protocol === 'file:' || window.__FAMILY_OFFLINE__ === true), state = null, revision = 0, connected = false, serverReached = false;
   var syncBusy = false, pending = false, retryTx = null, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
   var assistantSequence = 0, avatarSequence = 0, petTimer = null, familyDay = null, serverTime = 0, serverReceived = 0, avatarSelection = null;
@@ -29,12 +30,101 @@
   function scopeToken() { return saas && SaaS ? SaaS.capture() : null; }
   function scopeCurrent(token) { return !saas || !!(SaaS && SaaS.current(token) && scopeReady()); }
   function trackScope(dispose) { return saas && SaaS ? SaaS.track(dispose) : function () {}; }
+  function awardPhotoKey(f) {
+    var binding = f.assistantDraft;
+    return binding ? 'assistant:' + binding.generation + ':' + binding.turnId + ':' + binding.actionId : draftKey(f);
+  }
+  function awardPhotos(f) {
+    if (!AwardPhotos || !f || f.kind !== 'points') return null;
+    var key = awardPhotoKey(f);
+    if (f.awardPhotoKey !== key || !f.awardPhotos) {
+      f.awardPhotoKey = key; f.awardPhotos = awardPhotoDrafts[key] || AwardPhotos.createDraft();
+      awardPhotoDrafts[key] = f.awardPhotos;
+    }
+    return f.awardPhotos;
+  }
+  function awardPhotosReady(f) { var draft = awardPhotos(f); return !draft || AwardPhotos.ready(draft); }
+  function addAwardPhotoIds(action, f) {
+    var draft = awardPhotos(f), ids = draft ? AwardPhotos.ids(draft) : [];
+    if (ids.length) action.photoIds = ids; else delete action.photoIds;
+    return action;
+  }
+  function updateAwardPhotoAction(auth) {
+    if (!auth || auth.phase !== 'confirm' || auth.tx.action.type !== 'points.add') return;
+    addAwardPhotoIds(auth.tx.action, auth.tx.form);
+    var unsigned = Object.assign({}, auth.tx.action); delete unsigned.id;
+    auth.tx.signature = JSON.stringify(unsigned); auth.tx.grant = null;
+  }
+  function awardPhotoEnvironment(f) {
+    var scope = scopeToken(), draft = awardPhotos(f), key = f.awardPhotoKey;
+    function active() { return scopeCurrent(scope) && awardPhotoDrafts[key] === draft; }
+    return { request: request, active: active, beforePick: function (input) { prepareAwardPhotoInput(input, f, draft); }, refresh: function () {
+      if (!active() || !ui.form || awardPhotos(ui.form) !== draft) return;
+      rememberDraft(); updateAwardPhotoAction(ui.auth); render(false);
+    } };
+  }
+  function savedAwardPhotoDrafts() {
+    // This snapshot only lives inside the session-verified resume object. Files and credentials never enter it.
+    var saved = {};
+    Object.keys(awardPhotoDrafts).forEach(function (key) {
+      var draft = awardPhotoDrafts[key];
+      saved[key] = { nextKey: draft.nextKey, replaceKey: draft.replaceKey, notice: draft.notice, items: draft.items.map(function (item) {
+        return { key: item.key, photoId: item.photoId, dataUrl: item.dataUrl,
+          error: item.photoId ? '' : item.error || (item.dataUrl ? '照片上传已暂停，请重试。' : '照片准备已暂停，请重拍或重新选择。') };
+      }) };
+    });
+    return saved;
+  }
+  function discardAwardPhotoInput() {
+    var picker = awardPhotoSelection; if (!picker) return;
+    awardPhotoSelection = null; picker.cancelled = true; picker.permitted = false; picker.form = null; picker.draft = null;
+    if (picker.input && picker.input.parentNode === document.body) picker.input.parentNode.removeChild(picker.input);
+  }
+  function prepareAwardPhotoInput(input, f, draft) {
+    discardAwardPhotoInput();
+    awardPhotoSelection = { input: input, kind: input.getAttribute('data-award-photo-input'), scope: scopeToken(), form: f,
+      draft: draft, key: f.awardPhotoKey, permitted: true, cancelled: false, received: false };
+    input.__familyAwardPhotoTicket = awardPhotoSelection;
+    return awardPhotoSelection;
+  }
+  function receiveAwardPhotoInput(input) {
+    var picker = input.__familyAwardPhotoTicket;
+    if (picker && (picker.cancelled || picker !== awardPhotoSelection)) return;
+    if (!picker) {
+      if (!scopeReady() || !ui.form || ui.form.kind !== 'points' || (ui.auth && ui.auth.phase !== 'confirm')) return;
+      picker = prepareAwardPhotoInput(input, ui.form, awardPhotos(ui.form));
+    }
+    picker.received = true;
+    if (!picker.permitted || !scopeCurrent(picker.scope) || ui.form !== picker.form || awardPhotos(ui.form) !== picker.draft) return;
+    if (pending || (ui.auth && ui.auth.phase !== 'confirm')) { discardAwardPhotoInput(); return; }
+    rememberDraft(); AwardPhotos.change(input, picker.draft, awardPhotoEnvironment(picker.form)); discardAwardPhotoInput();
+  }
+  function restoreAwardPhotoInput() {
+    var picker = awardPhotoSelection;
+    if (!picker) return;
+    if (!ui.form || ui.form.kind !== 'points' || awardPhotoKey(ui.form) !== picker.key) { discardAwardPhotoInput(); return; }
+    picker.scope = scopeToken(); picker.form = ui.form; picker.draft = awardPhotos(ui.form); picker.permitted = true;
+    var replacement = document.querySelector('.sheet [data-award-photo-input="' + picker.kind + '"]');
+    if (picker.input) {
+      picker.input.setAttribute('data-saas-photo-hold', 'false');
+      if (replacement && replacement !== picker.input && replacement.parentNode) replacement.parentNode.replaceChild(picker.input, replacement);
+    }
+    if (picker.received) receiveAwardPhotoInput(picker.input);
+  }
+  function discardAwardPhotos(f) {
+    if (!f || !f.awardPhotos) return;
+    if (awardPhotoSelection && awardPhotoSelection.draft === f.awardPhotos) discardAwardPhotoInput();
+    if (awardPhotoDrafts[f.awardPhotoKey] === f.awardPhotos) delete awardPhotoDrafts[f.awardPhotoKey];
+    f.awardPhotos = null; f.awardPhotoKey = null;
+  }
   function clearFamily(keepAvatar) {
     if (chat) chat.reset();
     if (!keepAvatar) discardAvatar();
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    if (!keepAvatar) discardAwardPhotoInput();
     clearTimeout(toastTimer); clearTimeout(petTimer); toastTimer = null; petTimer = null;
     stopRecognition();
-    [ui.form].concat(ui.stack || []).forEach(function (f) { if (f) { invalidateAssistant(f); f.avatarRequest = null; f.avatarBusy = false; f.data = {}; } });
+    [ui.form].concat(ui.stack || []).forEach(function (f) { if (f) { invalidateAssistant(f); f.avatarRequest = null; f.avatarBusy = false; f.awardPhotos = null; f.awardPhotoKey = null; f.data = {}; } });
     if (ui.auth) { ui.auth.autoPin = null; ui.auth.tx.grant = null; clearParentSecrets(ui.auth.tx); }
     if (retryTx) { retryTx.grant = null; clearParentSecrets(retryTx); }
     if (setupTx) { setupTx.cancelled = true; clearParentSecrets(setupTx); }
@@ -43,7 +133,7 @@
     if (Farm) Farm.dispose();
     if (window.FamilyWorldUI) window.FamilyWorldUI.reset();
     state = null; revision = 0; parentRevision = -1; connected = false; serverReached = false;
-    syncBusy = false; pending = false; retryTx = null; setupTx = null; privateConfig = null; drafts = {}; reminderSound = '';
+    syncBusy = false; pending = false; retryTx = null; setupTx = null; privateConfig = null; drafts = {}; awardPhotoDrafts = {}; reminderSound = '';
     familyDay = null; serverTime = 0; serverReceived = 0; assistantSequence++; avatarSequence++; ui = freshUI();
     meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
     var notice = document.getElementById('toast'); if (notice) { notice.textContent = ''; notice.className = 'toast'; notice.style.display = 'none'; }
@@ -59,7 +149,15 @@
   function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), assistantDraft: f.assistantDraft && clone(f.assistantDraft), openedRevision: f.openedRevision, ledgerAward: !!f.ledgerAward, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
   function suspendFamily() {
     rememberDraft(); rememberSheetFocus();
-    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), scrollTop: main ? main.scrollTop : 0, revision: revision };
+    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), awardPhotos: savedAwardPhotoDrafts(), scrollTop: main ? main.scrollTop : 0, revision: revision };
+    if (ui.auth && ui.auth.phase === 'confirm' && ui.auth.tx.action.type === 'points.add' && ui.auth.tx.form === ui.form && !ui.auth.busy && !pending && !ui.auth.challengeId && !ui.auth.tx.grant && !ui.auth.tx.uncertain) {
+      saved.awardReview = { pristine: isPristinePresetReview(ui.auth), familyDay: today() };
+    }
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    if (awardPhotoSelection) {
+      awardPhotoSelection.permitted = false;
+      if (awardPhotoSelection.input) { awardPhotoSelection.input.setAttribute('data-saas-photo-hold', 'true'); document.body.appendChild(awardPhotoSelection.input); }
+    }
     if (avatarSelection) {
       avatarSelection.permitted = false;
       if (avatarSelection.input) { avatarSelection.input.hidden = true; avatarSelection.input.setAttribute('data-saas-avatar-hold', 'true'); document.body.appendChild(avatarSelection.input); }
@@ -78,14 +176,19 @@
     if (typeof f.openedRevision !== 'number') f.openedRevision = revision;
     if (f.kind === 'parentConfig') f.parentConfigured = meta.parent.configured;
     if (f.kind === 'points' && d.recordDate !== today()) { d.recordDate = today(); d.recordTime = clock(); }
+    awardPhotos(f);
     return f;
   }
   function restoreFamily(saved) {
     if (!saved) { discardAvatar(); return; }
     ['view', 'homeMode', 'day', 'reminderMode', 'filter', 'history', 'petTab', 'homeFocus'].forEach(function (key) { if (saved[key] !== undefined) ui[key] = saved[key]; });
-    drafts = ordinary(saved.drafts || {}); ui.stack = (saved.stack || []).map(restorableForm).filter(function (f) { return !!f; });
+    drafts = ordinary(saved.drafts || {}); awardPhotoDrafts = saved.awardPhotos || {}; ui.stack = (saved.stack || []).map(restorableForm).filter(function (f) { return !!f; });
     ui.form = restorableForm(saved.form); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
-    render(false);
+    if (saved.awardReview && saved.revision === revision && saved.awardReview.familyDay === today() && ui.form && ui.form.kind === 'points') {
+      // Recreate an unsent review, never a previous challenge, grant, or PIN.
+      try { var award = makeAction(ui.form, ui.form.data); beginAction(award, '已加 ' + award.points + ' 分。', saved.awardReview.pristine, true); } catch (e) {}
+    }
+    if (!ui.auth) render(false);
     var main = document.getElementById('main'); if (main) main.scrollTop = saved.scrollTop || 0;
     if (ui.form) { restorePlayFocus(ui.form.focusKey); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = ui.form.scrollTop || 0; }
     if (avatarSelection && ui.form && ui.form.kind === 'profile') {
@@ -94,6 +197,7 @@
       if (picker.input) { picker.input.hidden = false; picker.input.setAttribute('data-saas-avatar-hold', 'false'); if (replacement && replacement !== picker.input && replacement.parentNode) replacement.parentNode.replaceChild(picker.input, replacement); }
       if (picker.file) loadAvatar(picker.file);
     } else discardAvatar();
+    restoreAwardPhotoInput();
     if (saved.form && !ui.form) toast('内容已更新');
   }
   function discardAvatar() {
@@ -366,8 +470,12 @@
     if (auth && auth.tx.assistantDraft) setupTx.assistantResume = { generation:auth.tx.assistantDraft.generation, turnId:auth.tx.assistantDraft.turnId, actionId:auth.tx.action.id, type:auth.tx.action.type };
     submitSetup(setupTx);
   }
-  function beginAction(action, message, pristinePresetReview) {
+  function beginAction(action, message, pristinePresetReview, restoringReview) {
     if (!scopeReady() || pending) return;
+    if (action.type === 'points.add' && ui.form && ui.form.kind === 'points') {
+      if (!restoringReview && !awardPhotosReady(ui.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
+      addAwardPhotoIds(action, ui.form);
+    }
     if (saas && !SaaS.isOwner() && meta.parent.configured === false && !isPublic(action)) { showError('请家庭所有者设置家长验证'); return; }
     if (retryTx && retryTx.uncertain && /^farm\./.test(retryTx.action.type) && JSON.stringify(action) !== retryTx.signature) { showError('请先确认上次小院操作的结果'); return; }
     if (action.type === 'parent.setup') { startSetup(action, null); return; }
@@ -476,6 +584,8 @@
   function submitParent(form) {
     var auth = ui.auth; if (!auth || auth.busy || pending) return;
     if (auth.phase === 'confirm') {
+      if (!awardPhotosReady(auth.tx.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
+      updateAwardPhotoAction(auth);
       if (auth.tx.revision !== revision) { conflict(auth.tx, { revision: revision, state: state }); return; }
       auth.phase = meta.parent.configured === false ? 'setup' : 'loading';
       render(false); if (auth.phase === 'loading') issueChallenge(auth); return;
@@ -523,6 +633,7 @@
     return '已记好：' + record.name + ' +' + record.points + ' 分 · ' + label + ' ' + recorded.time;
   }
   function finishTransaction(tx) {
+    if (AwardPhotos) AwardPhotos.closeViewer();
     var giftFlow = ui.form === tx.form && ledgerGiftFlow();
     if (['points.add', 'pet.care', 'pet.scene'].indexOf(tx.action.type) >= 0 && ui.form && ui.form !== tx.form) rememberDraft();
     pending = false; tx.grant = null; if (retryTx === tx) retryTx = null;
@@ -532,13 +643,14 @@
     if (tx.form && ui.form === tx.form) {
       if (keepInbox || keepFarm || (giftFlow && tx.form.kind === 'rewards' && tx.action.type === 'redemption.cancel')) ui.form.openedRevision = revision;
       else {
-        delete drafts[draftKey(tx.form)]; saveStore(DRAFT, drafts); ui.form = ui.stack.pop() || null;
+        if (!tx.form.assistantDraft) { delete drafts[draftKey(tx.form)]; saveStore(DRAFT, drafts); }
+        ui.form = ui.stack.pop() || null;
         if (giftFlow && ui.form && ui.form.kind === 'rewards' && ['redemption.request', 'redemption.approve'].indexOf(tx.action.type) >= 0) ui.form.openedRevision = revision;
         if (tx.action.type === 'pointItem.save' && ui.form && ui.form.kind === 'point-list') { ui.form.data.aiText = ''; ui.form.aiStatus = '已保存'; }
       }
     }
     var message = tx.message || '已保存';
-    if (tx.action.type === 'points.add') { stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; var g = growthInfo(), pet = currentPet(); message = '+' + tx.action.points + ' 分 · ' + (tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' : '记好啦！'); ui.petReaction = 'celebrate'; ui.petMessage = message; }
+    if (tx.action.type === 'points.add') { discardAwardPhotos(tx.form); stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; var g = growthInfo(), pet = currentPet(); message = '+' + tx.action.points + ' 分 · ' + (tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' : '记好啦！'); ui.petReaction = 'celebrate'; ui.petMessage = message; }
     if (tx.action.type === 'pet.buy') { message = '补给已入背包'; if (ui.form && ui.form.kind === 'petHub') { ui.form.data.tab = 'bag'; ui.form.openedRevision = revision; } }
     if (tx.action.type === 'pet.care') {
       var status = playStatus(), before = tx.previousPetStatus, unlocked = status && status.unlockedScenes.filter(function (id) { return !before || before.unlockedScenes.indexOf(id) < 0; }), newest = unlocked && unlocked.length ? find(status.scenes, unlocked[unlocked.length - 1]) : null;
@@ -582,6 +694,8 @@
     if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
   }
   function openForm(kind, data, restore, replace, deferRender) {
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    discardAwardPhotoInput();
     if (avatarSelection && avatarSelection.form === ui.form) discardAvatar();
     rememberSheetFocus(); if (!ui.form) ui.homeFocus = focusKey(document.activeElement); rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
     if (ui.form && !replace) ui.stack.push(ui.form);
@@ -591,10 +705,13 @@
     if (restore && drafts[draftKey(f)]) f.data = clone(drafts[draftKey(f)]);
     if (kind === 'task' && !f.data.id && f.data.date < today()) f.data.date = today();
     if (kind === 'points' && (!f.data.recordTime || f.data.recordDate !== today())) { f.data.recordTime = clock(); f.data.recordDate = today(); }
+    awardPhotos(f);
     ui.form = f; ui.auth = null; if (!deferRender) render(false);
   }
   function closeForm(exitPresetReview) {
     if (pending && !setupTx) return;
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    discardAwardPhotoInput();
     if (setupTx) cancelSetup();
     if (ui.auth) {
       var exitToHome = exitPresetReview === true && isPristinePresetReview(ui.auth), tx = ui.auth.tx;
@@ -602,6 +719,7 @@
       if (retryTx && (retryTx.action.type === 'parent.configure' || (exitToHome && retryTx === tx))) retryTx = null;
       ui.auth = null;
       if (!exitToHome) { render(false); return; }
+      discardAwardPhotos(tx.form);
     }
     if (avatarSelection && avatarSelection.form === ui.form) discardAvatar();
     rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
@@ -656,7 +774,7 @@
     var f = ui.form; if (!f || f.kind !== 'points') return;
     var amount = document.querySelector('.entry-summary strong'); if (amount) amount.innerHTML = pointsAmount(f.data.points);
     var el = document.getElementById('template-save-preview'); if (el) el.innerHTML = templateSavePreview();
-    var submit = document.querySelector('.sheet-save'); if (submit) { var label = '核对加分'; submit.textContent = pending ? '保存中' : label; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); }
+    var submit = document.querySelector('.sheet-save'); if (submit) { var label = '核对加分'; submit.textContent = pending ? '保存中' : label; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); submit.disabled = pending || !awardPhotosReady(f); }
   }
   function field(label, name, value, extra, type) { return '<label class="field"><span>' + label + '</span><input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value) + '" ' + (extra || '') + '></label>'; }
   function area(label, name, value, extra) { return '<label class="field"><span>' + label + '</span><textarea name="' + name + '" rows="3" ' + (extra || '') + '>' + esc(value) + '</textarea></label>'; }
@@ -773,6 +891,8 @@
   function clearAssistantEditors(generation) {
     function belongs(form) { return form && form.assistantDraft && form.assistantDraft.generation === generation; }
     if (retryTx && retryTx.assistantDraft && retryTx.assistantDraft.generation === generation) retryTx = null;
+    [ui.form].concat(ui.stack).forEach(function (form) { if (belongs(form)) discardAwardPhotos(form); });
+    Object.keys(awardPhotoDrafts).forEach(function (key) { if (key.indexOf('assistant:' + generation + ':') === 0) delete awardPhotoDrafts[key]; });
     ui.stack = ui.stack.filter(function (form) { return !belongs(form); });
     if (belongs(ui.form)) { ui.form = ui.stack.pop() || null; render(false); }
   }
@@ -814,6 +934,7 @@
     } else openForm(editor.kind, editor.data);
     if (result.kind === 'form' && (result.missing || []).indexOf('points') >= 0 && !ui.form.data.templatePointsChosen && Number(ui.form.data.points) === 5) ui.form.data.points = '';
     ui.form.assistantDraft = { generation:draft.generation, turnId:draft.turnId, sourceRevision:draft.sourceRevision, familyDay:draft.familyDay, type:binding.type, actionId:binding.actionId };
+    awardPhotos(ui.form);
     render(false);
     return true;
   }
@@ -822,6 +943,7 @@
     if (result.kind === 'form' && result.form === 'pointItem') { kind = 'pointItem'; patch = result.fields || {}; previous = {points:'', enabled:true}; }
     else if (a.type === 'points.add') {
       kind = 'points'; patch = Object.assign({itemId:''}, p);
+      delete patch.photoIds;
       if (patch.itemId) {
         var rule = find(state.pointItems, patch.itemId);
         if (!rule || !rule.enabled) return null;
@@ -1099,7 +1221,7 @@
     else if (positive) { detail = record.reason || ''; meta = detail.trim() ? '' : '未填写原因'; }
     else { detail = record.note || ''; meta = category(record.category) + '礼品'; }
     var repeated = detail.trim() === String(record.name).trim();
-    return '<article class="record-row" role="listitem"><div class="points-ledger-copy"><strong>' + esc(record.name) + '</strong><div class="points-ledger-meta"><time datetime="' + esc(record.at) + '">' + esc(niceTime(record.at)) + '</time>' + (meta ? '<span>' + esc(meta) + '</span>' : '') + '</div></div><b class="record-number ' + (positive ? 'is-earned' : 'is-spent') + (String(record.points).length > 6 ? ' points-ledger-amount-long' : '') + '">' + (positive ? '+' : '−') + record.points + '<small> 分</small></b>' + (detail.trim() && !repeated ? '<p class="points-ledger-note">' + esc(detail) + '</p>' : '') + '</article>';
+    return '<article class="record-row" role="listitem"><div class="points-ledger-copy"><strong>' + esc(record.name) + '</strong><div class="points-ledger-meta"><time datetime="' + esc(record.at) + '">' + esc(niceTime(record.at)) + '</time>' + (meta ? '<span>' + esc(meta) + '</span>' : '') + '</div></div><b class="record-number ' + (positive ? 'is-earned' : 'is-spent') + (String(record.points).length > 6 ? ' points-ledger-amount-long' : '') + '">' + (positive ? '+' : '−') + record.points + '<small> 分</small></b>' + (detail.trim() && !repeated ? '<p class="points-ledger-note">' + esc(detail) + '</p>' : '') + (positive && AwardPhotos ? AwardPhotos.history(record.photoIds) : '') + '</article>';
   }
   function menuRow(action, title, note, symbol, options) {
     options = options || {};
@@ -1349,6 +1471,8 @@
     else if (f.kind === 'points') {
       title = '立即加分'; submit = '核对加分';
       body = contextAI(f, 'points') + '<div class="entry-summary"><span><small>本次加分</small>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因（选填）', 'reason', d.reason || '', 'maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
+      if (AwardPhotos) body += AwardPhotos.editor(awardPhotos(f));
+      submitBlocked = !awardPhotosReady(f);
     } else if (f.kind === 'request' || f.kind === 'approve') {
       var req = f.kind === 'approve' ? find(state.requests, d.requestId) : null;
       r = find(state.rewards, req ? req.rewardId : d.rewardId);
@@ -1469,7 +1593,11 @@
     else if (a.phase === 'retry') { body += '<p class="status-line">结果待确认</p>'; submit = '重试保存'; }
     else submit = '重新验证';
     if (!ledgerReview) body += summary;
-    var parentBusy = !!(a.busy || pending), dangerous = deletingItem || a.tx.action.type === 'task.delete';
+    if (AwardPhotos && a.tx.action.type === 'points.add' && a.tx.form && a.tx.form.kind === 'points') {
+      if (confirming) body += AwardPhotos.editor(awardPhotos(a.tx.form));
+      else if (a.tx.action.photoIds && a.tx.action.photoIds.length) body += '<p class="award-photo-count">本次照片 ' + a.tx.action.photoIds.length + ' 张</p>';
+    }
+    var parentBusy = !!(a.busy || pending), photoBlocked = confirming && !awardPhotosReady(a.tx.form), dangerous = deletingItem || a.tx.action.type === 'task.delete';
     if (dangerous) {
       var verb = deletingItem ? '删除' : '取消';
       if (a.phase === 'verify') submit = '验证并' + verb;
@@ -1479,7 +1607,7 @@
     }
     var title = deletingItem ? '确认删除常用行为' : confirming ? ledgerAward ? '核对加分' : '确认本次加分' : setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证';
     var actions = isPristinePresetReview(a) ? button('points-cancel', icon('close'), 'icon-button ledger-award-cancel', '', '取消本次加分') : '';
-    return sheet(title, ledgerReview ? '' : confirming ? '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true, actions);
+    return sheet(title, ledgerReview ? '' : confirming ? '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy || photoBlocked ? ' disabled' : '') + '>' + submit + '</button></div></form>', true, actions);
   }
   function isAppPage() {
     if (!ui.form) return ui.view === 'reminders';
@@ -1565,7 +1693,7 @@
   }
   function makeAction(f, v) {
     if (f.kind === 'assistantReview') return clone(f.data.command);
-    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return action; }
+    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return addAwardPhotoIds(action, f); }
     if (f.kind === 'petBuy') { var status = playStatus(), supply = status && find(status.catalog, f.data.itemId), quantity = Number(v.quantity); if (!supply || !isFinite(quantity) || quantity < 1 || quantity > 10 || quantity !== Math.floor(quantity)) throw new Error('数量无效'); return { type: 'pet.buy', itemId: supply.id, quantity: quantity, expectedPoints: quantity * supply.points }; }
     if (f.kind === 'request') return { type: 'redemption.request', rewardId: f.data.rewardId };
     if (f.kind === 'approve') { var req = find(state.requests, f.data.requestId), reward = req && find(state.rewards, req.rewardId); if (!reward || req.status !== 'pending') throw new Error('申请已更新'); return { type: 'redemption.approve', requestId: req.id, expectedPoints: reward.points, note: (v.note || '').trim() }; }
@@ -1638,6 +1766,18 @@
   function exportData() { var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = '家庭积分提醒-' + today() + '.json'; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); toast('记录已导出'); }
   function onAction(action, id, element) {
     if (!scopeReady()) return;
+    if (AwardPhotos && action.indexOf('award-photo-') === 0) {
+      if (pending) return;
+      if (action === 'award-photo-history' && !ui.auth) {
+        var photoView = ui.form, photoScope = scopeToken();
+        AwardPhotos.viewHistory((id || '').split(','), { request: request, active: function () { return scopeCurrent(photoScope) && ui.form === photoView && !ui.auth; } });
+      } else if (ui.form && ui.form.kind === 'points' && (!ui.auth || (ui.auth.phase === 'confirm' && !ui.auth.busy))) {
+        rememberDraft(); AwardPhotos.handle(action, id, awardPhotos(ui.form), awardPhotoEnvironment(ui.form));
+      }
+      return;
+    }
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    discardAwardPhotoInput();
     if (action === 'assistant-open' && chat && assistantAvailable()) {
       openAssistant(element); return;
     }
@@ -1760,7 +1900,13 @@
     }
   }
   document.addEventListener('input', draftInput);
-  document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { if (saas) receiveAvatar(event.target); else loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); } });
+  document.addEventListener('change', function (event) {
+    if (AwardPhotos && event.target.getAttribute('data-award-photo-input')) { receiveAwardPhotoInput(event.target); return; }
+    if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; }
+    if (event.target.id === 'avatar-file') { if (saas) receiveAvatar(event.target); else loadAvatar(event.target.files && event.target.files[0]); return; }
+    draftInput(event);
+    if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); }
+  });
   document.addEventListener('submit', function (event) {
     if (!scopeReady()) return;
     if (event.target.id === 'parent-form') { event.preventDefault(); submitParent(event.target); return; }
@@ -1768,6 +1914,7 @@
     rememberDraft();
     if (setupTx && setupTx.uncertain && setupTx.form === ui.form && !setupTx.auth) { submitSetup(setupTx); return; }
     if (ui.form.kind === 'profile' && ui.form.avatarBusy) { showError('照片处理中'); return; }
+    if (!awardPhotosReady(ui.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
     if (ui.form.kind === 'point-list') { contextualInterpret('pointItems'); return; }
     if (!event.target.checkValidity()) { var bad = event.target.querySelector(':invalid'); if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.setAttribute('aria-describedby', 'form-error'); } showError(fieldError(bad)); if (bad) bad.focus(); return; }
     if (ui.form.kind === 'voice') { interpret(); return; }
