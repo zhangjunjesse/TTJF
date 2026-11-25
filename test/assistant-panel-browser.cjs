@@ -8,7 +8,7 @@ const crypto = require('node:crypto');
 const B = require('./browser.cjs');
 const ROOT = path.resolve(__dirname, '..');
 const CASE = process.env.ASSISTANT_PANEL_CASE || 'layout';
-assert.ok(['layout', 'lifecycle', 'drafts', 'voice', 'hold', 'hold-touch', 'history', 'receipts', 'mixed-notes'].includes(CASE));
+assert.ok(['layout', 'lifecycle', 'drafts', 'voice', 'hold', 'hold-touch', 'native-readiness', 'history', 'receipts', 'mixed-notes'].includes(CASE));
 const OUT = process.env.TEST_ARTIFACT_DIR ? path.resolve(process.env.TEST_ARTIFACT_DIR) : path.join(ROOT, 'data', 'assistant-panel-verification', CASE);
 const report = { case: CASE, startedAt: new Date().toISOString(), checks: [], errors: [], boundary: 'Real Edge/Chromium, isolated panel and deterministic callback transport. VisualViewport and microphone events are controlled fixtures. This does not verify native iPad/Safari, an OS keyboard, a real microphone, an external model or the integrated SaaS host.' };
 report.sourceHashes = Object.fromEntries(['assistant.js', 'assistant-panel.js', 'assistant-panel.css', 'test/assistant-panel-browser.cjs'].map(file => [file, crypto.createHash('sha256').update(fs.readFileSync(path.join(ROOT, file))).digest('hex')]));
@@ -56,7 +56,12 @@ async function fixture(width = 390, height = 844, viewportOptions = {}) {
       }, 10);
       return handle;
     };
-    window.SpeechRecognition = function () { window.__qaVoice = this; this.start = function () { if (this.onstart) this.onstart(); }; this.stop = function () {}; this.abort = function () { this.aborted = true; }; };
+    window.SpeechRecognition = function () {
+      window.__qaVoice = this;
+      this.start = function () { for (const event of window.__qaVoiceStartEvents || ['onstart', 'onaudiostart']) if (this[event]) this[event](); };
+      this.stop = function () { this.stopped = true; };
+      this.abort = function () { this.aborted = true; };
+    };
     document.addEventListener('keydown', event => { if (event.key === 'Escape') __qaEscapes++; });
   });
   await page.addScriptTag({ path: path.join(ROOT, 'assistant.js') });
@@ -420,7 +425,10 @@ async function holdFixture(width = 390, height = 844, withHistory = false) {
   });
   await open();
 }
-async function startHold(touch = false) {
+async function saveVoiceCallbacks() {
+  await page.evaluate(() => { __qaSavedVoice = { start: __qaVoice.onstart, audioStart: __qaVoice.onaudiostart, result: __qaVoice.onresult, end: __qaVoice.onend, error: __qaVoice.onerror, nomatch: __qaVoice.onnomatch }; });
+}
+async function startHold(touch = false, waitReady = true) {
   await page.waitForSelector(a('hold-voice'), { visible: true, timeout: 2000 });
   const point = await page.$eval(a('hold-voice'), node => {
     const r = node.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
@@ -432,8 +440,8 @@ async function startHold(touch = false) {
     gesture.client = await page.createCDPSession();
     await gesture.client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: point.x, y: point.y, id: 1 }] });
   } else { await page.mouse.move(point.x, point.y); await page.mouse.down(); }
-  await page.waitForFunction(() => FamilyAssistantPanel.getState().listening && !document.querySelector('.assistant-recording').hidden, { timeout: 2000 });
-    await page.evaluate(() => { __qaSavedVoice = { result: __qaVoice.onresult, end: __qaVoice.onend, error: __qaVoice.onerror, nomatch: __qaVoice.onnomatch }; });
+  await page.waitForFunction(ready => FamilyAssistantPanel.getState()[ready ? 'listening' : 'holding'] && !document.querySelector('.assistant-recording').hidden, { timeout: 2000 }, waitReady);
+  await saveVoiceCallbacks();
   return gesture;
 }
 async function moveHold(gesture, x, y) {
@@ -625,6 +633,82 @@ async function hold() {
     await hear([{ text: '键盘也能按住说话', final: true, confidence: 0.96 }]); await holdLongEnough(); await page.keyboard.up('Space');
     await endRecognition(); await page.waitForFunction(() => __qaRequests.some(call => call.url.endsWith('/turn'))); await ready();
     assert.deepEqual(await sentTexts(), ['键盘也能按住说话']); await draftUntouched();
+  });
+}
+async function nativeReadiness() {
+  const fresh = async (events = []) => {
+    await holdFixture();
+    await page.evaluate(events => {
+      window.__qaVoiceStartEvents = events; window.__qaVoiceNow = 1000000; window.__qaBuzz = [];
+      Date.now = () => __qaVoiceNow;
+      Object.defineProperty(navigator, 'vibrate', { configurable: true, value: ms => { __qaBuzz.push(ms); return true; } });
+    }, events);
+  };
+  const advance = ms => page.evaluate(ms => { __qaVoiceNow += ms; }, ms);
+  const notify = (...events) => page.evaluate(events => {
+    for (const name of events) if (typeof __qaSavedVoice[name] === 'function') __qaSavedVoice[name]();
+  }, events);
+  const feedback = () => page.evaluate(() => ({ listening: FamilyAssistantPanel.getState().listening,
+    ready: document.querySelector('.assistant-recording').dataset.ready === 'true', buzz: __qaBuzz.slice() }));
+  const preparing = { listening: false, ready: false, buzz: [] };
+  const capturing = { listening: true, ready: true, buzz: [12] };
+
+  await check('Native service start waits for audio capture; a 900ms startup and 100ms tail buzz once and stay editable', async () => {
+    await fresh(['onstart']); const gesture = await startHold(true, false);
+    assert.deepEqual(await feedback(), preparing);
+    await advance(900); assert.deepEqual(await feedback(), preparing);
+    assert.match(await page.$eval('.assistant-recording-text', node => node.textContent), /准备/);
+    await notify('audioStart'); assert.deepEqual(await feedback(), capturing);
+    await advance(50); await notify('start', 'audioStart'); assert.deepEqual(await feedback(), capturing);
+    await advance(50); await releaseHold(gesture);
+    await hear([{ text: '五分', final: true, confidence: 0.99 }]); await endRecognition();
+    await editableTranscript('五分');
+    assert.match(await page.$eval('#assistant-chat-status', node => node.textContent), /核对/);
+    await notify('start', 'audioStart'); await lateRecognition(); await editableTranscript('五分');
+    assert.deepEqual(await feedback(), { listening: false, ready: false, buzz: [12] });
+  });
+  await check('Releasing before native audio capture aborts and rejects late readiness and transcript callbacks', async () => {
+    await fresh(['onstart']); const gesture = await startHold(true, false);
+    await advance(900); await releaseHold(gesture);
+    assert.deepEqual(await feedback(), preparing);
+    assert.equal(await page.evaluate(() => __qaVoice.aborted), true);
+    assert.equal(await page.$eval('.assistant-recording', node => node.hidden), true);
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '');
+    await write('我决定直接打字'); await notify('start', 'audioStart'); await lateRecognition();
+    await editableTranscript('我决定直接打字'); assert.deepEqual(await feedback(), preparing);
+  });
+  await check('Tap dictation becomes ready on audio capture and late readiness cannot resume it after stop', async () => {
+    await fresh(); await page.tap('#assistant-chat-input'); await write('原有文字'); await page.tap(a('voice')); await saveVoiceCallbacks();
+    assert.deepEqual(await feedback(), preparing);
+    await notify('start'); assert.deepEqual(await feedback(), preparing);
+    await advance(900); await notify('audioStart');
+    assert.deepEqual(await feedback(), { listening: true, ready: false, buzz: [] });
+    await hear([{ text: '听写文字', final: true, confidence: 0.99 }]);
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.value), '原有文字\n听写文字');
+    await page.tap(a('voice')); assert.equal(await page.evaluate(() => __qaVoice.stopped), true);
+    await notify('start', 'audioStart'); assert.deepEqual(await feedback(), preparing);
+    await endRecognition(); await write('我已核对并修改');
+    await notify('start', 'audioStart'); await lateRecognition(); await editableTranscript('我已核对并修改');
+    assert.deepEqual(await feedback(), preparing);
+  });
+  await check('Stopping tap dictation before audio capture prevents a late capture event from claiming readiness', async () => {
+    await fresh(['onstart']); await page.tap('#assistant-chat-input'); await page.tap(a('voice')); await saveVoiceCallbacks();
+    assert.deepEqual(await feedback(), preparing);
+    await page.tap(a('voice')); assert.equal(await page.evaluate(() => __qaVoice.stopped), true);
+    await notify('audioStart', 'start'); assert.deepEqual(await feedback(), preparing);
+    await endRecognition(); await notify('audioStart', 'start'); await lateRecognition();
+    assert.deepEqual(await feedback(), preparing); assert.deepEqual(await sentTexts(), []);
+    assert.equal(await page.$eval('#assistant-chat-input', node => node.value), ''); await draftUntouched();
+  });
+  await check('Native audio capture before service start is usable and duplicate start events never buzz or send twice', async () => {
+    await fresh(['onaudiostart']); const gesture = await startHold(true);
+    assert.deepEqual(await feedback(), capturing);
+    await advance(100); await notify('start', 'audioStart'); assert.deepEqual(await feedback(), capturing);
+    await advance(500); await hear([{ text: '完整的语音', final: true, confidence: 0.99 }]);
+    await releaseHold(gesture); await endRecognition(); await ready();
+    await notify('start', 'audioStart'); await lateRecognition();
+    assert.deepEqual(await sentTexts(), ['完整的语音']);
+    assert.deepEqual(await feedback(), { listening: false, ready: false, buzz: [12] }); await draftUntouched();
   });
 }
 async function holdTouch() {
@@ -930,7 +1014,7 @@ async function mixedNotes() {
 (async () => {
   save(); browser = await B.launch();
   try {
-    await ({ layout, lifecycle, drafts, voice, hold, 'hold-touch': holdTouch, history, receipts, 'mixed-notes':mixedNotes })[CASE]();
+    await ({ layout, lifecycle, drafts, voice, hold, 'hold-touch': holdTouch, 'native-readiness': nativeReadiness, history, receipts, 'mixed-notes':mixedNotes })[CASE]();
     if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'panel.png') });
     assert.deepEqual(report.errors, []); report.passed = true;
   } catch (error) { report.passed = false; report.failure = { message: error.message, stack: error.stack }; if (page && !page.isClosed()) await page.screenshot({ path: path.join(OUT, 'failure.png') }); throw error; }

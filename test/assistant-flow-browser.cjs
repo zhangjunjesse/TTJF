@@ -499,7 +499,7 @@ async function run() {
   }
   if (device === 'voice-award') await page.evaluateOnNewDocument(() => {
     window.SpeechRecognition = class {
-      start() { window.__qaRecognizer = this; this.onstart?.(); }
+      start() { window.__qaRecognizer = this; this.onstart?.(); this.onaudiostart?.(); }
       stop() { this.onend?.(); }
       abort() { this.onend?.(); }
     };

@@ -347,6 +347,10 @@
     recognition.onresult = function (event) { onTranscript(root.FamilyAssistant.speechTranscript(event.results, hints)); };
     return recognition;
   }
+  function captureStartEvent(recognition) {
+    // Native start signals service startup. The cloud adapter emits start once the microphone is connected.
+    return recognition.provider === 'volc' ? 'onstart' : 'onaudiostart';
+  }
   function voiceFailure(event) {
     if (event.error === 'network' || event.error === 'timeout') return '语音连接中断，请再说一次或直接输入文字。';
     if (event.error === 'audio-capture') return '麦克风暂时不可用，请检查输入设备后重试。';
@@ -363,7 +367,8 @@
     voice = null; holding = null; listening = false;
     if (session) { root.clearTimeout(session.timer); root.clearTimeout(session.limit); session.held = false; releaseCapture(session); }
     if (previous) {
-      previous.onlimit = previous.onstart = previous.onspeechstart = previous.onspeechend = previous.onresult = previous.onerror = previous.onend = previous.onnomatch = null;
+      previous[captureStartEvent(previous)] = null;
+      previous.onlimit = previous.onspeechstart = previous.onspeechend = previous.onresult = previous.onerror = previous.onend = previous.onnomatch = null;
       try { previous.abort(); } catch (e) {}
     }
     if (host) { input.readOnly = false; renderRecording(); }
@@ -448,7 +453,7 @@
     try { recognition = createRecognizer(session.hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
     holding = session; session.recognition = recognition; voice = recognition; listening = false; voiceNote = ''; holdClickUntil = Date.now() + 700;
     var touch = event.pointerType === 'touch';
-    recognition.onstart = function () {
+    recognition[captureStartEvent(recognition)] = function () {
       if (!validHold(session) || !session.held || session.failed || session.ended || session.captureAt != null) return;
       session.captureAt = Date.now();
       session.slowStart = session.captureAt - session.started >= MIN_HOLD_MS;
@@ -514,14 +519,19 @@
   function voiceInterrupted() { if (holding) cancelHold('语音已停止，请重新按住说话。'); }
   function startVoice() {
     if (!current() || !speechAvailable() || confirming || holding) return;
-    if (voice) { voice.onstart = null; listening = false; voiceNote = '正在整理听写…'; try { voice.stop(); } catch (e) { stopVoice(); voiceNote = '听写已中断，请重新录音。'; } updateControls(); return; }
+    if (voice) { voice[captureStartEvent(voice)] = null; listening = false; voiceNote = '正在整理听写…'; try { voice.stop(); } catch (e) { stopVoice(); voiceNote = '听写已中断，请重新录音。'; } updateControls(); return; }
     var recognition, token = ++voiceEpoch, base = text, voiceScope = scope, heard = false, atLimit = false, hints = speechHints();
     try { recognition = createRecognizer(hints, received); } catch (e) { voiceNote = '当前无法听写，可以继续打字。'; updateControls(); return; }
     voice = recognition; listening = false; voiceNote = '正在准备麦克风…'; editing = true;
     function valid() { return voice === recognition && token === voiceEpoch && voiceScope === scopeKey() && current(); }
-    recognition.onstart = function () { if (valid()) { listening = true; voiceNote = ''; updateControls(); } };
+    var captureEvent = captureStartEvent(recognition);
+    recognition[captureEvent] = function () {
+      if (!valid() || !recognition[captureEvent]) return;
+      recognition[captureEvent] = null;
+      listening = true; voiceNote = ''; updateControls();
+    };
     recognition.onlimit = function () {
-      if (valid()) { atLimit = true; listening = false; voiceNote = '已到 60 秒，正在整理听写…'; updateControls(); }
+      if (valid()) { recognition[captureEvent] = null; atLimit = true; listening = false; voiceNote = '已到 60 秒，正在整理听写…'; updateControls(); }
     };
     function received(result) {
       if (!valid()) return;
@@ -536,7 +546,7 @@
     }
     recognition.onerror = function (event) {
       if (!valid()) return;
-      listening = false; voiceNote = voiceFailure(event); updateControls();
+      recognition[captureEvent] = null; listening = false; voiceNote = voiceFailure(event); updateControls();
     };
     recognition.onnomatch = function () { if (valid()) { voiceNote = '没有听准，请核对文字或再试一次。'; updateControls(); } };
     recognition.onend = function () {
