@@ -1037,8 +1037,9 @@ async function detail() {
       const form = window.FamilyDemo.getUI().form;
       return form === kind && document.activeElement?.matches(target);
     }, { timeout: 6000 }, selector, expectedForm);
-    const current = await page.evaluate(target => target === 'window' ? window.scrollY : document.querySelector(target).scrollTop, parent);
+    const current = await page.$eval(parent, node => node.scrollTop);
     assert.ok(Math.abs(current - scrollBefore) <= 2, 'closing detail restores its parent scroll: ' + JSON.stringify({ current, scrollBefore }));
+    return current;
   }
   async function originalShown(index, url) {
     await page.waitForFunction((selector, number, expected) => {
@@ -1050,7 +1051,8 @@ async function detail() {
     assert.equal(await page.$('#main ' + HISTORY), null, 'home rows lead to detail rather than nested photo buttons');
     const selector = '#main .points-recent-row ' + recordButton(row);
     await page.$eval(selector, node => node.scrollIntoView({ block: 'center', behavior: 'instant' }));
-    const scrollBefore = await page.evaluate(() => window.scrollY);
+    const scrollBefore = await page.$eval('#main', node => node.scrollTop);
+    assert.ok(scrollBefore > 2, 'the home list must be scrolled far enough to detect a return to the top');
     await tap(selector, true); await assertDetail(row, 3); await mobileShot('record-detail');
     const chosen = DETAIL + ' ' + HISTORY + '[data-photo-index="1"]';
     const expected = await env.api(page, '/api/award-photos/read', 'POST', { photoId: second }); assert.equal(expected.status, 200);
@@ -1077,7 +1079,9 @@ async function detail() {
     await page.keyboard.press('Escape'); await page.waitForSelector(VIEWER, { hidden: true });
     assert.equal(env.calls.filter(call => call.path === '/api/award-photos/read').length, readsBeforeViewer, 'viewing already loaded originals makes no duplicate photo-read request');
     assert.equal(await page.evaluate(target => document.activeElement?.matches(target), chosen), true, 'viewer close returns focus to the chosen thumbnail');
-    await assertDetail(row, 3); await closeDetail(selector, null, scrollBefore, 'window');
+    await assertDetail(row, 3);
+    const scrollAfter = await closeDetail(selector, null, scrollBefore, '#main');
+    report.homeScroll = { before: scrollBefore, after: scrollAfter };
     const oldSelector = '#main .points-recent-row ' + recordButton(legacy);
     await tap(oldSelector, true); await assertDetail(legacy, 0);
     await click(page, DETAIL + ' .sheet-header ' + a('form-close'));
@@ -1117,6 +1121,24 @@ async function detail() {
     assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/action', '/api/parent/challenge', '/api/parent/verify'].includes(call.path)), [], 'read-only navigation never requests a parent grant or ledger write');
     report.details = { home: true, completeList: true, weekly: true, photoLessOldShape: true, firstOriginalPhotoId: second,
       originalStartIndex: 1, touchAndKeyboardNavigation: true, focusAndScrollRestored: true, ledgerUnchanged: true };
+  });
+  await check('Enter opens the same focused photo after another award syncs to the open detail', async () => {
+    await history(3);
+    const chosen = DETAIL + ' ' + HISTORY + '[data-photo-id="' + second + '"]';
+    const expected = await env.api(page, '/api/award-photos/read', 'POST', { photoId: second });
+    assert.equal(expected.status, 200);
+    await page.focus(chosen);
+    await fixtureAction({ type: 'points.add', name: '同步到详情页的加分', points: 1 });
+    const synced = await sql();
+    assert.equal(synced.revision, baseline.revision + 1);
+    await page.waitForFunction(revision => window.FamilyDemo.getUI().revision === revision, { timeout: 12000 }, synced.revision);
+    assert.equal(await page.$eval(chosen, node => node === document.activeElement), true, 'photo two keeps focus after the ledger syncs');
+    await page.keyboard.press('Enter');
+    await originalShown(1, expected.body.dataUrl);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector(VIEWER, { hidden: true });
+    assert.equal(await page.$eval(chosen, node => node === document.activeElement), true);
+    assert.deepEqual(await sql(), synced, 'viewing the photo makes no further change to the ledger');
   });
 }
 async function run() {

@@ -222,7 +222,7 @@
       return '<li>' + button('history', '<img alt="" decoding="async" hidden><span class="award-photo-detail-placeholder">' + icon('album') +
         '<span class="award-photo-detail-state">加载中</span></span><span class="award-photo-order" aria-hidden="true">' + (index + 1) +
         '</span><span class="award-photo-expand">' + icon('expand') + '</span>', photoIds.join(','),
-        ' class="award-photo-detail-thumb" data-photo-id="' + id + '" data-photo-index="' + index + '" aria-label="查看第' + (index + 1) + '张照片"') + '</li>';
+        ' class="award-photo-detail-thumb" id="record-photo-' + id + '" data-photo-id="' + id + '" data-photo-index="' + index + '" aria-label="查看第' + (index + 1) + '张照片"') + '</li>';
     }).join('');
     return '<section class="award-photo-details" data-award-photo-details aria-label="加分照片"><div class="award-photo-heading"><strong>照片</strong><small>' +
       photoIds.length + ' 张</small></div><ul class="award-photo-grid">' + thumbnails + '</ul></section>';
