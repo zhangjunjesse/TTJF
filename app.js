@@ -1968,6 +1968,24 @@
     try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); }
     return true;
   }
+  function renderApp(shell, panel, oldSheet) {
+    var app = document.getElementById('app');
+    if (!panel || !oldSheet || !oldSheet.matches('.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet')) {
+      app.innerHTML = shell + panel;
+      return;
+    }
+    // A sheet change replaces the form, but its backdrop may still be fading in.
+    var template = document.createElement('template');
+    template.innerHTML = panel;
+    var nextOverlay = template.content.firstElementChild;
+    var overlay = oldSheet.parentElement;
+    app.querySelector('.app-shell').outerHTML = shell;
+    overlay.className = nextOverlay.className;
+    var action = nextOverlay.querySelector('.sheet-backdrop').dataset.action;
+    overlay.querySelector('.sheet-backdrop').dataset.action = action;
+    overlay.querySelector('.sheet-status-edge').dataset.action = action;
+    oldSheet.replaceWith(nextOverlay.querySelector('.sheet'));
+  }
   function render(reset) {
     if (!scopeReady()) return;
     if (chat && chat.isOpen() && !assistantAvailable()) chat.close({restoreFocus:false});
@@ -1981,7 +1999,8 @@
     var selection = sameSheet && document.activeElement && typeof document.activeElement.selectionStart === 'number' ? { start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd } : null;
     document.body.className = 'view-' + ui.view + (ui.form || ui.auth ? ' sheet-open' : '') + (ui.display ? ' display-mode' : '');
     if (Farm) Farm.beforeRender();
-    document.getElementById('app').innerHTML = '<div class="app-shell"' + (ui.form || ui.auth ? ' aria-hidden="true"' : '') + '>' + header() + '<div id="reminder-slot">' + (ui.view === 'points' ? '' : reminderBanner()) + '</div><main id="main" class="app-main" tabindex="-1">' + (ui.view === 'points' ? pointsPage() : reminderPage()) + '</main>' + navigation() + '</div>' + (ui.auth ? parentContent() : ui.form ? editorContent() : '');
+    var shell = '<div class="app-shell"' + (ui.form || ui.auth ? ' aria-hidden="true"' : '') + '>' + header() + '<div id="reminder-slot">' + (ui.view === 'points' ? '' : reminderBanner()) + '</div><main id="main" class="app-main" tabindex="-1">' + (ui.view === 'points' ? pointsPage() : reminderPage()) + '</main>' + navigation() + '</div>';
+    renderApp(shell, ui.auth ? parentContent() : ui.form ? editorContent() : '', oldSheet);
     var main = document.getElementById('main');
     if (main) {
       var gallery = ui.view === 'points' && main.querySelector && main.querySelector('.pet-home-card.is-previewing');

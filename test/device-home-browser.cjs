@@ -481,8 +481,8 @@ async function phoneScrim() {
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'no-preference' }]);
   const before = await sql(), marker = env.calls.length, chosen = a('choose-point', 'device-home-brush');
   report.sheetScrim = [];
-  async function open(selector) {
-    await page.evaluate(() => {
+  async function open(selector, expected = '.sheet-overlay') {
+    await page.evaluate(expected => {
       const host = document.getElementById('app');
       // Observe the real render before its first paint, then seek the browser's
       // animation instead of racing a 100ms wall-clock screenshot window.
@@ -500,6 +500,7 @@ async function phoneScrim() {
           return [...context.getImageData(0, 0, 1, 1).data];
         };
         const edgeStyle = getComputedStyle(edge), edgeRect = edge.getBoundingClientRect();
+        const shadowColor = edgeStyle.boxShadow.match(/(?:rgba?|color)\([^)]+\)/);
         const backdropY = Math.min(80, rect.top / 2), x = innerWidth / 2;
         const hit = document.elementFromPoint(x, rect.top + Math.min(50, rect.height / 2));
         return {
@@ -508,31 +509,37 @@ async function phoneScrim() {
             opaque: opaque(dialog), reachable: !!hit && dialog.contains(hit), top: rect.top, height: rect.height },
           backdropReachable: backdropY > 6 && document.elementFromPoint(x, backdropY) === backdrop,
           edge: { visible: edgeStyle.display !== 'none', opaque: opaque(edge), pixel: pixel(edgeStyle.backgroundColor),
+            shadow: edgeStyle.boxShadow, shadowPixel: shadowColor ? pixel(shadowColor[0]) : [0, 0, 0, 0],
+            paperPixel: pixel(getComputedStyle(host.querySelector('.home-header')).backgroundColor),
             themePixel: pixel(document.querySelector('meta[name="theme-color"]').content),
             position: edgeStyle.position, height: edgeRect.height,
             reachable: [1, x, innerWidth - 1].every(left => document.elementFromPoint(left, 4) === edge) }
         };
       };
       const observer = new MutationObserver(() => {
-        if (!host.querySelector('.sheet-overlay')) return;
+        if (!host.querySelector(expected)) return;
         observer.disconnect();
-        const backdrop = host.querySelector('.sheet-backdrop');
-        qa.animation = host.getAnimations({ subtree: true }).find(animation => animation.effect.target.contains(backdrop));
-        if (qa.animation) {
-          qa.animation.pause(); qa.animation.currentTime = 0;
-          qa.timing = qa.animation.effect.getTiming();
-        }
+        const backdrop = host.querySelector('.sheet-backdrop'), edge = host.querySelector('.sheet-status-edge');
+        // Seek both independently animated elements. The ancestor fallback also
+        // lets the same regression run against the old custom-property fade.
+        qa.animations = host.getAnimations({ subtree: true }).filter(animation => {
+          const target = animation.effect.target;
+          return target && (target.contains(backdrop) || target.contains(edge));
+        });
+        const scrimAnimation = qa.animations.find(animation => animation.effect.target.contains(backdrop));
+        for (const animation of qa.animations) { animation.pause(); animation.currentTime = 0; }
+        if (scrimAnimation) qa.timing = scrimAnimation.effect.getTiming();
         qa.first = qa.read();
       });
       observer.observe(host, { childList: true, subtree: true });
-    });
+    }, expected);
     await click(page, selector, { scroll: false, delay: 0 });
     await page.waitForFunction(() => !!window.__qaSheetScrim.first);
     return page.evaluate(() => ({ first: window.__qaSheetScrim.first, timing: window.__qaSheetScrim.timing || null }));
   }
   const sample = time => page.evaluate(value => {
     const qa = window.__qaSheetScrim;
-    qa.animation.currentTime = value;
+    for (const animation of qa.animations) animation.currentTime = value;
     return qa.read();
   }, time);
   function immediate(measured, mobile = true) {
@@ -569,14 +576,84 @@ async function phoneScrim() {
       }
       assert.ok(evidence.samples[1].opacity > .05 && evidence.samples[1].opacity < .95, 'the midpoint visibly progresses');
       assert.equal(evidence.samples[2].opacity, 1, 'the scrim reaches its original final tint');
+      assert.deepEqual(evidence.samples[0].edge.shadowPixel, opening.first.edge.paperPixel,
+        'the visible top strip starts with the opaque page color');
+      assert.ok(Math.abs(evidence.samples[1].edge.shadowPixel[3] / 255 - .5) <= 1 / 255,
+        'the top strip progresses with the held scrim midpoint');
+      assert.equal(evidence.samples[2].edge.shadowPixel[3], 0, 'the top strip reaches its target background');
       if (name === 'award') {
         const held = await sample(duration / 2);
-        await click(page, a('points-confirm')); await page.waitForSelector('#parent-form [name="answer"]');
-        const rerendered = await page.evaluate(() => window.__qaSheetScrim.read()); evidence.rerendered = rerendered;
+        await page.evaluate(() => {
+          const qa = window.__qaSheetScrim;
+          qa.rerenderFrames = [];
+          qa.rerenderObserver = new MutationObserver(() => {
+            if (document.querySelector('#app .ledger-award-dialog')) qa.rerenderFrames.push(qa.read());
+          });
+          qa.rerenderObserver.observe(document.getElementById('app'), { childList: true, subtree: true });
+        });
+        await click(page, a('points-confirm'), { scroll: false, delay: 0 });
+        await page.waitForSelector('#parent-form [name="answer"]');
+        const rerender = await page.evaluate(() => {
+          const qa = window.__qaSheetScrim; qa.rerenderObserver.disconnect();
+          return { current: qa.read(), frames: qa.rerenderFrames };
+        });
+        const rerendered = rerender.current; evidence.rerendered = rerendered; evidence.rerenderFrames = rerender.frames;
         assert.equal(rerendered.opacity, held.opacity, 'rerendering does not flash or restart the held midpoint');
+        assert.ok(rerender.frames.length > 0, 'the real confirmation-to-PIN rerender was observed before paint');
+        for (const frame of [...rerender.frames, rerendered]) {
+          immediate(frame);
+          assert.equal(frame.opacity, held.opacity, 'every rerender keeps the held scrim midpoint before paint');
+          assert.equal(frame.edge.shadow, held.edge.shadow, 'every rerender keeps the held top-strip midpoint before paint');
+        }
       }
       await Q.home(page);
     }
+  });
+  await check('A new review scrim fades after the full-screen custom award editor has settled', async () => {
+    await click(page, a('add-points')); await page.waitForSelector('.behavior-picker-sheet');
+    await click(page, a('points-new')); await page.waitForSelector('.sheet[data-form-kind="points"]');
+    await B.fillForm(page, { name: '合成完整编辑加分', points: 3, reason: '完整编辑后首次核对' });
+    await B.delay(220);
+    const editor = await page.$eval('.sheet[data-form-kind="points"]', sheet => ({
+      top: sheet.getBoundingClientRect().top, height: sheet.getBoundingClientRect().height, viewport: innerHeight,
+      edge: getComputedStyle(document.querySelector('.sheet-status-edge')).display
+    }));
+    assert.equal(editor.top, 0); assert.equal(editor.height, editor.viewport); assert.equal(editor.edge, 'none');
+    const opening = await open(Q.save, '.ledger-award-dialog[data-auth-phase="confirm"]');
+    const evidence = { name: 'custom-review', editor, ...opening, samples: [] }; report.sheetScrim.push(evidence);
+    assert.equal((await ui(page)).authPhase, 'confirm'); immediate(opening.first);
+    assert.ok(opening.timing, 'entering a review after a settled full-screen editor starts a new fade');
+    assert.equal(opening.first.opacity, 0, 'a newly visible review scrim starts transparent');
+    assert.ok(opening.timing.duration >= 80 && opening.timing.duration <= 120);
+    for (const time of [0, opening.timing.duration / 2, opening.timing.duration]) {
+      const measured = await sample(time); evidence.samples.push({ time, ...measured }); immediate(measured);
+      assert.ok(Math.abs(measured.opacity - time / opening.timing.duration) <= .001,
+        'the new review visibly progresses at its actual animation time: ' + JSON.stringify({ time, measured }));
+    }
+    await Q.shot(page, 'phone-scrim-custom-review-complete'); await Q.home(page);
+  });
+  await check('Opening scrims interpolate at quarter frames without CSS custom-property registration', async () => {
+    const registrationsRemoved = await page.evaluate(() => {
+      let count = 0;
+      for (const sheet of document.styleSheets) {
+        for (let index = sheet.cssRules.length - 1; index >= 0; index--) {
+          if (sheet.cssRules[index].cssText.startsWith('@property ')) {
+            sheet.deleteRule(index); count++;
+          }
+        }
+      }
+      return count;
+    });
+    const opening = await open(chosen);
+    const evidence = { name: 'unregistered', registrationsRemoved, ...opening, samples: [] }; report.sheetScrim.push(evidence);
+    assert.ok(opening.timing, 'the legacy-capability simulation still has a scrim entrance'); immediate(opening.first);
+    const duration = opening.timing.duration;
+    for (const time of [0, duration / 4, duration * .49, duration / 2, duration * .75, duration]) {
+      const measured = await sample(time); evidence.samples.push({ time, ...measured }); immediate(measured);
+      assert.ok(Math.abs(measured.opacity - time / duration) <= .001,
+        'without registration the scrim interpolates rather than jumping at 50%: ' + JSON.stringify({ time, measured }));
+    }
+    await Q.shot(page, 'phone-scrim-without-registration-complete'); await Q.home(page);
   });
   await check('Reduced motion and desktop preserve an immediate fully painted scrim', async () => {
     await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);

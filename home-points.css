@@ -4,11 +4,6 @@ html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home)
 }
 /* Safari samples the page edge. Use the opaque result of the sheet backdrop over the home header. */
 .sheet-status-edge { display: none; }
-@property --points-scrim-opacity {
-  syntax: "<number>";
-  inherits: true;
-  initial-value: 1;
-}
 @media (max-width: 699px) {
   /* Safari can sample the canvas while the session and family requests are still pending. */
   html:has(> .saas-connecting), body.saas-connecting, .saas-connecting > #app > .saas-main {
@@ -26,18 +21,15 @@ html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home)
   }
 }
 @media (max-width: 699px) and (prefers-reduced-motion: no-preference) {
-  /* #app survives form rerenders, so editing an open sheet cannot restart the fade. */
-  .view-points.sheet-open #app:has(.points-home) { animation: points-scrim-in 100ms linear; }
-  @keyframes points-scrim-in {
-    from { --points-scrim-opacity: 0; }
-    to { --points-scrim-opacity: 1; }
+  .view-points:has(.points-home) .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet)) > .sheet-backdrop {
+    animation: points-scrim-in 100ms linear;
   }
-  .view-points .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet)) > .sheet-backdrop {
-    opacity: var(--points-scrim-opacity, 1);
-  }
-  .view-points .sheet-status-edge {
-    /* Fade the visible strip from paper while keeping its sampled background at the target color. */
-    box-shadow: inset 0 0 0 var(--sheet-edge-height) rgb(from var(--app-paper) r g b / calc(1 - var(--points-scrim-opacity, 1)));
+  /* The strip animates when it becomes visible. Its opaque background stays available to Safari. */
+  .view-points:has(.points-home) .sheet-status-edge { animation: points-edge-in 100ms linear; }
+  @keyframes points-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes points-edge-in {
+    from { box-shadow: inset 0 0 0 var(--sheet-edge-height) var(--app-paper); }
+    to { box-shadow: inset 0 0 0 var(--sheet-edge-height) transparent; }
   }
 }
 .app-shell:has(.points-home) {
