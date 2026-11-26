@@ -4,6 +4,11 @@ html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home)
 }
 /* Safari samples the page edge. Use the opaque result of the sheet backdrop over the home header. */
 .sheet-status-edge { display: none; }
+@property --points-scrim-opacity {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 1;
+}
 @media (max-width: 699px) {
   /* Safari can sample the canvas while the session and family requests are still pending. */
   html:has(> .saas-connecting), body.saas-connecting, .saas-connecting > #app > .saas-main {
@@ -16,7 +21,23 @@ html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home)
   .view-points:has(.points-home) .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet)) > .sheet-status-edge {
     /* WebKit skips boxes 10px tall or thinner. Keep just the top 6px visible when Safari owns the safe area. */
     display: block; position: fixed; inset: -6px 0 auto;
-    height: max(12px, calc(6px + env(safe-area-inset-top, 0px))); background-color: var(--points-sheet-edge);
+    --sheet-edge-height: max(12px, calc(6px + env(safe-area-inset-top, 0px)));
+    height: var(--sheet-edge-height); background-color: var(--points-sheet-edge);
+  }
+}
+@media (max-width: 699px) and (prefers-reduced-motion: no-preference) {
+  /* #app survives form rerenders, so editing an open sheet cannot restart the fade. */
+  .view-points.sheet-open #app:has(.points-home) { animation: points-scrim-in 100ms linear; }
+  @keyframes points-scrim-in {
+    from { --points-scrim-opacity: 0; }
+    to { --points-scrim-opacity: 1; }
+  }
+  .view-points .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet)) > .sheet-backdrop {
+    opacity: var(--points-scrim-opacity, 1);
+  }
+  .view-points .sheet-status-edge {
+    /* Fade the visible strip from paper while keeping its sampled background at the target color. */
+    box-shadow: inset 0 0 0 var(--sheet-edge-height) rgb(from var(--app-paper) r g b / calc(1 - var(--points-scrim-opacity, 1)));
   }
 }
 .app-shell:has(.points-home) {
