@@ -7,6 +7,7 @@ const crypto = require('node:crypto');
 const { spawnSync } = require('node:child_process');
 const { DatabaseSync } = require('node:sqlite');
 const H = require('../saas/testing.cjs');
+const M = require('../model.js');
 const S = require('../saas/security.cjs');
 const { createDatabase } = require('../saas/sqlite.cjs');
 const { createStore } = require('../saas/store.cjs');
@@ -30,7 +31,9 @@ test('whole database backup reopens consistently and restore preserves business 
   assert.equal((await H.request(f.server, 'POST', '/api/parent/device', { enabled: true, credential: H.PIN }, owner)).status, 200);
   await f.database.query('INSERT INTO saas_assistant_leases(id,family_id,user_id,session_hash,expires_at) VALUES($1,$2,$3,$4,$5)',
     [crypto.randomUUID(), owner.familyId, owner.userId, sessionHash, new Date(f.clock.value + 60000)]);
-  const transient = ['saas_sessions', 'saas_email_tokens', 'saas_invitations', 'saas_parent_devices', 'saas_parent_grants', 'saas_parent_challenges', 'saas_assistant_leases'];
+  await f.database.query('INSERT INTO saas_award_photo_discards(family_id,id,uploaded_by,expires_at) VALUES($1,$2,$3,$4)',
+    [owner.familyId, crypto.randomUUID(), owner.userId, new Date(f.clock.value + 60000)]);
+  const transient = ['saas_sessions', 'saas_email_tokens', 'saas_invitations', 'saas_parent_devices', 'saas_parent_grants', 'saas_parent_challenges', 'saas_assistant_leases', 'saas_award_photo_discards'];
   for (const table of transient) assert.ok(await count(f.database, table) > 0, table + ' was populated by real workflows');
   const permanent = (await f.database.query('SELECT * FROM saas_families WHERE id=$1', [owner.familyId])).rows[0];
   const receipts = (await f.database.query('SELECT * FROM saas_action_receipts ORDER BY action_id')).rows;
@@ -43,6 +46,7 @@ test('whole database backup reopens consistently and restore preserves business 
     assert.deepEqual((await reopened.database.query('SELECT * FROM saas_families WHERE id=$1', [owner.familyId])).rows[0], permanent);
     assert.equal(await count(reopened.database, 'saas_sessions'), await count(f.database, 'saas_sessions'));
     assert.equal(await count(reopened.database, 'saas_parent_devices'), 1);
+    assert.equal(await count(reopened.database, 'saas_award_photo_discards'), 1);
   } finally { await reopened.close(); }
   // Stop every HTTP application before restore, matching the operator contract.
   await f.server.closeSaas();
@@ -95,18 +99,18 @@ test('version 3 backups restore through a private upgraded copy without modifyin
   const families = (await f.database.query('SELECT * FROM saas_families')).rows;
   const receipts = (await f.database.query('SELECT * FROM saas_action_receipts ORDER BY action_id')).rows;
   await f.server.closeSaas();
-  // Migration 4 adds only this table and indexes. Removing it and its version
-  // recreates the exact v3 schema, with real account and ledger API data.
-  await f.database.exec('DROP TABLE saas_parent_devices; DELETE FROM saas_schema_migrations WHERE version=4;');
+  // Migrations 4 and 5 add only these tables and indexes. Removing them and
+  // their versions recreates v3 with real account and ledger API data.
+  await f.database.exec('DROP TABLE saas_award_photo_discards; DROP TABLE saas_award_photos; DROP TABLE saas_parent_devices; DELETE FROM saas_schema_migrations WHERE version>=4;');
   const directory = path.dirname(f.databasePath), source = path.join(directory, 'historical-v3.sqlite');
-  const output = path.join(directory, 'restored-v4.sqlite');
+  const output = path.join(directory, 'restored-current.sqlite');
   await f.database.backup(source);
   const original = fs.readFileSync(source);
   assert.equal((await restoreDatabase({ source, output, appStopped: true })).credentialsInvalidated, true);
   assert.deepEqual(fs.readFileSync(source), original, 'only the staging copy was migrated');
   const restored = await createStore({ databasePath: output, migrate: false });
   try {
-    assert.deepEqual((await restored.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4]);
+    assert.deepEqual((await restored.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4, 5]);
     assert.deepEqual((await restored.database.query('SELECT * FROM saas_families')).rows, families);
     assert.deepEqual((await restored.database.query('SELECT * FROM saas_action_receipts ORDER BY action_id')).rows, receipts);
     for (const table of ['saas_sessions', 'saas_parent_devices', 'saas_parent_challenges', 'saas_parent_grants']) assert.equal(await count(restored.database, table), 0);
@@ -125,6 +129,63 @@ test('version 3 backups restore through a private upgraded copy without modifyin
   raw.exec('ALTER TABLE saas_users DROP COLUMN created_at'); raw.close();
   const rejected = path.join(directory, 'must-not-restore-v3.sqlite');
   await assert.rejects(restoreDatabase({ source: incomplete, output: rejected, appStopped: true }), /required columns/);
+  assert.equal(fs.existsSync(rejected), false);
+  assert.deepEqual(fs.readdirSync(directory).filter(name => name.includes('.restore-')), []);
+});
+
+test('version 4 parent-device backup restores its ledger to v5 and invalidates the original trusted login', async t => {
+  const f = await H.fixture(t), directory = path.dirname(f.databasePath);
+  await f.server.closeSaas();
+  const source = path.join(directory, 'historical-main-v4.sqlite'), output = path.join(directory, 'restored-main-v4.sqlite');
+  const raw = new DatabaseSync(source), userId = crypto.randomUUID(), familyId = crypto.randomUUID(), token = S.token();
+  const csrfToken = S.csrf(token), sessionHash = S.digest(token), email = 'main-v4-restore@example.test';
+  const at = new Date(f.clock.value).toISOString(), expires = new Date(f.clock.value + 3600000).toISOString();
+  const action = H.credit('main-v4-permanent-credit', 23);
+  const state = M.apply(M.createEmptyFamily({ childName: '旧版孩子' }, at), action, at);
+  const password = await S.hashPassword(H.PASSWORD), receipt = await S.makeReceipt(action);
+  try {
+    // These are the shipped main migrations, without any photo tables or
+    // rewritten migration history. The backup retains a live trusted session.
+    for (const migration of ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql', '004-parent-devices.sql']) {
+      raw.exec(fs.readFileSync(path.join(__dirname, '..', 'saas', 'migrations', migration), 'utf8'));
+    }
+    raw.exec('PRAGMA foreign_keys=ON; BEGIN');
+    raw.prepare('INSERT INTO saas_users(id,email,password_hash,verified_at,created_at) VALUES(?,?,?,?,?)').run(userId, email, JSON.stringify(password), at, at);
+    raw.prepare('INSERT INTO saas_families(id,name,revision,state,parent,owner_user_id,created_at,updated_at) VALUES(?,?,2,?,?,?,?,?)')
+      .run(familyId, '升级前家庭', JSON.stringify(state), JSON.stringify({ configured: true, method: 'math' }), userId, at, at);
+    raw.prepare("INSERT INTO saas_memberships(family_id,user_id,role,created_at) VALUES(?,?,'owner',?)").run(familyId, userId, at);
+    raw.prepare('INSERT INTO saas_sessions(token_hash,user_id,csrf_hash,created_at,expires_at) VALUES(?,?,?,?,?)').run(sessionHash, userId, S.digest(csrfToken), at, expires);
+    raw.prepare('INSERT INTO saas_parent_devices(session_hash,family_id,user_id,created_at) VALUES(?,?,?,?)').run(sessionHash, familyId, userId, at);
+    raw.prepare('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES(?,?,?,2,?)').run(familyId, action.id, JSON.stringify(receipt), at);
+    raw.exec('COMMIT');
+    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4]);
+  } finally { raw.close(); }
+  const original = fs.readFileSync(source);
+  await restoreDatabase({ source, output, appStopped: true });
+  assert.deepEqual(fs.readFileSync(source), original);
+  const restored = await createStore({ databasePath: output, migrate: false });
+  try {
+    assert.deepEqual((await restored.database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4, 5]);
+    assert.deepEqual((await restored.database.query('SELECT state FROM saas_families WHERE id=$1', [familyId])).rows[0].state, state);
+    for (const table of ['saas_sessions', 'saas_parent_devices', 'saas_parent_grants', 'saas_parent_challenges', 'saas_award_photos', 'saas_award_photo_discards']) {
+      assert.equal(await count(restored.database, table), 0, table + ' must start empty after restoring v4');
+    }
+    const server = await f.start({ database: restored.database });
+    const old = { cookie: 'ttjf_session=' + token, csrfToken, familyId };
+    assert.equal((await H.request(server, 'GET', '/api/state', undefined, old)).status, 401);
+    const fresh = { ...await H.login(f, email, H.PASSWORD, server), familyId };
+    assert.deepEqual((await H.request(server, 'GET', '/api/parent/device', undefined, fresh)).body, { enabled: false, familyId, userId });
+    const replay = await H.request(server, 'POST', '/api/action', { revision: 1, action }, fresh);
+    assert.equal(replay.status, 200); assert.equal(replay.body.revision, 2); assert.deepEqual(replay.body.state, state);
+    const untrusted = await H.request(server, 'POST', '/api/action', { revision: 2, action: H.credit('must-confirm-after-restore') }, fresh);
+    assert.equal(untrusted.body.code, 'PARENT_REQUIRED');
+    await server.closeSaas();
+  } finally { await restored.close(); }
+  const incomplete = path.join(directory, 'missing-v4-device-table.sqlite'), rejected = path.join(directory, 'rejected-v4.sqlite');
+  fs.copyFileSync(source, incomplete);
+  const broken = new DatabaseSync(incomplete);
+  try { broken.exec('DROP TABLE saas_parent_devices'); } finally { broken.close(); }
+  await assert.rejects(restoreDatabase({ source: incomplete, output: rejected, appStopped: true }), /missing or incomplete/);
   assert.equal(fs.existsSync(rejected), false);
   assert.deepEqual(fs.readdirSync(directory).filter(name => name.includes('.restore-')), []);
 });
@@ -235,7 +296,7 @@ test('restore never removes an existing staging directory entry when exclusive c
 test('init creates private real SMTP settings and bootstrap provisions SQLite with the configured account', async t => {
   const f = await H.fixture(t), directory = path.join(path.dirname(f.databasePath), 'isolated-project');
   const project = path.resolve(__dirname, '..');
-  for (const file of ['tools/saas-local.cjs', 'saas/initial-account.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql', 'saas/migrations/003-assistant-chat.sql', 'saas/migrations/004-parent-devices.sql']) {
+  for (const file of ['tools/saas-local.cjs', 'saas/initial-account.cjs', 'saas/sqlite.cjs', 'saas/store.cjs', 'saas/security.cjs', 'saas/migrations/001-initial.sql', 'saas/migrations/002-lifecycle.sql', 'saas/migrations/003-assistant-chat.sql', 'saas/migrations/004-parent-devices.sql', 'saas/migrations/005-award-photos.sql']) {
     fs.mkdirSync(path.dirname(path.join(directory, file)), { recursive: true });
     fs.copyFileSync(path.join(project, file), path.join(directory, file));
   }
@@ -269,7 +330,7 @@ test('init creates private real SMTP settings and bootstrap provisions SQLite wi
   assert.equal(result.databasePath, path.join(directory, 'data', 'ttjf.sqlite'));
   const raw = new DatabaseSync(result.databasePath, { readOnly: true });
   try {
-    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4]);
+    assert.deepEqual(raw.prepare('SELECT version FROM saas_schema_migrations ORDER BY version').all().map(row => row.version), [1, 2, 3, 4, 5]);
     const account = raw.prepare('SELECT email,verified_at FROM saas_users').get();
     assert.equal(account.email, '391504704@qq.com');
     assert.ok(account.verified_at);

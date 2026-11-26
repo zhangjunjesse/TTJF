@@ -8,6 +8,7 @@ const crypto = require('node:crypto');
 const { setImmediate: immediate } = require('node:timers/promises');
 const { createDatabase, resolveDatabasePath } = require('../saas/sqlite.cjs');
 const { createStore, migrate, assertDatabaseSchema } = require('../saas/store.cjs');
+const S = require('../saas/security.cjs');
 
 const AT = new Date('2026-11-17T00:00:00.000Z');
 const AFTER = new Date(+AT + 3600000);
@@ -197,18 +198,21 @@ test('SQLite foreign keys retain in-flight leases while cascading revoked permis
     await client.query("INSERT INTO saas_parent_challenges(token_hash,family_id,user_id,session_hash,revision,action_receipt,method,expires_at) VALUES($1,$2,$3,$4,1,$5,'math',$6)",
       ['challenge', current.id, current.parent, session, { digest: 'action' }, AFTER]);
     await client.query('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES($1,$2,$3,1,$4)', [current.id, 'action', { digest: 'receipt' }, AT]);
+    await client.query('INSERT INTO saas_award_photo_discards(family_id,id,uploaded_by,expires_at) VALUES($1,$2,$3,$4),($1,$5,$6,$4)',
+      [current.id, crypto.randomUUID(), current.parent, AFTER, crypto.randomUUID(), current.owner]);
     await client.query('DELETE FROM saas_memberships WHERE family_id=$1 AND user_id=$2', [current.id, current.parent]);
   });
   assert.equal((await database.query('SELECT 1 FROM saas_parent_grants')).rowCount, 0);
   assert.equal((await database.query('SELECT 1 FROM saas_parent_challenges')).rowCount, 0);
   assert.equal((await database.query('SELECT 1 FROM saas_assistant_leases')).rowCount, 1);
+  assert.deepEqual((await database.query('SELECT uploaded_by FROM saas_award_photo_discards')).rows, [{ uploaded_by: current.owner }], 'revoked members do not retain private cancellation markers');
   await database.query('DELETE FROM saas_sessions WHERE token_hash=$1', [session]);
   assert.equal((await database.query('SELECT session_hash FROM saas_assistant_leases')).rows[0].session_hash, null);
   await database.query('DELETE FROM saas_users WHERE id=$1', [current.parent]);
   assert.equal((await database.query('SELECT user_id FROM saas_assistant_leases')).rows[0].user_id, null);
   assert.equal((await database.query('SELECT invited_by FROM saas_invitations')).rows[0].invited_by, null);
   await database.query('DELETE FROM saas_families WHERE id=$1', [current.id]);
-  for (const table of ['saas_memberships', 'saas_invitations', 'saas_assistant_leases', 'saas_action_receipts']) {
+  for (const table of ['saas_memberships', 'saas_invitations', 'saas_assistant_leases', 'saas_action_receipts', 'saas_award_photo_discards']) {
     assert.equal((await database.query('SELECT count(*) AS n FROM ' + table)).rows[0].n, 0, table);
   }
   assert.equal((await database.query('PRAGMA foreign_key_check')).rowCount, 0);
@@ -238,7 +242,7 @@ test('SQLite UUID comparisons, foreign keys and unique identities preserve case-
 test('SQLite migrations are queued/idempotent, preserve supplied databases and refuse unrelated schemas', async t => {
   const f = fixture(t), database = await f.open();
   await Promise.all([migrate(database), migrate(database)]);
-  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }]);
+  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows, [{ version: 1 }, { version: 2 }, { version: 3 }, { version: 4 }, { version: 5 }]);
   const supplied = await f.store({ database });
   await supplied.close();
   assert.equal((await database.query('SELECT 1 AS value')).rows[0].value, 1);
@@ -247,7 +251,7 @@ test('SQLite migrations are queued/idempotent, preserve supplied databases and r
   await other.exec('CREATE TABLE unrelated(value TEXT) STRICT;');
   await assert.rejects(migrate(other), /another schema/);
   assert.deepEqual((await other.query("SELECT name FROM sqlite_schema WHERE type='table'")).rows, [{ name: 'unrelated' }]);
-  await database.query('INSERT INTO saas_schema_migrations(version) VALUES(5)');
+  await database.query('INSERT INTO saas_schema_migrations(version) VALUES(6)');
   await assert.rejects(migrate(database), /unsupported/);
 });
 
@@ -265,7 +269,7 @@ test('SQLite schema validation rejects missing columns and reports broken foreig
   await assert.rejects(assertDatabaseSchema(database), /missing required columns in saas_users/);
 });
 
-test('SQLite version 3 upgrades to current parent-device schema without changing existing account or family data', async t => {
+test('SQLite version 3 upgrades to current schema without changing existing account or family data', async t => {
   const f = fixture(t), database = await f.open();
   for (const file of ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql']) {
     await database.exec(fs.readFileSync(path.join(__dirname, '../saas/migrations', file), 'utf8'));
@@ -275,16 +279,54 @@ test('SQLite version 3 upgrades to current parent-device schema without changing
   const accounts = (await database.query('SELECT * FROM saas_users')).rows;
   const families = (await database.query('SELECT * FROM saas_families')).rows;
   await assert.rejects(assertDatabaseSchema(database), /unsupported/);
-  await assertDatabaseSchema(database, { allowV3Backup: true });
+  await assertDatabaseSchema(database, { allowOlder: true });
   await Promise.all([migrate(database), migrate(database)]);
-  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4]);
+  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4, 5]);
   assert.deepEqual((await database.query('SELECT * FROM saas_users')).rows, accounts);
   assert.deepEqual((await database.query('SELECT * FROM saas_families')).rows, families);
   assert.deepEqual((await database.query('SELECT * FROM saas_parent_devices')).rows, []);
+  assert.deepEqual((await database.query('SELECT * FROM saas_award_photos')).rows, []);
+  assert.deepEqual((await database.query('SELECT * FROM saas_award_photo_discards')).rows, []);
   assert.ok(existing);
   await database.exec('DROP TABLE saas_parent_devices');
   await assert.rejects(assertDatabaseSchema(database), /missing or incomplete/);
-  await assert.rejects(assertDatabaseSchema(database, { allowV3Backup: true }), /missing or incomplete/, 'v4 cannot omit its current authorization table');
+  await assert.rejects(assertDatabaseSchema(database, { allowOlder: true }), /missing or incomplete/, 'current schema cannot omit its authorization table');
+});
+
+test('SQLite version 4 gains photos while retaining the existing family, session and parent-device authorization', async t => {
+  const f = fixture(t), database = await f.open();
+  for (const file of ['001-initial.sql', '002-lifecycle.sql', '003-assistant-chat.sql', '004-parent-devices.sql']) {
+    await database.exec(fs.readFileSync(path.join(__dirname, '../saas/migrations', file), 'utf8'));
+  }
+  const existing = await family({ transaction: callback => database.transaction(callback) });
+  const token = S.token(), csrfToken = S.token(), sessionHash = S.digest(token);
+  await database.transaction(async client => {
+    await client.query('INSERT INTO saas_sessions(token_hash,user_id,csrf_hash,created_at,expires_at) VALUES($1,$2,$3,$4,$5)',
+      [sessionHash, existing.owner, S.digest(csrfToken), AT, AFTER]);
+    await client.query('INSERT INTO saas_parent_devices(session_hash,family_id,user_id,created_at) VALUES($1,$2,$3,$4)',
+      [sessionHash, existing.id, existing.owner, AT]);
+    await client.query('INSERT INTO saas_action_receipts(family_id,action_id,receipt,revision,created_at) VALUES($1,$2,$3,1,$4)',
+      [existing.id, 'before-photos', { digest: 'permanent-ledger-receipt' }, AT]);
+  });
+  const tables = ['saas_users', 'saas_families', 'saas_memberships', 'saas_sessions', 'saas_parent_devices', 'saas_action_receipts'];
+  const before = await Promise.all(tables.map(async table => (await database.query('SELECT * FROM ' + table)).rows));
+  await assert.rejects(assertDatabaseSchema(database), /unsupported/);
+  await assertDatabaseSchema(database, { allowOlder: true });
+  await Promise.all([migrate(database), migrate(database)]);
+  assert.deepEqual((await database.query('SELECT version FROM saas_schema_migrations ORDER BY version')).rows.map(row => row.version), [1, 2, 3, 4, 5]);
+  for (let index = 0; index < tables.length; index++) {
+    assert.deepEqual((await database.query('SELECT * FROM ' + tables[index])).rows, before[index], tables[index] + ' survives the upgrade');
+  }
+  const store = await f.store({ database, migrate: false });
+  await store.transaction(async client => {
+    const identity = await store.authenticate(client, token, AT, { verified: true, csrfToken });
+    assert.equal((await store.family(client, identity, existing.id)).owner_user_id, existing.owner);
+    assert.equal((await client.query('SELECT session_hash FROM saas_parent_devices WHERE family_id=$1 AND user_id=$2', [existing.id, identity.user.id])).rows[0].session_hash, sessionHash);
+  });
+  assert.deepEqual((await database.query('SELECT * FROM saas_award_photos')).rows, []);
+  assert.deepEqual((await database.query('SELECT * FROM saas_award_photo_discards')).rows, []);
+  await database.exec('DROP TABLE saas_award_photo_discards');
+  await assert.rejects(assertDatabaseSchema(database, { allowOlder: true }), /missing or incomplete/, 'v5 must contain its cancellation table');
 });
 
 test('SQLite uses DELETE journaling, FULL synchronization, foreign keys and a bounded busy wait', async t => {

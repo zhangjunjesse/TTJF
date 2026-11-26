@@ -11,6 +11,7 @@ const { createMailer, loopback } = require('./saas/mail.cjs');
 const { createAuth } = require('./saas/auth.cjs');
 const { createFamilies } = require('./saas/families.cjs');
 const { createBusiness } = require('./saas/business.cjs');
+const { MAX_UPLOAD_JSON_BYTES } = require('./saas/award-photos.cjs');
 const { createLifecycle } = require('./saas/lifecycle.cjs');
 const { createClientAddress } = require('./saas/network.cjs');
 const { createMaintenance, maintenanceConfig } = require('./saas/maintenance.cjs');
@@ -21,11 +22,11 @@ const MIME = Object.freeze({ '.html': 'text/html; charset=utf-8', '.css': 'text/
   '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif',
   '.ico': 'image/x-icon', '.woff': 'font/woff', '.woff2': 'font/woff2', '.ttf': 'font/ttf', '.mp3': 'audio/mpeg', '.wav': 'audio/wav', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json; charset=utf-8' });
-const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js',
+const TOP_LEVEL = new Set(['/index.html', '/styles.css', '/award-photos.css', '/award-photos.js', '/app.js', '/model.js', '/assistant.js', '/pet.js', '/pet.css', '/farm-ui.js',
   '/farm.css', '/farm-scene.js', '/manifest.webmanifest', '/saas-client.js', '/saas.css', '/world-ui.js', '/farm-world.css', '/home-points.js', '/home-points.css', '/assistant-panel.js', '/assistant-panel.css', '/voice-input.js', '/voice-pcm-worklet.js']);
 const ASSET_EXTENSIONS = new Set(['.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.mp3', '.wav', '.ogg']);
 const BUSINESS = new Set(['/api/state', '/api/meta', '/api/parent/device', '/api/parent/challenge', '/api/parent/verify', '/api/action', '/api/assistant',
-  '/api/assistant/chat/read', '/api/assistant/chat/turn', '/api/assistant/chat/clear', TICKET_PATH]);
+  '/api/assistant/chat/read', '/api/assistant/chat/turn', '/api/assistant/chat/clear', '/api/award-photos', '/api/award-photos/discard', '/api/award-photos/read', TICKET_PATH]);
 
 function configuredOrigin(value, production) {
   if (!value) { throw new Error('PUBLIC_ORIGIN is required for mail links and origin validation'); }
@@ -201,6 +202,9 @@ async function createSaasServer(options = {}) {
         case '/api/assistant/chat/read': return business.chatRead(ctx, body);
         case '/api/assistant/chat/turn': return business.chatTurn(ctx, body);
         case '/api/assistant/chat/clear': return business.chatClear(ctx, body);
+        case '/api/award-photos': return business.photoUpload(ctx, body);
+        case '/api/award-photos/discard': return business.photoDiscard(ctx, body);
+        case '/api/award-photos/read': return business.photoRead(ctx, body);
         case TICKET_PATH: return voice.ticket(ctx);
       }
     }
@@ -219,7 +223,7 @@ async function createSaasServer(options = {}) {
       let body;
       if (ctx.write) {
         if (!sameOrigin(request, publicOrigin)) { request.resume(); S.fail(403, 'ORIGIN_DENIED', '仅允许同源提交'); }
-        body = await readJson(request, maxBodyBytes);
+        body = await readJson(request, ctx.pathname === '/api/award-photos' ? MAX_UPLOAD_JSON_BYTES : maxBodyBytes);
         // Public auth routes remain usable with an expired cookie, but a live
         // authenticated browser must send its session-bound CSRF token too.
         if (ctx.rawToken && ctx.pathname.startsWith('/api/auth/') && !['/api/auth/logout', '/api/auth/change-password', '/api/auth/delete-account'].includes(ctx.pathname)) {

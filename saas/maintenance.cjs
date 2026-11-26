@@ -8,7 +8,9 @@ const TABLES = Object.freeze([
   ['challenges', 'saas_parent_challenges', 'token_hash', 'attempts >= 3 OR expires_at <= $1'],
   ['grants', 'saas_parent_grants', 'token_hash', 'expires_at <= $1'],
   ['rateLimits', 'saas_rate_limits', 'scope', 'expires_at <= $1'],
-  ['assistantLeases', 'saas_assistant_leases', 'id', 'expires_at <= $1']
+  ['assistantLeases', 'saas_assistant_leases', 'id', 'expires_at <= $1'],
+  ['awardPhotos', 'saas_award_photos', 'rowid', 'action_id IS NULL AND (expires_at <= $1 OR uploaded_by IS NULL)'],
+  ['awardPhotoDiscards', 'saas_award_photo_discards', 'rowid', 'expires_at <= $1']
 ]);
 function maintenanceConfig(options = {}) {
   const intervalMs = Number(options.maintenanceIntervalMs === undefined ? process.env.SAAS_CLEANUP_INTERVAL_MS || 300000 : options.maintenanceIntervalMs);

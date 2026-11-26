@@ -47,6 +47,12 @@
         boundary(true); checkSession(status === 401 ? '请重新登录' : errorText(status, result), preferred); return;
       }
       if (options.business && status !== 0 && !owns(result)) {
+        // A proxy may reject a photo before the request reaches the family API.
+        // Keep the draft and discard the unscoped response body.
+        if (['/api/award-photos', '/api/award-photos/read', '/api/award-photos/discard'].includes(url) &&
+            (status === 413 || status >= 500) && !result.userId && !result.familyId) {
+          done(status, {}); return;
+        }
         boundary(true); view = 'error'; message = '家庭校验未完成'; render(); return;
       }
       done(status, result || {});

@@ -5,8 +5,9 @@
   var DRAFT = 'little-steps-drafts-v03', PRIVATE = 'little-steps-parent-private-v03', SOUND = 'ttjf-saas-device-sound-v1';
   var saas = window.__TTJF_SAAS__ === true, SaaS = window.FamilySaas;
   var chat = saas ? window.FamilyAssistantPanel : null;
+  var AwardPhotos = saas ? window.FamilyAwardPhotos : null, awardPhotoDrafts = {}, awardPhotoSelection = null;
   var local = !saas && (location.protocol === 'file:' || window.__FAMILY_OFFLINE__ === true), state = null, revision = 0, connected = false, serverReached = false;
-  var syncBusy = false, pending = false, retryTx = null, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
+  var syncBusy = false, pending = false, retryTx = null, submittedAwards = {}, setupTx = null, parentRevision = -1, recognition = null, toastTimer, wakeLock = null;
   var assistantSequence = 0, avatarSequence = 0, petTimer = null, familyDay = null, serverTime = 0, serverReceived = 0, avatarSelection = null;
   function monotonic() { return window.performance && window.performance.now ? window.performance.now() : Date.now(); }
   function farmClock() { return !local && serverTime ? new Date(serverTime + Math.max(0, monotonic() - serverReceived)) : new Date(); }
@@ -30,12 +31,155 @@
   function scopeToken() { return saas && SaaS ? SaaS.capture() : null; }
   function scopeCurrent(token) { return !saas || !!(SaaS && SaaS.current(token) && scopeReady()); }
   function trackScope(dispose) { return saas && SaaS ? SaaS.track(dispose) : function () {}; }
+  function awardPhotoKey(f) {
+    var binding = f.assistantDraft;
+    return binding ? 'assistant:' + binding.generation + ':' + binding.turnId + ':' + binding.actionId : draftKey(f);
+  }
+  function awardPhotos(f) {
+    if (!AwardPhotos || !f || f.kind !== 'points') return null;
+    var key = awardPhotoKey(f);
+    if (f.awardPhotoKey && f.awardPhotoKey !== key) discardAwardPhotos(f);
+    if (f.awardPhotoKey !== key || !f.awardPhotos || awardPhotoDrafts[key] !== f.awardPhotos) {
+      f.awardPhotoKey = key; f.awardPhotos = awardPhotoDrafts[key] || AwardPhotos.createDraft();
+      awardPhotoDrafts[key] = f.awardPhotos;
+    }
+    return f.awardPhotos;
+  }
+  function awardPhotosReady(f) { var draft = awardPhotos(f); return !draft || AwardPhotos.ready(draft); }
+  function addAwardPhotoIds(action, f) {
+    var draft = awardPhotos(f), ids = draft ? AwardPhotos.ids(draft) : [];
+    if (ids.length) action.photoIds = ids; else delete action.photoIds;
+    return action;
+  }
+  function updateAwardPhotoAction(auth) {
+    if (!auth || auth.recoveryAward || auth.phase !== 'confirm' || auth.tx.action.type !== 'points.add') return;
+    addAwardPhotoIds(auth.tx.action, auth.tx.form);
+    auth.tx.signature = awardSignature(auth.tx.action); auth.tx.grant = null;
+  }
+  function recoverUnavailableAwardPhotos(tx) {
+    if (!AwardPhotos || tx.action.type !== 'points.add' || !tx.form || tx.form !== ui.form || tx.form.kind !== 'points') return false;
+    var draft = awardPhotos(tx.form), rejected = tx.action.photoIds || [];
+    var changed = AwardPhotos.unavailable(draft, rejected, awardPhotoRequestEnvironment());
+    var interrupted = submittedAwards[tx.action.id];
+    if (!changed && !interrupted) return false;
+    if (interrupted) {
+      delete submittedAwards[tx.action.id]; tx.grant = null; tx.uncertain = false;
+      if (retryTx === tx) retryTx = null;
+      if (ui.auth && ui.auth.tx === tx) ui.auth = null;
+      AwardPhotos.closeViewer(); render(false); showError('照片已过期或失效，请重试、重拍，或选择只记积分。'); return true;
+    }
+    tx.grant = null; tx.uncertain = false; tx.signature = ''; addAwardPhotoIds(tx.action, tx.form);
+    var auth = ui.auth && ui.auth.tx === tx ? ui.auth : null;
+    if (auth) {
+      auth.phase = 'confirm'; auth.busy = false; auth.autoPin = null; auth.challengeId = null; auth.expiresAt = null;
+      auth.question = ''; auth.pristinePresetReview = false; delete auth.localAnswer;
+      updateAwardPhotoAction(auth);
+    } else if (retryTx === tx) retryTx = null;
+    AwardPhotos.closeViewer(); render(false); showError('照片已过期或失效，请重试、重拍，或选择只记积分。');
+    return true;
+  }
+  function awardPhotoRequestEnvironment() {
+    var scope = scopeToken();
+    return { scope: scope, current: function () { return scopeCurrent(scope); }, request: function (method, url, data, done) {
+      return scopeCurrent(scope) ? request(method, url, data, done) : null;
+    } };
+  }
+  function awardPhotoEnvironment(f) {
+    var env = awardPhotoRequestEnvironment(), draft = awardPhotos(f), key = f.awardPhotoKey;
+    function active() { return env.current() && awardPhotoDrafts[key] === draft; }
+    env.active = active;
+    env.beforePick = function (input) { return prepareAwardPhotoInput(input, f, draft).input; };
+    env.refresh = function () {
+      if (!active() || !ui.form || awardPhotos(ui.form) !== draft) return;
+      rememberDraft(); updateAwardPhotoAction(ui.auth); render(false);
+    };
+    return env;
+  }
+  function savedAwardPhotoDrafts() {
+    // This snapshot only lives inside the session-verified resume object. Files and credentials never enter it.
+    var saved = {};
+    Object.keys(awardPhotoDrafts).forEach(function (key) {
+      var draft = awardPhotoDrafts[key];
+      saved[key] = { nextKey: draft.nextKey, replaceKey: null, notice: draft.notice, items: draft.items.map(function (item) {
+        return { key: item.key, photoId: item.photoId, uploadId: item.uploadId, dataUrl: item.dataUrl,
+          error: item.photoId ? '' : item.error || (item.dataUrl ? '照片上传已暂停，请重试。' : '照片准备已暂停，请重拍或重新选择。') };
+      }) };
+    });
+    return saved;
+  }
+  function discardAwardPhotoInput() {
+    var picker = awardPhotoSelection; if (!picker) return;
+    if (picker.draft) picker.draft.replaceKey = null;
+    awardPhotoSelection = null; picker.cancelled = true; picker.permitted = false; picker.form = null; picker.draft = null;
+    if (picker.input) picker.input.value = '';
+    if (picker.input && picker.input.parentNode === document.body) picker.input.parentNode.removeChild(picker.input);
+  }
+  function prepareAwardPhotoInput(input, f, draft) {
+    var replacement = draft.replaceKey;
+    discardAwardPhotoInput();
+    // Native choosers can stay open while an upload or sync rebuilds the entire form.
+    var held = input.cloneNode(false); held.hidden = true; held.value = '';
+    held.removeAttribute('id'); held.removeAttribute('name'); held.removeAttribute('form');
+    held.setAttribute('data-saas-photo-hold', 'true'); document.body.appendChild(held);
+    draft.replaceKey = replacement;
+    awardPhotoSelection = { input: held, scope: scopeToken(), form: f, draft: draft, key: f.awardPhotoKey,
+      replaceKey: replacement, permitted: true, cancelled: false, received: false, consumed: false };
+    held.__familyAwardPhotoTicket = awardPhotoSelection;
+    return awardPhotoSelection;
+  }
+  function cancelAwardPhotoInput(input) {
+    var picker = input.__familyAwardPhotoTicket;
+    if (picker && picker === awardPhotoSelection && picker.input === input && !picker.consumed) {
+      discardAwardPhotoInput();
+      if (scopeReady()) reconcileSubmittedAwards();
+    }
+  }
+  function receiveAwardPhotoInput(input) {
+    var picker = input.__familyAwardPhotoTicket;
+    if (picker && (picker.cancelled || picker !== awardPhotoSelection || picker.input !== input || picker.consumed)) return;
+    if (!picker) {
+      if (awardPhotoSelection || !scopeReady() || pending || !ui.form || ui.form.kind !== 'points' || (ui.auth && ui.auth.phase !== 'confirm')) return;
+      var editor = document.querySelector('.award-photo-editor');
+      if (!editor || !editor.contains(input)) return;
+      rememberDraft(); AwardPhotos.change(input, awardPhotos(ui.form), awardPhotoEnvironment(ui.form)); return reconcileSubmittedAwards();
+    }
+    picker.received = true;
+    if (!picker.permitted || !scopeCurrent(picker.scope)) return;
+    if (pending || ui.form !== picker.form || awardPhotos(ui.form) !== picker.draft || (ui.auth && ui.auth.phase !== 'confirm')) { discardAwardPhotoInput(); return; }
+    picker.consumed = true;
+    rememberDraft(); AwardPhotos.change(input, picker.draft, awardPhotoEnvironment(picker.form));
+    if (awardPhotoSelection === picker) discardAwardPhotoInput();
+    return reconcileSubmittedAwards();
+  }
+  function restoreAwardPhotoInput() {
+    var picker = awardPhotoSelection;
+    if (!picker) return;
+    if (!ui.form || ui.form.kind !== 'points' || awardPhotoKey(ui.form) !== picker.key) { discardAwardPhotoInput(); return; }
+    picker.scope = scopeToken(); picker.form = ui.form; picker.draft = awardPhotos(ui.form); picker.permitted = true;
+    picker.draft.replaceKey = picker.draft.items.some(function (item) { return item.key === picker.replaceKey; }) ? picker.replaceKey : null;
+    if (picker.received) return receiveAwardPhotoInput(picker.input);
+  }
+  function discardAwardPhotos(f, committedIds) {
+    if (!f || !f.awardPhotos) return;
+    var draft = f.awardPhotos, shared = [ui.form].concat(ui.stack).some(function (other) {
+      return other && other !== f && other.awardPhotos === draft;
+    });
+    if (!shared || committedIds) {
+      if (awardPhotoSelection && awardPhotoSelection.draft === draft) discardAwardPhotoInput();
+      AwardPhotos.discard(draft, awardPhotoRequestEnvironment(), committedIds);
+      if (awardPhotoDrafts[f.awardPhotoKey] === draft) delete awardPhotoDrafts[f.awardPhotoKey];
+    }
+    f.awardPhotos = null; f.awardPhotoKey = null;
+  }
+  function discardOpenAwardPhotos() { [ui.form].concat(ui.stack).forEach(function (f) { discardAwardPhotos(f); }); }
   function clearFamily(keepAvatar) {
     if (chat) chat.reset();
     if (!keepAvatar) discardAvatar();
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    if (!keepAvatar) discardAwardPhotoInput();
     clearTimeout(toastTimer); clearTimeout(petTimer); toastTimer = null; petTimer = null;
     stopRecognition();
-    [ui.form].concat(ui.stack || []).forEach(function (f) { if (f) { invalidateAssistant(f); f.avatarRequest = null; f.avatarBusy = false; f.data = {}; } });
+    [ui.form].concat(ui.stack || []).forEach(function (f) { if (f) { invalidateAssistant(f); f.avatarRequest = null; f.avatarBusy = false; f.awardPhotos = null; f.awardPhotoKey = null; f.data = {}; } });
     if (ui.auth) { ui.auth.autoPin = null; ui.auth.tx.grant = null; clearParentSecrets(ui.auth.tx); }
     if (retryTx) { retryTx.grant = null; clearParentSecrets(retryTx); }
     if (setupTx) { setupTx.cancelled = true; clearParentSecrets(setupTx); }
@@ -44,7 +188,7 @@
     if (Farm) Farm.dispose();
     if (window.FamilyWorldUI) window.FamilyWorldUI.reset();
     state = null; revision = 0; parentRevision = -1; connected = false; serverReached = false;
-    syncBusy = false; pending = false; retryTx = null; setupTx = null; privateConfig = null; drafts = {}; reminderSound = '';
+    syncBusy = false; pending = false; retryTx = null; submittedAwards = {}; setupTx = null; privateConfig = null; drafts = {}; awardPhotoDrafts = {}; reminderSound = '';
     familyDay = null; serverTime = 0; serverReceived = 0; assistantSequence++; avatarSequence++; ui = freshUI();
     meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
     parentDevice = { enabled: null, loading: false, busy: false, sequence: 0 };
@@ -59,18 +203,133 @@
     return out;
   }
   function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), assistantDraft: f.assistantDraft && clone(f.assistantDraft), openedRevision: f.openedRevision, ledgerAward: !!f.ledgerAward, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
+  function copyAwardAction(action) {
+    var saved = {};
+    ['id', 'type', 'itemId', 'name', 'points', 'reason', 'at', 'saveAsTemplate', 'photoIds'].forEach(function (key) {
+      if (action[key] !== undefined) saved[key] = ordinary(action[key]);
+    });
+    return saved;
+  }
+  function awardSignature(action) { var unsigned = copyAwardAction(action); delete unsigned.id; return JSON.stringify(unsigned); }
+  function rememberSubmittedAward(tx) {
+    if (!saas || tx.action.type !== 'points.add' || submittedAwards[tx.action.id]) return;
+    submittedAwards[tx.action.id] = { action: copyAwardAction(tx.action), revision: tx.revision, previousGrowth: ordinary(tx.previousGrowth),
+      assistantDraft: tx.assistantDraft && { generation: tx.assistantDraft.generation, turnId: tx.assistantDraft.turnId },
+      form: tx.form, ledgerAward: !!tx.ledgerAward };
+  }
+  function savedSubmittedAwards() {
+    var saved = {};
+    Object.keys(submittedAwards).forEach(function (id) {
+      var award = submittedAwards[id];
+      saved[id] = { action: copyAwardAction(award.action), revision: award.revision, previousGrowth: ordinary(award.previousGrowth),
+        assistantDraft: award.assistantDraft && ordinary(award.assistantDraft), ledgerAward: award.ledgerAward,
+        form: savedForm(award.form), currentForm: award.form === ui.form, stackIndex: ui.stack.indexOf(award.form) };
+    });
+    return saved;
+  }
+  function restoreSubmittedAwards(saved, restoredStack) {
+    Object.keys(saved || {}).forEach(function (id) {
+      var value = saved[id];
+      if (!value.action || value.action.type !== 'points.add' || value.action.id !== id) return;
+      var award = submittedAwards[id] = { action: copyAwardAction(value.action), revision: value.revision, previousGrowth: ordinary(value.previousGrowth),
+        assistantDraft: value.assistantDraft && ordinary(value.assistantDraft), ledgerAward: !!value.ledgerAward,
+        form: value.currentForm ? ui.form : restoredStack[value.stackIndex] || value.form };
+      if (award.form && award.form.kind === 'points') awardPhotos(award.form);
+      if (award.form === ui.form) retryTx = { action: copyAwardAction(award.action), signature: awardSignature(award.action), revision: revision,
+        previousGrowth: award.previousGrowth, assistantDraft: award.assistantDraft, ledgerAward: award.ledgerAward,
+        form: award.form, grant: null, uncertain: true };
+    });
+  }
+  function reconcileSubmittedAwards() {
+    var completed = false;
+    Object.keys(submittedAwards).forEach(function (id) { if (reconcileSubmittedAward(submittedAwards[id])) completed = true; });
+    return completed;
+  }
+  function reconcileSubmittedAward(award) {
+    if (!award) return false;
+    var id = award.action.id, record = find(state.points, 'points-' + id);
+    if (!record) {
+      // A newer ledger version excludes this request: its old revision can no longer commit.
+      if (revision > award.revision && !(ui.auth && ui.auth.tx.action.id === id) && !(pending && retryTx && retryTx.action.id === id)) {
+        delete submittedAwards[id]; if (retryTx && retryTx.action.id === id) retryTx = null;
+      }
+      return false;
+    }
+    if (pending && (!retryTx || !retryTx.inFlight || retryTx.action.id !== id)) return false;
+    if (ui.auth && ui.auth.tx.action.id !== id) return false;
+    // Wait for change or cancel before deciding whether this chooser has edited the completed draft.
+    if (awardPhotoSelection && !awardPhotoSelection.consumed && ui.form && ui.form.kind === 'points' && awardPhotoKey(ui.form) === awardPhotoSelection.key) return false;
+    var tx = retryTx && retryTx.action.id === id ? retryTx : award;
+    rememberDraft();
+    var source = award.form, detachedSource = source && [ui.form].concat(ui.stack).indexOf(source) < 0;
+    var unchangedSource = awardFormMatchesRecord(source, record, id, detachedSource);
+    if (source && unchangedSource) {
+      ui.stack = ui.stack.filter(function (f) { return f !== source; });
+      var retainedDraft = [ui.form].concat(ui.stack).some(function (f) { return f && f !== source && draftKey(f) === draftKey(source); });
+      if (!retainedDraft) { delete drafts[draftKey(source)]; saveStore(DRAFT, drafts); }
+    }
+    tx.keepAwardDraft = !!ui.form && (ui.form !== source || !awardFormMatchesRecord(ui.form, record, id));
+    if (tx.keepAwardDraft) {
+      var retainedForms = [ui.form].concat(ui.stack);
+      if (tx.form && (!unchangedSource || retainedForms.some(function (f) { return f && (f === tx.form || (tx.form.awardPhotos && tx.form.awardPhotos === f.awardPhotos)); }))) tx.form = null;
+      retainedForms.forEach(function (f) {
+        if (!f || !f.awardPhotos) return;
+        f.awardPhotos.items = f.awardPhotos.items.filter(function (item) {
+          if ((record.photoIds || []).indexOf(item.photoId) < 0) return true;
+          item.abandoned = true; return false;
+        });
+      });
+    }
+    tx.action = copyAwardAction(tx.action);
+    tx.action.name = record.name; tx.action.points = record.points; tx.action.reason = record.reason;
+    tx.action.at = record.at;
+    if (record.photoIds && record.photoIds.length) tx.action.photoIds = record.photoIds.slice(); else delete tx.action.photoIds;
+    finishTransaction(tx); return true;
+  }
+  function awardFormMatchesRecord(f, record, awardId, ignorePhotos) {
+    if (!f || f.kind !== 'points' || (!ignorePhotos && !awardPhotosReady(f))) return false;
+    try {
+      var action = makeAction(f, f.data);
+      if (f.data.recordDate && f.data.recordTime) action.at = M.calendarTimestamp(f.data.recordDate, f.data.recordTime, calendarZone());
+      var submitted = submittedAwards[awardId], usesDefaultTime = f.data.recordTimeEdited === false && submitted && submitted.form === f;
+      return action.name === record.name && action.points === record.points && action.reason === record.reason &&
+        (!action.at || Date.parse(action.at) === Date.parse(record.at) || usesDefaultTime) &&
+        (action.saveAsTemplate ? record.itemId === 'item-' + awardId : (action.itemId || '') === record.itemId) &&
+        (ignorePhotos || JSON.stringify(action.photoIds || []) === JSON.stringify(record.photoIds || []));
+    } catch (e) { return false; }
+  }
+  function submittedAwardDraft(action) {
+    if (action.type !== 'points.add' || !ui.form) return null;
+    var matched = null;
+    Object.keys(submittedAwards).some(function (id) {
+      var award = submittedAwards[id], original = award.action;
+      if (ui.form !== award.form && !((!ui.form.assistantDraft || ui.form.assistantDraft.actionId === id) &&
+          (action.itemId || '') === (original.itemId || '') && action.name === original.name && action.points === original.points &&
+          (action.reason || '') === (original.reason || '') && !!action.saveAsTemplate === !!original.saveAsTemplate && action.at === original.at)) return false;
+      matched = award; return true;
+    });
+    return matched;
+  }
   function suspendFamily() {
     rememberDraft(); rememberSheetFocus();
-    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), scrollTop: main ? main.scrollTop : 0, revision: revision };
+    if (retryTx && retryTx.action.type === 'points.add' && (retryTx.inFlight || retryTx.uncertain)) rememberSubmittedAward(retryTx);
+    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), awardPhotos: savedAwardPhotoDrafts(), submittedAwards: savedSubmittedAwards(), scrollTop: main ? main.scrollTop : 0, revision: revision };
+    if (ui.auth && ui.auth.phase === 'confirm' && ui.auth.tx.action.type === 'points.add' && ui.auth.tx.form === ui.form && !ui.auth.busy && !pending && !ui.auth.challengeId && !ui.auth.tx.grant && !ui.auth.tx.uncertain) {
+      saved.awardReview = { pristine: isPristinePresetReview(ui.auth), familyDay: today() };
+    }
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    if (awardPhotoSelection) {
+      awardPhotoSelection.permitted = false;
+    }
     if (avatarSelection) {
       avatarSelection.permitted = false;
       if (avatarSelection.input) { avatarSelection.input.hidden = true; avatarSelection.input.setAttribute('data-saas-avatar-hold', 'true'); document.body.appendChild(avatarSelection.input); }
     }
     return saved;
   }
-  function restorableForm(f) {
+  function restorableForm(f, submittedAward) {
     if (!f) return null;
-    var d = f.data || {}, target;
+    var d = f.data || {}, target, preserveAwardTime = !!(submittedAward && (d.recordTimeEdited === true || find(state.points, 'points-' + submittedAward.action.id)));
     if (f.kind === 'task' && d.id) { target = find(state.tasks, d.id); if (!target || target.deleted) return null; }
     if (f.kind === 'taskAction') { target = find(state.tasks, d.taskId); if (!target || target.deleted) return null; }
     if (f.kind === 'pointItem' && d.id) { target = find(state.pointItems, d.id); if (!target) return { kind: 'point-list', data: {}, openedRevision: revision }; }
@@ -79,24 +338,40 @@
     if (f.kind === 'approve') { target = find(state.requests, d.requestId); if (!target || target.status !== 'pending') return { kind: 'homeInbox', data: {}, openedRevision: revision }; }
     if (typeof f.openedRevision !== 'number') f.openedRevision = revision;
     if (f.kind === 'parentConfig') f.parentConfigured = meta.parent.configured;
-    if (f.kind === 'points' && d.recordDate !== today()) { d.recordDate = today(); d.recordTime = clock(); }
+    if (f.kind === 'points' && d.recordDate !== today() && preserveAwardTime !== true) { d.recordDate = today(); d.recordTime = clock(); }
+    awardPhotos(f);
     return f;
   }
   function restoreFamily(saved) {
     if (!saved) { discardAvatar(); return; }
     ['view', 'homeMode', 'day', 'reminderMode', 'filter', 'history', 'petTab', 'homeFocus'].forEach(function (key) { if (saved[key] !== undefined) ui[key] = saved[key]; });
-    drafts = ordinary(saved.drafts || {}); ui.stack = (saved.stack || []).map(restorableForm).filter(function (f) { return !!f; });
-    ui.form = restorableForm(saved.form); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
-    render(false);
-    var main = document.getElementById('main'); if (main) main.scrollTop = saved.scrollTop || 0;
-    if (ui.form) { restorePlayFocus(ui.form.focusKey); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = ui.form.scrollTop || 0; }
+    var sent = saved.submittedAwards || {}, sentRows = Object.keys(sent).map(function (id) { return sent[id]; }), restoredStack = [];
+    drafts = ordinary(saved.drafts || {}); awardPhotoDrafts = saved.awardPhotos || {}; ui.stack = (saved.stack || []).map(function (f, index) {
+      restoredStack[index] = restorableForm(f, sentRows.filter(function (award) { return !award.currentForm && award.stackIndex === index; })[0]);
+      return restoredStack[index];
+    }).filter(function (f) { return !!f; });
+    ui.form = restorableForm(saved.form, sentRows.filter(function (award) { return award.currentForm; })[0]); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
+    restoreSubmittedAwards(sent, restoredStack);
+    // Only an exact ledger record confirms an aborted request; an absent record can still arrive later.
+    var completedAward = reconcileSubmittedAwards();
+    if (!completedAward) {
+      if (AwardPhotos) AwardPhotos.flush(awardPhotoRequestEnvironment());
+      if (saved.awardReview && saved.revision === revision && saved.awardReview.familyDay === today() && ui.form && ui.form.kind === 'points') {
+        // Recreate an unsent review, never a previous challenge, grant, or PIN.
+        try { var award = makeAction(ui.form, ui.form.data); beginAction(award, '已加 ' + award.points + ' 分。', saved.awardReview.pristine, true); } catch (e) {}
+      }
+      if (!ui.auth) render(false);
+      var main = document.getElementById('main'); if (main) main.scrollTop = saved.scrollTop || 0;
+      if (ui.form) { restorePlayFocus(ui.form.focusKey); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = ui.form.scrollTop || 0; }
+    }
     if (avatarSelection && ui.form && ui.form.kind === 'profile') {
       var picker = avatarSelection, replacement = document.querySelector('#editor-form #avatar-file');
       picker.scope = scopeToken(); picker.form = ui.form; picker.permitted = true;
       if (picker.input) { picker.input.hidden = false; picker.input.setAttribute('data-saas-avatar-hold', 'false'); if (replacement && replacement !== picker.input && replacement.parentNode) replacement.parentNode.replaceChild(picker.input, replacement); }
       if (picker.file) loadAvatar(picker.file);
     } else discardAvatar();
-    if (saved.form && !ui.form) toast('内容已更新');
+    var completedFromPicker = restoreAwardPhotoInput();
+    if (saved.form && !ui.form && !completedAward && !completedFromPicker) toast('内容已更新');
   }
   function discardAvatar() {
     if (!avatarSelection) return;
@@ -238,6 +513,7 @@
       if (status === 200 && result.state && result.state.tasks && result.revision >= revision) {
         var changed = !connected || result.revision !== revision || (result.familyDay && result.familyDay !== familyDay);
         setSnapshot(result);
+        if (reconcileSubmittedAwards()) return;
         if (setupTx && !setupTx.cancelled && setupTx.uncertain) {
           if (state.appliedActions.indexOf(setupTx.action.id) >= 0) {
             // The receipt retry must also confirm which assistant draft was resumed.
@@ -246,7 +522,7 @@
           }
           if (meta.parent.configured === true) { failSetup(setupTx, '家长验证已设置'); return; }
         }
-        if (retryTx && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
+        if (retryTx && !submittedAwards[retryTx.action.id] && state.appliedActions.indexOf(retryTx.action.id) >= 0) { finishTransaction(retryTx); return; }
         refreshParentEditor();
         if (changed && canRefreshLedgerView()) render(false); else renderReminder();
         updateConnectionStatus();
@@ -332,6 +608,9 @@
   function showError(message) { var el = document.getElementById(ui.auth ? 'parent-error' : 'form-error'); if (el) { el.textContent = message; el.hidden = false; } else toast(message); }
   function isPublic(action) { return ['task.toggle', 'task.ack', 'task.snooze', 'redemption.request', 'redemption.cancel', 'pet.configure', 'pet.care', 'pet.scene', 'farm.start', 'farm.plant', 'farm.harvest', 'farm.exchange', 'farm.place', 'farm.animalCare'].indexOf(action.type) >= 0; }
   function conflict(tx, result) {
+    if (submittedAwards[tx.action.id] && result.state) {
+      setSnapshot(result); if (reconcileSubmittedAward(submittedAwards[tx.action.id])) return;
+    }
     if (tx.assistantDraft && /^ASSISTANT_/.test(result.code || '')) {
       tx.grant = null; retryTx = null; ui.auth = null;
       render(false); showError('助手草稿已变化，请打开助手重新核对'); return;
@@ -407,23 +686,41 @@
     if (auth && auth.tx.assistantDraft) setupTx.assistantResume = { generation:auth.tx.assistantDraft.generation, turnId:auth.tx.assistantDraft.turnId, actionId:auth.tx.action.id, type:auth.tx.action.type };
     submitSetup(setupTx);
   }
-  function beginAction(action, message, pristinePresetReview) {
+  function beginAction(action, message, pristinePresetReview, restoringReview) {
     if (!scopeReady() || pending) return;
+    if (action.type === 'points.add' && ui.form && ui.form.kind === 'points') {
+      if (!restoringReview && !awardPhotosReady(ui.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
+      addAwardPhotoIds(action, ui.form);
+    }
     if (saas && !SaaS.isOwner() && meta.parent.configured === false && !isPublic(action)) { showError('请家庭所有者设置家长验证'); return; }
     if (retryTx && retryTx.uncertain && /^farm\./.test(retryTx.action.type) && JSON.stringify(action) !== retryTx.signature) { showError('请先确认上次小院操作的结果'); return; }
     if (action.type === 'parent.setup') { startSetup(action, null); return; }
     if (action.type === 'parent.configure' && meta.parent.configured === false) { if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); return; }
     if (!local && !connected) { showError('未连接 · 草稿已保留'); return; }
     rememberDraft();
-    var binding = ui.form && ui.form.assistantDraft;
+    if (reconcileSubmittedAwards()) return;
+    var recoveringAward = submittedAwardDraft(action), binding = !recoveringAward && ui.form && ui.form.assistantDraft;
     if (binding && (binding.type !== action.type || binding.familyDay !== today() || binding.sourceRevision !== revision)) {
       showError('助手草稿已变化，请打开助手重新核对'); return;
     }
     if (ui.form && ui.form.openedRevision !== revision) {
       ui.form.openedRevision = revision; render(false); showError('记录已更新 · 待确认'); return;
     }
-    var signature = JSON.stringify(action), tx, reused = false;
-    if (retryTx && retryTx.signature === signature && (binding ? retryTx.action.id === binding.actionId : !retryTx.assistantDraft)) { tx = retryTx; reused = true; }
+    var signature = action.type === 'points.add' ? awardSignature(action) : JSON.stringify(action), tx, reused = false, rebasedAwardTime = false;
+    if (recoveringAward) {
+      var correctedAt = action.at;
+      rebasedAwardTime = !!recoveringAward.action.at && M.dateKey(recoveringAward.action.at, calendarZone()) !== today();
+      // A new family day requires a new time. Keep the operation ID so either payload can be booked only once.
+      action = copyAwardAction(recoveringAward.action);
+      if (rebasedAwardTime) {
+        if (correctedAt) action.at = correctedAt; else delete action.at;
+        if (ui.form && ui.form.kind === 'points') ui.form.data.recordDate = today();
+      }
+      signature = awardSignature(action); recoveringAward.form = ui.form;
+      tx = { action: action, signature: signature, revision: revision, message: message, grant: null, uncertain: true,
+        previousGrowth: recoveringAward.previousGrowth, assistantDraft: recoveringAward.assistantDraft }; reused = true;
+    }
+    else if (retryTx && retryTx.signature === signature && !submittedAwards[retryTx.action.id] && (binding ? retryTx.action.id === binding.actionId : !retryTx.assistantDraft)) { tx = retryTx; reused = true; }
     else {
       action.id = binding ? binding.actionId : uid();
       tx = { action: action, signature: signature, revision: revision, message: message, grant: null, previousGrowth: M.growth(state) };
@@ -438,7 +735,7 @@
     retryTx = tx; invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; stopRecognition();
     if (isPublic(tx.action)) { submitTransaction(tx); return; }
     rememberSheetFocus();
-    ui.auth = { tx: tx, phase: tx.action.type === 'points.add' || canSkipParent(tx.action) ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
+    ui.auth = { tx: tx, recoveryAward: !!recoveringAward, rebasedAwardTime: rebasedAwardTime, phase: tx.action.type === 'points.add' || canSkipParent(tx.action) ? 'confirm' : meta.parent.configured === false ? 'setup' : 'loading', pristinePresetReview: !!pristinePresetReview && !reused, busy: false, challengeId: null, method: 'pin', question: '', expiresAt: null, autoPin: null };
     if (tx.uncertain && (tx.grant || tx.deviceAttempt)) { submitTransaction(tx); return; }
     render(false); if (ui.auth.phase === 'loading') issueChallenge(ui.auth);
   }
@@ -461,13 +758,14 @@
       if (ui.auth !== auth) return;
       auth.busy = false;
       if (status === 200 && result.challengeId) { auth.challengeId = result.challengeId; auth.method = result.method; auth.question = result.question || ''; auth.expiresAt = result.expiresAt; ready(); }
+      else if (result.code === 'PHOTO_UNAVAILABLE' && recoverUnavailableAwardPhotos(auth.tx)) return;
       else if (result.code === 'PARENT_SETUP_REQUIRED') {
         acceptParent(result.parent || { configured: false, method: null }, typeof result.revision === 'number' ? result.revision : auth.tx.revision);
         auth.autoPin = null;
         if (auth.tx.action.type === 'parent.configure') { clearParentSecrets(auth.tx); retryTx = null; ui.auth = null; if (ui.form) ui.form.parentConfigured = false; render(false); showError('家长验证未设置'); }
         else { auth.phase = 'setup'; render(false); }
       } else if (status === 409) conflict(auth.tx, result);
-      else { auth.phase = 'challenge-error'; render(false); showError(errorText(result)); }
+      else { auth.phase = 'challenge-error'; render(false); showError(errorText(result)); if (result.code === 'ACTION_ID_REUSED' && submittedAwards[auth.tx.action.id]) sync(); }
     });
   }
   function randomSalt() { var values = new Uint8Array(16); window.crypto.getRandomValues(values); return Array.prototype.map.call(values, function (v) { return ('0' + v.toString(16)).slice(-2); }).join(''); }
@@ -517,6 +815,10 @@
   function submitParent(form) {
     var auth = ui.auth; if (!auth || auth.busy || pending) return;
     if (auth.phase === 'confirm') {
+      if (!auth.recoveryAward) {
+        if (!awardPhotosReady(auth.tx.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
+        updateAwardPhotoAction(auth);
+      }
       if (auth.tx.revision !== revision) { conflict(auth.tx, { revision: revision, state: state }); return; }
       if (canSkipParent(auth.tx.action)) { auth.tx.deviceAttempt = true; submitTransaction(auth.tx); return; }
       auth.phase = meta.parent.configured === false ? 'setup' : 'loading';
@@ -546,11 +848,17 @@
       }
       return;
     }
-    pending = true; retryTx = tx;
+    if (submittedAwards[tx.action.id]) {
+      submittedAwards[tx.action.id].action = copyAwardAction(tx.action);
+      submittedAwards[tx.action.id].revision = tx.revision;
+    }
+    pending = true; retryTx = tx; tx.inFlight = true;
     if (ui.auth) ui.auth.phase = 'saving'; render(false);
     request('POST', '/api/action', { revision: tx.revision, action: tx.action, grant: tx.grant || undefined, assistantDraft: tx.assistantDraft }, function (status, result) {
-      pending = false;
-      if (status === 200 && result.state) { setSnapshot(result); finishTransaction(tx); }
+      if (tx.finished) return;
+      pending = false; tx.inFlight = false;
+      if (status === 200 && result.state) { setSnapshot(result); if (!reconcileSubmittedAward(submittedAwards[tx.action.id])) finishTransaction(tx); }
+      else if (result.code === 'PHOTO_UNAVAILABLE' && recoverUnavailableAwardPhotos(tx)) return;
       else if (status === 409) conflict(tx, result);
       else if (status === 0) { tx.uncertain = true; connected = false; if (ui.auth) ui.auth.phase = 'retry'; render(false); showError(tx.action.type === 'pet.care' ? '照料结果待确认' : '连接中断 · 结果待确认'); sync(); }
       else if (status === 403 && tx.deviceAttempt && !tx.grant && result.code === 'PARENT_REQUIRED' && ui.auth && ui.auth.tx === tx) {
@@ -558,7 +866,7 @@
         loadParentDevice(); issueChallenge(ui.auth);
       }
       else if (status === 403 || status === 410) { tx.grant = null; tx.uncertain = false; if (ui.auth) { ui.auth.phase = 'challenge-error'; ui.auth.busy = false; } render(false); showError(errorText(result)); }
-      else { tx.grant = null; tx.uncertain = false; ui.auth = null; render(false); showError(tx.action.type === 'pet.care' && !ui.form ? '照料未完成' : errorText(result)); if (tx.action.type === 'pet.care') sync(); }
+      else { tx.grant = null; tx.uncertain = false; ui.auth = null; render(false); showError(tx.action.type === 'pet.care' && !ui.form ? '照料未完成' : errorText(result)); if (tx.action.type === 'pet.care' || (result.code === 'ACTION_ID_REUSED' && submittedAwards[tx.action.id])) sync(); }
     });
   }
   function pointsReceipt(action) {
@@ -569,6 +877,10 @@
     return '已记好：' + record.name + ' +' + record.points + ' 分 · ' + label + ' ' + recorded.time;
   }
   function finishTransaction(tx) {
+    if (tx.finished) return;
+    tx.finished = true;
+    delete submittedAwards[tx.action.id];
+    if (AwardPhotos) AwardPhotos.closeViewer();
     var giftFlow = ui.form === tx.form && ledgerGiftFlow();
     if (['points.add', 'pet.care', 'pet.scene'].indexOf(tx.action.type) >= 0 && ui.form && ui.form !== tx.form) rememberDraft();
     pending = false; tx.grant = null; if (retryTx === tx) retryTx = null;
@@ -578,20 +890,21 @@
     if (tx.form && ui.form === tx.form) {
       if (keepInbox || keepFarm || (giftFlow && tx.form.kind === 'rewards' && tx.action.type === 'redemption.cancel')) ui.form.openedRevision = revision;
       else {
-        delete drafts[draftKey(tx.form)]; saveStore(DRAFT, drafts); ui.form = ui.stack.pop() || null;
+        if (!tx.form.assistantDraft) { delete drafts[draftKey(tx.form)]; saveStore(DRAFT, drafts); }
+        ui.form = ui.stack.pop() || null;
         if (giftFlow && ui.form && ui.form.kind === 'rewards' && ['redemption.request', 'redemption.approve'].indexOf(tx.action.type) >= 0) ui.form.openedRevision = revision;
         if (tx.action.type === 'pointItem.save' && ui.form && ui.form.kind === 'point-list') { ui.form.data.aiText = ''; ui.form.aiStatus = '已保存'; }
       }
     }
     var message = tx.message || '已保存';
-    if (tx.action.type === 'points.add') { stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; var g = growthInfo(), pet = currentPet(); message = '+' + tx.action.points + ' 分 · ' + (tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' : '记好啦！'); ui.petReaction = 'celebrate'; ui.petMessage = message; }
+    if (tx.action.type === 'points.add') { discardAwardPhotos(tx.form, tx.action.photoIds || []); if (!tx.keepAwardDraft) { discardOpenAwardPhotos(); stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; } var g = growthInfo(), pet = currentPet(); message = '+' + tx.action.points + ' 分 · ' + (tx.previousGrowth && g.level > tx.previousGrowth.level ? '升级啦！' : '记好啦！'); ui.petReaction = 'celebrate'; ui.petMessage = message; }
     if (tx.action.type === 'pet.buy') { message = '补给已入背包'; if (ui.form && ui.form.kind === 'petHub') { ui.form.data.tab = 'bag'; ui.form.openedRevision = revision; } }
     if (tx.action.type === 'pet.care') {
       var status = playStatus(), before = tx.previousPetStatus, unlocked = status && status.unlockedScenes.filter(function (id) { return !before || before.unlockedScenes.indexOf(id) < 0; }), newest = unlocked && unlocked.length ? find(status.scenes, unlocked[unlocked.length - 1]) : null;
       message = status && status.farmMode ? careName(tx.action.care) + '完成 · 特别互动' : newest && newest.id !== 'home' ? '解锁' + newest.name + '！' : status && before && revision === tx.revision + 1 ? careName(tx.action.care) + '完成 · 探索+' + (status.exploration - before.exploration) : '照料完成 · 进度已同步';
-      stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; ui.careBusy = true; ui.petReaction = newest && newest.id !== 'home' ? 'unlock' : tx.action.care; ui.petMessage = message;
+      discardOpenAwardPhotos(); stopRecognition(); invalidateAssistant(ui.form); ui.form = null; ui.stack = []; ui.view = 'points'; ui.careBusy = true; ui.petReaction = newest && newest.id !== 'home' ? 'unlock' : tx.action.care; ui.petMessage = message;
     }
-    if (tx.action.type === 'pet.scene') { var scene = find(playStatus().scenes, tx.action.sceneId); ui.form = null; ui.stack = []; ui.view = 'points'; message = '已到' + (scene ? scene.name : '新场景'); }
+    if (tx.action.type === 'pet.scene') { var scene = find(playStatus().scenes, tx.action.sceneId); discardOpenAwardPhotos(); ui.form = null; ui.stack = []; ui.view = 'points'; message = '已到' + (scene ? scene.name : '新场景'); }
     if (tx.action.type === 'pet.configure') { clearTimeout(petTimer); ui.careBusy = false; ui.petReaction = 'idle'; ui.petMessage = ''; clearToast(); }
     persist(); render(false);
     var receipt = tx.action.type === 'points.add' && ui.homeMode === 'points' ? pointsReceipt(tx.action) : '';
@@ -628,8 +941,11 @@
     if (target) { try { target.focus({ preventScroll: true }); } catch (e) { target.focus(); } }
   }
   function openForm(kind, data, restore, replace, deferRender) {
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    discardAwardPhotoInput();
     if (avatarSelection && avatarSelection.form === ui.form) discardAvatar();
     rememberSheetFocus(); if (!ui.form) ui.homeFocus = focusKey(document.activeElement); rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
+    if (replace) discardAwardPhotos(ui.form);
     if (ui.form && !replace) ui.stack.push(ui.form);
     var f = { kind: kind, data: clone(data || {}), openedRevision: revision };
     if (kind === 'points') f.ledgerAward = ui.view === 'points' && ui.homeMode === 'points';
@@ -637,12 +953,15 @@
     if (restore && drafts[draftKey(f)]) f.data = clone(drafts[draftKey(f)]);
     if (kind === 'task' && !f.data.id && f.data.date < today()) f.data.date = today();
     if (kind === 'points' && (!f.data.recordTime || f.data.recordDate !== today())) { f.data.recordTime = clock(); f.data.recordDate = today(); }
+    awardPhotos(f);
     ui.form = f; ui.auth = null;
     if (kind === 'parentConfig' && saas) loadParentDevice();
     if (!deferRender) render(false);
   }
   function closeForm(exitPresetReview) {
     if (pending && !setupTx) return;
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    discardAwardPhotoInput();
     if (setupTx) cancelSetup();
     if (ui.auth) {
       var exitToHome = exitPresetReview === true && isPristinePresetReview(ui.auth), tx = ui.auth.tx;
@@ -650,14 +969,17 @@
       if (retryTx && (retryTx.action.type === 'parent.configure' || (exitToHome && retryTx === tx))) retryTx = null;
       ui.auth = null;
       if (!exitToHome) { render(false); return; }
+      discardAwardPhotos(tx.form);
     }
     if (avatarSelection && avatarSelection.form === ui.form) discardAvatar();
     rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
     var closed = ui.form, parent = ui.stack.pop() || null;
+    ui.form = parent;
+    discardAwardPhotos(closed);
     if (closed && closed.kind === 'parentConfig' && retryTx && retryTx.form === closed) { clearParentSecrets(retryTx); retryTx = null; }
     if (closed && parent && closed.kind === 'behaviorPicker' && parent.kind === 'points') parent.pickerState = { query: closed.data.query || '', page: closed.data.page || 0 };
     if (closed && parent && closed.kind === 'points' && parent.kind === 'behaviorPicker' && closed.pickerState) { parent.data.query = closed.pickerState.query || ''; parent.data.page = closed.pickerState.page || 0; }
-    ui.form = parent; render(false);
+    render(false);
   }
   function pointsData(item) {
     var d = item ? { itemId: item.id, name: item.name, points: item.points, reason: item.reason || '', recordTimeEdited: false } : { itemId: '', points: 5, saveAsTemplate: false, recordTimeEdited: false }, saved = drafts['points:' + (d.itemId || 'new')];
@@ -704,7 +1026,7 @@
     var f = ui.form; if (!f || f.kind !== 'points') return;
     var amount = document.querySelector('.entry-summary strong'); if (amount) amount.innerHTML = pointsAmount(f.data.points);
     var el = document.getElementById('template-save-preview'); if (el) el.innerHTML = templateSavePreview();
-    var submit = document.querySelector('.sheet-save'); if (submit) { var label = '核对加分'; submit.textContent = pending ? '保存中' : label; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); }
+    var submit = document.querySelector('.sheet-save'); if (submit) { var label = '核对加分'; submit.textContent = pending ? '保存中' : label; submit.setAttribute('data-label', label); submit.setAttribute('aria-label', label); submit.disabled = pending || !awardPhotosReady(f); }
   }
   function field(label, name, value, extra, type) { return '<label class="field"><span>' + label + '</span><input name="' + name + '" type="' + (type || 'text') + '" value="' + esc(value) + '" ' + (extra || '') + '></label>'; }
   function area(label, name, value, extra) { return '<label class="field"><span>' + label + '</span><textarea name="' + name + '" rows="3" ' + (extra || '') + '>' + esc(value) + '</textarea></label>'; }
@@ -825,6 +1147,11 @@
   function clearAssistantEditors(generation) {
     function belongs(form) { return form && form.assistantDraft && form.assistantDraft.generation === generation; }
     if (retryTx && retryTx.assistantDraft && retryTx.assistantDraft.generation === generation) retryTx = null;
+    [ui.form].concat(ui.stack).forEach(function (form) { if (belongs(form)) discardAwardPhotos(form); });
+    Object.keys(awardPhotoDrafts).forEach(function (key) {
+      if (key.indexOf('assistant:' + generation + ':') !== 0) return;
+      AwardPhotos.discard(awardPhotoDrafts[key], awardPhotoRequestEnvironment()); delete awardPhotoDrafts[key];
+    });
     ui.stack = ui.stack.filter(function (form) { return !belongs(form); });
     if (belongs(ui.form)) { ui.form = ui.stack.pop() || null; render(false); }
   }
@@ -866,6 +1193,7 @@
     } else openForm(editor.kind, editor.data);
     if (result.kind === 'form' && (result.missing || []).indexOf('points') >= 0 && !ui.form.data.templatePointsChosen && Number(ui.form.data.points) === 5) ui.form.data.points = '';
     ui.form.assistantDraft = { generation:draft.generation, turnId:draft.turnId, sourceRevision:draft.sourceRevision, familyDay:draft.familyDay, type:binding.type, actionId:binding.actionId };
+    awardPhotos(ui.form);
     render(false);
     return true;
   }
@@ -874,6 +1202,7 @@
     if (result.kind === 'form' && result.form === 'pointItem') { kind = 'pointItem'; patch = result.fields || {}; previous = {points:'', enabled:true}; }
     else if (a.type === 'points.add') {
       kind = 'points'; patch = Object.assign({itemId:''}, p);
+      delete patch.photoIds;
       if (patch.itemId) {
         var rule = find(state.pointItems, patch.itemId);
         if (!rule || !rule.enabled) return null;
@@ -1151,7 +1480,7 @@
     else if (positive) { detail = record.reason || ''; meta = detail.trim() ? '' : '未填写原因'; }
     else { detail = record.note || ''; meta = category(record.category) + '礼品'; }
     var repeated = detail.trim() === String(record.name).trim();
-    return '<article class="record-row" role="listitem"><div class="points-ledger-copy"><strong>' + esc(record.name) + '</strong><div class="points-ledger-meta"><time datetime="' + esc(record.at) + '">' + esc(niceTime(record.at)) + '</time>' + (meta ? '<span>' + esc(meta) + '</span>' : '') + '</div></div><b class="record-number ' + (positive ? 'is-earned' : 'is-spent') + (String(record.points).length > 6 ? ' points-ledger-amount-long' : '') + '">' + (positive ? '+' : '−') + record.points + '<small> 分</small></b>' + (detail.trim() && !repeated ? '<p class="points-ledger-note">' + esc(detail) + '</p>' : '') + '</article>';
+    return '<article class="record-row" role="listitem"><div class="points-ledger-copy"><strong>' + esc(record.name) + '</strong><div class="points-ledger-meta"><time datetime="' + esc(record.at) + '">' + esc(niceTime(record.at)) + '</time>' + (meta ? '<span>' + esc(meta) + '</span>' : '') + '</div></div><b class="record-number ' + (positive ? 'is-earned' : 'is-spent') + (String(record.points).length > 6 ? ' points-ledger-amount-long' : '') + '">' + (positive ? '+' : '−') + record.points + '<small> 分</small></b>' + (detail.trim() && !repeated ? '<p class="points-ledger-note">' + esc(detail) + '</p>' : '') + (positive && AwardPhotos ? AwardPhotos.history(record.photoIds) : '') + '</article>';
   }
   function menuRow(action, title, note, symbol, options) {
     options = options || {};
@@ -1407,6 +1736,8 @@
     else if (f.kind === 'points') {
       title = '立即加分'; submit = '核对加分';
       body = contextAI(f, 'points') + '<div class="entry-summary"><span><small>本次加分</small>' + esc(state.childName) + '</span><strong>' + pointsAmount(d.points == null ? 5 : d.points) + '</strong></div><input type="hidden" name="itemId" value="' + esc(d.itemId || '') + '">' + field('行为名称', 'name', d.name || '', 'required maxlength="120"') + '<div class="field-pair">' + field('本次分值', 'points', d.points == null ? 5 : d.points, 'required min="1" step="1" inputmode="numeric"', 'number') + field('今天 · 记录时间', 'recordTime', d.recordTime || '', 'max="' + clock() + '"', 'time') + '</div>' + area('具体原因（选填）', 'reason', d.reason || '', 'maxlength="2000"') + (!d.itemId ? '<label class="template-toggle"><input type="checkbox" name="saveAsTemplate"' + (d.saveAsTemplate ? ' checked' : '') + '><span>同时存为常用</span></label><div id="template-save-preview" class="template-save-preview" aria-live="polite">' + templateSavePreview() + '</div>' : '');
+      if (AwardPhotos) body += AwardPhotos.editor(awardPhotos(f));
+      submitBlocked = !awardPhotosReady(f);
     } else if (f.kind === 'request' || f.kind === 'approve') {
       var req = f.kind === 'approve' ? find(state.requests, d.requestId) : null;
       r = find(state.rewards, req ? req.rewardId : d.rewardId);
@@ -1513,6 +1844,8 @@
     var deletingItem = a.tx.action.type === 'pointItem.delete', ledgerAward = isLedgerAward(a), skipParent = canSkipParent(a.tx.action), redeeming = ['redemption.approve', 'reward.redeem'].indexOf(a.tx.action.type) >= 0;
     var prompt = confirming ? ledgerAward ? '下一步由家长验证' : '请核对本次加分，确认后由家长验证。' : setup ? '请家长设置 6 位 PIN，保护每一次加分和兑换。' : a.method === 'math' ? '请家长完成算术验证后继续。' : '请家长输入 PIN，验证后完成本次操作。';
     if (confirming && skipParent) prompt = redeeming ? '请核对礼品和本次扣分，确认后完成兑换。' : '请核对本次加分，确认后记入积分。';
+    if (a.recoveryAward) prompt = '上次加分结果待确认，下面是原操作。请先核对并完成原操作，你的修改已保留。';
+    if (a.rebasedAwardTime) prompt = '上次加分结果待确认，记录时间已改为今天。请核对后继续完成本次加分，其他修改已保留。';
     if (deletingItem) prompt = (setup ? '请先设置家长 PIN。' : '') + '删除后，这个行为会从常用列表中移除。过去的加分记录和积分都会保留。';
     var ledgerReview = ledgerAward || a.tx.ledgerRedemption, summaryContent;
     if (ledgerAward) summaryContent = ledgerAwardSummary(a.tx.action);
@@ -1534,7 +1867,11 @@
     else if (a.phase === 'retry') { body += '<p class="status-line">结果待确认</p>'; submit = '重试保存'; }
     else submit = '重新验证';
     if (!ledgerReview) body += summary;
-    var parentBusy = !!(a.busy || pending), dangerous = deletingItem || a.tx.action.type === 'task.delete';
+    if (AwardPhotos && a.tx.action.type === 'points.add' && a.tx.form && a.tx.form.kind === 'points') {
+      if (confirming && !a.recoveryAward) body += AwardPhotos.editor(awardPhotos(a.tx.form));
+      else if (a.tx.action.photoIds && a.tx.action.photoIds.length) body += '<p class="award-photo-count">本次照片 ' + a.tx.action.photoIds.length + ' 张</p>';
+    }
+    var parentBusy = !!(a.busy || pending), photoBlocked = confirming && !a.recoveryAward && !awardPhotosReady(a.tx.form), dangerous = deletingItem || a.tx.action.type === 'task.delete';
     if (dangerous) {
       var verb = deletingItem ? '删除' : '取消';
       if (a.phase === 'verify') submit = '验证并' + verb;
@@ -1544,7 +1881,7 @@
     }
     var title = deletingItem ? '确认删除常用行为' : confirming ? redeeming ? '确认兑换' : ledgerAward ? '核对加分' : '确认本次加分' : setup ? '设置家长PIN' : a.tx.action.type === 'parent.configure' ? '修改家长PIN' : '家长验证';
     var actions = isPristinePresetReview(a) ? button('points-cancel', icon('close'), 'icon-button ledger-award-cancel', '', '取消本次加分') : '';
-    return sheet(title, ledgerReview ? '' : confirming ? redeeming ? '核对礼品与扣分' : '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy ? ' disabled' : '') + '>' + submit + '</button></div></form>', true, actions);
+    return sheet(title, ledgerReview ? '' : confirming ? redeeming ? '核对礼品与扣分' : '核对孩子、行为、分值与时间' : local ? '本机' : '共享', '<form id="parent-form" class="sheet-form" novalidate><p id="parent-error" class="form-error" role="alert" hidden></p><div class="sheet-body">' + body + '</div><div class="sheet-footer">' + button('parent-cancel', '返回修改', 'btn outline') + '<button type="submit"' + (confirming ? ' data-action="points-confirm"' : '') + ' class="btn ' + (dangerous ? 'danger-primary' : 'primary') + '" aria-busy="' + parentBusy + '"' + (parentBusy || photoBlocked ? ' disabled' : '') + '>' + submit + '</button></div></form>', true, actions);
   }
   function isAppPage() {
     if (!ui.form) return ui.view === 'reminders';
@@ -1630,7 +1967,7 @@
   }
   function makeAction(f, v) {
     if (f.kind === 'assistantReview') return clone(f.data.command);
-    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return action; }
+    if (f.kind === 'points') { var action = { type: 'points.add', itemId: v.itemId || undefined, name: v.name.trim(), points: Number(v.points), reason: (v.reason || '').trim() }; if (v.saveAsTemplate === true && !v.itemId) action.saveAsTemplate = true; if (v.recordTime) action.at = M.calendarTimestamp(today(), v.recordTime, calendarZone()); return addAwardPhotoIds(action, f); }
     if (f.kind === 'petBuy') { var status = playStatus(), supply = status && find(status.catalog, f.data.itemId), quantity = Number(v.quantity); if (!supply || !isFinite(quantity) || quantity < 1 || quantity > 10 || quantity !== Math.floor(quantity)) throw new Error('数量无效'); return { type: 'pet.buy', itemId: supply.id, quantity: quantity, expectedPoints: quantity * supply.points }; }
     if (f.kind === 'request') return { type: 'redemption.request', rewardId: f.data.rewardId };
     if (f.kind === 'approve') { var req = find(state.requests, f.data.requestId), reward = req && find(state.rewards, req.rewardId); if (!reward || req.status !== 'pending') throw new Error('申请已更新'); return { type: 'redemption.approve', requestId: req.id, expectedPoints: reward.points, note: (v.note || '').trim() }; }
@@ -1703,6 +2040,18 @@
   function exportData() { var blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = '家庭积分提醒-' + today() + '.json'; document.body.appendChild(a); a.click(); a.parentNode.removeChild(a); setTimeout(function () { URL.revokeObjectURL(url); }, 1000); toast('记录已导出'); }
   function onAction(action, id, element) {
     if (!scopeReady()) return;
+    if (AwardPhotos && action.indexOf('award-photo-') === 0) {
+      if (pending) return;
+      if (action === 'award-photo-history' && !ui.auth) {
+        var photoView = ui.form, photoScope = scopeToken();
+        AwardPhotos.viewHistory((id || '').split(','), { request: request, active: function () { return scopeCurrent(photoScope) && ui.form === photoView && !ui.auth; } });
+      } else if (ui.form && ui.form.kind === 'points' && (!ui.auth || (ui.auth.phase === 'confirm' && !ui.auth.busy))) {
+        rememberDraft(); AwardPhotos.handle(action, id, awardPhotos(ui.form), awardPhotoEnvironment(ui.form));
+      }
+      return;
+    }
+    if (AwardPhotos) AwardPhotos.closeViewer();
+    discardAwardPhotoInput();
     if (action === 'assistant-open' && chat && assistantAvailable()) {
       openAssistant(element); return;
     }
@@ -1716,7 +2065,7 @@
     if (ui.auth) return;
     if (Farm && Farm.handle(action, id, element)) return;
     var item, task, copy;
-    if (action === 'nav') { discardAvatar(); rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
+    if (action === 'nav') { discardAvatar(); rememberDraft(); discardOpenAwardPhotos(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null; ui.view = id === 'reminders' ? 'reminders' : 'points'; ui.form = null; ui.stack = []; render(true); }
     else if (action === 'home-view' && !ui.form && ui.view === 'points' && (id === 'points' || id === 'companion')) {
       if (ui.homeMode === id) return;
       var switchFocus = focusKey(element);
@@ -1745,7 +2094,7 @@
     else if (action === 'avatar-remove') { discardAvatar(); rememberDraft(); ui.form.avatarRequest = null; ui.form.avatarBusy = false; ui.form.data.childAvatar = ''; ui.form.avatarStatus = '头像已移除'; render(false); }
     else if (action === 'pet-hub') openForm('petHub', { tab: ui.petTab || 'bag' });
     else if (action === 'pet-tab') { if (ui.form && ui.form.kind === 'petHub' && ['bag', 'supply', 'explore'].indexOf(id) >= 0) { ui.form.data.tab = id; render(false); } }
-    else if (action === 'pet-home') { rememberDraft(); ui.form = null; ui.stack = []; ui.view = 'points'; ui.homeMode = 'companion'; render(false); var petTarget = document.querySelector('.companion-scene'); if (petTarget) petTarget.focus(); }
+    else if (action === 'pet-home') { rememberDraft(); discardOpenAwardPhotos(); ui.form = null; ui.stack = []; ui.view = 'points'; ui.homeMode = 'companion'; render(false); var petTarget = document.querySelector('.companion-scene'); if (petTarget) petTarget.focus(); }
     else if (action === 'pet-buy') openPetPurchase(id);
     else if (action === 'pet-scene') beginAction({ type: 'pet.scene', sceneId: id });
     else if (action === 'pet-care') {
@@ -1822,7 +2171,7 @@
     if (input.id === 'behavior-search' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.query === input.value) return; ui.form.data.query = input.value; ui.form.data.page = 0; updatePicker(); return; }
     if (form && form.id === 'editor-form' && ui.form) {
       if (input.name !== 'aiText' && input.name !== 'speech') ui.form.editVersion = (ui.form.editVersion || 0) + 1;
-      if (ui.form.kind === 'points' && input.name === 'recordTime') ui.form.data.recordTimeEdited = true;
+      if (ui.form.kind === 'points' && input.name === 'recordTime') { ui.form.data.recordTimeEdited = true; ui.form.data.recordDate = today(); }
       if (ui.form.kind === 'pointItem' && !ui.form.data.id && input.name === 'points') ui.form.data.templatePointsChosen = true;
       rememberDraft();
       if (ui.form.kind === 'points') refreshTemplatePreview();
@@ -1830,7 +2179,14 @@
     }
   }
   document.addEventListener('input', draftInput);
-  document.addEventListener('change', function (event) { if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; } if (event.target.id === 'avatar-file') { if (saas) receiveAvatar(event.target); else loadAvatar(event.target.files && event.target.files[0]); return; } draftInput(event); if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); } });
+  document.addEventListener('cancel', function (event) { if (AwardPhotos && event.target.getAttribute('data-award-photo-input')) cancelAwardPhotoInput(event.target); }, true);
+  document.addEventListener('change', function (event) {
+    if (AwardPhotos && event.target.getAttribute('data-award-photo-input')) { receiveAwardPhotoInput(event.target); return; }
+    if (event.target.id === 'behavior-page' && ui.form && ui.form.kind === 'behaviorPicker') { if (ui.form.data.page !== Number(event.target.value) - 1) { ui.form.data.page = Number(event.target.value) - 1; updatePicker(true); } return; }
+    if (event.target.id === 'avatar-file') { if (saas) receiveAvatar(event.target); else loadAvatar(event.target.files && event.target.files[0]); return; }
+    draftInput(event);
+    if (event.target.name === 'method' && ui.form && ui.form.kind === 'parentConfig') { ['pin', 'confirmPin'].forEach(function (name) { var pin = document.querySelector('[name="' + name + '"]'); if (pin) { pin.disabled = event.target.value === 'math'; pin.parentNode.hidden = pin.disabled; if (pin.disabled) pin.value = ''; } }); }
+  });
   document.addEventListener('submit', function (event) {
     if (!scopeReady()) return;
     if (event.target.id === 'parent-form') { event.preventDefault(); submitParent(event.target); return; }
@@ -1838,6 +2194,7 @@
     rememberDraft();
     if (setupTx && setupTx.uncertain && setupTx.form === ui.form && !setupTx.auth) { submitSetup(setupTx); return; }
     if (ui.form.kind === 'profile' && ui.form.avatarBusy) { showError('照片处理中'); return; }
+    if (!awardPhotosReady(ui.form)) { showError('请先处理照片：重试、重拍或移除后继续。'); return; }
     if (ui.form.kind === 'point-list') { contextualInterpret('pointItems'); return; }
     if (['parentConfig', 'parentDevice'].indexOf(ui.form.kind) >= 0 && parentDevice.busy) return;
     if (!event.target.checkValidity()) { var bad = event.target.querySelector(':invalid'); if (bad) { bad.setAttribute('aria-invalid', 'true'); bad.setAttribute('aria-describedby', 'form-error'); } showError(fieldError(bad)); if (bad) bad.focus(); return; }
@@ -1946,7 +2303,7 @@
       context: function () { if (!scopeReady()) return { ready: false, state: null, local: false, connected: false }; return { ready: true, state: state, earnedPoints: M.totals(state).earned, availablePoints: M.totals(state).available, now: farmClock(), familyDay: saas || local ? today() : familyDay || today(), pet: currentPet(), growth: growthInfo(), petMessage: ui.petMessage, reducedMotion: reducedMotion(), local: local, connected: connected, pending: pending, retry: retryTx, form: ui.form, auth: ui.auth, view: ui.view, feedback: ui.homeFeedback }; },
       icon: icon, render: function () { render(false); }, act: beginAction,
       open: function (data, replace) { openForm('farm', data, false, replace); },
-      home: function () { rememberDraft(); ui.form = null; ui.stack = []; ui.view = 'points'; render(false); restorePlayFocus({ tag: 'BUTTON', type: 'button', id: '', name: '', action: 'farm-open', dataId: '' }); },
+      home: function () { rememberDraft(); discardOpenAwardPhotos(); ui.form = null; ui.stack = []; ui.view = 'points'; render(false); restorePlayFocus({ tag: 'BUTTON', type: 'button', id: '', name: '', action: 'farm-open', dataId: '' }); },
       sheet: function (title, sub, body, actions) { return sheet(title, sub, body, false, actions); },
       toast: toast, petPlay: function (kind) { if (['feed', 'wash', 'train'].indexOf(kind) >= 0 && !pending && !ui.careBusy) reactPet(kind); }, touchPet: touchPet,
       retry: function () { if (retryTx && retryTx.uncertain && /^farm\./.test(retryTx.action.type) && !pending && (local || connected)) submitTransaction(retryTx); }

@@ -324,6 +324,107 @@ function hide(h) { h.document.hidden = true; h.emitDocument('visibilitychange');
 function show(h) { h.document.hidden = false; h.emitDocument('visibilitychange'); }
 function completeResume(h, revision = 1, mutate) { h.session(); const value = snapshot('family-a', revision); if (mutate) mutate(value.state); h.pending('/api/state').respond(200, value); }
 
+test('a later family refresh confirms an award sent before two visibility changes without submitting it again', () => {
+  const h = harness(); h.login();
+  const scope = { familyId: 'family-a', userId: USER.id };
+  h.pending('/api/parent/device', 'GET').respond(200, { ...scope, enabled: true });
+  const award = { type: 'points.add', name: '独立订正两道题', points: 7, reason: '' };
+  const before = snapshot('family-a', 2);
+  before.state = M.apply(before.state, { ...award, id: 'similar-earlier-award' }, NOW, 'Asia/Shanghai');
+  h.api.sync(); h.pending('/api/state').respond(200, before);
+  h.api.open('points', { name: award.name, points: award.points }); h.api.action({ ...award }, '已保存'); h.api.parent({});
+  const first = h.pending('/api/action');
+  const after = { ...before, revision: 3, state: M.apply(before.state, first.body.action, NOW, 'Asia/Shanghai') };
+  for (let i = 0; i < 2; i++) {
+    hide(h); show(h); h.session();
+    h.pending('/api/state').respond(200, before);
+    assert.equal(h.state().points.length, before.state.points.length);
+    assert.doesNotMatch(h.elements.get('toast').textContent, /已记好/);
+  }
+  first.respond(200, after);
+  assert.equal(h.state().points.length, before.state.points.length, 'a response from an old view cannot update the current one');
+  h.api.sync(); h.pending('/api/state').respond(200, after);
+  assert.equal(h.ui().form, null, 'the family refresh closes the completed award draft');
+  assert.match(h.elements.get('toast').textContent, /已记好.*独立订正两道题.*\+7/);
+  assert.equal(h.xhrs.filter(request => request.url === '/api/action').length, 1);
+});
+
+test('returning the next day shows the committed award with its original date and time', () => {
+  const h = harness(); h.login();
+  h.pending('/api/parent/device', 'GET').respond(200, { familyId: 'family-a', userId: USER.id, enabled: true });
+  h.api.open('points', { name: '课后阅读', points: 3, recordDate: '2026-11-16', recordTime: '15:30' });
+  const form = h.api.get().ui.form;
+  h.api.action(h.api.makeAction(form, form.data), '已保存'); h.api.parent({});
+  const original = h.pending('/api/action').body.action;
+  const nextDay = snapshot('family-a', 2);
+  nextDay.state = M.apply(nextDay.state, original, NOW, 'Asia/Shanghai');
+  nextDay.familyDay = '2026-11-17'; nextDay.serverNow = '2026-11-17T01:00:00Z';
+  hide(h); show(h); h.session(); h.pending('/api/state').respond(200, nextDay);
+  assert.equal(h.ui().form, null, 'crossing midnight must not turn a completed award into a new draft');
+  assert.match(h.elements.get('toast').textContent, /已记好.*课后阅读.*昨天 15:30/);
+  assert.equal(h.xhrs.filter(request => request.url === '/api/action').length, 1);
+});
+
+test('a late original receipt shows the recorded time even after the parent has corrected it for today', () => {
+  const h = harness(); h.login();
+  function trustDevice() {
+    h.pending('/api/parent/device', 'GET').respond(200, { familyId: 'family-a', userId: USER.id, enabled: true });
+  }
+  function confirmForm() {
+    const form = h.api.get().ui.form;
+    h.api.action(h.api.makeAction(form, form.data));
+    assert.equal(h.ui().authPhase, 'confirm');
+    h.api.parent({});
+    return h.pending('/api/action').body.action;
+  }
+  function resumeWith(value) {
+    hide(h); show(h); h.session(); h.pending('/api/state').respond(200, value);
+  }
+  trustDevice();
+  h.api.open('points', { name: '订正作业', points: 3, recordDate: '2026-11-16', recordTime: '15:30' });
+  const first = confirmForm();
+  const nextDay = { ...snapshot('family-a'), familyDay: '2026-11-17', serverNow: '2026-11-16T16:02:00Z' };
+  resumeWith(nextDay); trustDevice();
+  const preview = h.api.get().ui.form;
+  preview.data.recordTime = '00:00'; preview.data.recordTimeEdited = true;
+  h.api.action(h.api.makeAction(preview, preview.data));
+  assert.equal(h.ui().authPhase, 'confirm');
+  resumeWith(nextDay); trustDevice();
+  const editor = h.api.get().ui.form;
+  editor.data.recordTime = '00:01'; editor.data.recordTimeEdited = true;
+  const corrected = confirmForm();
+  assert.equal(corrected.id, first.id);
+  assert.equal(corrected.at, '2026-11-16T16:01:00.000Z');
+  // The first request committed yesterday. The family sees its ledger row only on this second return.
+  const committed = M.apply(nextDay.state, first, NOW, 'Asia/Shanghai');
+  resumeWith({ ...nextDay, revision: 2, state: committed });
+  assert.match(h.elements.get('toast').textContent, /已记好.*订正作业.*昨天 15:30/);
+  assert.equal(h.state().points.filter(row => row.id === 'points-' + first.id).length, 1);
+  assert.equal(h.xhrs.filter(request => request.url === '/api/action').length, 2);
+});
+
+test('a second interrupted award gets its own receipt after the first draft was closed', () => {
+  const h = harness(); h.login();
+  const before = snapshot('family-a');
+  function sendAward(name, points) {
+    h.pending('/api/parent/device', 'GET').respond(200, { familyId: 'family-a', userId: USER.id, enabled: true });
+    h.api.open('points', { name, points });
+    const form = h.api.get().ui.form;
+    h.api.action(h.api.makeAction(form, form.data)); h.api.parent({});
+    return h.pending('/api/action').body.action;
+  }
+  const first = sendAward('收好书包', 2);
+  hide(h); show(h); completeResume(h);
+  h.click('form-close', null, true);
+  const second = sendAward('复习错题', 6);
+  assert.notEqual(second.id, first.id);
+  const after = { ...before, revision: 2, state: M.apply(before.state, second, NOW, 'Asia/Shanghai') };
+  hide(h); show(h); h.session(); h.pending('/api/state').respond(200, after);
+  assert.equal(h.ui().form, null);
+  assert.match(h.elements.get('toast').textContent, /已记好.*复习错题.*\+6/);
+  assert.equal(h.xhrs.filter(request => request.url === '/api/action').length, 2);
+});
+
 test('v14 same-session recovery restores ordinary drafts only after fresh state and preserves conflict confirmation', () => {
   const h = harness(); h.login();
   h.api.open('points', { name: '待核对的草稿', points: 5, reason: '普通原因', pin: '123456', answer: '654321', grant: 'secret-grant', password: 'secret-password' });
