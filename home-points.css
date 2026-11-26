@@ -5,6 +5,10 @@ html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home)
 /* Safari samples the page edge. Use the opaque result of the sheet backdrop over the home header. */
 .sheet-status-edge { display: none; }
 @media (max-width: 699px) {
+  /* Safari can sample the canvas while the session and family requests are still pending. */
+  html:has(> .saas-connecting), body.saas-connecting, .saas-connecting > #app > .saas-main {
+    background-color: var(--app-paper);
+  }
   html:has(.points-home):has(.behavior-picker-sheet, .ledger-award-dialog) { --points-sheet-edge: #a1a8a3; }
   html:has(.points-home):has(.ledger-gift-sheet) { --points-sheet-edge: #a1a9a5; }
   html:has(#family-assistant-host:not([hidden])) { --points-sheet-edge: initial; }

@@ -142,11 +142,27 @@ async function phone() {
     const requests = [];
     cold.on('request', request => { if (new URL(request.url()).pathname.endsWith('/farm-scene.js')) requests.push(request.url()); });
     await metrics(cold, 390, 844, 390, 844);
+    await cold.evaluateOnNewDocument(() => {
+      const frames = window.coldCanvas = {};
+      const observer = new MutationObserver(() => {
+        const view = window.FamilySaas?.status().view;
+        const panel = document.querySelector('.saas-main');
+        if (!panel || !['checking', 'loading-family'].includes(view) || frames[view]) return;
+        frames[view] = [document.documentElement, document.body, panel].map(el => getComputedStyle(el).backgroundColor);
+        if (frames.checking && frames['loading-family']) observer.disconnect();
+      });
+      observer.observe(document, { subtree: true, childList: true });
+    });
     try {
       await cold.goto(env.origin, { waitUntil: 'load' }); await Q.ready(cold, familyId);
       await mode('points', cold); await noPetRenderer(cold); await B.delay(250);
       assert.deepEqual(requests, [], 'the lightweight points home does not download the 3D scene bundle');
-      report.coldHome = { sceneBundleRequests: requests.length };
+      const frames = await cold.evaluate(() => window.coldCanvas);
+      const paper = await cold.$eval('.home-header', el => getComputedStyle(el).backgroundColor);
+      report.coldHome = { sceneBundleRequests: requests.length, frames, paper };
+      for (const view of ['checking', 'loading-family']) {
+        assert.deepEqual(frames[view], [paper, paper, paper], view + ' paints the same canvas as the incoming points home');
+      }
     } finally { await cold.close(); }
   });
   await check('A temporary companion choice survives rotation and resize but does not become a refresh default', async () => {

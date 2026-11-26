@@ -249,7 +249,8 @@
     var active = document.activeElement, focusId = active && active.id, start = active && active.selectionStart, end = active && active.selectionEnd;
     var oldMain = document.getElementById('main'), scroll = oldMain ? oldMain.scrollTop : 0;
     var title = '小小向前', body = '', footer = '';
-    if (view === 'checking' || view === 'loading-family' || view === 'logout') { title = view === 'logout' ? '退出中' : '连接中'; }
+    var connecting = view === 'checking' || view === 'loading-family';
+    if (connecting || view === 'logout') { title = connecting ? '连接中' : '退出中'; }
     else if (view === 'error') { title = '连接未完成'; body = button('retry-session', '重试', true); }
     else if (view === 'family-error') { title = '家庭加载未完成'; body = button('retry-family', '重试', true) + button('families', '选择家庭') + button('logout', '退出登录'); }
     else if (view === 'logout-error' || view === 'logout-wait') { title = view === 'logout-wait' ? '退出处理中' : '退出未完成'; body = button('logout', '重试退出', true); }
@@ -283,7 +284,7 @@
     else if (view === 'delete-account' && user) { title = '删除账号'; body = '<p class="saas-identity">' + esc(user.email) + '</p>' + formMarkup('delete-account', field('确认邮箱', 'email', 'email', form.email, 'required maxlength="254" autocomplete="off" autocapitalize="none"') + password('账号密码', 'currentPassword', true), '确认删除账号'); footer = button(user.verified ? 'account' : 'unverified', '返回'); } else if (view === 'members') { title = '家庭成员'; body = memberMarkup(); }
     else if (view === 'password') { title = '修改密码'; body = formMarkup('password', password('当前密码', 'currentPassword', true) + password('新密码 · 10–128位', 'password') + password('确认新密码', 'confirmPassword'), '保存密码'); footer = back(); }
     else if (view === 'confirm' && confirmation) { title = confirmation.kind === 'member' ? '移除成员' : '撤销邀请'; body = '<p class="saas-identity">' + esc(confirmation.email) + '</p>' + button('confirm-remove', title, true) + button('members', '返回'); }
-    document.body.className = 'saas-screen';
+    document.body.className = connecting ? 'saas-screen saas-connecting' : 'saas-screen';
     app.innerHTML = '<main id="main" class="saas-main" tabindex="-1"><section class="saas-card" aria-labelledby="saas-title"><p class="saas-brand">小小向前</p><h1 id="saas-title" tabindex="-1">' + title + '</h1><p id="saas-status" class="saas-short-status" role="status" aria-live="polite">' + esc(message) + '</p><div class="saas-content">' + body + '</div><div class="saas-footer">' + footer + '</div></section></main>';
     if (root.FamilyWorldUI) root.FamilyWorldUI.account(view);
     var main = document.getElementById('main'); if (main) main.scrollTop = scroll;
