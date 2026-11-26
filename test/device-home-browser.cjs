@@ -271,8 +271,67 @@ async function ledgerAwardReceipt(phase, expected) {
   return receipt;
 }
 async function phoneAward() {
+  await phoneAwardFixture();
+  await check('The phone award review paints an opaque, tappable top edge with both zero and 47px safe-area insets', async () => {
+    const before = await sql(), marker = env.calls.length, chosen = a('choose-point', 'device-home-brush');
+    const session = deviceSessions.get(page);
+    const topEdge = () => page.evaluate(() => {
+      const probe = document.createElement('div');
+      probe.style.paddingTop = 'env(safe-area-inset-top, 0px)'; document.body.appendChild(probe);
+      const safeAreaTop = parseFloat(getComputedStyle(probe).paddingTop); probe.remove();
+      const hit = document.elementFromPoint(innerWidth / 2, 4), style = getComputedStyle(hit), box = hit.getBoundingClientRect();
+      const overlay = hit.closest('.sheet-overlay'), backdrop = overlay?.querySelector('.sheet-backdrop');
+      const context = document.createElement('canvas').getContext('2d');
+      const pixel = color => {
+        context.clearRect(0, 0, 1, 1); context.fillStyle = color; context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data];
+      };
+      const theme = document.querySelector('meta[name="theme-color"]').content;
+      return { safeAreaTop, width: innerWidth, theme, themePixel: pixel(theme),
+        rootColor: getComputedStyle(document.documentElement).backgroundColor, bodyColor: getComputedStyle(document.body).backgroundColor,
+        overlay: !!overlay, sameAcrossTop: [4, innerWidth / 2, innerWidth - 4].every(x => document.elementFromPoint(x, 4) === hit),
+        action: hit.dataset.action, backdropAction: backdrop?.dataset.action,
+        position: style.position, opacity: style.opacity, color: style.backgroundColor, pixel: pixel(style.backgroundColor),
+        box: { top: box.top, bottom: box.bottom, left: box.left, right: box.right, height: box.height } };
+    });
+    report.phoneAwardTopEdge = [];
+    try {
+      for (const inset of [0, 47]) {
+        await session.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: inset, left: 0, right: 0, bottom: 0 } });
+        const home = await topEdge();
+        assert.equal(home.safeAreaTop, inset, 'the browser applies the actual CSS safe-area inset');
+        assert.equal(home.overlay, false, 'the ordinary points home has no top-edge modal hit target');
+        await click(page, chosen, { scroll: false });
+        assert.equal((await ui(page)).authPhase, 'confirm');
+        assert.ok(await page.$('.ledger-award-dialog .award-photo-editor'), 'the real award review includes its photo controls');
+        const review = await topEdge();
+        report.phoneAwardTopEdge.push({ inset, home, review }); progress('Measured award review top edge at ' + inset + 'px safe area');
+        assert.equal(review.overlay, true, 'the actual viewport top hit belongs to the open award overlay: ' + JSON.stringify(review));
+        assert.equal(review.position, 'fixed', 'the actual viewport top is painted by a fixed element');
+        assert.ok(review.box.height > 10 && review.box.top <= 0 && review.box.bottom > 4,
+          'the top-edge hit target remains taller than 10px even without a safe area: ' + JSON.stringify(review));
+        assert.ok(review.box.left <= 0 && review.box.right >= review.width && review.sameAcrossTop,
+          'one real top-edge element covers and receives hits across the full viewport width');
+        assert.equal(review.opacity, '1'); assert.equal(review.pixel[3], 255, 'the sampled top-edge background is fully opaque');
+        assert.deepEqual(review.pixel, review.themePixel, 'the real top-edge paint agrees with the browser theme color');
+        assert.ok(review.action && review.action === review.backdropAction, 'the top edge uses the existing backdrop action');
+        await Q.shot(page, 'phone-award-top-edge-' + inset);
+        await page.mouse.click(review.width / 2, 4);
+        await page.waitForFunction(() => {
+          const current = window.FamilyDemo.getUI(); return !current.auth && current.form === null && current.view === 'points';
+        });
+        await mode('points');
+        const closed = await topEdge(); report.phoneAwardTopEdge.at(-1).closed = closed;
+        assert.equal(closed.overlay, false, 'closing removes the top-edge overlay hit target');
+        for (const property of ['theme', 'rootColor', 'bodyColor']) assert.equal(closed[property], home[property], 'closing restores the home ' + property);
+        assert.equal(await page.$eval(chosen, node => node === document.activeElement), true, 'a top-edge tap returns focus to the original behavior');
+        await unchanged(before, marker, 'top-edge cancellation at ' + inset + 'px safe area');
+      }
+    } finally {
+      await session.send('Emulation.setSafeAreaInsetsOverride', { insets: { top: 0, left: 0, right: 0, bottom: 0 } });
+    }
+  });
   await check('A visible phone common behavior opens its real receipt directly and authorizes one point before returning to the first home record', async () => {
-    await phoneAwardFixture();
     const before = await sql(), marker = env.calls.length, beforeTotals = Q.M.totals(before.state);
     const commonItems = await page.$$eval('.points-behavior-grid [data-action="choose-point"]', nodes => nodes.map(node => ({
       id: node.dataset.id, text: node.textContent.trim()

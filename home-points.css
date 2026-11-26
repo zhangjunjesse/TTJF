@@ -3,13 +3,16 @@ html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home)
   background-color: var(--points-sheet-edge, var(--app-paper));
 }
 /* Safari samples the page edge. Use the opaque result of the sheet backdrop over the home header. */
+.sheet-status-edge { display: none; }
 @media (max-width: 699px) {
   html:has(.points-home):has(.behavior-picker-sheet, .ledger-award-dialog) { --points-sheet-edge: #a1a8a3; }
   html:has(.points-home):has(.ledger-gift-sheet) { --points-sheet-edge: #a1a9a5; }
   html:has(#family-assistant-host:not([hidden])) { --points-sheet-edge: initial; }
-  .view-points:has(.points-home) .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet))::after {
-    content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
-    background-color: var(--points-sheet-edge); pointer-events: none;
+  .app-shell:has(.points-home) > .home-header { position: sticky; top: 0; }
+  .view-points:has(.points-home) .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet)) > .sheet-status-edge {
+    /* WebKit skips boxes 10px tall or thinner. Keep just the top 6px visible when Safari owns the safe area. */
+    display: block; position: fixed; inset: -6px 0 auto;
+    height: max(12px, calc(6px + env(safe-area-inset-top, 0px))); background-color: var(--points-sheet-edge);
   }
 }
 .app-shell:has(.points-home) {
