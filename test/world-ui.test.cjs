@@ -73,7 +73,7 @@ test('world host maps every supported business and account state to its required
   const forms = {
     points: ['behaviorPicker', 'points', 'point-list', 'pointItem'],
     reminders: ['homeInbox', 'task', 'taskAction'], rewards: ['rewards', 'reward-list', 'reward', 'request', 'approve'],
-    history: ['records', 'homeWeek', 'petGrowth'], companion: ['petHub', 'petBuy', 'petConfig'],
+    history: ['records', 'recordDetail', 'homeWeek', 'petGrowth'], companion: ['petHub', 'petBuy', 'petConfig'],
     settings: ['preferences', 'unknown-form'], family: ['profile', 'familySettings'],
     voice: ['voice'], authorization: ['parentConfig'], farm: ['farm']
   };

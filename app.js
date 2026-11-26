@@ -202,7 +202,7 @@
     Object.keys(value).forEach(function (key) { if (!/^(password|currentPassword|confirmPassword|credential|pin|confirmPin|setupPin|setupConfirm|answer|grant|challenge|challengeId|autoPin|tx|action|actionId|signature|token|csrfToken)$/i.test(key)) out[key] = ordinary(value[key]); });
     return out;
   }
-  function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), assistantDraft: f.assistantDraft && clone(f.assistantDraft), openedRevision: f.openedRevision, ledgerAward: !!f.ledgerAward, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), scrollTop: f.scrollTop || 0 } : null; }
+  function savedForm(f) { return f ? { kind: f.kind, data: ordinary(f.data), assistantDraft: f.assistantDraft && clone(f.assistantDraft), openedRevision: f.openedRevision, ledgerAward: !!f.ledgerAward, aiOpen: !!f.aiOpen, pickerState: ordinary(f.pickerState || null), focusKey: ordinary(f.focusKey || null), weekView: ordinary(f.weekView || null), scrollTop: f.scrollTop || 0 } : null; }
   function copyAwardAction(action) {
     var saved = {};
     ['id', 'type', 'itemId', 'name', 'points', 'reason', 'at', 'saveAsTemplate', 'photoIds'].forEach(function (key) {
@@ -313,7 +313,7 @@
   function suspendFamily() {
     rememberDraft(); rememberSheetFocus();
     if (retryTx && retryTx.action.type === 'points.add' && (retryTx.inFlight || retryTx.uncertain)) rememberSubmittedAward(retryTx);
-    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), awardPhotos: savedAwardPhotoDrafts(), submittedAwards: savedSubmittedAwards(), scrollTop: main ? main.scrollTop : 0, revision: revision };
+    var main = document.getElementById('main'), saved = { view: ui.view, homeMode: ui.homeMode, day: ui.day, reminderMode: ui.reminderMode, filter: ui.filter, history: ui.history, sound: ui.sound, petTab: ui.petTab, homeFocus: ordinary(ui.homeFocus || null), homeScrollTop: ui.homeScrollTop || 0, recordHomeReturn: !!ui.recordHomeReturn, form: savedForm(ui.form), stack: ui.stack.map(savedForm), drafts: ordinary(drafts), awardPhotos: savedAwardPhotoDrafts(), submittedAwards: savedSubmittedAwards(), scrollTop: main ? main.scrollTop : 0, revision: revision };
     if (ui.auth && ui.auth.phase === 'confirm' && ui.auth.tx.action.type === 'points.add' && ui.auth.tx.form === ui.form && !ui.auth.busy && !pending && !ui.auth.challengeId && !ui.auth.tx.grant && !ui.auth.tx.uncertain) {
       saved.awardReview = { pristine: isPristinePresetReview(ui.auth), familyDay: today() };
     }
@@ -344,7 +344,7 @@
   }
   function restoreFamily(saved) {
     if (!saved) { discardAvatar(); return; }
-    ['view', 'homeMode', 'day', 'reminderMode', 'filter', 'history', 'petTab', 'homeFocus'].forEach(function (key) { if (saved[key] !== undefined) ui[key] = saved[key]; });
+    ['view', 'homeMode', 'day', 'reminderMode', 'filter', 'history', 'petTab', 'homeFocus', 'homeScrollTop', 'recordHomeReturn'].forEach(function (key) { if (saved[key] !== undefined) ui[key] = saved[key]; });
     var sent = saved.submittedAwards || {}, sentRows = Object.keys(sent).map(function (id) { return sent[id]; }), restoredStack = [];
     drafts = ordinary(saved.drafts || {}); awardPhotoDrafts = saved.awardPhotos || {}; ui.stack = (saved.stack || []).map(function (f, index) {
       restoredStack[index] = restorableForm(f, sentRows.filter(function (award) { return !award.currentForm && award.stackIndex === index; })[0]);
@@ -504,7 +504,7 @@
     }
     connected = !local; if (connected) serverReached = true; persist(); updateConnectionStatus(); return true;
   }
-  function canRefreshLedgerView() { return !ui.auth && (!ui.form || ['homeWeek', 'petHub', 'farm'].indexOf(ui.form.kind) >= 0); }
+  function canRefreshLedgerView() { return !ui.auth && (!ui.form || ['homeWeek', 'recordDetail', 'petHub', 'farm'].indexOf(ui.form.kind) >= 0); }
   function sync() {
     if (!scopeReady() || local || syncBusy || pending) return;
     syncBusy = true;
@@ -930,7 +930,7 @@
     if (!f.assistantDraft && ['points', 'petBuy', 'task', 'reward', 'pointItem', 'voice'].indexOf(f.kind) >= 0) { drafts[draftKey(f)] = clone(f.data); saveStore(DRAFT, drafts); }
   }
   function focusKey(element) { if (!element || !element.getAttribute) return null; return { tag: element.tagName, type: element.type || '', id: element.id || '', name: element.name || '', action: element.getAttribute('data-action') || '', dataId: element.getAttribute('data-id') || '' }; }
-  function rememberSheetFocus() { if (!ui.form || ui.auth) return; var sheetEl = document.querySelector('.sheet'), body = document.querySelector('.sheet-body'); if (sheetEl && sheetEl.contains && sheetEl.contains(document.activeElement)) ui.form.focusKey = focusKey(document.activeElement); if (body) ui.form.scrollTop = body.scrollTop; }
+  function rememberSheetFocus() { if (!ui.form || ui.auth) return; var sheetEl = document.querySelector('.sheet'), body = document.querySelector('.sheet-body'); if (sheetEl && sheetEl.contains && sheetEl.contains(document.activeElement)) ui.form.focusKey = focusKey(document.activeElement); if (body) ui.form.scrollTop = body.scrollTop; if (sheetEl && ui.form.kind === 'homeWeek') ui.form.weekView = homeWeekView(sheetEl); }
   function restorePlayFocus(key) {
     var sheetEl = document.querySelector('.sheet') || document.querySelector('.app-shell'); if (!sheetEl) return;
     var nodes = sheetEl.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type="hidden"]),select:not([disabled]),textarea:not([disabled]),details > summary'), target = null;
@@ -944,7 +944,7 @@
     if (AwardPhotos) AwardPhotos.closeViewer();
     discardAwardPhotoInput();
     if (avatarSelection && avatarSelection.form === ui.form) discardAvatar();
-    rememberSheetFocus(); if (!ui.form) ui.homeFocus = focusKey(document.activeElement); rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
+    rememberSheetFocus(); if (!ui.form) { ui.homeFocus = focusKey(document.activeElement); var main = document.getElementById('main'); ui.homeScrollTop = main ? main.scrollTop : 0; ui.recordHomeReturn = false; } rememberDraft(); stopRecognition(); invalidateAssistant(ui.form); if (ui.form) ui.form.avatarRequest = null;
     if (replace) discardAwardPhotos(ui.form);
     if (ui.form && !replace) ui.stack.push(ui.form);
     var f = { kind: kind, data: clone(data || {}), openedRevision: revision };
@@ -1480,7 +1480,43 @@
     else if (positive) { detail = record.reason || ''; meta = detail.trim() ? '' : '未填写原因'; }
     else { detail = record.note || ''; meta = category(record.category) + '礼品'; }
     var repeated = detail.trim() === String(record.name).trim();
-    return '<article class="record-row" role="listitem"><div class="points-ledger-copy"><strong>' + esc(record.name) + '</strong><div class="points-ledger-meta"><time datetime="' + esc(record.at) + '">' + esc(niceTime(record.at)) + '</time>' + (meta ? '<span>' + esc(meta) + '</span>' : '') + '</div></div><b class="record-number ' + (positive ? 'is-earned' : 'is-spent') + (String(record.points).length > 6 ? ' points-ledger-amount-long' : '') + '">' + (positive ? '+' : '−') + record.points + '<small> 分</small></b>' + (detail.trim() && !repeated ? '<p class="points-ledger-note">' + esc(detail) + '</p>' : '') + (positive && AwardPhotos ? AwardPhotos.history(record.photoIds) : '') + '</article>';
+    var photos = positive && record.photoIds && record.photoIds.length ? '<span class="points-record-photo-count">' + record.photoIds.length + ' 张照片</span>' : '';
+    var content = '<span class="points-ledger-copy"><strong>' + esc(record.name) + '</strong><span class="points-ledger-meta"><time datetime="' + esc(record.at) + '">' + esc(niceTime(record.at)) + '</time>' + (meta ? '<span>' + esc(meta) + '</span>' : '') + '</span></span><b class="record-number ' + (positive ? 'is-earned' : 'is-spent') + (String(record.points).length > 6 ? ' points-ledger-amount-long' : '') + '">' + (positive ? '+' : '−') + record.points + '<small> 分</small></b>' + (detail.trim() && !repeated ? '<span class="points-ledger-note">' + esc(detail) + '</span>' : '') + photos + icon('chevron');
+    var recordKind = positive ? 'points' : kind === 'purchases' ? 'purchase' : 'redemption';
+    return '<div role="listitem">' + button('record-detail', content, 'points-record-link record-row', recordKind + ':' + record.id, record.name + '，' + niceTime(record.at) + '，' + (positive ? '加' : '使用') + record.points + '分，查看详情') + '</div>';
+  }
+  function detailRecord(data) {
+    if (!data || !state) return null;
+    var rows = data.recordKind === 'points' ? state.points : data.recordKind === 'redemption' ? state.redemptions : data.recordKind === 'purchase' ? state.petPurchases || [] : null;
+    return rows ? find(rows, data.recordId) : null;
+  }
+  function openRecordDetail(key, trigger) {
+    if (typeof key !== 'string') return;
+    var separator = key.indexOf(':'), data = { recordKind: key.slice(0, separator), recordId: key.slice(separator + 1) };
+    if (separator < 0 || !detailRecord(data)) return;
+    var returnFocus = focusKey(trigger);
+    openForm('recordDetail', data, false, false, true);
+    ui.recordHomeReturn = true;
+    if (returnFocus) { if (ui.stack.length) ui.stack[ui.stack.length - 1].focusKey = returnFocus; else ui.homeFocus = returnFocus; }
+    render(false);
+  }
+  function recordPhotoEnvironment(form) {
+    var env = awardPhotoRequestEnvironment();
+    env.root = document.querySelector('.points-record-detail');
+    env.active = function () { return env.current() && ui.form === form && !ui.auth && !!detailRecord(form.data); };
+    return env;
+  }
+  function recordDetailBody(data) {
+    var record = detailRecord(data);
+    if (!record) return '<p class="points-summary-empty">这条记录已不存在</p>';
+    var positive = data.recordKind === 'points', purchase = data.recordKind === 'purchase', parts = M.calendarParts(record.at, calendarZone());
+    var kind = positive ? '加分' : purchase ? '道具购买' : '礼品兑换', reason = positive ? record.reason : record.note;
+    var date = parts.year + '年' + parts.month + '月' + parts.day + '日';
+    var metadata = '<div><dt>日期</dt><dd><time datetime="' + esc(parts.date) + '">' + esc(date) + '</time></dd></div><div><dt>时间</dt><dd><time datetime="' + esc(record.at) + '">' + esc(parts.time) + '</time></dd></div>';
+    if (purchase) metadata += '<div><dt>数量</dt><dd>' + record.quantity + ' 件</dd></div><div><dt>单价</dt><dd>' + record.unitPoints + ' 分 / 件</dd></div>';
+    else if (!positive) metadata += '<div><dt>类别</dt><dd>' + esc(category(record.category)) + '礼品</dd></div>';
+    var note = purchase ? '' : '<section class="points-record-detail-note" aria-labelledby="points-record-note-title"><h4 id="points-record-note-title">' + (positive ? '原因' : '备注') + '</h4><p>' + esc(reason || (positive ? '未填写原因' : '未填写备注')) + '</p></section>';
+    return '<section class="points-record-detail" data-record-kind="' + esc(data.recordKind) + '" data-record-id="' + esc(record.id) + '"><div class="points-record-detail-heading"><span class="points-record-detail-kind">' + kind + '</span><h3>' + esc(record.name) + '</h3><strong class="points-record-detail-amount' + (positive ? '' : ' is-spent') + (String(record.points).length > 8 ? ' points-detail-amount-long' : '') + '">' + (positive ? '+' : '−') + record.points + '<small> 分</small></strong></div><dl class="points-record-detail-meta">' + metadata + '</dl>' + note + (positive && AwardPhotos ? AwardPhotos.details(record.photoIds) : '') + '</section>';
   }
   function menuRow(action, title, note, symbol, options) {
     options = options || {};
@@ -1721,6 +1757,7 @@
     if (f.kind === 'homeInbox') { title = homeInboxTitle(); f.openedRevision = revision; ui.inboxKey = homeInboxKey(); body = '<div id="home-inbox-body">' + homeInboxBody() + '</div>'; }
     else if (f.kind === 'homeWeek') { title = '近七日积分'; body = window.FamilyHomePoints.summaryBody({ summary: homeSummary(), icon: icon, button: button }); }
     else if (f.kind === 'records') { title = d.source === 'rewards' ? '兑换记录' : '积分记录'; body = recordsBody(); }
+    else if (f.kind === 'recordDetail') { title = d.recordKind === 'points' ? '加分详情' : d.recordKind === 'purchase' ? '购买详情' : '兑换详情'; body = recordDetailBody(d); }
     else if (f.kind === 'preferences') { title = '设置'; body = preferencesBody(); }
     else if (f.kind === 'rewards') { title = '礼品兑换'; body = rewardsBody(); actions = button('reward-list', icon('edit'), 'icon-button', '', '管理礼品') + button('reward-new', icon('plus'), 'icon-button nav-add', '', '新增礼品'); }
     else if (f.kind === 'petGrowth') { title = '成长足迹'; body = growthBody(); }
@@ -1927,8 +1964,9 @@
     if (!ui.homeMode) ui.homeMode = initialHomeMode();
     var old = document.getElementById('main'), scroll = old ? old.scrollTop : 0;
     var oldSheet = document.querySelector('.sheet'), oldBody = document.querySelector('.sheet-body'), oldKind = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-form-kind') : '', oldAuthPhase = oldSheet && oldSheet.getAttribute ? oldSheet.getAttribute('data-auth-phase') : '', nextKind = (ui.auth ? 'parent:' : '') + (ui.form ? ui.form.kind : ''), sameSheet = !!oldSheet && oldKind === nextKind, key = sameSheet ? focusKey(document.activeElement) : ui.form && ui.form.focusKey, sheetScroll = sameSheet && oldBody ? oldBody.scrollTop : ui.form && ui.form.scrollTop || 0;
-    var weekView = sameSheet && nextKind === 'homeWeek' ? homeWeekView(oldSheet) : null;
+    var weekView = nextKind === 'homeWeek' ? sameSheet ? homeWeekView(oldSheet) : ui.form.weekView : null;
     var homeRefresh = !reset && ui.view === 'points' && !oldSheet && !ui.form && !ui.auth && old && old.querySelector && old.querySelector('[data-home-mode="' + ui.homeMode + '"]'), homeKey = homeRefresh ? focusKey(document.activeElement) : null;
+    var homeReturn = !reset && ui.view === 'points' && oldSheet && !ui.form && !ui.auth && ui.recordHomeReturn;
     var selection = sameSheet && document.activeElement && typeof document.activeElement.selectionStart === 'number' ? { start: document.activeElement.selectionStart, end: document.activeElement.selectionEnd } : null;
     document.body.className = 'view-' + ui.view + (ui.form || ui.auth ? ' sheet-open' : '') + (ui.display ? ' display-mode' : '');
     if (Farm) Farm.beforeRender();
@@ -1938,14 +1976,15 @@
       var gallery = ui.view === 'points' && main.querySelector && main.querySelector('.pet-home-card.is-previewing');
       if (gallery && main.classList) main.classList.add('home-gallery');
       if (homeKey && (homeKey.action === 'farm-pet-preview' || homeKey.action === 'farm-pet-current')) homeKey.action = gallery ? 'farm-pet-current' : 'farm-pet-preview';
-      main.scrollTop = homeRefresh ? scroll : reset || ui.view === 'points' ? 0 : scroll;
+      main.scrollTop = homeRefresh ? scroll : homeReturn ? ui.homeScrollTop || 0 : reset || ui.view === 'points' ? 0 : scroll;
     }
+    if (!ui.form && !ui.auth) ui.recordHomeReturn = false;
     var notice = document.getElementById('toast');
     if (ui.view === 'points' && !ui.form && !ui.auth && notice.className.indexOf('visible') >= 0) toast(notice.textContent, notice.className.indexOf('points-receipt') >= 0);
     if (chatOpen) key = null;
     if (ui.auth) { restorePlayFocus(sameSheet && oldAuthPhase === ui.auth.phase ? key : null); }
     else if (!chatOpen && ui.form && ui.form.kind === 'homeInbox') focusInbox();
-    else if (!chatOpen && ui.form && (ledgerGiftFlow() || ['points', 'behaviorPicker', 'point-list', 'pointItem', 'records', 'homeWeek', 'preferences', 'rewards', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0)) {
+    else if (!chatOpen && ui.form && (ledgerGiftFlow() || ['points', 'behaviorPicker', 'point-list', 'pointItem', 'records', 'recordDetail', 'homeWeek', 'preferences', 'rewards', 'petHub', 'petBuy', 'petGrowth', 'petConfig', 'farm'].indexOf(ui.form.kind) >= 0)) {
       // Enter a gift detail on its back button; the optional note only opens the keyboard when selected.
       if (ledgerGiftFlow() && !key && ['request', 'approve'].indexOf(ui.form.kind) >= 0) restorePlayFocus(focusKey(document.querySelector('.sheet-nav-start button')));
       else if (!restoreHomeWeekView(weekView)) restorePlayFocus(key);
@@ -1954,6 +1993,10 @@
     }
     else if (!chatOpen && oldSheet && !ui.form && !ui.auth && ui.homeFocus) restorePlayFocus(ui.homeFocus);
     else if (!chatOpen && homeRefresh && homeKey && homeKey.action) restorePlayFocus(homeKey);
+    if (AwardPhotos && ui.form && ui.form.kind === 'recordDetail' && !ui.auth) {
+      if (detailRecord(ui.form.data)) AwardPhotos.hydrateDetails(document.querySelector('.points-record-detail'), recordPhotoEnvironment(ui.form));
+      else AwardPhotos.closeViewer();
+    }
     refreshPetPurchase(); fitViewport();
     var showsFarm = farmIsVisible();
     if (Farm && !showsFarm) Farm.releaseScene();
@@ -2043,8 +2086,8 @@
     if (AwardPhotos && action.indexOf('award-photo-') === 0) {
       if (pending) return;
       if (action === 'award-photo-history' && !ui.auth) {
-        var photoView = ui.form, photoScope = scopeToken();
-        AwardPhotos.viewHistory((id || '').split(','), { request: request, active: function () { return scopeCurrent(photoScope) && ui.form === photoView && !ui.auth; } });
+        var photoView = ui.form, photoRecord = photoView && photoView.kind === 'recordDetail' && photoView.data.recordKind === 'points' && detailRecord(photoView.data);
+        if (photoRecord && (photoRecord.photoIds || []).join(',') === id) AwardPhotos.viewHistory(photoRecord.photoIds.slice(), recordPhotoEnvironment(photoView), element ? Number(element.getAttribute('data-photo-index')) || 0 : 0);
       } else if (ui.form && ui.form.kind === 'points' && (!ui.auth || (ui.auth.phase === 'confirm' && !ui.auth.busy))) {
         rememberDraft(); AwardPhotos.handle(action, id, awardPhotos(ui.form), awardPhotoEnvironment(ui.form));
       }
@@ -2123,6 +2166,7 @@
       }
     }
     else if (action === 'records') { ui.history = 'points'; openForm('records', {}); }
+    else if (action === 'record-detail') openRecordDetail(id, element);
     else if (action === 'preferences' || action === 'point-list' || action === 'reward-list') openForm(action, {});
     else if (action === 'rewards-history') { ui.history = 'redemptions'; openForm('records', { source: 'rewards' }); }
     else if (action === 'reward-filter') { ui.filter = id; render(false); }

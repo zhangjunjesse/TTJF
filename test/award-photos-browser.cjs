@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, PIN, action: a, click, snapshot, ui } = Q;
 const CASE = process.env.AWARD_PHOTO_CASE || 'custom';
-const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race', 'resume-committed', 'resume-uncommitted', 'resume-late', 'resume-midnight', 'resume-chooser', 'resume-avatar'];
+const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race', 'resume-committed', 'resume-uncommitted', 'resume-late', 'resume-midnight', 'resume-chooser', 'resume-avatar', 'controls', 'detail'];
 assert.ok(CASES.includes(CASE), 'Unknown AWARD_PHOTO_CASE');
 const WIDTH = Number(process.env.AWARD_PHOTO_WIDTH || 390);
 const HEIGHT = Number(process.env.AWARD_PHOTO_HEIGHT || 844);
@@ -19,8 +19,10 @@ const COMMON = '合成作业常用行为';
 const PREVIEW = a('award-photo-preview');
 const HISTORY = a('award-photo-history');
 const VIEWER = '[data-award-photo-viewer]';
+const DETAIL = '.sheet[data-form-kind="recordDetail"]';
+const COUNT = '.award-photo-editor [data-photo-count]';
 const SOURCES = ['test/award-photos-browser.cjs', 'test/saas-browser.cjs', 'test/browser.cjs',
-  'award-photos.js', 'award-photos.css', 'app.js', 'index.html', 'model.js', 'saas-client.js', 'saas-server.cjs',
+  'award-photos.js', 'award-photos.css', 'app.js', 'home-points.js', 'home-points.css', 'index.html', 'model.js', 'saas-client.js', 'saas-server.cjs',
   'saas/business.cjs', 'saas/award-photos.cjs', 'saas/migrations/005-award-photos.sql'];
 const hashes = () => Object.fromEntries(SOURCES.map(file => [file,
   crypto.createHash('sha256').update(fs.readFileSync(path.join(Q.ROOT, file))).digest('hex')]));
@@ -38,6 +40,7 @@ Q.report.boundaries = [
   'The resume-midnight group advances the injected Shanghai clock across midnight, interrupts both the old-day submit and a corrected new-day submit, then verifies fresh authorization, exact saved time and real-service replay behavior.',
   'The resume-chooser group forwards an old authorized award while an edited draft has a native chooser open, accepts the new file while hidden, then verifies both distinct records and photo attachments in SQLite.',
   'The resume-avatar group uses the same synthetic PNG with and without a late award receipt, then explicitly saves the returned avatar with a fresh PIN and verifies SQLite plus reload. Existing family and session boundaries still apply.',
+  'The controls and detail groups emulate a mobile touch viewport and use hit-tested Chromium touch taps. Their screenshots contain synthetic workbook pages; actual phone touch hardware, OS image pickers and Safari remain outside this check.',
   'No production service, external SMTP, AI image provider or live family data is used.'
 ];
 for (const name of CASES.filter(name => name !== CASE)) Q.report.skipped.push('AWARD_PHOTO_CASE=' + name + ' not selected');
@@ -93,6 +96,12 @@ async function setup() {
   Q.phase('award-photos-' + CASE); progress('Creating an isolated real SaaS fixture');
   env = await Q.initialize(); env.clock(Date.parse('2026-11-25T04:30:00Z'));
   page = await env.newPage({ controlledClock: true, width: WIDTH, height: HEIGHT }); Q.active(page);
+  if (['controls', 'detail'].includes(CASE)) {
+    // Changing touch/mobile emulation reloads the page. Give the shared storage
+    // instrumentation a real origin before that reload instead of about:blank.
+    await page.goto(env.origin, { waitUntil: 'load' });
+    await page.setViewport({ width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, hasTouch: true, isMobile: true });
+  }
   page.setDefaultTimeout(6000);
   page.on('request', request => {
     if (request.method() !== 'POST') return;
@@ -119,9 +128,10 @@ async function setup() {
       g.font = '34px sans-serif'; g.fillText('Synthetic homework / 2 + 3 = 5', 65, 235);
       return canvas.toDataURL(type, 0.88);
     }
-    return { png: image('image/png', '#245eab', 'SYNTHETIC PAGE ONE'), jpeg: image('image/jpeg', '#a54434', 'SYNTHETIC PAGE TWO') };
+    return { png: image('image/png', '#245eab', 'SYNTHETIC PAGE ONE'), jpeg: image('image/jpeg', '#a54434', 'SYNTHETIC PAGE TWO'),
+      third: image('image/jpeg', '#306b4b', 'SYNTHETIC PAGE THREE') };
   });
-  files = { png: path.join(Q.OUT, 'synthetic-homework.png'), jpeg: path.join(Q.OUT, 'synthetic-homework.jpg') };
+  files = { png: path.join(Q.OUT, 'synthetic-homework.png'), jpeg: path.join(Q.OUT, 'synthetic-homework.jpg'), third: path.join(Q.OUT, 'synthetic-homework-three.jpg') };
   for (const [kind, file] of Object.entries(files)) fs.writeFileSync(file, Buffer.from(images[kind].split(',')[1], 'base64'));
   progress('Fixture and synthetic PNG/JPEG files ready');
 }
@@ -134,6 +144,46 @@ async function thumbnails(selector, count) {
     const images = [...document.querySelectorAll(target + ' img')];
     return images.length === expected && images.every(image => image.complete && image.naturalWidth > 0 && image.naturalHeight > image.naturalWidth);
   }, { timeout: 6000 }, selector, count);
+}
+async function mobileShot(name) {
+  const label = 'mobile-' + WIDTH + '-' + name;
+  await Q.shot(page, label);
+  if (!process.env.AWARD_PHOTO_SCREENSHOT_DIR) return;
+  const directory = path.resolve(process.env.AWARD_PHOTO_SCREENSHOT_DIR);
+  fs.mkdirSync(directory, { recursive: true });
+  const target = path.join(directory, label + '.png');
+  fs.copyFileSync(path.join(Q.OUT, label + '.png'), target);
+  (report.reviewScreenshots || (report.reviewScreenshots = [])).push(target);
+}
+async function tap(selector, edge = false) {
+  if (await Q.visible(page, '.ledger-award-dialog ' + selector)) selector = '.ledger-award-dialog ' + selector;
+  await page.waitForSelector(selector, { visible: true });
+  const handles = await page.$$(selector);
+  let target;
+  try {
+    for (const handle of handles) {
+      target = await handle.evaluate((node, rightEdge) => {
+        const initial = node.getBoundingClientRect();
+        if (!initial.width || !initial.height || getComputedStyle(node).visibility === 'hidden') return null;
+        node.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'instant' });
+        const r = node.getBoundingClientRect(), x = rightEdge ? r.right - 12 : r.left + r.width / 2, y = r.top + r.height / 2;
+        const hit = document.elementFromPoint(x, y);
+        return hit && (hit === node || node.contains(hit)) ? { x, y, width: r.width, height: r.height, disabled: !!node.disabled } : null;
+      }, edge);
+      if (target) break;
+    }
+    assert.ok(target, selector + ' must be reachable by a real touchscreen tap');
+    assert.equal(target.disabled, false, selector + ' is enabled');
+    assert.ok(target.width >= 44 && target.height >= 44, selector + ' has a 44px touch target: ' + JSON.stringify(target));
+    await page.touchscreen.tap(target.x, target.y); await B.delay(120);
+    (report.touchTargets || (report.touchTargets = [])).push({ selector, width: target.width, height: target.height, rightEdge: edge });
+  } finally { for (const handle of handles) await handle.dispose(); }
+}
+async function selectedCount(count) {
+  await page.waitForFunction((selector, expected) => {
+    const nodes = [...document.querySelectorAll(selector)].filter(node => node.getBoundingClientRect().height);
+    return nodes.length && nodes.every(node => Number(node.dataset.count) === expected && node.textContent.trim() === expected + ' / 3');
+  }, { timeout: 6000 }, COUNT, count);
 }
 function uploadResponse() {
   return page.waitForResponse(response => new URL(response.url()).pathname === '/api/award-photos' &&
@@ -156,16 +206,17 @@ async function uploaded(received, marker, input) {
   report.uploads.push({ input, output: 'image/jpeg', photoId: result.photoId, bytes: Buffer.from(sent[0].dataUrl.split(',')[1], 'base64').length, ...size });
   return result.photoId;
 }
-async function openChooser(mode) {
+async function openChooser(mode, touch = false) {
   const input = '[data-award-photo-input="' + mode + '"]';
   assert.equal(await page.$eval(input, node => node.type), 'file');
   if (mode === 'camera') assert.equal(await page.$eval(input, node => node.getAttribute('capture')), 'environment');
   const chooser = page.waitForFileChooser({ timeout: 6000 });
-  await click(page, a('award-photo-' + mode));
+  if (touch) await tap(a('award-photo-' + mode));
+  else await click(page, a('award-photo-' + mode));
   return chooser;
 }
-async function pick(mode, file, count, fail = false) {
-  const selected = await openChooser(mode), marker = uploads.length, received = fail ? null : uploadResponse();
+async function pick(mode, file, count, fail = false, touch = false) {
+  const selected = await openChooser(mode, touch), marker = uploads.length, received = fail ? null : uploadResponse();
   await selected.accept([file]);
   if (fail) { await page.waitForSelector(a('award-photo-retry'), { visible: true }); return; }
   const id = await uploaded(received, marker, path.extname(file));
@@ -180,6 +231,10 @@ async function viewer(selector, multiple = false) {
     await click(page, VIEWER + ' [data-photo-next]');
     await page.waitForFunction((target, original) => {
       const image = document.querySelector(target + ' img'); return image && image.src !== original && image.complete && image.naturalWidth > 0;
+    }, {}, VIEWER, first);
+    await click(page, VIEWER + ' [data-photo-prev]');
+    await page.waitForFunction((target, original) => {
+      const image = document.querySelector(target + ' img'); return image && image.src === original && image.complete && image.naturalWidth > 0;
     }, {}, VIEWER, first);
   }
   await Q.shot(page, 'photo-viewer-' + CASE + '-' + (++viewerSequence));
@@ -210,10 +265,19 @@ async function commit(before, ids, direct = false, trusted = false) {
 async function history(count, name = CUSTOM) {
   await Q.home(page); await click(page, a('records'));
   assert.match(await page.$eval('.record-list', node => node.textContent), new RegExp(name));
+  const row = (await snapshot(page)).points.filter(record => record.name === name).at(-1);
+  assert.ok(row, 'the named award exists in the real family ledger');
+  await click(page, '.record-list ' + a('record-detail', 'points:' + row.id));
+  await page.waitForSelector(DETAIL, { visible: true });
   await page.waitForSelector(HISTORY, { visible: true });
-  const saved = await page.$eval(HISTORY, node => ({ ids: node.dataset.id.split(','), text: node.textContent }));
-  assert.equal(saved.ids.length, count);
-  assert.match(saved.text, new RegExp(count + '\\s*张'));
+  const saved = await page.$$eval(DETAIL + ' ' + HISTORY, nodes => nodes.map(node => ({
+    ids: node.dataset.id.split(','), index: Number(node.dataset.photoIndex), photoId: node.dataset.photoId
+  })));
+  assert.equal(saved.length, count, 'saved photos are individual thumbnails inside the record detail');
+  assert.deepEqual(saved.map(photo => photo.index), Array.from({ length: count }, (_, index) => index));
+  assert.deepEqual(saved.map(photo => photo.photoId), row.photoIds);
+  for (const photo of saved) assert.deepEqual(photo.ids, row.photoIds);
+  await thumbnails(DETAIL + ' ' + HISTORY, count);
 }
 async function custom() {
   await check('Custom scoring keeps PNG/JPEG page previews, removal and full-size navigation before one authorized write', async () => {
@@ -614,8 +678,22 @@ async function resumeChooser() {
     report.resume = { oldActionId: actionId, newActionId: awardRequests.actions[1].action.id,
       oldPhotoId: oldPhoto, newPhotoId: newPhoto, newSelectionUploads: uploads.length - marker, committedAwards: 2 };
     await history(1, newName);
-    assert.match(await page.$eval('.record-list', node => node.textContent), new RegExp(oldName));
-    assert.equal(await page.$$(HISTORY).then(nodes => nodes.length), 2, 'both separately photographed records appear in history');
+    assert.equal(await page.$eval(DETAIL + ' ' + HISTORY, node => node.dataset.photoId), newPhoto);
+    await viewer(HISTORY);
+    await click(page, DETAIL + ' .sheet-header ' + a('form-close'));
+    await page.waitForSelector('.record-list', { visible: true });
+    const visibleRows = await page.$$eval('.record-list button[data-action="record-detail"]', nodes => nodes.map(node => ({ id: node.dataset.id, text: node.textContent })));
+    assert.deepEqual(visibleRows.map(row => row.id), ['points:' + newRow.id, 'points:' + oldRow.id], 'back returns to both distinct saved awards');
+    assert.ok(visibleRows[0].text.includes(newName)); assert.ok(visibleRows[1].text.includes(oldName));
+    await click(page, '.record-list ' + a('record-detail', 'points:' + oldRow.id));
+    await page.waitForSelector(DETAIL, { visible: true }); await thumbnails(DETAIL + ' ' + HISTORY, 1);
+    assert.equal(await page.$eval(DETAIL + ' ' + HISTORY, node => node.dataset.photoId), oldPhoto);
+    const expectedOld = await env.api(page, '/api/award-photos/read', 'POST', { photoId: oldPhoto }); assert.equal(expectedOld.status, 200);
+    await click(page, DETAIL + ' ' + HISTORY); await page.waitForSelector(VIEWER, { visible: true });
+    await page.waitForFunction((selector, expected) => {
+      const image = document.querySelector(selector + ' img'); return image && image.complete && image.naturalWidth > 0 && image.src === expected;
+    }, { timeout: 6000 }, VIEWER, expectedOld.body.dataUrl);
+    await click(page, VIEWER + ' [data-photo-close]'); await page.waitForSelector(VIEWER, { hidden: true });
     await noStoredAward(actionId, oldPhoto); await noStoredAward(awardRequests.actions[1].action.id, newPhoto);
     assert.deepEqual(await sql(), after);
   });
@@ -878,8 +956,193 @@ async function discardRace() {
     }
   });
 }
+async function controls() {
+  await check('Mobile attachment controls explain zero and full selection and accept real camera/album taps without scoring', async () => {
+    const before = await sql(), marker = env.calls.length; await openCustom();
+    await selectedCount(0); await thumbnails(PREVIEW, 0);
+    assert.ok(await Q.visible(page, a('award-photo-camera')));
+    assert.ok(await Q.visible(page, a('award-photo-album')));
+    assert.ok(await Q.visible(page, '.award-photo-heading ' + a('award-photo-album')), 'the optional album action remains visible beside the attachment heading');
+    await page.$eval('.award-photo-editor', node => node.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    await mobileShot('editor-empty');
+    await click(page, Q.save); await page.waitForFunction(() => window.FamilyDemo.getUI().authPhase === 'confirm');
+    await selectedCount(0); await mobileShot('review-empty');
+    const first = await pick('album', files.png, 1, false, true); await selectedCount(1);
+    const second = await pick('camera', files.jpeg, 2, false, true); await selectedCount(2);
+    const third = await pick('album', files.third, 3, false, true); await selectedCount(3);
+    assert.equal(await page.$('.award-photo-editor ' + a('award-photo-camera')), null, 'the full tray replaces add controls with its visible selected count');
+    assert.equal(await page.$('.award-photo-editor ' + a('award-photo-album')), null);
+    assert.equal(await page.$('.award-photo-pickers'), null, 'there is no empty add row below three selected photos');
+    assert.ok(await Q.visible(page, '.award-photo-quota'));
+    await storedPhotos([first, second, third]);
+    await mobileShot('review-filled');
+    await tap(PREVIEW); await page.waitForSelector(VIEWER, { visible: true });
+    await page.waitForFunction(selector => {
+      const image = document.querySelector(selector + ' img'); return image && image.complete && image.naturalWidth > 0;
+    }, { timeout: 6000 }, VIEWER);
+    await tap(VIEWER + ' [data-photo-close]'); await page.waitForSelector(VIEWER, { hidden: true });
+    await selectedCount(3); await storedPhotos([first, second, third]);
+    const cancelled = page.waitForFileChooser({ timeout: 6000 });
+    await tap(a('award-photo-retake')); await (await cancelled).cancel();
+    await selectedCount(3); await thumbnails(PREVIEW, 3); await storedPhotos([first, second, third]);
+    const removeThird = a('award-photo-remove', await page.$$eval(a('award-photo-remove'), nodes => nodes.at(-1).dataset.id));
+    await tap(removeThird); await selectedCount(2); await thumbnails(PREVIEW, 2); await storedPhotos([first, second]);
+    const replacement = await pick('album', files.jpeg, 3, false, true); await selectedCount(3);
+    await click(page, '.sheet-footer ' + a('parent-cancel'));
+    await page.waitForFunction(() => window.FamilyDemo.getUI().form === 'points');
+    await selectedCount(3); await thumbnails(PREVIEW, 3);
+    await page.$eval('.award-photo-editor', node => node.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    await mobileShot('editor-filled');
+    assert.deepEqual(await sql(), before, 'choosing, cancelling retake, removing and reviewing photos never records points');
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/parent/challenge', '/api/parent/verify', '/api/action'].includes(call.path)), []);
+    await Q.home(page); await storedPhotos([]); assert.deepEqual(await sql(), before);
+    report.controls = { zeroAndFullCounts: true, fullTrayQuota: true, cameraAndAlbumTouch: true, cancelledRetakePreservedPhotos: true,
+      removedThirdPhotoId: third, replacementPhotoId: replacement, committedScores: 0 };
+  });
+}
+async function detail() {
+  const legacyName = '合成旧记录：独立整理书包';
+  const originalNow = env.now();
+  const trusted = await env.api(page, '/api/parent/device', 'POST', { enabled: true, credential: PIN });
+  assert.equal(trusted.status, 200);
+  await env.setClock(originalNow - 86400000);
+  for (let index = 0; index < 5; index++) {
+    progress('Creating real photo-less history fixture ' + (index + 1));
+    await fixtureAction({ type: 'points.add', name: '合成往日练习 ' + (index + 1), points: 1, reason: '用于检查完整记录列表滚动返回，保留原来记录的原因和分数' }, false);
+  }
+  await fixtureAction({ type: 'points.add', name: legacyName, points: 3, reason: '按课表整理并核对书本，无照片的旧记录' }, false);
+  const oldRecords = (await sql()).state.points, legacy = oldRecords.at(-1), oldest = oldRecords[0];
+  assert.equal(Object.hasOwn(legacy, 'photoIds'), false, 'the old fixture uses the existing photo-less persisted shape');
+  const untrusted = await env.api(page, '/api/parent/device', 'POST', { enabled: false }); assert.equal(untrusted.status, 200);
+  await env.setClock(originalNow); await reload();
+  const beforeAward = await sql(); await openCustom();
+  const first = await pick('album', files.png, 1), second = await pick('camera', files.jpeg, 2), third = await pick('album', files.third, 3);
+  const row = await commit(beforeAward, [first, second, third]);
+  await reload();
+  const baseline = await sql(), marker = env.calls.length;
+  const recordButton = record => a('record-detail', 'points:' + record.id);
+  async function assertDetail(record, count) {
+    await page.waitForSelector(DETAIL, { visible: true });
+    const content = await page.$eval(DETAIL + ' .points-record-detail', node => node.textContent);
+    assert.ok(content.includes(record.name)); assert.ok(content.includes(record.reason));
+    assert.match(content, new RegExp('\\+' + record.points + '\\s*分'));
+    const times = await page.$$eval(DETAIL + ' time', nodes => nodes.map(node => ({ at: node.getAttribute('datetime'), label: node.textContent })));
+    assert.ok(times.some(time => time.at === record.at && time.label === '12:30'), 'detail preserves the actual recorded time');
+    assert.equal((await page.$$(DETAIL + ' ' + HISTORY)).length, count);
+    await thumbnails(DETAIL + ' ' + HISTORY, count);
+  }
+  async function closeDetail(selector, expectedForm, scrollBefore, parent = '.sheet-body') {
+    await click(page, DETAIL + ' .sheet-header ' + a('form-close'));
+    await page.waitForFunction((target, kind) => {
+      const form = window.FamilyDemo.getUI().form;
+      return form === kind && document.activeElement?.matches(target);
+    }, { timeout: 6000 }, selector, expectedForm);
+    const current = await page.$eval(parent, node => node.scrollTop);
+    assert.ok(Math.abs(current - scrollBefore) <= 2, 'closing detail restores its parent scroll: ' + JSON.stringify({ current, scrollBefore }));
+    return current;
+  }
+  async function originalShown(index, url) {
+    await page.waitForFunction((selector, number, expected) => {
+      const image = document.querySelector(selector + ' img'), heading = document.querySelector(selector + ' header');
+      return heading && new RegExp(number + '\\s*\\/\\s*3').test(heading.textContent) && image && !image.hidden && image.complete && image.naturalWidth > 0 && image.src === expected;
+    }, { timeout: 6000 }, VIEWER, index + 1, url);
+  }
+  await check('A complete home row opens its record and the chosen second thumbnail opens that original before any other page', async () => {
+    assert.equal(await page.$('#main ' + HISTORY), null, 'home rows lead to detail rather than nested photo buttons');
+    const selector = '#main .points-recent-row ' + recordButton(row);
+    await page.$eval(selector, node => node.scrollIntoView({ block: 'center', behavior: 'instant' }));
+    const scrollBefore = await page.$eval('#main', node => node.scrollTop);
+    assert.ok(scrollBefore > 2, 'the home list must be scrolled far enough to detect a return to the top');
+    await tap(selector, true); await assertDetail(row, 3); await mobileShot('record-detail');
+    const chosen = DETAIL + ' ' + HISTORY + '[data-photo-index="1"]';
+    const expected = await env.api(page, '/api/award-photos/read', 'POST', { photoId: second }); assert.equal(expected.status, 200);
+    const originals = await page.$$eval(DETAIL + ' ' + HISTORY + ' img', nodes => nodes.map(node => node.src));
+    assert.equal(originals[1], expected.body.dataUrl, 'the second visible thumbnail came from its actual persisted photo');
+    const readsBeforeViewer = env.calls.filter(call => call.path === '/api/award-photos/read').length;
+    await tap(chosen); await page.waitForSelector(VIEWER, { visible: true });
+    await originalShown(1, expected.body.dataUrl);
+    await mobileShot('large-photo');
+    await tap(VIEWER + ' [data-photo-next]');
+    await originalShown(2, originals[2]);
+    assert.equal(await page.$eval(VIEWER + ' [data-photo-next]', node => node.disabled), true);
+    await page.keyboard.press('ArrowLeft');
+    await originalShown(1, originals[1]);
+    await tap(VIEWER + ' [data-photo-prev]');
+    await originalShown(0, originals[0]);
+    assert.equal(await page.$eval(VIEWER + ' [data-photo-prev]', node => node.disabled), true);
+    await page.keyboard.press('ArrowRight');
+    await originalShown(1, originals[1]);
+    await tap(VIEWER + ' [data-photo-zoom]');
+    assert.equal(await page.$eval(VIEWER + ' .award-photo-stage', node => node.classList.contains('zoomed')), true);
+    await tap(VIEWER + ' [data-photo-zoom]');
+    assert.equal(await page.$eval(VIEWER + ' .award-photo-stage', node => node.classList.contains('zoomed')), false);
+    await page.keyboard.press('Escape'); await page.waitForSelector(VIEWER, { hidden: true });
+    assert.equal(env.calls.filter(call => call.path === '/api/award-photos/read').length, readsBeforeViewer, 'viewing already loaded originals makes no duplicate photo-read request');
+    assert.equal(await page.evaluate(target => document.activeElement?.matches(target), chosen), true, 'viewer close returns focus to the chosen thumbnail');
+    await assertDetail(row, 3);
+    const scrollAfter = await closeDetail(selector, null, scrollBefore, '#main');
+    report.homeScroll = { before: scrollBefore, after: scrollAfter };
+    const oldSelector = '#main .points-recent-row ' + recordButton(legacy);
+    await tap(oldSelector, true); await assertDetail(legacy, 0);
+    await click(page, DETAIL + ' .sheet-header ' + a('form-close'));
+    assert.equal((await ui(page)).form, null);
+  });
+  await check('Complete-list details preserve the points tab, scroll and focus for photo records and old photo-less entries', async () => {
+    await click(page, '.points-recent ' + a('records'));
+    await page.waitForSelector('.points-ledger .record-list', { visible: true }); await mobileShot('record-history');
+    assert.equal(await page.$('.record-list ' + HISTORY), null, 'history rows open details rather than a nested image action');
+    for (const record of [row, oldest]) {
+      const selector = '.record-list ' + recordButton(record);
+      await page.$eval(selector, node => node.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      await page.focus(selector);
+      const scrollBefore = await page.$eval('.sheet-body', node => node.scrollTop);
+      if (record === oldest) assert.ok(scrollBefore > 20, 'the old entry requires a scrolled complete list');
+      await page.keyboard.press('Enter'); await assertDetail(record, record === row ? 3 : 0);
+      await closeDetail(selector, 'records', scrollBefore);
+      assert.equal(await page.$eval(a('history', 'points'), node => node.getAttribute('aria-pressed')), 'true');
+    }
+    await Q.home(page);
+  });
+  await check('Weekly daily rows open old and photographed records and return to the same expanded days without any ledger write', async () => {
+    await click(page, a('home-week')); await page.waitForSelector('[data-testid="home-week-summary"]');
+    const yesterday = '.points-summary-day[data-date="2026-11-24"]';
+    await click(page, yesterday + ' > summary');
+    for (const record of [legacy, row]) {
+      const selector = '.points-detail-records ' + recordButton(record);
+      await page.$eval(selector, node => node.scrollIntoView({ block: 'center', behavior: 'instant' }));
+      await page.focus(selector);
+      const scrollBefore = await page.$eval('.sheet-body', node => node.scrollTop);
+      const expanded = await page.$$eval('.points-summary-day[open]', nodes => nodes.map(node => node.dataset.date));
+      await page.keyboard.press('Enter'); await assertDetail(record, record === row ? 3 : 0);
+      await closeDetail(selector, 'homeWeek', scrollBefore);
+      assert.deepEqual(await page.$$eval('.points-summary-day[open]', nodes => nodes.map(node => node.dataset.date)), expanded);
+    }
+    assert.deepEqual(await sql(), baseline, 'viewing every record, original image, list and weekly detail leaves SQLite unchanged');
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/action', '/api/parent/challenge', '/api/parent/verify'].includes(call.path)), [], 'read-only navigation never requests a parent grant or ledger write');
+    report.details = { home: true, completeList: true, weekly: true, photoLessOldShape: true, firstOriginalPhotoId: second,
+      originalStartIndex: 1, touchAndKeyboardNavigation: true, focusAndScrollRestored: true, ledgerUnchanged: true };
+  });
+  await check('Enter opens the same focused photo after another award syncs to the open detail', async () => {
+    await history(3);
+    const chosen = DETAIL + ' ' + HISTORY + '[data-photo-id="' + second + '"]';
+    const expected = await env.api(page, '/api/award-photos/read', 'POST', { photoId: second });
+    assert.equal(expected.status, 200);
+    await page.focus(chosen);
+    await fixtureAction({ type: 'points.add', name: '同步到详情页的加分', points: 1 });
+    const synced = await sql();
+    assert.equal(synced.revision, baseline.revision + 1);
+    await page.waitForFunction(revision => window.FamilyDemo.getUI().revision === revision, { timeout: 12000 }, synced.revision);
+    assert.equal(await page.$eval(chosen, node => node === document.activeElement), true, 'photo two keeps focus after the ledger syncs');
+    await page.keyboard.press('Enter');
+    await originalShown(1, expected.body.dataUrl);
+    await page.keyboard.press('Escape');
+    await page.waitForSelector(VIEWER, { hidden: true });
+    assert.equal(await page.$eval(chosen, node => node === document.activeElement), true);
+    assert.deepEqual(await sql(), synced, 'viewing the photo makes no further change to the ledger');
+  });
+}
 async function run() {
-  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace, 'resume-committed': resumeCommitted, 'resume-uncommitted': resumeUncommitted, 'resume-late': resumeLate, 'resume-midnight': resumeMidnight, 'resume-chooser': resumeChooser, 'resume-avatar': resumeAvatar })[CASE]();
+  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace, 'resume-committed': resumeCommitted, 'resume-uncommitted': resumeUncommitted, 'resume-late': resumeLate, 'resume-midnight': resumeMidnight, 'resume-chooser': resumeChooser, 'resume-avatar': resumeAvatar, controls, detail })[CASE]();
   assert.deepEqual(Q.report.pageErrors, []);
   report.finalSourceHashes = hashes(); report.sourceStable = JSON.stringify(report.sourceHashes) === JSON.stringify(report.finalSourceHashes);
   progress('Selected photo group complete');
