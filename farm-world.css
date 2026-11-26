@@ -137,12 +137,6 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   color: var(--farm-ink);
   box-shadow: 0 2px 0 rgba(167, 128, 67, .07);
 }
-.brand-mark, .view-reminders .brand-mark {
-  border: 1px solid #cdb37d;
-  color: #8a692e;
-  background: linear-gradient(#fbebbe, #edcf8f);
-  box-shadow: inset 0 1px 0 #fff9df;
-}
 .date-label, .child-profile-copy > small { color: var(--farm-muted); }
 .connection-state { color: #95612b; }
 .child-avatar { position: relative; border-color: #fff9e8; box-shadow: 0 0 0 1px #b99560; }
@@ -945,7 +939,7 @@ input::placeholder, textarea::placeholder { color: #7d7058; opacity: 1; }
   box-shadow: inset 0 1px 0 #f9dda4;
 }
 .saas-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: #907449; font-size: 12px; font-weight: 650; letter-spacing: .1em; }
-.saas-brand::before { content: ""; width: 8px; height: 8px; border: 1px solid #b3924a; border-radius: 3px; background: #e8c675; transform: rotate(-12deg); }
+.saas-brand::before { content: ""; flex: 0 0 22px; height: 22px; border-radius: 5px; background: url("assets/app-icon.png") center / contain no-repeat; }
 .saas-card h1 { color: #5d482d; font-size: clamp(25px, 2.4vw, 32px); font-weight: 750; letter-spacing: -.035em; }
 .saas-card h2 { color: #7d633d; }
 .saas-short-status { color: #90774e; font-size: 14px; line-height: 1.75; }

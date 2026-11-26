@@ -1,21 +1,15 @@
 """Build local lightweight artwork and original gentle feedback sounds; no external audio samples."""
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image
 import math, wave, struct
 root = Path(__file__).resolve().parents[1]
 a = root / 'assets'
 image = Image.open(a / 'capybara-original.png').convert('RGB')
 image.resize((1152,768), Image.Resampling.LANCZOS).save(a / 'capybara.jpg',quality=88,optimize=True)
-icon = Image.new('RGB',(180,180),'#41634f')
-d = ImageDraw.Draw(icon)
-d.line([(90,145),(90,70)], fill='#e5edda',width=8)
-d.ellipse((36,41,93,96),fill='#e5edda')
-d.ellipse((88,22,145,77),fill='#e5edda')
-d.line([(60,67),(89,96)],fill='#41634f',width=4)
-d.line([(115,48),(91,78)],fill='#41634f',width=4)
-icon.save(a/'app-icon.png',optimize=True)
-for size in (192,512):
-    icon.resize((size,size),Image.Resampling.LANCZOS).save(a/('app-icon-'+str(size)+'.png'),optimize=True)
+# The 512px PWA icon is also the master for the smaller installed icons.
+with Image.open(a / 'app-icon-512.png') as icon:
+    for size, name in ((180, 'app-icon.png'), (192, 'app-icon-192.png')):
+        icon.resize((size, size), Image.Resampling.LANCZOS).save(a / name, optimize=True)
 rate=22050
 for name, notes in {
  'complete': [(523.25,0.0,.34),(783.99,.14,.42)],
