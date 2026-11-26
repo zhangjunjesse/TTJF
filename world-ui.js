@@ -38,7 +38,7 @@
   var formPlaces = {
     behaviorPicker: 'points', points: 'points', 'point-list': 'points', pointItem: 'points',
     rewards: 'rewards', 'reward-list': 'rewards', reward: 'rewards', request: 'rewards', approve: 'rewards',
-    records: 'history', homeWeek: 'history', petGrowth: 'history', homeInbox: 'reminders', task: 'reminders', taskAction: 'reminders',
+    records: 'history', recordDetail: 'history', homeWeek: 'history', petGrowth: 'history', homeInbox: 'reminders', task: 'reminders', taskAction: 'reminders',
     petHub: 'companion', petBuy: 'companion', petConfig: 'companion',
     preferences: 'settings', profile: 'family', familySettings: 'family', parentConfig: 'authorization', parentDevice: 'authorization', voice: 'voice'
   };

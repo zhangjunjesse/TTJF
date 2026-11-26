@@ -1,21 +1,147 @@
-.award-photo-editor { display: grid; gap: 8px; margin: 12px 0; }
-.award-photo-heading, .award-photo-tools { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.award-photo-heading { justify-content: space-between; }
-.award-photo-heading small { font-weight: 400; }
-.award-photo-editor ul { margin: 0; padding: 0; display: grid; gap: 8px; list-style: none; }
-.award-photo-editor li { display: flex; gap: 12px; align-items: center; }
-.award-photo-editor li span[role=status] { font-size: .875rem; }
-.award-photo-editor button, .award-photo-history button { min-height: 44px; border: 1px solid #b5c8bf; border-radius: 10px; padding: 6px 12px; background: #fff; color: #20503f; font: inherit; cursor: pointer; }
-.award-photo-editor button[data-action=award-photo-preview] { padding: 2px; }
-.award-photo-editor img { display: block; width: 76px; height: 68px; object-fit: contain; }
-.award-photo-history { display: block; margin-top: 4px; }
-.award-photo-viewer[open] { display: flex; flex-direction: column; width: min(96vw, 940px); height: 88vh; height: 88dvh; max-height: 100%; border: 0; padding: 12px; border-radius: 16px; color: #fff; background: #17231f; }
-.award-photo-viewer::backdrop { background: rgb(12 18 16 / 83%); }
-.award-photo-viewer header, .award-photo-viewer footer { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 4px; flex-wrap: wrap; }
-.award-photo-viewer button { min-height: 44px; padding: 4px 14px; border: 1px solid #82978d; border-radius: 8px; background: #233e31; color: white; font: inherit; }
-.award-photo-viewer button:disabled { opacity: .5; }
-.award-photo-stage { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
-.award-photo-stage img { display: block; width: 100%; height: 100%; object-fit: contain; }
-.award-photo-stage img[hidden] { display: none; }
-.award-photo-stage.zoomed img { width: max(180%, 900px); height: auto; max-width: none; }
-.award-photo-stage span:not(:empty) { position: absolute; inset: 40% 0 auto; text-align: center; }
+.award-photo-editor {
+  display: grid; gap: 12px; min-width: 0; margin: 16px 0 0; padding: 14px;
+  border: 1px solid #d4e1cc; border-radius: 18px; background: #eef4e8; color: #2b4834;
+}
+.award-photo-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 24px; }
+.award-photo-heading strong { display: flex; align-items: baseline; gap: 7px; font-size: 14px; font-weight: 650; line-height: 20px; }
+.award-photo-heading small { color: #61735c; font-size: 12px; font-weight: 400; line-height: 18px; }
+.award-photo-editor > .award-photo-heading { gap: 8px; min-height: 44px; }
+.award-photo-editor > .award-photo-heading strong { flex: 1; min-width: 0; }
+.award-photo-editor .award-photo-count {
+  flex-shrink: 0; padding: 2px 9px; border-radius: 20px; background: #dfead7; color: #46633d;
+  font-size: 12px; line-height: 20px; font-variant-numeric: tabular-nums;
+}
+.award-photo-icon { display: block; flex: 0 0 auto; width: 22px; height: 22px; margin: 0; }
+.award-photo-editor button, .award-photo-detail-thumb {
+  appearance: none; -webkit-appearance: none; display: inline-flex; align-items: center; justify-content: center;
+  gap: 6px; min-width: 0; min-height: 48px; margin: 0; padding: 8px 10px; border: 0; border-radius: 11px;
+  color: #31533d; background: transparent; box-shadow: none; font: inherit; font-size: 14px;
+  line-height: 20px; text-decoration: none; cursor: pointer; touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+.award-photo-editor button:focus-visible, .award-photo-detail-thumb:focus-visible { outline: 2px solid #285339; outline-offset: 3px; }
+.award-photo-editor button:active, .award-photo-detail-thumb:active { transform: scale(.97); }
+.award-photo-pickers { display: grid; grid-template-columns: minmax(0, 1fr); min-height: 44px; }
+.award-photo-editor .award-photo-camera {
+  color: #31553b; background: #f8fbf4; border: 1px dashed #aec2a0; box-shadow: none;
+  font-weight: 650;
+}
+.award-photo-editor .award-photo-album { flex: 0 0 auto; gap: 5px; min-height: 44px; padding: 5px 0; border: 0; color: #526d46; background: transparent; font-size: 12px; }
+.award-photo-editor .award-photo-album .award-photo-icon { width: 17px; height: 17px; }
+.award-photo-editor.is-empty .award-photo-pickers > button { gap: 11px; min-height: 76px; padding: 12px; border-radius: 12px; }
+.award-photo-editor.is-empty .award-photo-camera .award-photo-icon { width: 42px; height: 42px; padding: 8px; border-radius: 12px; background: #e4eddc; }
+.award-photo-editor.has-photos .award-photo-pickers > button { min-height: 44px; padding: 7px 6px; font-size: 13px; }
+.award-photo-editor.has-photos .award-photo-pickers .award-photo-icon { width: 19px; height: 19px; }
+.award-photo-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; min-width: 0; margin: 0; padding: 0; list-style: none; }
+.award-photo-grid > li { min-width: 0; margin: 0; padding: 0; }
+.award-photo-card { display: grid; align-content: start; gap: 5px; }
+.award-photo-thumb { position: relative; width: 100%; aspect-ratio: 1; min-width: 0; }
+.award-photo-editor .award-photo-preview, .award-photo-placeholder {
+  position: relative; display: grid; place-items: center; width: 100%; height: 100%; min-height: 0; overflow: hidden;
+  padding: 0; border: 1px solid #c4d4bb; border-radius: 12px; background: #e0ead9;
+  box-shadow: 0 2px 4px #29482d12, inset 0 1px 0 #ffffff80;
+}
+.award-photo-preview img, .award-photo-detail-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.award-photo-placeholder > .award-photo-icon { width: 28px; height: 28px; color: #78906c; }
+.award-photo-order {
+  position: absolute; z-index: 1; top: 6px; left: 6px; display: grid; place-items: center; width: 22px; height: 22px;
+  border: 1px solid #ffffff4d; border-radius: 7px; color: #fff; background: #182c1ecc;
+  font-size: 11px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; pointer-events: none;
+}
+.award-photo-expand {
+  position: absolute; bottom: 6px; right: 6px; display: grid; place-items: center; width: 24px; height: 24px;
+  border-radius: 7px; color: #fff; background: #182c1ebd; pointer-events: none;
+}
+.award-photo-expand .award-photo-icon { width: 14px; height: 14px; }
+.award-photo-editor .award-photo-remove {
+  position: absolute; z-index: 2; top: -14px; right: -8px; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%;
+  background: transparent; box-shadow: none;
+}
+.award-photo-remove > span {
+  display: grid; place-items: center; width: 26px; height: 26px; border: 1.5px solid #eef4e8; border-radius: 50%;
+  color: #fff; background: #263c2e; box-shadow: 0 1px 3px #162c2729;
+}
+.award-photo-remove .award-photo-icon { width: 15px; height: 15px; stroke-width: 2; }
+.award-photo-editor .award-photo-retake { gap: 4px; width: 100%; min-height: 44px; padding: 6px 2px; border-radius: 9px; background: #e0ead8; font-size: 12px; }
+.award-photo-retake .award-photo-icon { width: 16px; height: 16px; }
+.award-photo-state {
+  position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; justify-content: center; gap: 4px;
+  min-height: 25px; padding: 3px 2px; color: #35513c; background: #eff5e9ed; font-size: 11px; line-height: 17px;
+}
+.award-photo-card.is-failed .award-photo-state { color: #fff; background: #934e36ed; }
+.award-photo-card.is-failed .award-photo-preview { border-color: #ae735d; }
+.award-photo-spinner { width: 11px; height: 11px; border: 1.5px solid #9eaf93; border-top-color: #315d42; border-radius: 50%; animation: award-photo-spin .9s linear infinite; }
+.award-photo-errors { display: grid; gap: 7px; min-width: 0; padding-top: 2px; border-top: 1px solid #d5dfcb; }
+.award-photo-error { display: flex; align-items: center; gap: 8px; padding-top: 8px; color: #824b31; }
+.award-photo-error p { flex: 1; min-width: 0; margin: 0; font-size: 12px; line-height: 18px; overflow-wrap: anywhere; }
+.award-photo-error b { display: block; font-size: 12px; font-weight: 650; }
+.award-photo-editor .award-photo-retry { flex: 0 0 auto; min-height: 44px; padding: 6px 9px; color: #804b32; background: #fff5e9; font-size: 12px; }
+.award-photo-retry .award-photo-icon { width: 16px; height: 16px; }
+.award-photo-editor .award-photo-skip { justify-self: end; min-height: 44px; padding: 6px 3px; color: #735437; font-size: 12px; text-decoration: underline; text-underline-offset: 4px; }
+.award-photo-notice { color: #795637; font-size: 12px; line-height: 18px; }
+.award-photo-details { display: grid; gap: 12px; min-width: 0; padding-block: 18px 2px; }
+.award-photo-details .award-photo-grid { gap: 10px; }
+.award-photo-detail-thumb {
+  position: relative; display: block; width: 100%; aspect-ratio: 1; min-height: 48px; overflow: hidden; padding: 0;
+  border: 1px solid #cbd7c3; border-radius: 13px; background: #edf2e7; box-shadow: 0 2px 5px #2a48321a;
+}
+.award-photo-detail-thumb img { position: absolute; inset: 0; }
+.award-photo-detail-placeholder { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 7px; color: #748269; }
+.award-photo-detail-placeholder .award-photo-icon { width: 25px; height: 25px; }
+.award-photo-detail-state { font-size: 11px; line-height: 16px; }
+.award-photo-detail-thumb.is-unavailable { background: #f2efe5; }
+.award-photo-detail-thumb.is-unavailable .award-photo-detail-placeholder { color: #8a7656; }
+.award-photo-editor [hidden], .award-photo-details [hidden], .award-photo-viewer [hidden] { display: none; }
+
+.award-photo-viewing, .award-photo-viewing body { overflow: hidden; }
+.award-photo-viewer {
+  position: fixed; inset: 0; width: min(96vw, 1120px); height: 94vh; height: 94dvh; max-width: none; max-height: none;
+  margin: auto; padding: 0; overflow: hidden; border: 1px solid #36483b; border-radius: 20px;
+  color: #fff; background: #142019; box-shadow: 0 24px 90px #00000066; font-family: inherit;
+}
+.award-photo-viewer[open] { display: flex; flex-direction: column; }
+.award-photo-viewer::backdrop { background: #07100bef; }
+.award-photo-viewer-header { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; gap: 12px; min-height: 64px; padding: 8px 16px; }
+.award-photo-viewer-header strong { color: #dce6dc; font-size: 14px; font-weight: 550; line-height: 22px; font-variant-numeric: tabular-nums; }
+.award-photo-viewer button {
+  appearance: none; -webkit-appearance: none; display: inline-flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px;
+  min-width: 48px; min-height: 48px; margin: 0; padding: 8px 12px; border: 1px solid #3b5142; border-radius: 30px;
+  color: #eef5ed; background: #26392d; font: inherit; font-size: 13px; line-height: 20px; cursor: pointer; touch-action: manipulation;
+}
+.award-photo-viewer button[data-photo-close], .award-photo-viewer button[data-photo-prev], .award-photo-viewer button[data-photo-next] { width: 48px; padding: 8px; }
+.award-photo-viewer button:focus-visible { outline: 2px solid #cee6bd; outline-offset: 3px; }
+.award-photo-viewer button:disabled { opacity: .3; cursor: default; }
+.award-photo-viewer button:active:not(:disabled) { background: #3c5741; }
+.award-photo-viewer .award-photo-icon { width: 21px; height: 21px; }
+.award-photo-viewer-footer { display: grid; flex: 0 0 auto; grid-template-columns: 48px minmax(0, 1fr) 48px; align-items: center; gap: 10px; padding: 12px 16px; }
+.award-photo-viewer-tools { display: flex; align-items: center; justify-content: center; gap: 8px; min-width: 0; }
+.award-photo-viewer-tools button { min-width: 92px; }
+.award-photo-stage { position: relative; flex: 1 1 auto; width: 100%; min-height: 0; overflow: auto; overscroll-behavior: contain; background: #0d1610; scrollbar-width: thin; scrollbar-color: #5d7262 #101813; }
+.award-photo-canvas { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-width: 100%; min-height: 100%; }
+.award-photo-stage img { display: block; flex: 0 0 auto; width: 100%; height: 100%; max-width: none; object-fit: contain; user-select: none; -webkit-user-select: none; -webkit-user-drag: none; }
+.award-photo-stage.zoomed { cursor: grab; }
+.award-photo-stage.zoomed:active { cursor: grabbing; }
+.award-photo-stage span[role="status"] { position: absolute; top: 50%; right: 0; left: 0; transform: translateY(-50%); padding: 24px; color: #cdd9cd; font-size: 14px; line-height: 22px; text-align: center; pointer-events: none; }
+.award-photo-stage span[role="status"]:empty { display: none; }
+.award-photo-viewer [hidden] { display: none; }
+
+@keyframes award-photo-spin { to { transform: rotate(360deg); } }
+@media (hover: hover) {
+  .award-photo-editor .award-photo-camera:hover { background: #e9f2e1; border-color: #809d70; }
+  .award-photo-editor .award-photo-album:hover { color: #2d563b; }
+  .award-photo-editor .award-photo-retake:hover { background: #d4e3c9; }
+  .award-photo-remove:hover > span { background: #714b3a; }
+  .award-photo-viewer button:hover:not(:disabled) { background: #344d39; }
+}
+@media (max-width: 359px) {
+  .award-photo-editor { gap: 10px; padding: 11px; border-radius: 15px; }
+  .award-photo-grid, .award-photo-pickers { gap: 8px; }
+  .award-photo-editor.has-photos .award-photo-pickers > button { gap: 5px; font-size: 12px; }
+  .award-photo-editor.has-photos .award-photo-pickers .award-photo-icon { width: 17px; height: 17px; }
+}
+@media (max-width: 640px), (max-height: 540px) {
+  .award-photo-viewer { width: 100vw; height: 100vh; height: 100dvh; border: 0; border-radius: 0; }
+  .award-photo-viewer-header { padding-top: max(8px, env(safe-area-inset-top)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+  .award-photo-viewer-footer { padding-bottom: max(12px, env(safe-area-inset-bottom)); padding-left: max(16px, env(safe-area-inset-left)); padding-right: max(16px, env(safe-area-inset-right)); }
+}
+@media (prefers-reduced-motion: reduce) { .award-photo-spinner { animation: none; } }

@@ -499,7 +499,7 @@ async function sync() {
         points: number(day.querySelector('.points-day-summary > strong')),
         open: day.tagName === 'DETAILS' ? day.open : null,
         records: [...day.querySelectorAll('.points-detail-records > li')].map(row => ({
-          name: row.querySelector('strong').textContent, reason: row.querySelector('p')?.textContent || '',
+          name: row.querySelector('strong').textContent, reason: row.querySelector('.points-week-record-reason')?.textContent || '',
           time: row.querySelector('time').textContent, points: number(row.querySelector('b'))
         }))
       })),

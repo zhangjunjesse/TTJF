@@ -103,17 +103,21 @@ body:has(.points-home) #toast.points-receipt {
 .points-record-day.is-today h3 { color: #356243; }
 .points-record-day.is-today h3::after { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 .points-recent-list { margin: 0; padding: 0; list-style: none; }
-.points-recent-row { display: grid; grid-template-columns: var(--home-leading) minmax(0,1fr) fit-content(32%); align-items: baseline; column-gap: var(--home-column-gap); padding: 8px 0; }
+.points-record-link { width: 100%; min-width: 0; min-height: 44px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; text-align: left; cursor: pointer; touch-action: manipulation; }
+.points-record-link:focus-visible { outline: 2px solid #376b50; outline-offset: 2px; }
+.points-record-link > .icon { grid-row: 1; grid-column: -2; align-self: center; width: 12px; height: 12px; margin: 0; color: #667d6b; }
+.points-record-open { display: grid; grid-template-columns: var(--home-leading) minmax(0,1fr) fit-content(32%) 10px; align-items: baseline; column-gap: var(--home-column-gap); padding: 8px 0; }
 .points-recent-row + .points-recent-row { margin-top: 2px; }
 .points-record-time { color: #56665b; font-size: 13px; font-weight: 500; line-height: 20px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .points-record-copy { min-width: 0; }
 .points-record-copy > strong, .points-record-reason { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .points-record-copy > strong { color: var(--ledger-ink); font-size: 16px; font-weight: 550; line-height: 24px; }
 .points-record-reason { margin-top: 3px; color: #546259; font-size: 13px; line-height: 20px; }
+.points-record-photo-count { display: block; margin-top: 3px; color: #52645a; font-size: 12px; font-weight: 500; line-height: 19px; }
 .points-record-amount { align-self: baseline; min-width: 0; color: #29563a; line-height: 24px; font-size: 21px; font-weight: 640; font-variant-numeric: tabular-nums; letter-spacing: -.035em; text-align: right; overflow-wrap: anywhere; }
 .points-record-amount.is-spent { color: #945325; }
 .points-record-amount small { color: var(--ledger-muted); font-size: 12px; font-weight: 500; letter-spacing: 0; }
-.points-recent-row:has(.points-small-amount) { grid-template-columns: var(--home-leading) minmax(0,1fr); row-gap: 2px; }
+.points-record-open:has(.points-small-amount) { grid-template-columns: var(--home-leading) minmax(0,1fr) 10px; row-gap: 2px; }
 .points-record-amount.points-small-amount { grid-column: 2; }
 .points-records-empty { display: grid; place-items: center; min-height: 80px; border-block: 1px solid var(--ledger-line); }
 .points-overview { grid-area: week; display: grid; align-content: start; min-width: 0; border-top: 1px solid var(--ledger-line); padding-top: 7px; }
@@ -156,6 +160,7 @@ body:has(.points-home) #toast.points-receipt {
   .points-balance-entry { margin-top: 4px; }
 }
 @media (hover: hover) {
+  .points-record-link:hover { background: #edf3e7; }
   .points-home .points-home-behavior:hover { background: #eaf1e5; }
   .points-home .points-add:hover { background: #143c29; color: white; }
   .points-home .points-redeem:hover { background: #f3f9e9; }
@@ -452,13 +457,14 @@ summary.points-day-summary::-webkit-details-marker { display: none; }
 .points-summary-day[open] .points-day-summary .icon { transform: rotate(-90deg); }
 .points-summary-day.is-empty .points-day-summary { opacity: .8; }
 .points-detail-records { margin: 0; padding: 0 11px 4px; list-style: none; }
-.points-detail-records li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; padding: 11px 0; border-top: 1px dashed #cbd8c8; }
-.points-detail-records li > div { min-width: 0; }
+.points-detail-records li { border-top: 1px dashed #cbd8c8; }
+.points-week-record-open { display: grid; grid-template-columns: minmax(0, 1fr) fit-content(35%) 12px; align-items: baseline; gap: 12px; padding: 11px 0; }
+.points-week-record-copy { min-width: 0; }
 .points-detail-records strong { display: block; color: #20382c; font-size: 13px; font-weight: 650; line-height: 20px; overflow-wrap: anywhere; }
-.points-detail-records p { margin: 3px 0; color: #52645a; font-size: 12px; line-height: 19px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.points-week-record-reason { display: block; margin: 3px 0; color: #52645a; font-size: 12px; line-height: 19px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .points-detail-records time { display: block; margin-top: 3px; color: #56685b; font-size: 12px; }
-.points-detail-records li > b { max-width: 130px; color: #28553a; font-size: 16px; font-weight: 700; line-height: 22px; text-align: right; overflow-wrap: anywhere; }
-.points-detail-records li > b small { color: #52645a; font-size: 12px; font-weight: 400; }
+.points-week-record-open > b { min-width: 0; max-width: 130px; color: #28553a; font-size: 16px; font-weight: 700; line-height: 22px; text-align: right; overflow-wrap: anywhere; }
+.points-week-record-open > b small { color: #52645a; font-size: 12px; font-weight: 400; }
 .points-summary-behaviors { margin: 0; padding: 0; list-style: none; }
 .points-summary-behaviors li { display: grid; grid-template-columns: 22px minmax(0, 1fr) auto; align-items: center; gap: 9px; min-width: 0; padding: 12px 0; border-bottom: 1px solid #dee6dd; }
 .points-summary-rank { display: grid; place-items: center; width: 22px; height: 25px; border: 1px solid #dbe6d7; border-radius: 8px; color: #3c6044; background: #edf3ea; font-size: 11px; }
@@ -654,7 +660,7 @@ body .sheet.ledger-gift-sheet[data-form-kind]:not(.global-dialog) {
 .sheet[data-form-kind="records"] .points-ledger-count { margin: 13px 0 0; color: var(--ledger-muted); font-size: 12px; line-height: 18px; }
 .sheet[data-form-kind="records"] .points-ledger .record-list { min-width: 0; }
 .sheet[data-form-kind="records"] .points-ledger .record-row {
-  display: grid; grid-template-columns: minmax(0, 1fr) fit-content(35%); align-items: baseline; column-gap: 16px; row-gap: 7px;
+  display: grid; grid-template-columns: minmax(0, 1fr) fit-content(35%) 12px; align-items: baseline; column-gap: 16px; row-gap: 7px;
   min-width: 0; min-height: 0; margin: 0; padding: 17px 0; border: 0; border-bottom: 1px solid var(--ledger-line); border-radius: 0; background: transparent; box-shadow: none;
 }
 .sheet[data-form-kind="records"] .points-ledger .points-ledger-copy { min-width: 0; }
@@ -670,14 +676,33 @@ body .sheet.ledger-gift-sheet[data-form-kind]:not(.global-dialog) {
 .sheet[data-form-kind="records"] .points-ledger .record-row .points-ledger-note {
   grid-column: 1 / -1; min-width: 0; margin: 0; color: #546259; font-size: 14px; line-height: 22px; white-space: pre-wrap; overflow-wrap: anywhere;
 }
+.sheet[data-form-kind="records"] .points-ledger .record-row > .points-record-photo-count { grid-column: 1 / -1; margin: 0; }
 .sheet[data-form-kind="records"] .points-ledger .record-number {
   min-width: 0; max-width: none; margin: 0; color: #29563a; font-size: 23px; font-weight: 640; line-height: 28px; letter-spacing: -.035em;
   text-align: right; white-space: normal; font-variant-numeric: tabular-nums; overflow-wrap: anywhere;
 }
 .sheet[data-form-kind="records"] .points-ledger .record-number.is-spent { color: #945325; }
 .sheet[data-form-kind="records"] .points-ledger .record-number small { color: var(--ledger-muted); font-size: 12px; font-weight: 500; letter-spacing: 0; white-space: nowrap; }
-.sheet[data-form-kind="records"] .points-ledger .record-row:has(.points-ledger-amount-long) { grid-template-columns: minmax(0, 1fr); }
-.sheet[data-form-kind="records"] .points-ledger .record-number.points-ledger-amount-long { justify-self: start; font-size: 21px; text-align: left; }
+.sheet[data-form-kind="records"] .points-ledger .record-row:has(.points-ledger-amount-long) { grid-template-columns: minmax(0, 1fr) 12px; }
+.sheet[data-form-kind="records"] .points-ledger .record-number.points-ledger-amount-long { grid-column: 1; grid-row: 2; justify-self: start; font-size: 21px; text-align: left; }
+.points-record-detail { min-width: 0; color: #20382c; }
+.points-record-detail-heading { display: grid; grid-template-columns: minmax(0, 1fr) fit-content(45%); align-items: baseline; gap: 7px 14px; padding-top: 4px; }
+.points-record-detail-kind { grid-column: 1 / -1; color: #52645a; font-size: 13px; line-height: 20px; }
+.points-record-detail-heading > h3 { min-width: 0; margin: 0; font-size: 24px; line-height: 33px; font-weight: 650; overflow-wrap: anywhere; }
+.points-record-detail-amount { min-width: 0; color: #29563a; font-size: 36px; line-height: 44px; font-weight: 650; letter-spacing: -.04em; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.points-record-detail-amount.is-spent { color: #945325; }
+.points-record-detail-amount small { font-size: 13px; font-weight: 500; letter-spacing: 0; white-space: nowrap; }
+.points-record-detail-amount.points-detail-amount-long { font-size: 23px; line-height: 31px; }
+.points-record-detail-meta { margin: 22px 0; padding: 6px 0; border-block: 1px solid #dce5db; }
+.points-record-detail-meta > div { display: flex; align-items: baseline; justify-content: space-between; gap: 18px; padding: 9px 0; font-size: 14px; line-height: 22px; }
+.points-record-detail-meta dt { flex-shrink: 0; color: #52645a; }
+.points-record-detail-meta dd { min-width: 0; margin: 0; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+.points-record-detail-note { margin: 0 0 24px; }
+.points-record-detail-note > h4 { margin: 0 0 8px; font-size: 14px; line-height: 22px; font-weight: 650; }
+.points-record-detail-note > p { margin: 0; color: #52645a; font-size: 15px; line-height: 24px; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (hover: hover) {
+  .sheet[data-form-kind="records"] .points-ledger .record-row:hover { background: #edf3e7; }
+}
 .sheet[data-form-kind="records"] .points-ledger-empty { display: grid; justify-items: center; gap: 7px; min-width: 0; padding: 38px 16px 32px; color: var(--ledger-muted); text-align: center; }
 .sheet[data-form-kind="records"] .points-ledger-empty > .icon { width: 25px; height: 25px; margin: 0 0 5px; color: #6b826f; }
 .sheet[data-form-kind="records"] .points-ledger-empty p { margin: 0; color: var(--ledger-ink); font-size: 16px; line-height: 24px; font-weight: 550; }

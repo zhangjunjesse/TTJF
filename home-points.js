@@ -28,7 +28,8 @@
         var actionId = record.id.indexOf(source[2]) === 0 ? record.id.slice(source[2].length) : '';
         var actionIndex = actionIndexes[actionId];
         rows.push({ id: record.id, kind: source[0], itemId: record.itemId, name: record.name, reason: record.reason || record.note || '',
-          points: record.points, at: record.at, timestamp: new Date(record.at).getTime(), order: index, sourceOrder: sourceOrder,
+          points: record.points, at: record.at, photoCount: source[0] === 'points' && Array.isArray(record.photoIds) ? record.photoIds.length : 0,
+          timestamp: new Date(record.at).getTime(), order: index, sourceOrder: sourceOrder,
           actionIndex: actionIndex === undefined ? -1 : actionIndex,
           positive: source[0] === 'points', kindLabel: kindLabel(source[0]) });
       });
@@ -87,7 +88,7 @@
       var day = byDay[M.dateKey(record.at, zone)];
       if (!day) return;
       day.points += record.points; day.count += 1; earned += record.points; count += 1; records.push(record);
-      day.records.push({ id: record.id, itemId: record.itemId, name: record.name, reason: record.reason, points: record.points, at: record.at, timestamp: timestamp });
+      day.records.push({ id: record.id, itemId: record.itemId, name: record.name, reason: record.reason, points: record.points, at: record.at, photoCount: record.photoCount, timestamp: timestamp });
     });
     days.forEach(function (day) {
       if (day.count) activeDays += 1;
@@ -132,13 +133,16 @@
     return '<section class="points-overview points-paper" aria-labelledby="points-week-heading"><div class="points-section-heading"><h2 id="points-week-heading">最近 7 天</h2><span class="points-week-range">' + esc(summary.rangeLabel) + '</span>' + button(options, 'home-week', draw(options, 'chevron'), 'text-button points-section-link', '', '查看最近七天积分小结') + '</div>' +
       '<div class="points-week-totals"><strong class="' + (String(summary.earned).length > 8 ? 'points-small-amount' : '') + '">+' + summary.earned + '<small> 分</small></strong><span>' + summary.count + ' 次加分</span></div>' + weekChart(summary) + '</section>';
   }
-  function recentEntry(row) {
+  function photoCount(count) { return count ? '<span class="points-record-photo-count">' + count + ' 张照片</span>' : ''; }
+  function recentEntry(options, row) {
     var detail = row.positive ? row.reason : row.kindLabel + (row.reason ? ' · ' + row.reason : '');
     var amountClass = row.positive ? 'is-earned' : 'is-spent';
     if (String(row.points).length > 6) amountClass += ' points-small-amount';
-    return '<li class="points-recent-row"><time class="points-record-time" datetime="' + esc(row.at) + '" aria-label="' + esc(row.timeLabel) + '">' + esc(row.clock) + '</time>' +
-      '<div class="points-record-copy"><strong>' + esc(row.name) + '</strong>' + (detail ? '<span class="points-record-reason">' + esc(detail) + '</span>' : '') + '</div>' +
-      '<b class="points-record-amount ' + amountClass + '">' + (row.positive ? '+' : '−') + row.points + '<small> 分</small></b></li>';
+    var content = '<time class="points-record-time" datetime="' + esc(row.at) + '" aria-label="' + esc(row.timeLabel) + '">' + esc(row.clock) + '</time>' +
+      '<span class="points-record-copy"><strong>' + esc(row.name) + '</strong>' + (detail ? '<span class="points-record-reason">' + esc(detail) + '</span>' : '') + photoCount(row.photoCount) + '</span>' +
+      '<b class="points-record-amount ' + amountClass + '">' + (row.positive ? '+' : '−') + row.points + '<small> 分</small></b>' + draw(options, 'chevron');
+    var label = row.name + '，' + row.timeLabel + '，' + (row.positive ? '加' : '使用') + row.points + '分，查看详情';
+    return '<li class="points-recent-row">' + button(options, 'record-detail', content, 'points-record-link points-record-open', row.kind + ':' + row.id, label) + '</li>';
   }
   function recent(options, summary) {
     var days = [];
@@ -148,7 +152,7 @@
         day = { key: row.day, label: row.dayLabel, entries: [] };
         days.push(day);
       }
-      day.entries.push(recentEntry(row));
+      day.entries.push(recentEntry(options, row));
     });
     var groups = days.map(function (day) {
       var headingId = 'points-record-day-' + esc(day.key);
@@ -178,7 +182,9 @@
       if (!day.records.length) return '<div class="points-summary-day is-empty"><div class="points-day-summary">' + heading + '</div></div>';
       var open = !expanded; expanded = true;
       var rows = day.records.map(function (record) {
-        return '<li><div><strong>' + esc(record.name) + '</strong>' + (record.reason ? '<p>' + esc(record.reason) + '</p>' : '') + '<time datetime="' + esc(record.at) + '">' + M.calendarParts(record.at, summary.zone).time + '</time></div><b class="' + (String(record.points).length > 8 ? 'points-small-amount' : '') + '">+' + record.points + '<small> 分</small></b></li>';
+        var time = M.calendarParts(record.at, summary.zone).time;
+        var content = '<span class="points-week-record-copy"><strong>' + esc(record.name) + '</strong>' + (record.reason ? '<span class="points-week-record-reason">' + esc(record.reason) + '</span>' : '') + photoCount(record.photoCount) + '<time datetime="' + esc(record.at) + '">' + time + '</time></span><b class="' + (String(record.points).length > 8 ? 'points-small-amount' : '') + '">+' + record.points + '<small> 分</small></b>' + draw(options, 'chevron');
+        return '<li>' + button(options, 'record-detail', content, 'points-record-link points-week-record-open', 'points:' + record.id, record.name + '，' + day.dateLabel + ' ' + time + '，加' + record.points + '分，查看详情') + '</li>';
       }).join('');
       return '<details class="points-summary-day" data-date="' + esc(day.key) + '"' + (open ? ' open' : '') + '><summary class="points-day-summary">' + heading + draw(options, 'chevron') + '</summary><ol class="points-detail-records">' + rows + '</ol></details>';
     }).join('');

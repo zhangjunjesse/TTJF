@@ -72,25 +72,51 @@
     });
     return changed;
   }
-  function button(action, label, key) {
+  function esc(value) { return String(value).replace(/[&<>"']/g, function (char) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]; }); }
+  function icon(name) {
+    var paths = {
+      camera: '<path d="M8.5 5 10 3h4l1.5 2H19a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Z"/><circle cx="12" cy="12" r="4"/>',
+      album: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.5"/><path d="m3 16 5-5 4 4 3-3 6 6"/>',
+      close: '<path d="m6 6 12 12M6 18 18 6"/>',
+      expand: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
+      retry: '<path d="M20 11a8 8 0 1 0-2 6M20 4v7h-7"/>',
+      left: '<path d="m14 6-6 6 6 6"/>',
+      right: '<path d="m10 6 6 6-6 6"/>',
+      zoom: '<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5M7.5 10.5h6m-3-3v6"/>',
+      fit: '<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5M9 12h6"/>'
+    };
+    return '<svg class="award-photo-icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + paths[name] + '</svg>';
+  }
+  function button(action, label, key, attributes) {
     return '<button type="button" data-action="award-photo-' + action + '"' +
-      (key == null ? '' : ' data-id="' + key + '"') + '>' + label + '</button>';
+      (key == null ? '' : ' data-id="' + esc(key) + '"') + (attributes || '') + '>' + label + '</button>';
   }
   function editor(draft) {
+    var count = draft.items.length, errors = [];
     var rows = draft.items.map(function (item, i) {
       var label = '第' + (i + 1) + '张照片';
-      var preview = item.dataUrl ? button('preview', '<img alt="查看' + label + '" src="' + item.dataUrl + '">', item.key) : '';
-      var status = item.photoId ? '' : '<span role="status">' + (item.error || '正在准备照片…') + '</span>';
-      var retry = item.error ? button('retry', '重试照片', item.key) : '';
-      return '<li>' + preview + '<div>' + status + '<div class="award-photo-tools">' + retry +
-        button('retake', '重拍', item.key) + button('remove', '移除', item.key) + '</div></div></li>';
+      var state = item.photoId ? 'ready' : item.error ? 'failed' : 'pending';
+      var status = state === 'ready' ? '<span class="award-photo-expand">' + icon('expand') + '</span>' :
+        '<span class="award-photo-state">' + (state === 'failed' ? '未上传' : '<i class="award-photo-spinner" aria-hidden="true"></i>准备中') + '</span>';
+      var content = '<span class="award-photo-order" aria-hidden="true">' + (i + 1) + '</span>' + status;
+      var preview = item.dataUrl ? button('preview', '<img alt="" src="' + esc(item.dataUrl) + '" decoding="async">' + content,
+        item.key, ' class="award-photo-preview" aria-label="查看' + label + '"') :
+        '<div class="award-photo-placeholder" aria-label="' + label + '正在准备">' + icon('album') + content + '</div>';
+      if (item.error) errors.push('<div class="award-photo-error" role="status"><p><b>照片 ' + (i + 1) + '</b>' + esc(item.error) + '</p>' +
+        button('retry', icon('retry') + '<span>重试</span>', item.key, ' class="award-photo-retry" aria-label="重试上传' + label + '"') + '</div>');
+      return '<li class="award-photo-card is-' + state + '"' + (state === 'pending' ? ' aria-busy="true"' : '') + '><div class="award-photo-thumb">' + preview +
+        button('remove', '<span>' + icon('close') + '</span>', item.key, ' class="award-photo-remove" aria-label="移除' + label + '"') + '</div>' +
+        button('retake', icon('camera') + '<span>重拍</span>', item.key, ' class="award-photo-retake" aria-label="重拍' + label + '"') + '</li>';
     }).join('');
-    var actions = draft.items.length < limit ? button('camera', rows ? '再拍一张' : '拍照') + button('album', '从相册选') : '';
-    if (draft.items.some(function (item) { return item.error; })) actions += button('skip', '只记积分');
-    return '<section class="award-photo-editor" aria-label="本次照片"><div class="award-photo-heading"><strong>照片 <small>（选填）</small></strong>' +
-      (rows ? '<small>' + draft.items.length + ' / ' + limit + '</small>' : '') + '</div>' +
-      (rows ? '<ul>' + rows + '</ul>' : '') + '<div class="award-photo-tools">' + actions + '</div>' +
-      (draft.notice ? '<small role="status">' + draft.notice + '</small>' : '') +
+    var actions = count < limit ? button('camera', icon('camera') + '<span>' + (count ? '再拍一张' : '拍照记录') + '</span>', null,
+      ' class="award-photo-camera"') : '';
+    var album = count < limit ? button('album', icon('album') + '<span>从相册选</span>', null,
+      ' class="award-photo-album" aria-label="从相册选择照片"') : '';
+    return '<section class="award-photo-editor' + (count ? ' has-photos' : ' is-empty') + '" aria-label="本次照片"><div class="award-photo-heading"><strong>照片 <small>选填</small></strong>' +
+      '<small class="award-photo-count' + (count === limit ? ' award-photo-quota' : '') + '" data-photo-count data-count="' + count + '" aria-label="已选' + count + '张，最多' + limit + '张">' + count + ' / ' + limit + '</small>' + album + '</div>' +
+      (rows ? '<ul class="award-photo-grid">' + rows + '</ul>' : '') + (actions ? '<div class="award-photo-pickers">' + actions + '</div>' : '') +
+      (errors.length ? '<div class="award-photo-errors">' + errors.join('') + button('skip', '只记积分', null, ' class="award-photo-skip"') + '</div>' : '') +
+      (draft.notice ? '<small class="award-photo-notice" role="status">' + esc(draft.notice) + '</small>' : '') +
       '<input type="file" accept="image/*" capture="environment" data-award-photo-input="camera" hidden>' +
       '<input type="file" accept="image/*" multiple data-award-photo-input="album" hidden></section>';
   }
@@ -182,81 +208,179 @@
       if (action === 'award-photo-retry' && draft.items[index].error) { upload(draft.items[index], draft, env); env.refresh(); }
       if (action === 'award-photo-preview') {
         var previews = draft.items.filter(function (item) { return !!item.dataUrl; });
-        openViewer(previews.length, previews.indexOf(draft.items[index]), function (i, done) { done(previews[i].dataUrl); });
+        openViewer(previews.length, previews.indexOf(draft.items[index]), function (i, done) { done(previews[i].dataUrl); }, env.active);
       }
     }
     return true;
   }
-  function history(photoIds) {
-    if (!Array.isArray(photoIds) || !photoIds.length || !photoIds.every(function (id) { return uuid.test(id); })) return '';
-    return '<span class="award-photo-history">' + button('history', '查看照片 · ' + photoIds.length + ' 张', photoIds.join(',')) + '</span>';
+  function validPhotoIds(photoIds) {
+    return Array.isArray(photoIds) && photoIds.length > 0 && photoIds.length <= limit && photoIds.every(function (id) { return uuid.test(id); });
   }
-  function viewHistory(photoIds, env) {
-    if (!photoIds.length || photoIds.length > limit || !photoIds.every(function (id) { return uuid.test(id); })) return;
-    var cache = [];
-    openViewer(photoIds.length, 0, function (index, done) {
-      if (cache[index]) { done(cache[index]); return; }
-      env.request('POST', '/api/award-photos/read', { photoId: photoIds[index] }, function (status, response) {
-        if (!env.active()) return;
-        var url = status === 200 && response.dataUrl;
-        if (typeof url === 'string' && url.startsWith('data:image/jpeg;base64,')) cache[index] = url;
-        done(cache[index]);
-      });
+  function details(photoIds) {
+    if (!validPhotoIds(photoIds)) return '';
+    var thumbnails = photoIds.map(function (id, index) {
+      return '<li>' + button('history', '<img alt="" decoding="async" hidden><span class="award-photo-detail-placeholder">' + icon('album') +
+        '<span class="award-photo-detail-state">加载中</span></span><span class="award-photo-order" aria-hidden="true">' + (index + 1) +
+        '</span><span class="award-photo-expand">' + icon('expand') + '</span>', photoIds.join(','),
+        ' class="award-photo-detail-thumb" data-photo-id="' + id + '" data-photo-index="' + index + '" aria-label="查看第' + (index + 1) + '张照片"') + '</li>';
+    }).join('');
+    return '<section class="award-photo-details" data-award-photo-details aria-label="加分照片"><div class="award-photo-heading"><strong>照片</strong><small>' +
+      photoIds.length + ' 张</small></div><ul class="award-photo-grid">' + thumbnails + '</ul></section>';
+  }
+  function hydrateDetails(root, env) {
+    if (!root || !env || !env.active()) return;
+    root.querySelectorAll('.award-photo-detail-thumb[data-photo-id]').forEach(function (thumb) {
+      var photoId = thumb.getAttribute('data-photo-id');
+      if (!uuid.test(photoId) || thumb.getAttribute('data-photo-loaded')) return;
+      thumb.setAttribute('data-photo-loaded', 'pending'); thumb.setAttribute('aria-busy', 'true');
+      var img = thumb.querySelector('img'), placeholder = thumb.querySelector('.award-photo-detail-placeholder');
+      function active() { return env.active() && thumb.isConnected && root.contains(thumb); }
+      function failed() {
+        if (!active()) return;
+        thumb.setAttribute('data-photo-loaded', 'failed'); thumb.removeAttribute('aria-busy');
+        thumb.classList.add('is-unavailable'); placeholder.querySelector('.award-photo-detail-state').textContent = '未载入';
+      }
+      try {
+        env.request('POST', '/api/award-photos/read', { photoId: photoId }, function (status, response) {
+          if (!active()) return;
+          var url = status === 200 && response && response.dataUrl;
+          if (typeof url !== 'string' || !url.startsWith('data:image/jpeg;base64,')) { failed(); return; }
+          img.onload = function () {
+            if (!active()) return;
+            thumb.setAttribute('data-photo-loaded', 'ready'); thumb.removeAttribute('aria-busy');
+            placeholder.hidden = true; img.hidden = false;
+          };
+          img.onerror = failed; img.src = url;
+        });
+      } catch (_) { failed(); }
     });
   }
+  function viewHistory(photoIds, env, startIndex) {
+    if (!validPhotoIds(photoIds) || !env.active()) return;
+    var cache = [];
+    // Reuse only decoded photos from this live detail; no account-wide image cache.
+    if (env.root && env.root.isConnected) env.root.querySelectorAll('.award-photo-detail-thumb[data-photo-loaded="ready"]').forEach(function (thumb) {
+      var position = Number(thumb.getAttribute('data-photo-index')), img = thumb.querySelector('img');
+      var url = img && img.getAttribute('src');
+      if (thumb.getAttribute('data-id') === photoIds.join(',') && photoIds[position] === thumb.getAttribute('data-photo-id') &&
+        typeof url === 'string' && url.startsWith('data:image/jpeg;base64,')) cache[position] = url;
+    });
+    openViewer(photoIds.length, startIndex || 0, function (index, done) {
+      if (cache[index]) { done(cache[index]); return; }
+      try {
+        env.request('POST', '/api/award-photos/read', { photoId: photoIds[index] }, function (status, response) {
+          if (!env.active()) return;
+          var url = status === 200 && response && response.dataUrl;
+          if (typeof url === 'string' && url.startsWith('data:image/jpeg;base64,')) cache[index] = url;
+          done(cache[index]);
+        });
+      } catch (_) { done(); }
+    }, env.active);
+  }
   function closeViewer() { if (viewer) viewer.close(); }
-  function openViewer(count, index, load) {
+  function openViewer(count, index, load, scopeActive) {
+    if (!count) return;
     closeViewer();
-    var dialog = document.createElement('dialog'), generation = 0;
+    index = Math.max(0, Math.min(count - 1, Math.floor(Number(index) || 0)));
+    var dialog = document.createElement('dialog'), generation = 0, returnFocus = document.activeElement;
+    var returnAction = returnFocus && returnFocus.getAttribute('data-action');
+    var returnId = returnFocus && returnFocus.getAttribute('data-id'), returnIndex = returnFocus && returnFocus.getAttribute('data-photo-index');
     dialog.className = 'award-photo-viewer';
     dialog.setAttribute('data-award-photo-viewer', '');
     dialog.setAttribute('aria-label', '查看照片');
-    dialog.innerHTML = '<header><strong aria-live="polite"></strong><button type="button" data-photo-close>关闭</button></header>' +
-      '<div class="award-photo-stage"><img alt="" hidden><span role="status"></span></div>' +
-      '<footer><button type="button" data-photo-prev>上一张</button><button type="button" data-photo-zoom>放大</button>' +
-      '<button type="button" data-photo-reload hidden>重新加载</button><button type="button" data-photo-next>下一张</button></footer>';
+    dialog.innerHTML = '<header class="award-photo-viewer-header"><strong aria-live="polite" aria-atomic="true"></strong>' +
+      '<button type="button" data-photo-close aria-label="关闭照片">' + icon('close') + '</button></header>' +
+      '<div class="award-photo-stage"><div class="award-photo-canvas"><img alt="" hidden></div><span role="status" aria-live="polite"></span></div>' +
+      '<footer class="award-photo-viewer-footer"><button type="button" data-photo-prev aria-label="上一张照片">' + icon('left') + '</button>' +
+      '<div class="award-photo-viewer-tools"><button type="button" data-photo-zoom aria-pressed="false">' + icon('zoom') + '<span>放大</span></button>' +
+      '<button type="button" data-photo-reload hidden>' + icon('retry') + '<span>重新加载</span></button></div>' +
+      '<button type="button" data-photo-next aria-label="下一张照片">' + icon('right') + '</button></footer>';
     document.body.appendChild(dialog); viewer = dialog;
     var select = function (selector) { return dialog.querySelector(selector); };
-    var img = select('img'), stage = select('.award-photo-stage'), status = select('[role="status"]');
+    var img = select('img'), stage = select('.award-photo-stage'), surface = select('.award-photo-canvas'), status = select('[role="status"]');
     var zoom = select('[data-photo-zoom]'), reload = select('[data-photo-reload]');
+    function setZoom(enlarged) {
+      stage.classList.toggle('zoomed', enlarged);
+      zoom.setAttribute('aria-pressed', String(enlarged));
+      zoom.innerHTML = icon(enlarged ? 'fit' : 'zoom') + '<span>' + (enlarged ? '缩小' : '放大') + '</span>';
+      if (enlarged) {
+        var ratio = Math.min(stage.clientWidth / img.naturalWidth, stage.clientHeight / img.naturalHeight) * 2.25;
+        var width = Math.round(img.naturalWidth * ratio), height = Math.round(img.naturalHeight * ratio);
+        surface.style.width = Math.max(width, stage.clientWidth) + 'px'; surface.style.height = Math.max(height, stage.clientHeight) + 'px';
+        img.style.width = width + 'px'; img.style.height = height + 'px';
+        stage.scrollTo((surface.offsetWidth - stage.clientWidth) / 2, (surface.offsetHeight - stage.clientHeight) / 2);
+      } else {
+        surface.style.width = ''; surface.style.height = ''; img.style.width = ''; img.style.height = ''; stage.scrollTo(0, 0);
+      }
+    }
     function show() {
       var token = ++generation;
       select('strong').textContent = '照片 ' + (index + 1) + ' / ' + count;
       select('[data-photo-prev]').disabled = index === 0;
       select('[data-photo-next]').disabled = index === count - 1;
-      stage.classList.remove('zoomed'); stage.scrollTo(0, 0);
-      zoom.textContent = '放大'; zoom.disabled = true; reload.hidden = true;
-      img.hidden = true; img.removeAttribute('src'); status.textContent = '照片加载中…';
-      load(index, function (url) {
-        if (token !== generation || viewer !== dialog || !dialog.open) return;
-        status.textContent = url ? '' : '照片没有加载成功。';
-        reload.hidden = !!url; zoom.disabled = !url;
-        if (url) { img.alt = '第' + (index + 1) + '张照片'; img.src = url; img.hidden = false; }
-      });
+      setZoom(false); zoom.disabled = true; reload.hidden = true;
+      img.onload = null; img.onerror = null; img.hidden = true; img.removeAttribute('src'); status.textContent = '照片加载中…';
+      function active() { return token === generation && viewer === dialog && dialog.open; }
+      function failed() { if (active()) { status.textContent = '照片未载入'; reload.hidden = false; zoom.hidden = true; } }
+      zoom.hidden = false;
+      try {
+        load(index, function (url) {
+          if (!active()) return;
+          if (!url) { failed(); return; }
+          img.onload = function () { if (active()) { status.textContent = ''; img.hidden = false; zoom.disabled = false; } };
+          img.onerror = failed; img.alt = '第' + (index + 1) + '张照片'; img.src = url;
+        });
+      } catch (_) { failed(); }
     }
-    function move(by) { if (index + by >= 0 && index + by < count) { index += by; show(); } }
+    function move(by) {
+      if (index + by < 0 || index + by >= count) return;
+      var focused = document.activeElement, previous = select('[data-photo-prev]'), next = select('[data-photo-next]');
+      index += by; show();
+      // A disabled end arrow loses keyboard focus in Chromium.
+      if (focused === next && next.disabled) previous.focus({ preventScroll: true });
+      else if (focused === previous && previous.disabled) next.focus({ preventScroll: true });
+      else if (focused === zoom) select('[data-photo-close]').focus({ preventScroll: true });
+    }
     select('[data-photo-close]').onclick = closeViewer;
     select('[data-photo-prev]').onclick = function () { move(-1); };
     select('[data-photo-next]').onclick = function () { move(1); };
     reload.onclick = show;
-    zoom.onclick = function () { zoom.textContent = stage.classList.toggle('zoomed') ? '缩小' : '放大'; };
+    zoom.onclick = function () { setZoom(!stage.classList.contains('zoomed')); };
+    stage.ondblclick = function (event) { if (!zoom.disabled) { event.preventDefault(); setZoom(!stage.classList.contains('zoomed')); } };
     var touch = null;
-    stage.ontouchstart = function (event) { touch = event.touches.length === 1 ? event.touches[0] : null; };
+    stage.ontouchstart = function (event) { touch = event.touches.length === 1 ? { x: event.touches[0].clientX, y: event.touches[0].clientY } : null; };
     stage.ontouchcancel = function () { touch = null; };
     stage.ontouchend = function (event) {
-      if (!touch || stage.classList.contains('zoomed') || window.visualViewport && window.visualViewport.scale > 1.01) return;
-      var end = event.changedTouches[0], dx = end.clientX - touch.clientX, dy = end.clientY - touch.clientY;
-      touch = null;
+      var start = touch; touch = null;
+      if (!start || event.touches.length || stage.classList.contains('zoomed') || window.visualViewport && window.visualViewport.scale > 1.01) return;
+      var end = event.changedTouches[0], dx = end.clientX - start.x, dy = end.clientY - start.y;
       if (Math.abs(dx) > 55 && Math.abs(dx) > Math.abs(dy) * 1.5) move(dx < 0 ? 1 : -1);
     };
     dialog.onkeydown = function (event) {
       event.stopPropagation();
-      if (event.key === 'ArrowRight') move(1);
-      if (event.key === 'ArrowLeft') move(-1);
+      if (event.key === 'Escape') { event.preventDefault(); closeViewer(); }
+      if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') { event.preventDefault(); move(event.key === 'ArrowRight' ? 1 : -1); }
+      if ((event.key === '+' || event.key === '=') && !zoom.disabled) { event.preventDefault(); setZoom(true); }
+      if (event.key === '-' || event.key === '0') { event.preventDefault(); setZoom(false); }
     };
-    dialog.onclose = function () { if (viewer === dialog) viewer = null; dialog.remove(); };
+    function resized() { if (dialog.open && stage.classList.contains('zoomed')) setZoom(true); }
+    dialog.oncancel = function (event) { event.preventDefault(); event.stopPropagation(); closeViewer(); };
+    dialog.onclose = function () {
+      ++generation; window.removeEventListener('resize', resized); img.removeAttribute('src'); dialog.remove();
+      if (viewer === dialog) {
+        viewer = null; document.documentElement.classList.remove('award-photo-viewing');
+        if (scopeActive && !scopeActive()) return;
+        if (returnFocus && !returnFocus.isConnected && returnAction) document.querySelectorAll('button[data-action]').forEach(function (candidate) {
+          if (candidate.getAttribute('data-action') === returnAction && candidate.getAttribute('data-id') === returnId &&
+            candidate.getAttribute('data-photo-index') === returnIndex) returnFocus = candidate;
+        });
+        if (returnFocus && returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
+      }
+    };
+    window.addEventListener('resize', resized); document.documentElement.classList.add('award-photo-viewing');
     dialog.showModal(); show();
   }
   window.FamilyAwardPhotos = { createDraft: createDraft, editor: editor, change: change, handle: handle, ids: ids,
-    ready: ready, discard: discard, flush: flush, unavailable: unavailable, history: history, viewHistory: viewHistory, closeViewer: closeViewer };
+    ready: ready, discard: discard, flush: flush, unavailable: unavailable, details: details,
+    hydrateDetails: hydrateDetails, viewHistory: viewHistory, closeViewer: closeViewer };
 }());
