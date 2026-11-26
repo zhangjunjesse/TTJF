@@ -1,6 +1,16 @@
 /* The points home has one layout vocabulary across screen sizes. */
 html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home) {
-  background-color: var(--app-paper);
+  background-color: var(--points-sheet-edge, var(--app-paper));
+}
+/* Safari samples the page edge. Use the opaque result of the sheet backdrop over the home header. */
+@media (max-width: 699px) {
+  html:has(.points-home):has(.behavior-picker-sheet, .ledger-award-dialog) { --points-sheet-edge: #a1a8a3; }
+  html:has(.points-home):has(.ledger-gift-sheet) { --points-sheet-edge: #a1a9a5; }
+  html:has(#family-assistant-host:not([hidden])) { --points-sheet-edge: initial; }
+  .view-points:has(.points-home) .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet))::after {
+    content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px);
+    background-color: var(--points-sheet-edge); pointer-events: none;
+  }
 }
 .app-shell:has(.points-home) {
   --ledger-page: var(--app-paper); --ledger-ink: #20382c; --ledger-muted: #52645a; --ledger-line: #dee6dd;

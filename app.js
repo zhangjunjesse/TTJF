@@ -15,6 +15,14 @@
   var meta = { parent: { configured: null, method: null }, assistant: { mode: 'local', label: '指令演示' } };
   var parentDevice = { enabled: null, loading: false, busy: false, sequence: 0 };
   var homePreferenceKey = 'ttjf-device-home-v1';
+  var themeTag = document.querySelector('meta[name="theme-color"]');
+  var defaultTheme = themeTag && themeTag.content;
+  function syncThemeColor() {
+    if (!themeTag) return;
+    var edge = window.getComputedStyle(document.documentElement).getPropertyValue('--points-sheet-edge').trim();
+    var color = edge || defaultTheme;
+    if (themeTag.content !== color) themeTag.content = color;
+  }
   function savedHomeMode() {
     try {
       var mode = localStorage.getItem(homePreferenceKey);
@@ -194,6 +202,7 @@
     parentDevice = { enabled: null, loading: false, busy: false, sequence: 0 };
     var notice = document.getElementById('toast'); if (notice) { notice.textContent = ''; notice.className = 'toast'; notice.style.display = 'none'; }
     document.getElementById('app').innerHTML = ''; document.body.className = 'saas-screen';
+    syncThemeColor();
   }
   function ordinary(value) {
     if (value === null || typeof value !== 'object') return value;
@@ -2007,6 +2016,7 @@
       if (ui.form && ui.form.kind === 'behaviorPicker') updatePicker();
     }
     if (Farm && showsFarm) Farm.afterRender();
+    syncThemeColor();
   }
   function makeAction(f, v) {
     if (f.kind === 'assistantReview') return clone(f.data.command);
@@ -2309,6 +2319,7 @@
   }
   function resizeViewport() {
     fitViewport();
+    syncThemeColor();
     scheduleFormViewport();
   }
   window.addEventListener('resize', resizeViewport);
@@ -2320,6 +2331,7 @@
   window.addEventListener('storage', function (event) { if (local && event.key === PRIVATE) { privateConfig = readStore(PRIVATE, privateConfig); loadMeta(); if (!ui.auth && !ui.form) render(false); } if (local && event.key === KEY && !pending) { var saved = readStore(KEY, null); if (saved && saved.tasks) { state = M.normalize(saved); revision++; if (canRefreshLedgerView()) render(false); } } });
   if (!M) { document.getElementById('app').innerHTML = '<p class="loading-screen">数据模块未加载</p>'; return; }
   if (chat) chat.init({
+    onOpen:syncThemeColor, onClose:syncThemeColor,
     request:request, applyResult:applyAssistantCard, canOpen:assistantAvailable, context:assistantContext, onCleared:clearAssistantEditors,
     scope:scopeToken,
     speechHints:function () {

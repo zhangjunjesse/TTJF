@@ -122,10 +122,53 @@ async function setup() {
   progress('Fixture ready: 13 earned / 13 available; affordable 8 and unaffordable 20');
 }
 async function openCatalog() { await Q.home(page); await click(page, a('jump-rewards')); await page.waitForSelector('.reward-card', { visible: true }); await B.delay(100); }
+async function checkPageEdge(name, expectedForm) {
+  if (stage !== 'final') return null;
+  const edge = await page.evaluate(name => {
+    const canvas = document.createElement('canvas'); canvas.width = canvas.height = 1;
+    const context = canvas.getContext('2d');
+    const rgba = value => {
+      if (!value || !CSS.supports('color', value)) throw new Error('Invalid page-edge color: ' + value);
+      context.clearRect(0, 0, 1, 1); context.fillStyle = value; context.fillRect(0, 0, 1, 1);
+      return Array.from(context.getImageData(0, 0, 1, 1).data);
+    };
+    const header = document.querySelector('.app-shell > .home-header');
+    const sheet = document.querySelector('.sheet'), backdrop = document.querySelector('.sheet-overlay > .sheet-backdrop');
+    const rect = sheet && sheet.getBoundingClientRect();
+    return { name, viewport: { width: innerWidth, height: innerHeight },
+      theme: rgba(document.querySelector('meta[name="theme-color"]')?.content),
+      html: rgba(getComputedStyle(document.documentElement).backgroundColor), body: rgba(getComputedStyle(document.body).backgroundColor),
+      header: rgba(getComputedStyle(header).backgroundColor), headerBottom: header.getBoundingClientRect().bottom,
+      backdrop: backdrop ? rgba(getComputedStyle(backdrop).backgroundColor) : null,
+      form: sheet ? sheet.getAttribute('data-form-kind') : null,
+      sheet: rect ? { top: rect.top, bottom: rect.bottom, height: rect.height } : null };
+  }, name);
+  (report.pageEdges || (report.pageEdges = [])).push(edge); persist();
+  assert.deepEqual(edge.viewport, { width: 390, height: 700 }, name + ': uses the phone viewport');
+  assert.equal(edge.form, expectedForm, name + ': expected sheet remains open');
+  assert.equal(edge.header[3], 255, name + ': home header is opaque');
+  if (expectedForm) {
+    assert.ok(edge.backdrop && edge.backdrop[3] > 0 && edge.backdrop[3] < 255, name + ': backdrop dims the home');
+    assert.ok(edge.sheet.top > edge.headerBottom, name + ': sheet keeps the upper home visible');
+    assert.ok(Math.abs(edge.sheet.bottom - edge.viewport.height) <= 1, name + ': sheet stays flush with the bottom');
+  } else {
+    assert.equal(edge.sheet, null, name + ': final sheet is closed');
+    assert.equal(edge.backdrop, null, name + ': no backdrop remains on home');
+  }
+  const alpha = edge.backdrop ? edge.backdrop[3] / 255 : 0;
+  const expected = edge.header.slice(0, 3).map((channel, i) => Math.round(channel * (1 - alpha) + (edge.backdrop ? edge.backdrop[i] * alpha : 0)));
+  for (const source of ['theme', 'html', 'body']) {
+    assert.equal(edge[source][3], 255, name + ': ' + source + ' edge color is opaque');
+    assert.deepEqual(edge[source], edge.theme, name + ': ' + source + ' matches the normalized theme color');
+    assert.ok(expected.every((channel, i) => Math.abs(edge[source][i] - channel) <= 2), name + ': ' + source + ' matches header plus backdrop: ' + JSON.stringify({ actual: edge[source], expected }));
+  }
+  return edge;
+}
 async function catalog() {
   await Q.check('Gift catalog and cancellable details accurately show balance and cost without writes', async () => {
     const before = await sql(), marker = env.calls.length;
-    await shot('01-home'); await openCatalog();
+    const homeEdge = await checkPageEdge('home', null);
+    await shot('01-home'); await openCatalog(); await checkPageEdge('catalog', 'rewards');
     report.catalog = await page.$eval('.sheet', node => ({ text: node.innerText, width: node.getBoundingClientRect().width, height: node.getBoundingClientRect().height }));
     assert.match(report.catalog.text, /13/); assert.match(report.catalog.text, /彩色铅笔/); assert.match(report.catalog.text, /故事绘本/);
     for (const [id, points] of [['gift-round-pencil', 8], ['gift-round-book', 20]]) {
@@ -136,19 +179,40 @@ async function catalog() {
     report.unaffordable = await page.$eval('.sheet', node => node.innerText);
     assert.equal(await page.$eval(SAVE, node => node.disabled), true);
     assert.match(report.unaffordable, /20/); assert.match(report.unaffordable, /13/);
+    await checkPageEdge('unaffordable-detail', 'request');
     await shot('03-unaffordable');
     await click(page, '.sheet-header ' + a('form-close'));
+    await checkPageEdge('back-from-unaffordable', 'rewards');
     if ((await Q.ui(page)).form !== 'rewards') await openCatalog();
     await click(page, a('redeem', 'gift-round-pencil'));
     report.affordable = await page.$eval('.sheet', node => node.innerText);
     assert.equal(await page.$eval(SAVE, node => node.disabled), false);
     assert.match(report.affordable, /8/); assert.match(report.affordable, /13/); assert.match(report.affordable, /5/);
+    await checkPageEdge('affordable-detail', 'request');
     await shot('04-affordable');
     await click(page, '.sheet-header ' + a('form-close'));
+    await checkPageEdge('back-from-affordable', 'rewards');
+    if (stage === 'final') {
+      await click(page, '.sheet-header ' + a('form-close'));
+      const restoredEdge = await checkPageEdge('home-restored', null);
+      for (const source of ['theme', 'html', 'body']) assert.deepEqual(restoredEdge[source], homeEdge[source], source + ' returns to its original home color');
+      report.checks.push('Phone theme-color, html and body stay opaque and match the header/backdrop composite through catalog, both details and return; bottom sheets preserve the upper home; closing restores the original home colors');
+    }
     assert.deepEqual(await sql(), before, 'Catalog and cancelled detail leave SQLite unchanged');
     assert.deepEqual(env.calls.slice(marker).filter(call => !['GET', 'HEAD'].includes(call.method)), [], 'Catalog and cancellation make no mutations');
     report.checks.push('Home -> catalog shows 13 available, cost 8 and cost 20; insufficient gift cannot submit; affordable gift previews 5 remaining; both cancel with no API mutations or SQLite changes');
     progress('Catalog baseline/checkpoint screenshots saved');
+  });
+  if (stage === 'final') await Q.check('Full-screen assistant restores the light phone edge and returns to the dimmed catalog', async () => {
+    await openCatalog();
+    await click(page, '.sheet-header ' + a('assistant-open'));
+    await page.waitForFunction(() => FamilyAssistantPanel.getState().loaded && FamilyAssistantPanel.isOpen());
+    assert.deepEqual(await page.evaluate(() => ({
+      theme: document.querySelector('meta[name="theme-color"]').content,
+      root: getComputedStyle(document.documentElement).backgroundColor
+    })), { theme: '#fdfdfb', root: 'rgb(253, 253, 251)' });
+    await click(page, 'button[data-assistant-action="close"]');
+    await checkPageEdge('back-from-assistant', 'rewards');
   });
 }
 async function cancel() {
