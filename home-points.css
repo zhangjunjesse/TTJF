@@ -16,7 +16,20 @@ html:has(.loading-screen, .points-home), body:has(.loading-screen, .points-home)
   .view-points:has(.points-home) .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet)) > .sheet-status-edge {
     /* WebKit skips boxes 10px tall or thinner. Keep just the top 6px visible when Safari owns the safe area. */
     display: block; position: fixed; inset: -6px 0 auto;
-    height: max(12px, calc(6px + env(safe-area-inset-top, 0px))); background-color: var(--points-sheet-edge);
+    --sheet-edge-height: max(12px, calc(6px + env(safe-area-inset-top, 0px)));
+    height: var(--sheet-edge-height); background-color: var(--points-sheet-edge);
+  }
+}
+@media (max-width: 699px) and (prefers-reduced-motion: no-preference) {
+  .view-points:has(.points-home) .sheet-overlay:has(> :is(.behavior-picker-sheet, .ledger-award-dialog, .ledger-gift-sheet)) > .sheet-backdrop {
+    animation: points-scrim-in 100ms linear;
+  }
+  /* The strip animates when it becomes visible. Its opaque background stays available to Safari. */
+  .view-points:has(.points-home) .sheet-status-edge { animation: points-edge-in 100ms linear; }
+  @keyframes points-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes points-edge-in {
+    from { box-shadow: inset 0 0 0 var(--sheet-edge-height) var(--app-paper); }
+    to { box-shadow: inset 0 0 0 var(--sheet-edge-height) transparent; }
   }
 }
 .app-shell:has(.points-home) {
