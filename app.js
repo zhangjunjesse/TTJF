@@ -353,23 +353,25 @@
     ui.form = restorableForm(saved.form, sentRows.filter(function (award) { return award.currentForm; })[0]); if (!ui.form && saved.form) ui.form = ui.stack.pop() || null;
     restoreSubmittedAwards(sent, restoredStack);
     // Only an exact ledger record confirms an aborted request; an absent record can still arrive later.
-    if (reconcileSubmittedAwards()) { discardAvatar(); restoreAwardPhotoInput(); return; }
-    if (AwardPhotos) AwardPhotos.flush(awardPhotoRequestEnvironment());
-    if (saved.awardReview && saved.revision === revision && saved.awardReview.familyDay === today() && ui.form && ui.form.kind === 'points') {
-      // Recreate an unsent review, never a previous challenge, grant, or PIN.
-      try { var award = makeAction(ui.form, ui.form.data); beginAction(award, '已加 ' + award.points + ' 分。', saved.awardReview.pristine, true); } catch (e) {}
+    var completedAward = reconcileSubmittedAwards();
+    if (!completedAward) {
+      if (AwardPhotos) AwardPhotos.flush(awardPhotoRequestEnvironment());
+      if (saved.awardReview && saved.revision === revision && saved.awardReview.familyDay === today() && ui.form && ui.form.kind === 'points') {
+        // Recreate an unsent review, never a previous challenge, grant, or PIN.
+        try { var award = makeAction(ui.form, ui.form.data); beginAction(award, '已加 ' + award.points + ' 分。', saved.awardReview.pristine, true); } catch (e) {}
+      }
+      if (!ui.auth) render(false);
+      var main = document.getElementById('main'); if (main) main.scrollTop = saved.scrollTop || 0;
+      if (ui.form) { restorePlayFocus(ui.form.focusKey); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = ui.form.scrollTop || 0; }
     }
-    if (!ui.auth) render(false);
-    var main = document.getElementById('main'); if (main) main.scrollTop = saved.scrollTop || 0;
-    if (ui.form) { restorePlayFocus(ui.form.focusKey); var body = document.querySelector('.sheet-body'); if (body) body.scrollTop = ui.form.scrollTop || 0; }
     if (avatarSelection && ui.form && ui.form.kind === 'profile') {
       var picker = avatarSelection, replacement = document.querySelector('#editor-form #avatar-file');
       picker.scope = scopeToken(); picker.form = ui.form; picker.permitted = true;
       if (picker.input) { picker.input.hidden = false; picker.input.setAttribute('data-saas-avatar-hold', 'false'); if (replacement && replacement !== picker.input && replacement.parentNode) replacement.parentNode.replaceChild(picker.input, replacement); }
       if (picker.file) loadAvatar(picker.file);
     } else discardAvatar();
-    var completedAward = restoreAwardPhotoInput();
-    if (saved.form && !ui.form && !completedAward) toast('内容已更新');
+    var completedFromPicker = restoreAwardPhotoInput();
+    if (saved.form && !ui.form && !completedAward && !completedFromPicker) toast('内容已更新');
   }
   function discardAvatar() {
     if (!avatarSelection) return;

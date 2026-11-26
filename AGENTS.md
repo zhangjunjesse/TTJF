@@ -34,6 +34,7 @@
 - `npm run test:award-photos:browser` 使用真实浏览器及临时 SQLite 验证加分照片。通过 `AWARD_PHOTO_CASE=custom|preset|retry|skip|scope|picker-return|preset-return|overlap|expired|retake|discard-race` 选取自定义加分、常用行为、重试、只记积分、家庭切换、自定义选图返回、常用行为拍照返回、连续选图、暂存过期、满额重拍或上传中移除。实体手机相机和系统相册需真机验收。
 - 同一入口用 `AWARD_PHOTO_CASE=resume-committed|resume-uncommitted|resume-late` 验证家长提交后切走再返回。分别检查已入账时显示回执并清空草稿、未入账时保留照片并重新确认，以及原请求迟到时仍只入账一次。
 - `AWARD_PHOTO_CASE=resume-midnight` 验证次日修改时间后，未入账的草稿能带着原照片提交。`AWARD_PHOTO_CASE=resume-chooser` 验证上一笔回执到达时，新草稿仍能接收所选照片。
+- `AWARD_PHOTO_CASE=resume-avatar` 验证在资料页选头像时收到上一笔加分回执，头像仍可保存，原加分只入账一次。
 - `npm run test:ui:keyboard` 在真实 SaaS 表单上模拟手机键盘压缩、移动可见区域。用 `MOBILE_KEYBOARD_CASE=award|template|reminder|pin|pin-landscape` 分别检查立即加分（默认）、常用行为、提醒和竖屏/横屏家长 PIN。系统输入法和 Safari 真机需单独验收。
 - `npm run test:assistant:flow` 使用真实 SaaS 和临时 SQLite，按 `ASSISTANT_FLOW_CASE=phone|template|tablet|landscape|greeting` 验证助手交接、记账、清空、布局和问候回复来源。`launcher-phone` 和 `launcher-tablet` 检查底栏居中、导航触控、减少动态效果和焦点恢复。`voice-award` 使用模拟识别结果验证长按发消息、核对分数、家长授权到最终入账。
 - `npm run test:assistant:panel` 按 `ASSISTANT_PANEL_CASE=layout|lifecycle|drafts|voice|hold|hold-touch|history` 独立验证面板交互。`hold` 测松手发送和听不清时留稿，`hold-touch` 测触屏滑动取消与转文字。面板和集成测试均支持 `TEST_ARTIFACT_DIR`。嘈杂环境的转写准确率需用真机录音另测。

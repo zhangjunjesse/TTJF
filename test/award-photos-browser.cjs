@@ -9,7 +9,7 @@ const crypto = require('node:crypto');
 const Q = require('./saas-browser.cjs');
 const { B, PIN, action: a, click, snapshot, ui } = Q;
 const CASE = process.env.AWARD_PHOTO_CASE || 'custom';
-const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race', 'resume-committed', 'resume-uncommitted', 'resume-late', 'resume-midnight', 'resume-chooser'];
+const CASES = ['custom', 'preset', 'retry', 'skip', 'scope', 'picker-return', 'preset-return', 'overlap', 'expired', 'retake', 'discard-race', 'resume-committed', 'resume-uncommitted', 'resume-late', 'resume-midnight', 'resume-chooser', 'resume-avatar'];
 assert.ok(CASES.includes(CASE), 'Unknown AWARD_PHOTO_CASE');
 const WIDTH = Number(process.env.AWARD_PHOTO_WIDTH || 390);
 const HEIGHT = Number(process.env.AWARD_PHOTO_HEIGHT || 844);
@@ -37,6 +37,7 @@ Q.report.boundaries = [
   'The resume-late group forwards the unchanged original action body and grant to real HTTP after the first resumed snapshot. Credentials remain only in test memory; no service response or ledger snapshot is fabricated.',
   'The resume-midnight group advances the injected Shanghai clock across midnight, interrupts both the old-day submit and a corrected new-day submit, then verifies fresh authorization, exact saved time and real-service replay behavior.',
   'The resume-chooser group forwards an old authorized award while an edited draft has a native chooser open, accepts the new file while hidden, then verifies both distinct records and photo attachments in SQLite.',
+  'The resume-avatar group uses the same synthetic PNG with and without a late award receipt, then explicitly saves the returned avatar with a fresh PIN and verifies SQLite plus reload. Existing family and session boundaries still apply.',
   'No production service, external SMTP, AI image provider or live family data is used.'
 ];
 for (const name of CASES.filter(name => name !== CASE)) Q.report.skipped.push('AWARD_PHOTO_CASE=' + name + ' not selected');
@@ -619,6 +620,76 @@ async function resumeChooser() {
     assert.deepEqual(await sql(), after);
   });
 }
+async function resumeAvatar() {
+  let controlAvatar;
+  await check('An avatar selected across hide/show remains an unsaved profile draft without an old award receipt', async () => {
+    const before = await sql(), marker = env.calls.length;
+    await click(page, a('profile-edit'));
+    const selected = page.waitForFileChooser(); await click(page, a('avatar-choose')); const chooser = await selected;
+    await hideAward(); await chooser.accept([files.png]); await resumeAward();
+    await page.waitForFunction(() => document.querySelector('#avatar-status')?.textContent === '头像已选定');
+    controlAvatar = await page.$eval('.profile-photo-preview img', node => node.getAttribute('src'));
+    assert.match(controlAvatar, /^data:image\/jpeg;base64,/);
+    assert.equal((await ui(page)).form, 'profile'); assert.equal((await ui(page)).auth, false);
+    assert.deepEqual(await sql(), before, 'a returned avatar does not save the profile or award points');
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/parent/challenge', '/api/parent/verify', '/api/action'].includes(call.path)), []);
+    await Q.home(page); assert.equal(await page.$('.child-avatar img'), null, 'cancelling leaves the home avatar unchanged');
+    assert.deepEqual(await sql(), before);
+  });
+  await check('A late award receipt preserves the returned avatar until explicit profile save and keeps one award after reload', async () => {
+    const before = await sql(); await openCustom(); await parentReview();
+    const original = await loseUncommittedAction(before), actionId = original.action.id;
+    await resumeAward(); await Q.home(page); await click(page, a('profile-edit'));
+    const selected = page.waitForFileChooser(); await click(page, a('avatar-choose')); const chooser = await selected;
+    const late = await env.api(page, '/api/action', 'POST', original);
+    assert.equal(late.status, 200, 'the old authorized award commits while the avatar chooser remains open');
+    const committed = await sql(), row = committed.state.points.at(-1);
+    assert.equal(committed.revision, before.revision + 1); assert.equal(committed.state.points.length, before.state.points.length + 1);
+    assert.equal(row.id, 'points-' + actionId); assert.equal(row.name, CUSTOM); assert.equal(row.points, 7);
+    const marker = env.calls.length;
+    await hideAward(); await chooser.accept([files.png]); await resumeAward();
+    await page.waitForFunction(() => document.querySelector('#avatar-status')?.textContent === '头像已选定');
+    await page.waitForFunction(() => {
+      const image = document.querySelector('.profile-photo-preview img');
+      return image && image.complete && image.naturalWidth === 192 && image.naturalHeight === 192;
+    });
+    const avatar = await page.$eval('.profile-photo-preview img', node => node.getAttribute('src'));
+    assert.equal(avatar, controlAvatar, 'the identical PNG produces the same avatar when the old receipt is reconciled');
+    assert.equal((await ui(page)).form, 'profile'); assert.equal((await ui(page)).auth, false); assert.equal((await ui(page)).pending, false);
+    assert.equal(await page.$('#parent-form [name="answer"]'), null);
+    assert.equal(await page.$eval('#editor-form [name="childName"]', node => node.value), CHILD);
+    assert.deepEqual(await sql(), committed, 'returning from the chooser never saves the selected avatar automatically');
+    assert.deepEqual(await snapshot(page), committed.state);
+    assert.deepEqual(env.calls.slice(marker).filter(call => ['/api/parent/challenge', '/api/parent/verify', '/api/action'].includes(call.path)), []);
+    assert.equal(uploads.length, 0, 'profile avatars never become award-photo uploads');
+    await Q.shot(page, 'late-award-avatar-selected');
+    await click(page, Q.save);
+    if (!(await ui(page)).auth) {
+      assert.match(await page.$eval('#form-error', node => node.textContent), /记录已更新 · 待确认/);
+      assert.deepEqual(await sql(), committed); await click(page, Q.save);
+    }
+    await page.waitForSelector('#parent-form [name="answer"]', { visible: true });
+    assert.equal(await page.$eval('#parent-form [name="answer"]', node => node.value), '', 'profile save requires fresh parent verification');
+    assert.deepEqual(await sql(), committed, 'profile review does not save the avatar before verification');
+    await B.fill(page, '#parent-form [name="answer"]', PIN); await click(page, Q.parentSubmit);
+    await page.waitForFunction(() => { const current = window.FamilyDemo.getUI(); return !current.auth && !current.pending && current.form === null; });
+    const after = await sql(), profileWrites = env.calls.slice(marker).filter(call => call.path === '/api/action');
+    assert.equal(after.revision, committed.revision + 1); assert.equal(after.state.childAvatar, avatar); assert.equal(after.state.childName, CHILD);
+    assert.deepEqual(after.state.points, committed.state.points, 'saving the avatar never repeats the old award');
+    assert.equal(profileWrites.length, 1); assert.equal(profileWrites[0].action.type, 'profile.update');
+    assert.equal(profileWrites[0].action.hasGrant, true); assert.equal(profileWrites[0].familyId, familyId);
+    assert.equal(awardRequests.actions.length, 1, 'the original aborted browser submission is never resubmitted');
+    const replay = await env.api(page, '/api/action', 'POST', original);
+    assert.equal(replay.status, 200); assert.deepEqual(await sql(), after, 'replaying the old award cannot change the saved profile or add points');
+    await reload();
+    await page.waitForFunction(() => { const image = document.querySelector('.child-avatar img'); return image && image.complete && image.naturalWidth === 192; });
+    assert.equal(await page.$eval('.child-avatar img', node => node.getAttribute('src')), avatar);
+    assert.deepEqual(await snapshot(page), after.state); assert.deepEqual(await sql(), after);
+    report.resume = { actionId, lateOriginalStatus: late.status, committedAwards: 1, controlAvatarMatched: true,
+      avatarSha256: crypto.createHash('sha256').update(avatar).digest('hex'), profileSaved: true, avatarSurvivedReload: true };
+    await Q.shot(page, 'late-award-avatar-persisted');
+  });
+}
 async function pickerReturn() {
   await check('A file-picker result returns to the same draft after hide/show and still needs explicit parent verification', async () => {
     const before = await sql(); await openCustom();
@@ -808,7 +879,7 @@ async function discardRace() {
   });
 }
 async function run() {
-  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace, 'resume-committed': resumeCommitted, 'resume-uncommitted': resumeUncommitted, 'resume-late': resumeLate, 'resume-midnight': resumeMidnight, 'resume-chooser': resumeChooser })[CASE]();
+  await setup(); await ({ custom, preset, retry, skip, scope, 'picker-return': pickerReturn, 'preset-return': presetReturn, overlap, expired, retake, 'discard-race': discardRace, 'resume-committed': resumeCommitted, 'resume-uncommitted': resumeUncommitted, 'resume-late': resumeLate, 'resume-midnight': resumeMidnight, 'resume-chooser': resumeChooser, 'resume-avatar': resumeAvatar })[CASE]();
   assert.deepEqual(Q.report.pageErrors, []);
   report.finalSourceHashes = hashes(); report.sourceStable = JSON.stringify(report.sourceHashes) === JSON.stringify(report.finalSourceHashes);
   progress('Selected photo group complete');
